@@ -15,7 +15,6 @@ OPTIONAL_ARTIFACTS = ("hook.py", "hooks.json", "hook-handlers.json", "mcp.json",
 # Codex 0.154 also migrates these argument-free source commands automatically.
 # Reuse its stable names so the explicit, host-adapted skill wins deduplication.
 COMMAND_ALIASES = {
-    ("atlas", "graph"): "source-command-graph",
     ("project-init", "health-check"): "source-command-health-check",
 }
 # Keep the public command alias, but let its canonical skill own automatic routing.
@@ -174,8 +173,7 @@ def generated_files(root, plugins=None):
                 short_description = description if len(description) <= 200 else (
                     description[:197].rsplit(" ", 1)[0] + "...")
                 # Hand-rolled YAML (this script has no YAML dependency, by repo
-                # convention — see plugins/atlas/skills/atlas/scripts/atlas_index.py).
-                # json.dumps produces a double-quoted scalar whose escaping YAML's
+                # convention). json.dumps produces a double-quoted scalar whose escaping YAML's
                 # double-quoted flow style also accepts, so any colon/quote/unicode in
                 # the derived text stays a single valid scalar.
                 outputs[path.parent / "agents/openai.yaml"] = (

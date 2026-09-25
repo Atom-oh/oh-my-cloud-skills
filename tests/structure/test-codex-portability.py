@@ -161,7 +161,7 @@ class PortabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "source"
             shutil.copytree(self.generated, root)
-            other = root / "plugins/atlas/.codex-plugin/runtime.md"
+            other = root / "plugins/token-saver/.codex-plugin/runtime.md"
             changed = other.read_text() + "\nUnrelated pending change.\n"
             other.write_text(changed)
             for flags in ([], ["--check"]):

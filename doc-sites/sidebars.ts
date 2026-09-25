@@ -11,12 +11,6 @@ const sidebars: SidebarsConfig = {
     'token-saver/installation',
   ],
 
-  atlas: [
-    'atlas/overview',
-    'atlas/installation',
-    'atlas/commands',
-  ],
-
   awsContent: [
     'aws-content-plugin/overview',
     'aws-content-plugin/usage-guide',

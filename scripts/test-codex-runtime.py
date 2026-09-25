@@ -165,7 +165,6 @@ def main():
                       "no hook trust bypass or execution")
                 helpers = {
                     "co-agent": ["skills/co-agent/scripts/co_agent_config.py", "panel"],
-                    "atlas": ["skills/atlas/scripts/atlas_drift.py", "--json"],
                     "kiro": ["skills/kiro-delegate/scripts/kiro_config.py", "show"],
                 }
                 for name, arguments in helpers.items():

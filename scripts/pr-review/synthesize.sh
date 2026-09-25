@@ -114,13 +114,14 @@ MEMORY_EXCERPT="$(memory_excerpt docs/pr-review/review-memory.md "${CHAIR_MEMORY
 } > "$WORK/synth-stdin.txt"
 
 PRIMARY_MODEL="${ANTHROPIC_MODEL:-global.anthropic.claude-fable-5-1}"
-FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-global.anthropic.claude-opus-5}"
+FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-global.anthropic.claude-opus-5-5}"
 CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-450}"
 CHAIR_FALLBACK_TIMEOUT="${CHAIR_FALLBACK_TIMEOUT:-300}"
 
 chair_label() { case "$1" in
   *fable-5-1*) echo "Claude Fable 5.1" ;;
   *fable-5*)   echo "Claude Fable 5" ;;
+  *opus-5-5*)  echo "Claude Opus 5.5" ;;
   *opus-5*)    echo "Claude Opus 5" ;;
   *)           echo "$1" ;;
 esac ; }

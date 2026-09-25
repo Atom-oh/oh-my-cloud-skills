@@ -78,8 +78,7 @@ releases; an ordinary development PR need not bump the version or create a tag.
   inspect definitions, then grant hook trust. Installation alone is not execution.
 - Kiro delegation's scope guard controls the diff applied to the main worktree.
   It does not sandbox the Kiro CLI process; that is a separate trust decision.
-- Atlas on-demand repair can use the active Codex host. Its opt-in unattended
-  repair remains Claude-backed. Do not claim a provider or hook ran without proof.
+  Do not claim a provider or hook ran without proof.
 
 ## Validation
 
