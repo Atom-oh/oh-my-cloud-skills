@@ -83,7 +83,7 @@ consumer-agent independence, malformed responses, input limits, strict untracked
 collection, blocking thresholds and native entry generation. The normal runtime
 probe installs the real package into disposable Codex state and exercises the
 installed runner from a different consumer directory, without external inference:
-
+ 
 ```bash
 python3 tests/structure/test-kiro-codex.py
 bash tests/run-all.sh kiro
