@@ -4,7 +4,7 @@
 > **only when syncing** (the root `CLAUDE.md` holds only a summary of the source).
 
 - **Source**: `git@github.com:whchoi98/project-init.git` (path: `plugins/project-init/`) · **Author**: whchoi98
-- **Last synced**: 2026-07-27, upstream `da91979` (v2.2.0)
+- **Last synced**: 2026-09-25, upstream `13ee3e1` (v2.4.0)
 
 ## Maintenance policy
 

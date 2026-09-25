@@ -58,6 +58,13 @@
       ]
     },
     {
+      "name": "migrate-hooks",
+      "path": ".codex-plugin/skills/migrate-hooks/SKILL.md",
+      "sources": [
+        "commands/migrate-hooks.md"
+      ]
+    },
+    {
       "name": "project-scaffolder",
       "path": ".codex-plugin/skills/project-scaffolder/SKILL.md",
       "sources": [

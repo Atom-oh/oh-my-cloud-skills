@@ -28,6 +28,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `*opus-5-5*` chair label ahead of the existing `*opus-5*` glob in
   `synthesize.sh` so Opus 5.5 is labeled correctly instead of matching the older
   pattern.
+- Sync the mirrored project-init plugin from upstream `da91979` (v2.2.0) to
+  `13ee3e1` (v2.4.0): a new `/migrate-hooks` command migrates hooks,
+  `settings.json` and `.claude/agents/*.yml` files generated before v2.3 to
+  Claude Code's actual hook contract (JSON on stdin, `exit 2` blocking,
+  Markdown-with-frontmatter subagents — `.yml`/`.yaml` agent files are never
+  loaded); `health-check` now detects that pre-v2.3 state and recommends the
+  new command; generated agent templates moved from `.yml` to `.md`. No local
+  divergence from upstream carried over (per the maintenance policy in
+  `docs/reference/project-init-upstream-sync.md`); only the marketplace-uniform
+  `version` field was restored after the sync. One file
+  (`skills/project-scaffolder/references/hook-scripts.md`) is intentionally
+  still on the old content pending an owner decision on a `secret-scan.sh`
+  false positive; see PR #240.
+
+### Removed
+
+- Retire the `atlas` plugin (per-topic documentation drift detection and
+  optional push-time sync), per owner request. See
+  [ADR-025](docs/decisions/ADR-025-retire-atlas.md). Marketplace plugin count
+  drops from nine to eight.
+
+### Migration
+
+- Uninstall the `atlas` plugin. Any `docs/atlas/` wiki content and
+  `.claude/atlas.local.json` override in a consuming repository are untouched
+  by this removal and can be deleted manually if no longer wanted; remove any
+  pre-push hook that referenced it.
 
 ## [2.0.0] - 2026-09-13
 

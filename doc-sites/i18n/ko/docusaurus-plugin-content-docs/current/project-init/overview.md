@@ -37,6 +37,7 @@ Claude Code는 소스 플러그인의 명령, project-scaffolder 지식 스킬, 
 | `generate-readme` | 사용자용 README를 작성하거나 갱신합니다. |
 | `generate-changelog` | 릴리스 기록을 갱신합니다. |
 | `health-check` | 프로젝트 설정과 문서 품질을 점검합니다. |
+| `migrate-hooks` | v2.3 이전에 생성된 훅, settings.json, `.yml` 에이전트를 현재의 stdin/exit 2 계약으로 이전합니다. |
 
 ## 프로젝트 적응 및 품질 {#adaptation-and-quality}
 

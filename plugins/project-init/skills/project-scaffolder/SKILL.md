@@ -1,9 +1,7 @@
 ---
 name: project-scaffolder
 description: Understand and apply Claude Code project structure patterns. Use when user asks about project organization, wants to add new modules, or needs guidance on where to place files in a Claude Code project.
-allowed-tools:
-  - Read
-  - Glob
+tools: Read, Glob
 user-invocable: false
 ---
 
@@ -48,8 +46,8 @@ project-root/
 │   │   ├── release/SKILL.md      # Semver release automation
 │   │   └── sync-docs/SKILL.md    # Documentation sync with quality scoring
 │   └── agents/
-│       ├── code-reviewer.yml     # Parallel code review agent
-│       └── security-auditor.yml  # Security audit agent
+│       ├── code-reviewer.md      # Parallel code review agent
+│       └── security-auditor.md   # Security audit agent
 ├── scripts/
 │   ├── setup.sh                  # Project setup for new developers
 │   └── install-hooks.sh          # Git hooks installer
