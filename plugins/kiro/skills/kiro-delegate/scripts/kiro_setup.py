@@ -192,12 +192,18 @@ _WEBSEARCH_AGENT = {
 }
 
 
-def probe(timeout=90):
+def probe(timeout=90, model=None, effort=None):
     if not shutil.which("kiro-cli"):
         return "ABSENT", "command not found"
     sentinel = "KIRO_SETUP_PROBE"
-    argv = ["kiro-cli", "chat", f"Reply with exactly this token and nothing else: {sentinel}",
-            "--v3", "--mode", "default", "--no-interactive", "--trust-tools=fs_read", "--wrap", "never"]
+    argv = ["kiro-cli", "chat", "--no-interactive", "--trust-tools=", "--wrap", "never",
+            f"Reply with exactly this token and nothing else: {sentinel}"]
+    if model:
+        argv += ["--model", model]
+    else:
+        argv += ["--v3", "--mode", "default"]
+    if effort:
+        argv += ["--effort", effort]
     with tempfile.TemporaryDirectory() as cwd:
         outp, errp = os.path.join(cwd, ".out"), os.path.join(cwd, ".err")
         try:
