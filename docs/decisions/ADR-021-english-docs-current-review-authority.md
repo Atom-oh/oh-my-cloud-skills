@@ -7,8 +7,12 @@ public/README/CHANGELOG language exclusions and the conflicting historical revie
 rules identified below; preserves their dated rationale.
 
 The public guide site's English-only scope is superseded by
-[ADR-023](ADR-023-bilingual-public-guides.md). Internal English documentation and
-all review, ownership and safety decisions below remain in force.
+[ADR-023](ADR-023-bilingual-public-guides.md). The "complete configured review
+coverage" requirement in Decision (unconditional coverage as a merge blocker,
+independent of the chair's verdict) is superseded by
+[ADR-026](ADR-026-chair-decides-on-degraded-coverage.md): the chair now decides,
+informed of coverage gaps beforehand. All other review, ownership, safety and
+language decisions below remain in force.
 
 ## Context
 

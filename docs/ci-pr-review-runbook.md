@@ -87,15 +87,18 @@ provider's credentials failed. Do not print environment variables containing key
 No automatic model exclusion is authorized by judgment-quality statistics. Verify
 unsupported findings against current code, distinguish them from provider failures,
 and obtain an explicit owner-approved roster change when warranted. Keep genuine
-blocking findings and all required coverage; do not weaken gates to make a PR green.
+blocking findings intact; do not weaken gates or hide degraded coverage from the
+chair to make a PR green (ADR-026 requires informing the chair, not concealing it).
 
 For these Kiro-specific failures, use [the panel runbook](runbooks/pr-review-panel.md).
 It separates configuration, startup and quota failures without weakening the review gate.
 
 ## Completion
 
-Require both CI checks, complete configured peer responses, no unresolved current
-Critical/Major, and a comment bound to the latest HEAD. Recheck HEAD, target branch
+Require both CI checks, no unresolved current Critical/Major, and a comment bound to
+the latest HEAD; the chair's own verdict, informed of any degraded peer coverage
+before it decides, governs whether that gap still permits PASS (ADR-026). Recheck
+HEAD, target branch
 and prerequisite PRs immediately before authorized merge. Retain the merge commit
 and relevant verification results; temporary local evidence is not a portable
 artifact link unless it was actually published.

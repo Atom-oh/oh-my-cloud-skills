@@ -60,9 +60,10 @@ or hook execution.
    and record changed authority or scope in a new ADR. Functional literals and the
    language of artifacts requested by users remain independent of doc language.
 4. Run relevant tests and every applicable [review gate](reference/review-routing.md).
-   Before merge, require latest-HEAD AI review, no unresolved Critical/Major findings,
-   complete configured coverage, separate Codex package validation, and branch
-   protection checks. Failed or missing reviews need repair/retry, not a PASS.
+   Before merge, require latest-HEAD AI review (its chair, informed of any degraded
+   coverage before deciding, governs whether that gap still permits PASS — ADR-026),
+   no unresolved Critical/Major findings, separate Codex package validation, and
+   branch protection checks. Failed or missing reviews need repair/retry, not a PASS.
 5. For a release, update every plugin's manifests and both marketplaces to one
    version, regenerate adapters, validate, then tag the approved release commit
    `v{version}`. Feature edits do not by themselves require a release tag.

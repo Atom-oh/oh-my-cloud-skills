@@ -182,25 +182,6 @@ def json_review(text):
     return format_decision(result, prose)
 
 
-def coverage_error(work, truncated):
-    if truncated or any((work / name).exists() for name in (
-        "kiro-diff-truncated.flag", "panel-cell-truncated.flag", "coverage-severe.flag",
-    )):
-        return "Required review input or coverage is incomplete"
-    degraded = work / "degraded-models.txt"
-    if degraded.exists() and degraded.read_text().strip():
-        return "A configured reviewer did not complete"
-    expected = (work / "expected.txt").read_text().splitlines()
-    responded = (work / "responded.txt").read_text().splitlines()
-    if (not expected or len(set(expected)) != len(expected) or sorted(expected) != sorted(responded)
-            or not all(re.fullmatch(r"[a-z0-9-]+/[A-Za-z0-9_.-]+", cell) for cell in expected)):
-        return "Not every configured review cell completed"
-    for cell in expected:
-        if not (work / "slot" / (cell.replace("/", "-") + ".md")).read_text().strip():
-            return "A required review cell has no usable output"
-    return None
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("format", choices=("markdown", "json"))
@@ -223,11 +204,12 @@ def main():
             data = args.report.read_bytes()
             if not data.strip() or len(data) > MAX_REVIEW_BYTES:
                 raise ValueError("Missing, empty or oversized review")
+            # ADR-026: the chair is told about degraded coverage before it decides
+            # (synthesize.sh's "=== REVIEW COVERAGE STATUS ===" block) and its
+            # resulting PASSED/BLOCKED verdict is trusted here, not re-checked
+            # against coverage state again. args.work_dir/args.diff_truncated are
+            # accepted for CLI compatibility but no longer consulted.
             result = (markdown_review if args.format == "markdown" else json_review)(data.decode("utf-8"))
-            if args.work_dir and result["status"] == "PASSED":
-                error = coverage_error(args.work_dir, args.diff_truncated == "1")
-                if error:
-                    result = decision("ERROR", error)
     except (OSError, ValueError, TypeError, KeyError):
         result = decision("ERROR", "Review or required coverage evidence is missing or malformed")
     if args.github_output:

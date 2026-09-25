@@ -72,10 +72,12 @@ Record actual results and resolve required failures; do not rely on a historical
 count or optional local hook result.
 
 Commit the reviewed file set, push the release branch and open its PR to `main`.
-Before merge, require AI review of the latest HEAD, no unresolved Critical/Major issues,
-complete configured coverage, separate Codex package CI and all branch protection
-checks. Confirm the reviewed HEAD, target branch and predecessor PR state immediately
-before merging. Missing/failed reviews require repair or retry, never a bypass.
+Before merge, require AI review of the latest HEAD (the chair, informed of any
+degraded coverage before it decides, judges whether that gap still permits PASS —
+ADR-026), no unresolved Critical/Major issues, separate Codex package CI and all
+branch protection checks. Confirm the reviewed HEAD, target branch and predecessor
+PR state immediately before merging. Missing/failed reviews require repair or
+retry, never a bypass.
 
 ## Tag the merged release
 
