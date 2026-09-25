@@ -17,12 +17,12 @@ Claude manifest (2026-09-15). Project-init uses convention-based source discover
 | kiro-power-converter | Plugin to Kiro Power conversion | 1 | 0 | 1 | 2 | 1 |
 | agentcore-creator | Agent design and AgentCore conversion/deployment | 1 | 0 | 1 | 2 | 1 |
 | co-agent | Multi-AI review, decisions, ADRs and implementation workflows | 3 | 6 | 5 | 12 | 8 |
-| project-init | Project scaffolding and documentation management | 1 | 9 | 1 | 11 | 0 |
+| project-init | Project scaffolding and documentation management | 1 | 10 | 1 | 12 | 0 |
 | kiro | Host-planned implementation delegated to Kiro CLI | 1 | 4 | 1 | 6 | 5 |
 | token-saver | Concise response guidance with complete work and required formats | 1 | 0 | 0 | 1 | 1 |
-| **Total** | | **23** | **19** | **28** | **68** | **24** |
+| **Total** | | **23** | **20** | **28** | **69** | **24** |
 
-The **70 source procedures** map to **68 Codex entry skills** because some entries
+The **71 source procedures** map to **69 Codex entry skills** because some entries
 combine sources. Specialist entries are procedures, not native Codex agent roles.
 The **24 plugin hook commands** exclude repository hooks and project-init's
 separately installed project templates. These counts do not measure CI review cells:

@@ -45,6 +45,20 @@ Verify hooks are executable:
 find .claude/hooks -name '*.sh' ! -perm -u+x 2>/dev/null
 ```
 
+### Step 2.5: Check Hook Contract (pre-v2.3 detection)
+
+Hooks generated before project-init v2.3 never run: Claude Code passes hook events as JSON on stdin and never sets `$TOOL_INPUT_PATH`, `$EVENT`, or `$MESSAGE`; only exit 2 blocks a tool call; `.yml` subagents are not loaded.
+
+```bash
+grep -l 'TOOL_INPUT_PATH\|\$EVENT\|\$MESSAGE' .claude/settings.json .claude/hooks/*.sh 2>/dev/null
+grep -n 'secret-scan.sh.*|| true' .claude/settings.json 2>/dev/null
+grep -L 'tool_input' .claude/hooks/check-doc-sync.sh .claude/hooks/secret-scan.sh 2>/dev/null
+grep -n 'exit 1' .claude/hooks/secret-scan.sh 2>/dev/null
+ls .claude/agents/*.yml .claude/agents/*.yaml 2>/dev/null
+```
+
+Any hit is a **pre-v2.3 hook contract** finding. Deduct 10 points per affected hook or agent (maximum -35, the whole Hook configuration category), mark the hook `STALE CONTRACT` in the Hooks table, and add `Run /project-init:migrate-hooks` as the first Recommended Action. Passing hooks that read `tool_input` and a `secret-scan.sh` registration without `|| true` score full points.
+
 ## Step 3: Check Skills
 
 ```bash
@@ -122,11 +136,12 @@ Present a comprehensive health report:
 ### Hooks
 | Hook | Type | Status |
 |------|------|--------|
-| check-doc-sync.sh | PostToolUse | OK / MISSING / NOT EXECUTABLE |
-| secret-scan.sh | PreToolUse | OK / MISSING |
+| check-doc-sync.sh | PostToolUse | OK / MISSING / NOT EXECUTABLE / STALE CONTRACT |
+| secret-scan.sh | PreToolUse | OK / MISSING / STALE CONTRACT |
 | session-context.sh | SessionStart | OK / MISSING |
 | commit-msg | Git Hook | OK / MISSING |
 
+### Hook Contract: v2.3 OK / N pre-v2.3 findings (run /project-init:migrate-hooks)
 ### Skills: X/4 installed
 ### Documentation: X/Y modules covered
 ### Security: PASS / X issues found

@@ -37,6 +37,7 @@ Claude Code uses the source plugin's commands, project-scaffolder knowledge skil
 | `generate-readme` | Create or refresh a user-facing README |
 | `generate-changelog` | Update the release record |
 | `health-check` | Inspect project setup and documentation quality |
+| `migrate-hooks` | Migrate pre-v2.3 hooks, settings.json, and `.yml` agents to the current stdin/exit 2 contract |
 
 ## Adaptation and quality {#adaptation-and-quality}
 

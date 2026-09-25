@@ -6,7 +6,6 @@ title: "Project init commands"
 {/* Legacy section links retained after the English rewrite. */}
 <span id="project-init-명령" />
 
-
 # Project init commands
 
 In Claude Code these are slash commands. In Codex use the corresponding generated skill; `source-command-health-check` disambiguates the project setup check from AWS health checks.
@@ -45,4 +44,8 @@ Record release changes under the project's versioning and changelog conventions.
 
 ## /health-check {#health-check}
 
-Validate files, hooks, permissions, instruction quality, and configuration. Report the rubric, evidence, and fixes; a health score is not a replacement for the required test suite.
+Validate files, hooks, permissions, instruction quality, and configuration. Report the rubric, evidence, and fixes; a health score is not a replacement for the required test suite. Detects pre-v2.3 hook/agent contracts (hooks reading legacy env vars instead of stdin JSON, `.yml`/`.yaml` agent files Claude Code never loads) and recommends `/migrate-hooks`.
+
+## /migrate-hooks {#migrate-hooks}
+
+Migrate hooks, `settings.json`, and agents generated before v2.3 to the current Claude Code contract: hook events arrive as JSON on stdin (not legacy `$TOOL_INPUT_PATH`/`$EVENT`/`$MESSAGE` environment variables), only `exit 2` blocks a tool call, and subagents must be Markdown files with YAML frontmatter (`.yml`/`.yaml` agent files are never loaded). Keeps a backup; supports `--dry-run` to report without writing. This only affects files already generated into a consuming project — a plugin update alone cannot fix them there.

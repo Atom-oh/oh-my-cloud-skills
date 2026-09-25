@@ -193,8 +193,8 @@ Read [references/skills-templates.md](../skills/project-scaffolder/references/sk
 ## Step 8: Generate Agents
 
 Read [references/agents-templates.md](../skills/project-scaffolder/references/agents-templates.md) and create:
-- `.claude/agents/code-reviewer.yml` - Parallel code review agent
-- `.claude/agents/security-auditor.yml` - Security audit agent
+- `.claude/agents/code-reviewer.md` - Parallel code review agent
+- `.claude/agents/security-auditor.md` - Security audit agent
 
 ## Step 9: Generate Docs
 
