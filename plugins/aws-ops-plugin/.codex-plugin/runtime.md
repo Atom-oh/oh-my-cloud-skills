@@ -43,9 +43,9 @@ search a different installation, or assume the consumer has `plugins/` in its re
 - A `/plugin:command` or `Skill` invocation is an instruction to load the matching
   installed skill. It is not a shell executable. `$ARGUMENTS` means the user's
   invocation arguments, not an environment variable to expand.
-  `inventory.json` maps source commands to installed names; Atlas graph and
-  project-init health-check use `source-command-graph` and
-  `source-command-health-check` to share Codex's automatic migration names.
+  `inventory.json` maps source commands to installed names; project-init
+  health-check uses `source-command-health-check` to share Codex's automatic
+  migration name.
 - Claude command context snippets prefixed with `!` have not been expanded in
   Codex. Gather their context by running the underlying read-only commands in the
   target repository when needed.

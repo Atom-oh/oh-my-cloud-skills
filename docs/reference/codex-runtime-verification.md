@@ -4,7 +4,9 @@ Verified with Codex CLI 0.154.0 on 2026-09-11. Runtime behavior, not a generic
 regex assumption, determines tool aliases and skill namespaces.
 
 The inventory below records that dated snapshot. See [current inventory](../architecture.md)
-for later additions.
+for later additions. The atlas plugin included in this snapshot was retired on
+2026-09-25 ([ADR-025](../decisions/ADR-025-retire-atlas.md)); the counts below are
+historical evidence of the runtime verified at that date, not the current package.
 
 ## Token-saver addition (2026-09-15)
 

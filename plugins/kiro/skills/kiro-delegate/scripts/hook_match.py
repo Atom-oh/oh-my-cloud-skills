@@ -321,9 +321,8 @@ _PUSH_DELETE_RE = re.compile(
 # detector from misfiring on OTHER checks — it does not, by itself, treat a dry run
 # as its own mismatch class. Without a dedicated check here, a `git push --dry-run`
 # reads as an ordinary push to the calling hook, which then runs its full
-# side-effecting flow (a real review call, or — in atlas's copy of this file — a
-# real `docs(atlas): sync` commit + diff egress) even though the user asked only
-# for a simulation. Same bundled-short-flag reasoning as `_PUSH_DELETE_RE` above:
+# side-effecting flow (a real review call) even though the user asked only for a
+# simulation. Same bundled-short-flag reasoning as `_PUSH_DELETE_RE` above:
 # `-[A-Za-z]*n[A-Za-z]*\b`, not bare `-n\b`, so `-vn`/`-qn`-shaped clusters (value-
 # less flags git's parse-options lets you combine) are recognized too — a bare
 # `-n\b` silently missed those, letting a bundled dry-run push through as if real.

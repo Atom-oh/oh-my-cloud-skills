@@ -82,20 +82,6 @@
       "Draw an AWS architecture diagram."
     ]
   },
-  "atlas": {
-    "displayName": "Atlas Doc Wiki",
-    "shortDescription": "Per-topic docs that stay in sync with the code.",
-    "longDescription": "Maintain a per-topic repository wiki with mechanically detected documentation drift. Repair stale docs in the current host; Claude-backed unattended sync is an optional, separately configured workflow.",
-    "developerName": "atomoh",
-    "category": "Documentation",
-    "capabilities": [
-      "Skills",
-      "Shell"
-    ],
-    "defaultPrompt": [
-      "Check which atlas docs have drifted from the code."
-    ]
-  },
   "agentcore-creator": {
     "displayName": "AgentCore Creator",
     "shortDescription": "Convert plugin workflows into Bedrock AgentCore artifacts.",

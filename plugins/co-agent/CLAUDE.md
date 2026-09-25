@@ -84,8 +84,8 @@ push hooks. Both are off by default. Enabling them is consent to external diff r
 tracked or symlink-aliased repo overrides cannot enable consent keys. Keep the
 secret scan, restricted peer environment and scope checks. Source files define the
 exact command-matching grammar and configuration defaults.
-Keep push-scope handling aligned with Kiro's `is_push_scope_mismatch` and Atlas's
-copied `hook_match.py`: all three can intercept the same push.
+Keep push-scope handling aligned with Kiro's `is_push_scope_mismatch`: both can
+intercept the same push.
 
 - **PR hook:** `gh pr create` review uses peer quorum. `majority` requires a majority
   of usable voters and at least two blockers; `any` permits one blocker. Unusable

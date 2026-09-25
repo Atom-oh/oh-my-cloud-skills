@@ -2,7 +2,7 @@
 
 This marketplace supports Claude Code and Codex. Read the root and scoped
 `CLAUDE.md`/`AGENTS.md` instructions before editing. The [architecture inventory](architecture.md)
-lists eight plugins: 76 shared procedures, 74 generated Codex entries and 25 plugin
+lists eight plugins: 70 shared procedures, 68 generated Codex entries and 24 plugin
 hook commands. Source, entry and CI-cell counts describe different things.
 
 ## Setup

@@ -19,7 +19,7 @@ title: "Getting started"
 
 # Getting started
 
-This marketplace contains nine plugins for Claude Code and Codex. Plugin definitions and helper scripts are the product; this site documents their workflows.
+This marketplace contains eight plugins for Claude Code and Codex. Plugin definitions and helper scripts are the product; this site documents their workflows.
 
 The current release is **v2.0.0**. Read the [release notes and migration guide](/docs/releases/v2.0.0)
 before updating an existing co-agent setup that selected Antigravity.
@@ -32,7 +32,6 @@ before updating an existing co-agent setup that selected Antigravity.
 | --- | --- |
 | [co-agent](/docs/co-agent/overview) | Second opinions, decisions, ADRs, and implementation pipelines with peer review. The current host chairs the work. |
 | [kiro](/docs/kiro/overview) | Delegate implementation and optional reviews to Kiro CLI while the current host owns the plan, verification, and commits. |
-| [atlas](/docs/atlas/overview) | Maintain a per-topic repository wiki with git-based drift detection and optional push-time synchronization. |
 | [project-init](/docs/project-init/overview) | Initialize project instructions and structure, synchronize documentation, and create ADRs, runbooks, and reference guides for either host. |
 | [aws-content-plugin](/docs/aws-content-plugin/overview) | Create web presentations, editable PowerPoint decks, diagrams, documents, workshops, brochures, and portfolio pages. |
 | [aws-ops-plugin](/docs/aws-ops-plugin/overview) | Diagnose AWS and EKS incidents across compute, networking, identity, observability, storage, databases, analytics, and cost. |
@@ -53,7 +52,7 @@ In Claude Code, add the repository marketplace, then install the plugins you nee
 
 In Codex, add this repository's `.agents/plugins/marketplace.json` as a marketplace source and install from `/plugins`. Start a new thread after installation. Select the installed skill in the host's skill picker or request the documented workflow in plain English.
 
-The Claude manifests expose agents, skills, commands, and hooks. Codex manifests point to generated skill overlays and host-specific hook/MCP adapters. A Claude command becomes a skill entry in Codex; Claude subagent registration and tool names do not automatically transfer. Project-init and Atlas both have Codex packages.
+The Claude manifests expose agents, skills, commands, and hooks. Codex manifests point to generated skill overlays and host-specific hook/MCP adapters. A Claude command becomes a skill entry in Codex; Claude subagent registration and tool names do not automatically transfer. Every registered plugin provides a Codex package.
 
 ## Current configuration {#current-configuration}
 
