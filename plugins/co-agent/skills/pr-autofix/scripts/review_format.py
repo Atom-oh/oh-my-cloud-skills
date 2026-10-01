@@ -115,8 +115,12 @@ def is_assignment(text, match, quoted_key=False):
     return True
 
 
-def format_violation(text, sensitive_pattern=DEFAULT_SENSITIVE_KEY, *, key_token_pattern=None):
-    """Return a static failure code; never include external text in diagnostics.
+def diagnostic(rule, line=None):
+    return {"code": ERROR_CODE, "rule": rule, "line": line}
+
+
+def format_diagnostic(text, sensitive_pattern=DEFAULT_SENSITIVE_KEY, *, key_token_pattern=None):
+    """Return static rule metadata; never include external text in diagnostics.
 
     Only explicit markup and sensitive assignments are classified. Ordinary
     unmarked prose is not parsed as a programming language. Callers supply the
@@ -132,9 +136,10 @@ def format_violation(text, sensitive_pattern=DEFAULT_SENSITIVE_KEY, *, key_token
     """
     sensitive_pattern = re.compile(sensitive_pattern)
     fence = None
+    fence_line = None
     prose = []
     offset = 0
-    for line in text.splitlines(keepends=True):
+    for line_number, line in enumerate(text.splitlines(keepends=True), 1):
         line_start = offset
         offset += len(line)
         body = line.rstrip("\r\n")
@@ -147,35 +152,36 @@ def format_violation(text, sensitive_pattern=DEFAULT_SENSITIVE_KEY, *, key_token
             continue
         if marker:
             if not re.fullmatch(r"[A-Za-z0-9_.+-]*[ \t]*", marker[2]):
-                return ERROR_CODE
+                return diagnostic("invalid_fence_info", line_number)
             fence = marker[1]
+            fence_line = line_number
             prose.append("\0")
             continue
         # Container/indented fences are outside this contract. Delimiter escapes
         # do not opt code examples back into inline syntax.
         if re.search(r"`{3,}|~{3,}", body):
-            return ERROR_CODE
+            return diagnostic("nested_or_indented_fence", line_number)
         markers = list(TICKS.finditer(body))
         if len(markers) % 2:
-            return ERROR_CODE
+            return diagnostic("unpaired_inline_delimiter", line_number)
         cursor = 0
         for opening, closing in zip(markers[::2], markers[1::2]):
             if opening[0] != closing[0]:
-                return ERROR_CODE
+                return diagnostic("mismatched_inline_delimiter", line_number)
             reference = body[opening.end():closing.start()]
             if not REFERENCE.fullmatch(reference):
-                return ERROR_CODE
+                return diagnostic("invalid_inline_reference", line_number)
             # Formatting only the key does not make an unfenced assignment safe.
             following = ASSIGNMENT_TAIL.match(text, line_start + closing.end())
             if (following and sensitive_reference(reference, sensitive_pattern, key_token_pattern)
                     and is_assignment(text, following)):
-                return ERROR_CODE
+                return diagnostic("unfenced_sensitive_assignment", line_number)
             prose.append(body[cursor:opening.start()])
             prose.append("\0")
             cursor = closing.end()
         prose.append(body[cursor:] + "\n")
     if fence is not None:
-        return ERROR_CODE
+        return diagnostic("unclosed_fence", fence_line)
     prose_text = "".join(prose)
     for start, match in assignment_matches(prose_text, sensitive_pattern, key_token_pattern):
         key = prose_text[start:match.start("spacing")]
@@ -186,8 +192,13 @@ def format_violation(text, sensitive_pattern=DEFAULT_SENSITIVE_KEY, *, key_token
                 and not match["spacing"] and LINE_NUMBER.match(prose_text, match.end())):
             continue  # Only an adjacent numeric path:line suffix is a citation.
         if is_assignment(prose_text, match, quoted_key):
-            return ERROR_CODE
+            return diagnostic("unfenced_sensitive_assignment")
     return None
+
+
+def format_violation(text, sensitive_pattern=DEFAULT_SENSITIVE_KEY, *, key_token_pattern=None):
+    result = format_diagnostic(text, sensitive_pattern, key_token_pattern=key_token_pattern)
+    return result["code"] if result else None
 
 
 def main():

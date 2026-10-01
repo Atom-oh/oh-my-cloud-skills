@@ -40,6 +40,36 @@ A transient provider error may justify a bounded retry. The same oversized input
 malformed structure needs correction, not an unbounded rerun loop. Missing optional
 memory does not block review, but it does not replace required context or coverage.
 
+## Withheld chair details
+
+A blocking decision survives publication failures. The publisher no longer replaces
+hidden findings with empty Issues sections: its diagnostic report is explicitly not
+a finding-free review. A failed or incomplete nonblocking response remains ERROR.
+Neither case can pass merely because details are unavailable.
+
+Find the single JSON record prefixed with `chair-publication:` in the synthesis
+step log. Withheld reports include the same metadata in the PR comment. It contains
+fixed codes, byte counts and parsed issue-item counts, never source text or
+scrubber/exception messages. Publication diagnostics do not establish provider
+completion or required peer coverage; the existing gate checks those separately.
+
+| Reason | Next action |
+|---|---|
+| `source_format_rejected` / `scrubbed_format_rejected` | Inspect `format_diagnostic.rule`; correct the named presentation rule while preserving findings and severity. |
+| `input_too_large` / `scrubbed_output_too_large` | Compare byte counts with `byte_limit` and obtain a concise complete report. |
+| `source_review_incomplete` / `scrubbed_review_incomplete` | Obtain a complete canonical review; do not treat missing evidence as empty Issues. |
+| `scrubber_failed` / `publisher_error` | Check the indicated processing stage and the trusted helper/dependency installation. Raw exception text is intentionally omitted. |
+| `blocking_evidence_removed` | The source blocker did not survive sanitization; recover a publishable blocking review before resolving it. |
+| `invalid_utf8` | Correct the provider output encoding before retrying. |
+
+`source_decision` distinguishes an active Critical/Major item from an explicit FAIL
+verdict. `issue_item_counts` counts parsed visible list items, not verified defects;
+`null` means missing or ambiguous, not zero. `format_diagnostic.line` is a one-based
+line in the review text at the indicated stage, not a repository source location.
+A null line means the check cannot safely map its reconstructed prose to the source.
+Models, fallback rules, acceptance conditions and the 50,000-byte cap are unchanged.
+Trusted-base CI picks up publisher changes only after they merge.
+
 ## Local reproduction
 
 Run in the checkout under review:
