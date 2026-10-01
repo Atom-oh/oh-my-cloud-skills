@@ -44,6 +44,54 @@ if [ -f "$WORK/coverage-severe.flag" ]; then
   COVERAGE_NOTICE+="- A cross-vendor or role-coverage requirement was not met for this review."$'\n'
 fi
 
+# Cell-level completeness: the diagnostic flags above cover whole-model
+# failures and truncation, but a model can still respond for some lenses and
+# not others (legacy multi-lens mode), or the roster itself can be missing,
+# duplicated or malformed. This mirrors every check the removed
+# review_gate.py coverage_error() used to make — expected-vs-responded
+# roster equality and non-empty slot output — as a notice rather than a
+# mechanical override (ADR-026).
+CELL_COMPLETENESS_NOTICE="$(python3 - "$WORK" "$SLOT" <<'PYEOF'
+import re
+import sys
+from pathlib import Path
+
+work = Path(sys.argv[1])
+slot = Path(sys.argv[2])
+expected_path = work / "expected.txt"
+responded_path = work / "responded.txt"
+responded = responded_path.read_text().splitlines() if responded_path.exists() else []
+notices = []
+# A missing expected.txt means no roster was supplied (e.g. a standalone/debug
+# call) — there is nothing to compare against, so this check is silently
+# skipped rather than flagged. run-panel.sh always writes this file for a real
+# CI review, where the check below is fully active.
+if expected_path.exists():
+    expected = expected_path.read_text().splitlines()
+    if not expected:
+        notices.append("the expected review-cell roster is empty; "
+                        "cell-level completeness could not be verified")
+    else:
+        malformed = [c for c in expected if not re.fullmatch(r"[a-z0-9-]+/[A-Za-z0-9_.-]+", c)]
+        if malformed or len(set(expected)) != len(expected):
+            notices.append("the expected review-cell roster is malformed (a duplicate "
+                            "or invalid cell name)")
+        missing = sorted(set(expected) - set(responded))
+        if missing:
+            notices.append("configured review cell(s) did not complete: " + ", ".join(missing))
+        def has_output(cell):
+            f = slot / (cell.replace("/", "-") + ".md")
+            return f.exists() and f.read_text().strip()
+        empty = [c for c in expected if not has_output(c)]
+        if empty:
+            notices.append("configured review cell(s) produced no usable output: "
+                            + ", ".join(sorted(set(empty))))
+for n in notices:
+    print("- " + n[0].upper() + n[1:] + ".")
+PYEOF
+)"
+[ -n "$CELL_COMPLETENESS_NOTICE" ] && COVERAGE_NOTICE+="$CELL_COMPLETENESS_NOTICE"$'\n'
+
 PANEL_CELL_CAP="${PANEL_CELL_CAP:-20000}"
 PANEL=""
 SCRUB_TMP="$WORK/scrub-cell.tmp"
@@ -240,7 +288,7 @@ fi
 
 if [ -s "$WORK/degraded-models.txt" ]; then
   DEGRADED="$(tr '\n' ',' < "$WORK/degraded-models.txt" | sed 's/,$//; s/,/, /g')"
-  { echo "**Review coverage incomplete**: [$DEGRADED] did not respond. The semantic gate rejects incomplete required coverage."
+  { echo "**Review coverage incomplete**: [$DEGRADED] did not respond. The chair was informed of this gap before deciding (ADR-026); its verdict above governs."
     echo ""
     cat "$OUT"
   } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
@@ -274,14 +322,14 @@ if [ -s "$WORK/kiro-agent-fallback.flag" ]; then
 fi
 
 if [ -f "$WORK/kiro-diff-truncated.flag" ]; then
-  { echo "**Kiro diff truncated**: input exceeded KIRO_DIFF_CAP. Kiro reviewed only a prefix; the semantic gate rejects incomplete input."
+  { echo "**Kiro diff truncated**: input exceeded KIRO_DIFF_CAP. Kiro reviewed only a prefix; the chair was informed of this gap before deciding (ADR-026); its verdict above governs."
     echo ""
     cat "$OUT"
   } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
 fi
 
 if [ -f "$WORK/coverage-severe.flag" ]; then
-  { echo "**Insufficient independent coverage**: one or more required reports or model-family checks failed. The semantic gate rejects this coverage failure."
+  { echo "**Insufficient independent coverage**: one or more required reports or model-family checks failed. The chair was informed of this gap before deciding (ADR-026); its verdict above governs."
     echo ""
     cat "$OUT"
   } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"

@@ -89,9 +89,10 @@ version.
 - If you rely on the PR-review CI gate blocking merges purely on coverage
   incompleteness (a degraded Kiro cell, a truncated diff) regardless of the chair's
   verdict, that mechanical override is gone. A chair that judges the available
-  evidence sufficient can now reach PASS despite a reported gap. Review the chair's
-  Summary for its stated justification when a gap is flagged; nothing before this
-  release required a plain-text audit trail like the coverage banners already provided.
+  evidence sufficient can now reach PASS despite a reported gap. The chair's prompt
+  asks it to justify such a PASS in the Summary, but nothing mechanically checks for
+  that justification — review the Summary yourself. The plain-text coverage banners
+  in the posted comment are unchanged and still record the gap either way.
 
 ## [2.0.0] - 2026-09-13
 
