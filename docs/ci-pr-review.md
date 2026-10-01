@@ -137,9 +137,11 @@ mode's family-diversity check (`specialist_roles.py gate`) sets the same
 `coverage-severe.flag` on a high-risk diff with fewer than
 two recognized model families for code, configuration, instructions, decisions,
 security docs and unrecognized input. Sensitive AWS/authentication/security/deployment
-content also requires two families when it appears in README or other Markdown;
-runbook/operational paths are conservatively sensitive. Removed guards count too.
-Only ordinary nonsensitive documentation may use a single configured family.
+content is also expected to use two families when it appears in README or other
+Markdown; runbook/operational paths are conservatively sensitive. Removed guards
+count too. Only ordinary nonsensitive documentation may use a single configured
+family — but as with the rest of this check, falling short is a reported gap, not
+an automatic block.
 A failed family check is reported to the chair as a coverage gap (ADR-026); the
 chair's informed verdict, not this flag by itself, decides PASS or FAIL.
 
