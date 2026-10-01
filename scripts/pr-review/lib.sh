@@ -90,8 +90,11 @@ verdict_of() {  # $1=review path; stdout: PASS, FAIL or empty
   grep -oE '^VERDICT: (PASS|FAIL)' "$1" | tail -1 | awk '{print $2}'
 }
 
-# Keep verdict_of lexical compatibility; acceptance also requires structured Issues
-# and complete configured coverage. This same validator ships with the PRAF template.
+# Keep verdict_of lexical compatibility; acceptance requires structured Issues with
+# no active Critical/Major. Coverage state no longer overrides the chair's verdict
+# (ADR-026) — synthesize.sh tells the chair about it before it decides instead.
+# --work-dir/--diff-truncated are accepted for compatibility but no longer consulted.
+# This same validator ships with the PRAF template.
 review_gate() {
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

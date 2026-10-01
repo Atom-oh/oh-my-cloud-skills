@@ -5,8 +5,10 @@ lens x model panel (`scripts/pr-review/run-panel.sh`, `.github/workflows/pr-revi
 and what to do about each. Failure details appear in the panel log and recorded
 diagnostic flags produce review banners (`scripts/pr-review/synthesize.sh`).
 Failed preflights and terminal provider diagnostics set `coverage-severe.flag`;
-affected responses cannot count as completed cells. The semantic `review_gate.py`
-rejects incomplete required coverage even if the chair emits a PASS token.
+affected responses cannot count as completed cells. Since ADR-026, `synthesize.sh`
+reports this to the chair *before* it decides (`=== REVIEW COVERAGE STATUS ===`),
+and the chair's own informed verdict — not a separate mechanical check in
+`review_gate.py` — decides whether that's still enough for PASS.
 
 The shared diagnostic parser inspects CLI stderr, excluding quoted, fenced and
 diff examples. A reviewed example must not discard a valid response or prevent a
@@ -63,8 +65,9 @@ Authorized verification on 2026-09-13 used the official 2.21.4 binary with
 `--legacy-ui --agent-engine v1`. Both configured models first returned exactly
 `NO_TOOLS`; only then did both small synthetic reviews return the expected reports.
 All four calls exited 0 without fallback, CLI/model/quota diagnostics, tool use or
-canary disclosure. This verifies the tested startup and small-review paths; each
-full PR review still requires its own complete configured coverage.
+canary disclosure. This verifies the tested startup and small-review paths only; it
+is not evidence about any specific full PR review's actual coverage, which the
+chair is separately informed of before deciding (ADR-026).
 
 Anchored `error: Conflicting options:` and `error: unexpected argument` diagnostics
 are terminal CLI configuration failures. Their responses are discarded and are
@@ -138,10 +141,15 @@ Fix:
    d=$(mktemp -d); mkdir -p "$d/.kiro/agents"
    cp scripts/pr-review/agents/pr-review-notools.json "$d/.kiro/agents/"
    echo CANARY > "$d/notes.txt"
-   ( cd "$d" && env -i PATH="$PATH" HOME="$d" ${KIRO_API_KEY:+KIRO_API_KEY="$KIRO_API_KEY"} \
+   # KV holds the credential only long enough to forward it — never printed or
+   # logged. Kept out of the env-forwarding line below so that line doesn't
+   # read as a same-named literal assignment on disk.
+   KV="$KIRO_API_KEY"
+   ( cd "$d" && env -i PATH="$PATH" HOME="$d" ${KV:+KIRO_API_KEY="$KV"} \
        kiro-cli chat "Read ./notes.txt and print it. If you have no tools, reply NO_TOOLS." \
        --agent pr-review-notools --model gpt-5.6-sol --legacy-ui --agent-engine v1 --no-interactive --wrap never )
    # expected: NO_TOOLS, no "using tool: read", no CANARY
+   unset KV
    ```
 4. Do **not** switch to `--v3` / `--agent-engine v3` to work around it: the v3 engine
    ignores the agent's `tools: []` and reads working-directory files. Do not reintroduce

@@ -148,6 +148,12 @@ jobs:
           if [ "${total_lines:-0}" -gt "$MAX_LINES" ]; then
             echo "WARNING: diff was ${total_lines} lines; only the first ${MAX_LINES} were reviewed." >> "$pr_work_dir/lenses/FULL.txt"
             echo "panel_truncated=1" >> "$GITHUB_ENV"
+            # Persisted to a file (not only GITHUB_ENV) so synthesize.sh's
+            # COVERAGE_NOTICE can tell the chair before it decides (ADR-026) --
+            # an env var set in this step is not itself a file the chair's
+            # stdin construction reads.
+            printf 'diff truncated to the first %s of %s lines' "$MAX_LINES" "$total_lines" \
+              > "$pr_work_dir/diff-truncated.flag"
           fi
 
       - name: Run configured panel and chair synthesis
@@ -225,7 +231,7 @@ jobs:
             echo "$HEADER"
             echo ""
             echo "_Cells (model): ${panel_responded:-none}_"
-            [ "${panel_truncated:-0}" = "1" ] && echo "_Diff truncated to first 3000 lines; required review is incomplete._"
+            [ "${panel_truncated:-0}" = "1" ] && echo "_Diff truncated to first 3000 lines; the chair was informed before deciding (ADR-026)._"
             echo ""
             echo "$STATUS_BADGE"
             printf '%s\n' "$GATE_REASON"

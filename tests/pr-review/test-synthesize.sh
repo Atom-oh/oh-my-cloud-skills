@@ -481,6 +481,57 @@ fi
 unset MOCK_CONTEXT_CALL
 rm -rf "$WORK" "$BIN"
 
+# (l) ADR-026 — the "=== REVIEW COVERAGE STATUS ===" block must land in the
+# chair's stdin BEFORE run_chair() is invoked, listing every degraded signal, and
+# must be absent entirely when nothing is degraded (21차 리뷰 검증 대상, PR #243).
+setup; mkclaude_pass
+echo "codex-finding" > "$WORK/slot/codex-L2.md"
+echo "codex/L2" >> "$WORK/responded.txt"
+printf 'kiro-opus\nkiro-gpt\n' > "$WORK/degraded-models.txt"
+echo "kiro-opus startup check failed (exit 1)" > "$WORK/kiro-preflight.flag"
+: > "$WORK/coverage-severe.flag"
+printf 'diff truncated to the first 3000 of 4200 lines' > "$WORK/diff-truncated.flag"
+if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  fail "synthesize (l) script exits 0 with multiple coverage signals present" "exited non-zero"
+fi
+grep -q "=== REVIEW COVERAGE STATUS" "$WORK/synth-stdin.txt" 2>/dev/null \
+  && pass "synthesize (l) coverage status block appears in chair stdin" \
+  || fail "synthesize (l) coverage status block appears in chair stdin" "block missing"
+grep -q "Configured reviewer(s) did not respond: kiro-opus, kiro-gpt" "$WORK/synth-stdin.txt" 2>/dev/null \
+  && pass "synthesize (l) degraded-models signal reaches the chair before it decides" \
+  || fail "synthesize (l) degraded-models signal reaches the chair before it decides"
+grep -q "Kiro preflight failed: kiro-opus startup check failed" "$WORK/synth-stdin.txt" 2>/dev/null \
+  && pass "synthesize (l) kiro-preflight signal reaches the chair before it decides" \
+  || fail "synthesize (l) kiro-preflight signal reaches the chair before it decides"
+grep -q "diff truncated to the first 3000 of 4200 lines" "$WORK/synth-stdin.txt" 2>/dev/null \
+  && pass "synthesize (l) the workflow's shared diff-truncation fact reaches the chair" \
+  || fail "synthesize (l) the workflow's shared diff-truncation fact reaches the chair"
+grep -q "cross-vendor or role-coverage requirement was not met" "$WORK/synth-stdin.txt" 2>/dev/null \
+  && pass "synthesize (l) coverage-severe.flag reaches the chair with neutral wording" \
+  || fail "synthesize (l) coverage-severe.flag reaches the chair with neutral wording"
+python3 -c "
+import sys
+text = open('$WORK/synth-stdin.txt').read()
+status = text.index('=== REVIEW COVERAGE STATUS')
+diff = text.index('=== DIFF UNDER REVIEW')
+sys.exit(0 if status < diff else 1)
+" && pass "synthesize (l) coverage status block precedes the diff in stdin (chair sees it first)" \
+  || fail "synthesize (l) coverage status block precedes the diff in stdin (chair sees it first)"
+rm -rf "$WORK" "$BIN"
+
+# (m) The block must be entirely absent when nothing is degraded — a clean run
+# must not carry a stray empty "=== REVIEW COVERAGE STATUS ===" header.
+setup; mkclaude_pass
+echo "codex-finding" > "$WORK/slot/codex-L2.md"
+echo "codex/L2" >> "$WORK/responded.txt"
+if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  fail "synthesize (m) script exits 0 on a fully healthy run" "exited non-zero"
+fi
+grep -q "=== REVIEW COVERAGE STATUS" "$WORK/synth-stdin.txt" 2>/dev/null \
+  && fail "synthesize (m) no coverage status block appears when nothing is degraded" "block present despite a clean run" \
+  || pass "synthesize (m) no coverage status block appears when nothing is degraded"
+rm -rf "$WORK" "$BIN"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-synthesize" || exit 1

@@ -13,11 +13,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-09-25
+
+This major release retires a plugin (breaking for consumers who had it installed)
+and refreshes the model roster to Claude Opus 5.5. All eight plugins share this
+version.
+
 ### Added
 
 - Add token-saver for concise response guidance in Claude Code and Codex, with a
   bounded session-start hook and manual skill. Preserve reasoning, verification,
   complete deliverables and required report formats.
+- Add a native Codex Kiro review runner (`kiro_codex.py`) so Codex's Kiro
+  setup/configure/review entries no longer forward to Claude procedures that assume
+  project reviewer agents and leave CLI invocation details to the host. The bundled
+  runner preserves the selected model and effort, passes `--trust-tools=` explicitly,
+  and reviews supplied input with a temporary no-tools agent, reporting structured
+  results; it rejects malformed findings, incomplete lenses, invalid thresholds,
+  oversized input and failed untracked-file collection rather than passing them
+  through silently.
 
 ### Changed
 
@@ -41,6 +55,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`skills/project-scaffolder/references/hook-scripts.md`) is intentionally
   still on the old content pending an owner decision on a `secret-scan.sh`
   false positive; see PR #240.
+- Let the PR-review chair decide when panel coverage is degraded, informed of the
+  gap beforehand, instead of a separate mechanical check overriding its verdict
+  ([ADR-026](docs/decisions/ADR-026-chair-decides-on-degraded-coverage.md)). The
+  motivating incident: PR #239's chair repeatedly could not complete because a
+  configured Kiro cell's model became temporarily unavailable to the CI runner's
+  account, and even once fixed, a degraded-coverage flag would have forced the
+  chair's own PASSED verdict to an unconditional ERROR. `synthesize.sh` now builds a
+  `=== REVIEW COVERAGE STATUS ===` block from the same six coverage signals and
+  feeds it to the chair before it decides; `review_gate.py`'s `coverage_error()`
+  override is removed. This reverses part of
+  [ADR-021](docs/decisions/ADR-021-english-docs-current-review-authority.md)'s
+  "complete configured review coverage" requirement, restoring
+  [ADR-016](docs/decisions/ADR-016-pr-review-deconstrain.md)'s original "trust the
+  chair" principle with the missing piece — informing the chair beforehand — added.
+  An active Critical/Major finding, a chair CLI failure, and L1 validation failure
+  still block or error exactly as before; only the coverage-completeness check
+  changed.
 
 ### Removed
 
@@ -55,6 +86,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.claude/atlas.local.json` override in a consuming repository are untouched
   by this removal and can be deleted manually if no longer wanted; remove any
   pre-push hook that referenced it.
+- If you rely on the PR-review CI gate blocking merges purely on coverage
+  incompleteness (a degraded Kiro cell, a truncated diff) regardless of the chair's
+  verdict, that mechanical override is gone. A chair that judges the available
+  evidence sufficient can now reach PASS despite a reported gap. Review the chair's
+  Summary for its stated justification when a gap is flagged; nothing before this
+  release required a plain-text audit trail like the coverage banners already provided.
 
 ## [2.0.0] - 2026-09-13
 

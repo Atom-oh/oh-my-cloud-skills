@@ -50,8 +50,10 @@ success does not substitute for installed runtime and native hook verification.
 grant. A scope item that grants everything (`*`, `*:*`, `:*` — the last has an empty
 prefix) is an **error**: it reads as narrowed while granting everything.
 
-Mandatory CI review validates final Issues and complete configured coverage for the
-latest HEAD. The semantic acceptance helper is
+Mandatory CI review validates final Issues for the latest HEAD; the chair, informed
+of any degraded coverage before it decides, is the judgment on whether that gap
+still permits PASS (ADR-026), not a separate mechanical coverage check. The
+semantic acceptance helper is
 `plugins/co-agent/skills/pr-autofix/scripts/review_gate.py`; a lexical PASS or an
 optional local hook skip cannot replace that result or separate Codex package CI.
 

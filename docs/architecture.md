@@ -65,9 +65,11 @@ Mixed changes require every applicable gate in [review routing](reference/review
 AWS security mandates remain binding even when an implementation differs from them.
 
 PR acceptance requires a review of the latest HEAD, no unresolved Critical/Major
-findings, complete configured review coverage, and all required checks. The semantic
-review gate validates final Issues and coverage; a lexical `VERDICT: PASS`, a missing
-review, or a local hook's fail-open result cannot establish acceptance.
+findings, and all required checks. The semantic review gate validates final Issues;
+the chair, informed of any degraded coverage before it decides, judges whether that
+gap still permits PASS ([ADR-026](decisions/ADR-026-chair-decides-on-degraded-coverage.md)).
+A lexical `VERDICT: PASS`, a missing review, or a local hook's fail-open result
+cannot establish acceptance.
 
 Privileged `pull_request_target` review executes trusted base scripts and treats the
 PR tree as data. Separate [Codex package validation](../.github/workflows/codex-validation.yml)
