@@ -532,6 +532,39 @@ grep -q "=== REVIEW COVERAGE STATUS" "$WORK/synth-stdin.txt" 2>/dev/null \
   || pass "synthesize (m) no coverage status block appears when nothing is degraded"
 rm -rf "$WORK" "$BIN"
 
+# (n) ADR-026 follow-up (PR #243 review, MAJOR 1) — a per-cell roster mismatch and
+# an empty slot file must reach the chair even when no model is fully degraded
+# (legacy multi-lens case: a model responds for one lens but not another).
+setup; mkclaude_pass
+printf 'codex/L1\ncodex/L2\nkiro-opus/L1\n' > "$WORK/expected.txt"
+echo "codex-L1-finding" > "$WORK/slot/codex-L1.md"
+echo "codex/L1" >> "$WORK/responded.txt"
+: > "$WORK/slot/kiro-opus-L1.md"
+echo "kiro-opus/L1" >> "$WORK/responded.txt"
+if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  fail "synthesize (n) script exits 0 with a roster mismatch and an empty slot" "exited non-zero"
+fi
+grep -q "Configured review cell(s) did not complete: codex/L2" "$WORK/synth-stdin.txt" 2>/dev/null \
+  && pass "synthesize (n) a missing per-cell response reaches the chair even though no model is fully degraded" \
+  || fail "synthesize (n) a missing per-cell response reaches the chair even though no model is fully degraded"
+grep -q "Configured review cell(s) produced no usable output: codex/L2, kiro-opus/L1" "$WORK/synth-stdin.txt" 2>/dev/null \
+  && pass "synthesize (n) an empty slot file for a responded cell reaches the chair" \
+  || fail "synthesize (n) an empty slot file for a responded cell reaches the chair"
+rm -rf "$WORK" "$BIN"
+
+# (o) A missing expected.txt (standalone/debug call, no roster supplied) must not
+# be treated as a gap — the check is skipped, not flagged, when nothing is expected.
+setup; mkclaude_pass
+echo "codex-finding" > "$WORK/slot/codex-L2.md"
+echo "codex/L2" >> "$WORK/responded.txt"
+if ! bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+  fail "synthesize (o) script exits 0 without an expected.txt roster" "exited non-zero"
+fi
+grep -q "=== REVIEW COVERAGE STATUS" "$WORK/synth-stdin.txt" 2>/dev/null \
+  && fail "synthesize (o) no coverage notice when expected.txt is absent" "block present despite no roster supplied" \
+  || pass "synthesize (o) no coverage notice when expected.txt is absent"
+rm -rf "$WORK" "$BIN"
+
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then
   [ "$_t_fail" = 0 ] && echo "PASS: test-synthesize" || exit 1
