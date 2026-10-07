@@ -208,6 +208,9 @@ body {
      would otherwise show near-black text on its dark background. */
   color: var(--text-primary);
 }
+/* Korean: break between words (spaces), never inside a word; still break a token that
+   cannot fit at all, so nothing overflows. */
+.slide-deck:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
 /* Oversized flex item still centers visually: body is flex with centered
    axes; equal overflow is clipped on both sides until the transform shrinks
    the box into view. */
@@ -1718,6 +1721,7 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--bg-card);
   border: 1px solid var(--border);
   font-weight: 500;
+  font-size: inherit;
 }
 
 /* ============================================================
