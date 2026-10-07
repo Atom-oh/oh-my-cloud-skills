@@ -131,7 +131,10 @@ deck.goTo(i) / deck.next() / deck.prev()
 - **Key map** (default): `←→ Space PageUp/Down` move + fragment · `↑↓` slideAction →
   interactive cycling (canvas step/tabs/compare) → fragment · `Home/End` · `P` presenter ·
   `F` fullscreen · `O` overview · `S` sidebar · `Esc`. Remap via `window.__remarpKeys`.
-- If a slide contains an `<img>`, footer/logo/page number are auto-hidden.
+- Footer/logo/page number/refs are auto-hidden only on a **full-bleed** slide: the slide (or an
+  element in it) carries `data-hide-chrome` or `.full-bleed`, or one `<img>` covers at least 60% of
+  the slide area. Inline images — service icons, a diagram or screenshot in a column — keep the
+  chrome. `data-keep-chrome` on the `.slide` always keeps it (it wins over every hide rule).
 - `data-transition="fade|slide|zoom"` for per-slide transitions.
 - `data-fit="auto|shrink|off"` on a `.slide` (or on `.slide-deck` as the deck default) selects the
   ReactiveFit mode for that slide's `.slide-body` content — see §11.
@@ -153,7 +156,10 @@ initCompareToggles` on DOMContentLoaded):
   panels into one `.tab-panels` stack (authors may write `.tab-panels` directly): all panels
   share one grid cell and inactive ones are `visibility: hidden`, so the stack is as tall as
   the tallest panel — switching tabs never moves the tab bar, and ReactiveFit sizes the
-  slide for the tallest panel.
+  slide for the tallest panel. A tab click toggles every `.tab-content` under the bar's
+  parent, so content that changes per tab but sits below the panels (e.g. a one-line rule
+  callout) goes in a second `.tab-panels` stack with the same `data-tab` ids: it then keeps
+  one position for every tab instead of following each panel's height.
 - Checklist: `.checklist li` click-to-toggle (+ `.checklist-detail` expand).
 - Compare: `.compare-toggle > .compare-btn[data-compare]` + `.compare-content[data-compare]`;
   highlight mode when the container has `data-compare-mode="side-by-side"`.

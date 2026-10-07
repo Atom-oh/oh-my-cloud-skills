@@ -176,8 +176,8 @@ _SHOW_SLIDE_JS = """
   });
   // We bypass SlideFramework.showSlide(), so replicate its per-slide chrome
   // updates: pagination number, and footer/logo visibility + dark-logo swap
-  // (updateFooterVisibility hides the framework footer/logo on slides with
-  // an <img> and swaps logoDarkSrc on dark slides — without this, slide 0's
+  // (updateFooterVisibility hides the framework footer/logo on full-bleed
+  // slides and swaps logoDarkSrc on dark slides — without this, slide 0's
   // state is baked into every capture).
   const num = document.querySelector('.slide-number');
   if (num) num.textContent = (idx + 1) + ' / ' + slides.length;

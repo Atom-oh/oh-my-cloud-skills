@@ -116,3 +116,44 @@ if command -v node >/dev/null 2>&1; then
   node --check "$AU" >/dev/null 2>&1 && AU_CHECK="ok"
   assert_eq "ok" "$AU_CHECK" "animation-utils.js passes node --check"
 fi
+
+# --- 8. Review round 2: framework chrome (footer/logo/number) yields only to full-bleed visuals ---
+assert_contains "$J" "slideHidesChrome(slide)" "framework decides chrome visibility in slideHidesChrome()"
+assert_grep_match "FULL_BLEED_AREA\s*=\s*0\.6\b" "$J" "an <img> hides the chrome only when it covers >= 60% of the slide"
+assert_contains "$J" "data-keep-chrome" "data-keep-chrome keeps the chrome on a slide"
+assert_contains "$J" "data-hide-chrome" "data-hide-chrome hides the chrome on a slide"
+assert_contains "$J" "\.full-bleed" "a .full-bleed element hides the chrome"
+assert_grep_no_match "hide\s*=\s*slide\.querySelector\('img'\)" "$J" "a mere <img> (e.g. an inline icon) no longer hides the chrome"
+FCT="$(cat "$RP/references/framework-contract.md" 2>/dev/null || true)"
+assert_contains "$FCT" "data-keep-chrome" "framework-contract.md documents data-keep-chrome"
+assert_contains "$FCT" "full-bleed" "framework-contract.md documents the full-bleed chrome rule"
+if command -v node >/dev/null 2>&1; then
+  # Behavioral check: load slide-framework.js in a bare VM and call slideHidesChrome() on
+  # stub slides (1920x1080 rect; img rects in the same units).
+  CHROME_OUT="$(node -e '
+const fs = require("fs"), vm = require("vm");
+const ctx = { window: {}, document: { addEventListener() {} } };
+vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(process.argv[1], "utf8"), ctx);
+const hides = vm.runInContext("SlideFramework.prototype.slideHidesChrome", ctx);
+const rect = (l, t, w, h) => ({ left: l, top: t, right: l + w, bottom: t + h, width: w, height: h });
+const slide = (imgs, attrs = [], kids = []) => ({
+  hasAttribute: a => attrs.includes(a),
+  matches: s => attrs.some(a => s.includes("[" + a + "]")),
+  querySelector: s => (kids.some(k => s.includes(k)) ? {} : null),
+  querySelectorAll: () => imgs.map(r => ({ getBoundingClientRect: () => r })),
+  getBoundingClientRect: () => rect(0, 0, 1920, 1080),
+});
+const full = rect(0, 0, 1920, 1080);
+console.log([
+  "icon=" + hides.call({}, slide([rect(100, 100, 48, 48), rect(400, 100, 48, 48)])),
+  "half=" + hides.call({}, slide([rect(0, 0, 1920, 540)])),
+  "big=" + hides.call({}, slide([rect(0, 0, 1536, 864)])),
+  "full=" + hides.call({}, slide([full])),
+  "keep=" + hides.call({}, slide([full], ["data-keep-chrome"])),
+  "attr=" + hides.call({}, slide([], ["data-hide-chrome"])),
+  "class=" + hides.call({}, slide([], [], [".full-bleed"])),
+].join(" "));
+' "$JS" 2>&1 || true)"
+  assert_eq "icon=false half=false big=true full=true keep=false attr=true class=true" "$CHROME_OUT" "slideHidesChrome: icons and a half-slide image keep the chrome; >=60% image, data-hide-chrome, .full-bleed hide it; data-keep-chrome wins"
+fi

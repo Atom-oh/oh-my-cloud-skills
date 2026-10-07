@@ -337,12 +337,41 @@ class SlideFramework {
     document.addEventListener('fullscreenchange', () => this.updateDeckScale());
   }
 
+  // Framework chrome (logo, footer, slide number, refs) yields only to a full-bleed visual:
+  // the slide (or an element in it) carries data-hide-chrome or .full-bleed, or one <img>
+  // covers at least FULL_BLEED_AREA of the slide. Inline images — service icons, a diagram
+  // or screenshot in a column — keep the chrome. data-keep-chrome on the slide always keeps
+  // it. Both rects come from getBoundingClientRect, so the deck transform and the
+  // ReactiveFit zoom cancel out of the ratio.
+  slideHidesChrome(slide) {
+    const FULL_BLEED_AREA = 0.6;
+    if (slide.hasAttribute('data-keep-chrome')) return false;
+    if (slide.matches('.full-bleed, [data-hide-chrome]') ||
+        slide.querySelector('.full-bleed, [data-hide-chrome]')) return true;
+    const sr = slide.getBoundingClientRect();
+    const slideArea = sr.width * sr.height;
+    if (!(slideArea > 0)) return false;
+    return Array.from(slide.querySelectorAll('img')).some(img => {
+      const r = img.getBoundingClientRect();
+      const w = Math.min(r.right, sr.right) - Math.max(r.left, sr.left);
+      const h = Math.min(r.bottom, sr.bottom) - Math.max(r.top, sr.top);
+      return w > 0 && h > 0 && (w * h) / slideArea >= FULL_BLEED_AREA;
+    });
+  }
+
   updateFooterVisibility(slide) {
     const deck = this.getDeck() || document.body;
     const logo = deck.querySelector('.slide-logo');
     const footer = deck.querySelector('.slide-footer');
-    // Hide framework logo/footer when the current slide already contains an <img>
-    const hide = slide.querySelector('img') !== null;
+    const hide = this.slideHidesChrome(slide);
+    // An image that has not loaded yet may have no box: re-check once it loads.
+    slide.querySelectorAll('img').forEach(img => {
+      if (img.complete || img.__chromeRecheck) return;
+      img.__chromeRecheck = true;
+      img.addEventListener('load', () => {
+        if (this.slides && this.slides[this.currentSlide] === slide) this.updateFooterVisibility(slide);
+      }, { once: true });
+    });
     if (logo) {
       logo.style.display = hide ? 'none' : '';
       // Per-slide adaptive logo: dark slides show the light/white logo, light slides
