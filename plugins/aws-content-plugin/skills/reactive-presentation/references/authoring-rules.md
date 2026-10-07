@@ -29,6 +29,7 @@ python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 | `NOTE_STRUCTURE` | WARNING | A content slide's notes lack the `[요약]` ("Summary") hierarchy | Add `[요약]` ("Summary") (3-5 bullets) at the top of `:::notes` |
 | `TITLE_LENGTH` | WARNING | Slide title exceeds 28 characters | Shorten to a headline of 28 characters or fewer (§3 Slide Title Voice) |
 | `STATIC_HTML` | WARNING | 3+ `:::html` elements but no fragments | Add `fragment fade-up` + `data-fragment-index` |
+| `INVALID_FIT` | WARNING | `@fit:` directive or frontmatter `fit:` is not `auto`, `shrink` or `off` | Use `@fit: auto\|shrink\|off` (or drop it — `auto` is the default) |
 
 `validate --json` emits an array of diagnostics and exits nonzero for CRITICAL
 findings or invalid input. `build` and `sync` apply the same gate before writing
@@ -39,6 +40,34 @@ the rendered output too. Code fences are literal examples, not Remarp commands.
 **Rejection loop**: author → validate → if CRITICAL, fix and re-validate (up to 3 times) → otherwise review WARNINGs → build.
 
 **Verdict**: `❌ REJECT` (CRITICAL≥1, build forbidden) · `⚠️ REVIEW` (WARNING≥6) · `⚠️ PASS WITH WARNINGS` (1-5) · `✅ PASS`.
+
+### Measured density gates (measure_deck.py)
+
+`validate` reads source; `measure_deck.py` renders the built deck in headless Chromium and measures
+the geometry the fit engine produced. Run it on every built deck:
+
+```bash
+python3 {skill-dir}/scripts/measure_deck.py <deck> --viewports 1920x1080,1280x720,3840x2160 --themes light,dark
+```
+
+| Rule | Severity | What it measures | Fix |
+|------|--------|---------|-----|
+| `UNDERFILL` | WARN | Visible content bounding box in `.slide-body` is < 55% of the body height. Slides without a `.slide-header`, or with class `title-slide`/`cover-slide`/`section-slide`/`closing-slide`, are exempt | Add content (card descriptions, a second row), enlarge the pattern, or merge with the next slide |
+| `MIN_FONT` | WARN / FAIL | Effective text size (computed `font-size` × fit zoom) below 22px (11pt) → WARN; below 18px (9pt) → FAIL. One finding per slide, pointing at the smallest element | Remove manual font shrinking; use role tokens (`--fs-caption` is the floor) and let the fit engine scale |
+| `FIT_OVERFLOW` | FAIL | Slide carries `data-fit-overflow` — content still does not fit at the minimum fit scale (0.8) | Split the slide |
+
+**Density rules** (how the fit engine sizes a slide):
+
+- **Author at role tokens, never shrink type by hand.** `--fs-title` 32pt · `--fs-subtitle`/`--fs-body` 16pt ·
+  `--fs-card` 14pt · `--fs-caption` 11pt (floor) · `--leading-body` 1.45. `ReactiveFit` (slide-framework.js)
+  wraps the `.slide-body` children in a `.fit-box` and applies CSS `zoom` 0.8-1.35 (`@fit: auto`, default),
+  0.8-1.0 (`@fit: shrink`) or leaves it untouched (`@fit: off`); slides with `canvas`/`iframe`/`.archify`
+  are skipped. The applied scale is exposed as `data-fit-scale`.
+- **Fill the body.** Cards carry a title plus a 1-2 line description (`.card-desc`); a sparse 4×1 row becomes
+  a 2×2 grid. Zoom-up only reaches 1.35 — a half-empty slide stays `UNDERFILL`.
+- **Split on `FIT_OVERFLOW`.** Do not add `:::css` font-size overrides to force a fit.
+- **`@fit: off` only for pixel-exact layouts** (hand-tuned absolute positioning). Set the deck default with
+  frontmatter `fit:`; `validate` reports unknown values as `INVALID_FIT`.
 
 ---
 
@@ -54,11 +83,12 @@ Each tell is enforced by a **lint rule id** (machine-detected) or by the review 
 | Magic-number/off-scale spacing (px outside the 4/8px scale) | Uneven spacing | Spacing-scale tokens (`var(--space-*)`) | `OFF_SCALE` (lint) + token system |
 | Wall-of-text bullets (8+ lines) | Overloads one slide, unreadable | Split the slide or break into cards/tabs | `CONTENT_OVERFLOW` (lint) |
 | Dark-only theme / generic blue-teal default | Reads as "AI default theme" | **Light-default** dual theme + role tokens | dual-theme (light default) |
-| Gradient-text headings, decorative gradient orbs, empty lower-half space | Meaningless decoration, zero information density | Fill the area with content/visual hierarchy, remove decoration | guideline (review gate) |
+| Gradient-text headings, decorative gradient orbs | Meaningless decoration, zero information density | Visual hierarchy from content and role tokens, remove decoration | guideline (review gate) |
+| Empty lower-half space (content occupies < 55% of the body height) | Half-empty slide reads as filler | Card title + description, 2×2 grid instead of 4×1, merge slides (§1 density rules) | `UNDERFILL` (measure_deck) |
 | Encyclopedia-tone descriptive titles (e.g. "2026 Frontier AI Model Trends") | Flat label, no edge | Assertive/argumentative/question/twist headline (≤28 chars) | Slide Title Voice (gate) + `TITLE_LENGTH` (lint checks length only) |
 | Free-form or missing speaker notes | Cannot be presented from, no structure | `[요약]` ("Summary") five-tier structured notes (150+ chars) | `NOTE_STRUCTURE` / `MISSING_NOTES` (lint) |
 
-> Items with a rule id are mechanically caught by `validate` (§1); gate items (decoration, title voice) are deducted for by `content-review-agent`.
+> Items with a rule id are mechanically caught by `validate` (§1) or `measure_deck.py` (§1 density gates); gate items (decoration, title voice) are deducted for by `content-review-agent`.
 
 ---
 

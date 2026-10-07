@@ -133,6 +133,8 @@ deck.goTo(i) / deck.next() / deck.prev()
   `F` fullscreen · `O` overview · `S` sidebar · `Esc`. Remap via `window.__remarpKeys`.
 - If a slide contains an `<img>`, footer/logo/page number are auto-hidden.
 - `data-transition="fade|slide|zoom"` for per-slide transitions.
+- `data-fit="auto|shrink|off"` on a `.slide` (or on `.slide-deck` as the deck default) selects the
+  ReactiveFit mode for that slide's `.slide-body` content — see §11.
 - `data-refs='[{"url":"…","label":"…"}]'` → reference links at the bottom.
 - Slide deep-linking via the URL hash `#N`.
 
@@ -266,3 +268,73 @@ Auto-initialized. `quizManager.reset(id)/resetAll()/getScore()`.
 - Light is the default of a dual theme — dark-only is forbidden. Every color must work in both themes.
 - Minimize deck-local `<style>`; when a rule is generalizable, patch it into the skill's
   `assets/theme.css` and bump the framework version (no per-deck reinvention — check_deck.py warns on duplication).
+
+## 11. Fit Contract (ReactiveFit)
+
+`slide-framework.js` ships a PPT-style autofit engine that sizes each slide's `.slide-body`
+content with CSS `zoom`. Author at the role tokens (§2) and let the engine do the sizing — do not
+hand-shrink type to make a slide fit.
+
+**API** (`window.ReactiveFit`):
+
+```js
+window.ReactiveFit = { MIN: 0.8, MAX: 1.35, TARGET: 0.94, fitSlide, fitAll }
+ReactiveFit.fitSlide(slideEl, { force, shrinkOnly })  // → applied zoom (number) or null when skipped
+ReactiveFit.fitAll({ force, shrinkOnly })             // fitSlide on every .slide-deck .slide (each in try/catch)
+```
+
+- `force: true` re-measures even when a cached `data-fit-scale` exists; without it the cached value is returned.
+- `shrinkOnly: true` never regrows past the cached scale (used after tab/compare switches so type stays stable).
+
+**Modes** — resolved from the slide's `data-fit`, else the `.slide-deck`'s `data-fit`, else `auto`
+(value is trimmed/lower-cased; anything other than `shrink`/`off` means `auto`):
+
+| Mode | Zoom range | Behavior |
+|------|-----------|----------|
+| `auto` | 0.8–1.35 | Default. Grows sparse slides and shrinks dense ones |
+| `shrink` | 0.8–1.0 | Only reduces; never enlarges |
+| `off` | — | Layout untouched; an existing `.fit-box` has its inline `zoom` cleared and the fit attributes are removed |
+
+In Remarp, `@fit: auto|shrink|off` on a slide emits `data-fit` on that slide's div; frontmatter
+`fit:` is the deck default (`@fit` wins; YAML `fit: off` is accepted). Unknown values are an
+`INVALID_FIT` WARNING in `validate`.
+
+**Skip rules** (`fitSlide` returns `null`, nothing is wrapped or zoomed): the element is not a
+`.slide`, the deck is in `.overview-mode`, the slide has no `.slide-body` (cover/title/thank-you),
+mode is `off`, or the slide contains `canvas`, `iframe`, `.archify` or `.archify-diagram`
+(pixel-exact content).
+
+**`.fit-box` wrapping**: on first fit the engine moves every child node of `.slide-body` into a
+runtime `<div class="fit-box">` and applies `zoom` to that box. It picks the largest zoom whose
+visual height fits 94% (`TARGET`) of the body height with no horizontal overflow — try the upper
+bound, then `MIN`, then a 6-step binary search between them, floored to 3 decimals. Fragments are
+forced `.visible` while measuring (transitions disabled via a `fit-measuring` class) so the fully
+revealed layout is what fits. Consequences for deck scripts and `:::script`/`:::css` blocks:
+
+- Do not rely on `.slide-body`'s direct children — after init they are children of `.fit-box`.
+  Theme rules use `:is(.slide-body, .fit-box) > X` for this reason.
+- Percent-based heights inside the box resolve against an auto-height parent; cap images and
+  fixed-size widgets in `rem` (which scales with the zoom), not `%`.
+
+**Result attributes** on the `.slide`:
+
+- `data-fit-scale="<zoom>"` — the applied zoom; also the cache key for non-forced calls.
+- `data-fit-overflow=""` — present only when content still overflows at `MIN` (0.8); the fit
+  stays at 0.8. Split the slide.
+
+**When it runs**:
+
+- `SlideFramework.init()` → `fitAll()` over all slides (hidden slides are made measurable
+  temporarily), then `fitAll({ force: true })` again after `document.fonts.ready`.
+- `showSlide()` → `fitSlide(next)` (cached, so cheap after the first pass).
+- Tab (`.tab-btn`) and compare (`.compare-btn`) clicks → `fitSlide(slide, { force: true, shrinkOnly: true })`.
+- Gates and export: `scripts/measure_deck.py` and `scripts/export_pptx.py` call
+  `ReactiveFit.fitSlide(slide, { force: true })` right after showing each slide, so measurements
+  and PPTX captures see the fitted layout (export treats a fit failure as best-effort).
+
+**measure_deck.py density rules** (measured once per slide at canvas step 0; de-duplicated across
+viewports/themes):
+
+- `UNDERFILL` — WARN when visible `.slide-body` content spans < 55% of the body height (slides without `.slide-header`/`.slide-body` and `.title-slide/.cover-slide/.section-slide/.closing-slide` are exempt).
+- `MIN_FONT` — effective text size (`computed font-size × zoom`) below 22px (11pt): WARN, or FAIL when the smallest is below 18px; one finding per slide naming the smallest element.
+- `FIT_OVERFLOW` — FAIL when the slide carries `data-fit-overflow` (content does not fit even at the minimum fit scale — split the slide).
