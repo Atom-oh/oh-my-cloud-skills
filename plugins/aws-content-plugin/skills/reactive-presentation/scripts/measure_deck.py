@@ -15,6 +15,13 @@ Checks per slide (per viewport, per theme, per canvas step):
   RATIO_DRIFT   content scale does not follow the deck box across aspect ratios
   BROKEN_IMAGE  img.naturalWidth === 0
   CONSOLE       page errors / failed requests
+  UNDERFILL     content fills < 55% of .slide-body height (WARN; cover/title/section/closing exempt)
+  MIN_FONT      effective text size (font-size x CSS zoom) < 22px WARN, < 18px FAIL
+  FIT_OVERFLOW  slide carries data-fit-overflow — content does not fit even at the minimum fit scale
+
+UNDERFILL / MIN_FONT / FIT_OVERFLOW are measured once per slide (canvas step 0)
+after `ReactiveFit.fitSlide(slide, {force:true})` and de-duplicated across
+viewports/themes — the fit engine works on the fixed canvas, so repeats are noise.
 
 Usage:
     python3 measure_deck.py <deck-dir-or-html> [--json] [--screenshots DIR]
@@ -66,6 +73,96 @@ _SHOW_SLIDE_JS = """
   });
   const h = slides[idx] ? slides[idx].querySelector('h1, h2, h3') : null;
   return h ? h.textContent.trim().slice(0, 60) : '';
+}
+"""
+
+# Re-run the fit engine on the slide we just forced visible. _SHOW_SLIDE_JS
+# bypasses SlideFramework.showSlide(), so the cached data-fit-scale may be
+# stale (or absent); force recomputation so density rules see the final zoom.
+_FIT_JS = """
+(idx) => {
+  const s = document.querySelectorAll('.slide-deck .slide')[idx];
+  if (!s || !window.ReactiveFit) return null;
+  return window.ReactiveFit.fitSlide(s, { force: true });
+}
+"""
+
+# Density pass over the active slide (once per slide, canvas step 0).
+# Returns a list of finding dicts like _MEASURE_JS.
+_DENSITY_JS = r"""
+() => {
+  const slide = document.querySelector('.slide-deck .slide.active');
+  if (!slide) return [];
+  const findings = [];
+
+  const sel = (el) => {
+    let s = el.tagName.toLowerCase();
+    if (el.id) return s + '#' + el.id;
+    if (el.classList.length) s += '.' + [...el.classList].slice(0, 2).join('.');
+    return s;
+  };
+  const shown = (el) => {
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 1 && r.height > 1;
+  };
+  const inTemplate = (el) => el.tagName === 'TEMPLATE' || !!el.closest('template');
+
+  // --- FIT_OVERFLOW: the fit engine hit MIN scale and content still spills ---
+  if (slide.hasAttribute('data-fit-overflow')) {
+    findings.push({ rule: 'FIT_OVERFLOW', severity: 'FAIL', el: sel(slide),
+      message: 'content does not fit even at the minimum fit scale — split the slide' });
+  }
+
+  const body = slide.querySelector('.slide-body');
+
+  // --- UNDERFILL: content occupies too little of the body height ---
+  const exempt = !slide.querySelector('.slide-header') ||
+    slide.matches('.title-slide, .cover-slide, .section-slide, .closing-slide') || !body;
+  if (!exempt) {
+    const bodyRect = body.getBoundingClientRect();
+    let top = Infinity, bottom = -Infinity;
+    for (const el of body.querySelectorAll('*')) {
+      if (inTemplate(el) || !shown(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.top < top) top = r.top;
+      if (r.bottom > bottom) bottom = r.bottom;
+    }
+    if (bodyRect.height > 0 && bottom > top) {
+      const ratio = (bottom - top) / bodyRect.height;
+      if (ratio < 0.55) {
+        findings.push({ rule: 'UNDERFILL', severity: 'WARN', el: sel(body),
+          message: 'content fills ' + Math.round(ratio * 100) +
+            '% of the slide-body height (< 55%) — enlarge, add content, or merge slides' });
+      }
+    }
+  }
+
+  // --- MIN_FONT: effective text size = computed font-size x CSS zoom ---
+  const fallbackZoom = parseFloat(slide.dataset.fitScale || '1') || 1;
+  let count = 0, smallest = null, smallestPx = Infinity;
+  for (const el of slide.querySelectorAll('*')) {
+    if (inTemplate(el) || el.closest('svg')) continue;
+    let hasText = false;
+    for (const n of el.childNodes) {
+      if (n.nodeType === 3 && n.textContent.trim()) { hasText = true; break; }
+    }
+    if (!hasText || !shown(el)) continue;
+    const zoom = typeof el.currentCSSZoom === 'number' ? el.currentCSSZoom : fallbackZoom;
+    const px = parseFloat(getComputedStyle(el).fontSize) * zoom;
+    if (!(px < 22)) continue;
+    count++;
+    if (px < smallestPx) { smallestPx = px; smallest = el; }
+  }
+  if (smallest) {
+    findings.push({ rule: 'MIN_FONT', severity: smallestPx < 18 ? 'FAIL' : 'WARN',
+      el: sel(smallest),
+      message: count + ' text element(s) below 22px (11pt); smallest ' +
+        smallestPx.toFixed(1) + 'px (' + (smallestPx / 2).toFixed(1) + 'pt)' });
+  }
+
+  return findings;
 }
 """
 
@@ -332,6 +429,7 @@ def measure(deck_dir: Path, blocks, viewports, themes, max_steps, shots_dir,
                             if only_slides and (i + 1) not in only_slides:
                                 continue
                             title = page.evaluate(_SHOW_SLIDE_JS, i)
+                            page.evaluate(_FIT_JS, i)
                             page.wait_for_timeout(60)
 
                             probe = page.evaluate(_RATIO_PROBE_JS)
@@ -349,6 +447,12 @@ def measure(deck_dir: Path, blocks, viewports, themes, max_steps, shots_dir,
                                              viewport=f"{vw}x{vh}", theme=theme,
                                              step=step or None)
                                     findings.append(f)
+                                if step == 0:
+                                    for f in page.evaluate(_DENSITY_JS):
+                                        f.update(file=block, slide=i + 1, title=title,
+                                                 viewport=f"{vw}x{vh}", theme=theme,
+                                                 step=None)
+                                        findings.append(f)
                                 if shots_dir and step == 0:
                                     out = (shots_dir /
                                            f"{Path(block).stem}-s{i+1:02d}-{vw}x{vh}-{theme}.png")
@@ -374,6 +478,21 @@ def measure(deck_dir: Path, blocks, viewports, themes, max_steps, shots_dir,
             browser.close()
     finally:
         httpd.shutdown()
+
+    # --- density rules: one finding per (file, slide, rule, severity) ---
+    # Geometry is identical across viewports/themes on the fixed canvas, so
+    # repeats of UNDERFILL / MIN_FONT / FIT_OVERFLOW are noise. Keep the first.
+    _DENSITY_RULES = {'UNDERFILL', 'MIN_FONT', 'FIT_OVERFLOW'}
+    seen = set()
+    deduped = []
+    for f in findings:
+        if f['rule'] in _DENSITY_RULES:
+            key = (f['file'], f['slide'], f['rule'], f['severity'])
+            if key in seen:
+                continue
+            seen.add(key)
+        deduped.append(f)
+    findings = deduped
 
     # --- RATIO_DRIFT: content scale must follow the deck box ---
     for (block, slide, theme), rows in ratio_probes.items():

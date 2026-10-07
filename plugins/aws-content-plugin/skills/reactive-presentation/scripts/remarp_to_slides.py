@@ -132,6 +132,29 @@ def _load_archify_icons():
     _ARCHIFY_ICONS = module
     return _ARCHIFY_ICONS
 
+
+# Slide fit modes exposed to the framework via `data-fit` (`@fit:` directive or
+# frontmatter `fit:` default). Callers check membership in FIT_MODES.
+FIT_MODES = ('auto', 'shrink', 'off')
+
+
+def _normalize_fit(value) -> str:
+    """Normalize a raw `fit` value to a lowercase string mode.
+
+    PyYAML parses `fit: off` as boolean False (and `on` as True), so booleans
+    map to 'off'/'auto'. None/empty -> ''. Anything else is stripped and lowered;
+    callers decide validity by membership in FIT_MODES.
+    """
+    if value is False:
+        return 'off'
+    if value is True:
+        return 'auto'
+    if value is None:
+        return ''
+    text = str(value).strip().lower()
+    return text
+
+
 # AWS service name to icon filename mapping
 ICON_NAME_MAP = {
     # --- Compute ---
@@ -1562,6 +1585,9 @@ class RemarpHTMLGenerator:
         # silently reusing the first diagram's iframe.
         self._archify_rendered: Dict[str, str] = {}
         self._archify_focus_wired = False
+        # Deck-wide fit default from frontmatter `fit:`; '' means unset.
+        # Per-slide `@fit:` overrides it in slide_to_html.
+        self.default_fit = ''
 
     @staticmethod
     def _strip_block_prefix(title: str) -> str:
@@ -1585,6 +1611,11 @@ class RemarpHTMLGenerator:
                 break
 
         title = self._strip_block_prefix(title)
+
+        # Deck-wide fit default from frontmatter (invalid values are ignored here;
+        # validate_presentation reports them as INVALID_FIT).
+        fm_fit = _normalize_fit(config.get('fit'))
+        self.default_fit = fm_fit if fm_fit in FIT_MODES else ''
 
         # Track mermaid usage and generate slides
         slides_html_list = []
@@ -1674,11 +1705,15 @@ class RemarpHTMLGenerator:
         if slide.slide_type == SlideType.COVER and _theme_dir != 'light':
             _theme_dir = _theme_dir or 'dark'
         _theme_cls = f' theme-{_theme_dir}' if _theme_dir in ('dark', 'light') else ''
+        # `@fit: auto|shrink|off` wins over the frontmatter `fit:` default; invalid
+        # values emit nothing (validation reports them separately).
+        _fit_mode = _normalize_fit(slide.directives.get('fit')) or self.default_fit
+        _fit_attr = f' data-fit="{_fit_mode}"' if _fit_mode in FIT_MODES else ''
         # Match the first slide div whether or not it carries extra classes
         # (e.g. `slide title-slide`), preserving them while prepending the theme class.
         html = re.sub(
             r'<div class="slide([^"]*)"',
-            lambda m: f'<div class="slide{_theme_cls}{m.group(1)}" data-remarp-id="s{slide.index}"',
+            lambda m: f'<div class="slide{_theme_cls}{m.group(1)}" data-remarp-id="s{slide.index}"{_fit_attr}',
             html, count=1)
 
         # Code examples remain literal even during HTML fragment post-processing.
@@ -4802,6 +4837,9 @@ class RemarpProjectBuilder:
                 html_gen.theme_dir = str(self.theme_dir)
             html_gen.archify_source_dir = str(block_path.parent)
             html_gen.archify_source_name = block_path.stem
+            # Deck-wide fit default (block frontmatter overrides _presentation.md).
+            fm_fit = _normalize_fit(merged_config.get('fit'))
+            html_gen.default_fit = fm_fit if fm_fit in FIT_MODES else ''
 
             for internal_name, slides in blocks.items():
                 for slide in slides:
@@ -5094,6 +5132,25 @@ def _validate_global_frontmatter(pres_file: Path) -> List[Dict[str, Any]]:
     return findings
 
 
+def _validate_frontmatter_fit(config: Dict[str, Any], source_file: Path) -> List[Dict[str, Any]]:
+    """WARNING INVALID_FIT when a parsed frontmatter `fit` value is not a known mode.
+
+    `fit: off` arrives as YAML boolean False and normalizes to 'off' (valid).
+    """
+    if not isinstance(config, dict) or 'fit' not in config:
+        return []
+    raw = config.get('fit')
+    if _normalize_fit(raw) in FIT_MODES:
+        return []
+    return [{
+        'file': str(source_file), 'block': '_global', 'slide': 0,
+        'title': source_file.name, 'severity': 'WARNING',
+        'rule': 'INVALID_FIT',
+        'message': f'Unknown frontmatter fit value "{raw}" — expected auto, shrink or off',
+        'fix': 'Use `fit: auto|shrink|off` in frontmatter',
+    }]
+
+
 def validate_presentation(input_path: Path, json_output: bool = False) -> List[Dict[str, Any]]:
     """Validate Remarp source for quality issues.
 
@@ -5126,8 +5183,9 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
                 main = input_path / '_presentation.remarp.md'
             if main.exists():
                 with open(main, encoding='utf-8') as source:
-                    RemarpParser(source.read()).parse()
+                    main_config, _main_blocks = RemarpParser(source.read()).parse()
                 all_findings.extend(_validate_global_frontmatter(main))
+                all_findings.extend(_validate_frontmatter_fit(main_config, main))
         else:
             invalid(input_path, 'INPUT_NOT_FOUND', f'{input_path} not found')
     except (ValueError, OSError, UnicodeError) as exc:
@@ -5143,6 +5201,7 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
             with open(md_file, 'r', encoding='utf-8') as f:
                 content = f.read()
             _config, blocks = RemarpParser(content).parse()
+            all_findings.extend(_validate_frontmatter_fit(_config, md_file))
             local_canvas_ids = set()
             file_slide_count = 0
             for block_name, slides in blocks.items():
@@ -5191,6 +5250,14 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
             'message': message,
             'fix': fix,
         })
+
+    # --- Rule 0: @fit directive value ---
+    if 'fit' in slide.directives:
+        raw_fit = slide.directives.get('fit')
+        if _normalize_fit(raw_fit) not in FIT_MODES:
+            add('WARNING', 'INVALID_FIT',
+                f'Unknown @fit value "{raw_fit}" — expected auto, shrink or off',
+                'Use @fit: auto|shrink|off')
 
     # --- Rule 1: Slide Type Mismatch Detection ---
     explicit_type = slide.directives.get('type', '')

@@ -193,6 +193,17 @@ _SHOW_SLIDE_JS = """
 }
 """
 
+# Re-run the fit engine on the slide we just forced visible: _SHOW_SLIDE_JS
+# bypasses SlideFramework.showSlide(), so the cached data-fit-scale may be
+# stale. Same snippet as measure_deck.py so captures match the measured gate.
+_FIT_JS = """
+(idx) => {
+  const s = document.querySelectorAll('.slide-deck .slide')[idx];
+  if (!s || !window.ReactiveFit) return null;
+  return window.ReactiveFit.fitSlide(s, { force: true });
+}
+"""
+
 # Media inside the ACTIVE slide (images, iframes) must finish loading before
 # capture; cross-origin iframes can't be inspected and are assumed ready.
 _MEDIA_READY_JS = """
@@ -327,6 +338,12 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
                         page.wait_for_function(_MEDIA_READY_JS, timeout=5000)
                     except Exception:
                         print(f"  (warn) media still loading on slide {i + 1} of {block} — capturing anyway")
+                    # Best effort: refit now that media has its final size;
+                    # an export never fails because of fit.
+                    try:
+                        page.evaluate(_FIT_JS, i)
+                    except Exception:
+                        pass
                     page.wait_for_timeout(80)
 
                     # Best-effort: a notes nicety must never fail an export.
