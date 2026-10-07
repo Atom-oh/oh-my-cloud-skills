@@ -320,59 +320,70 @@ EKS 애드온 업그레이드는 여전히 우리 몫입니다.
     </template>
   </div>
 
-  <!-- 8. Code slide -->
+  <!-- 8. Code slide — the block takes part in fit: no inner scroll, <pre> directly after the label -->
   <div class="slide">
-    <div class="slide-header"><h2>커스텀 풀은 다섯 줄이면 된다</h2><p class="subtitle">Spot 배치 풀 NodePool 예시</p></div>
+    <div class="slide-header"><h2>Spot 풀은 세 블록이면 된다</h2><p class="subtitle">Auto Mode용 karpenter.sh/v1 NodePool</p></div>
     <div class="slide-body">
-      <div class="code-block code-scroll">
-        <div class="code-label">nodepool-batch.yaml</div>
-<pre><span class="keyword">apiVersion</span>: karpenter.sh/v1
+      <div class="code-block"><div class="code-label">nodepool-batch.yaml</div><pre><span class="keyword">apiVersion</span>: karpenter.sh/v1
 <span class="keyword">kind</span>: NodePool
 <span class="keyword">metadata</span>:
   <span class="keyword">name</span>: <span class="string">batch-spot</span>
 <span class="keyword">spec</span>:
   <span class="keyword">template</span>:
     <span class="keyword">spec</span>:
+      <span class="keyword">nodeClassRef</span>: {<span class="keyword">group</span>: <span class="string">eks.amazonaws.com</span>, <span class="keyword">kind</span>: NodeClass, <span class="keyword">name</span>: <span class="string">default</span>}
       <span class="keyword">requirements</span>:
         - <span class="keyword">key</span>: <span class="string">karpenter.sh/capacity-type</span>
           <span class="keyword">operator</span>: In
           <span class="keyword">values</span>: [<span class="string">"spot"</span>]  <span class="comment"># 중단 허용 워크로드 전용</span>
-      <span class="keyword">taints</span>:
-        - <span class="keyword">key</span>: <span class="string">workload/batch</span>
-          <span class="keyword">effect</span>: NoSchedule
   <span class="keyword">disruption</span>:
-    <span class="keyword">consolidationPolicy</span>: WhenEmptyOrUnderutilized</pre>
+    <span class="keyword">consolidationPolicy</span>: WhenEmptyOrUnderutilized</pre></div>
+    </div>
+    <template class="notes" data-timing="2min">
+[요약]
+- 세 블록: nodeClassRef(Auto Mode NodeClass default) · requirements(capacity-type: spot) · disruption
+- consolidationPolicy는 v1 스키마 기준 spec.disruption 아래
+API 모양은 karpenter.sh/v1 NodePool을 따르지만, Auto Mode는 자체 라벨과 NodeClass를 씁니다 —
+nodeClassRef가 group eks.amazonaws.com의 NodeClass default를 가리키는 이유입니다. Spot 지정은
+karpenter.sh/capacity-type 요구 조건 하나면 됩니다. 주의할 점 하나 — expireAfter 같은 노드 수명
+설정은 spec.template.spec 아래에 두고 spec.disruption에 두지 않습니다. v1 마이그레이션에서 자주
+틀리는 부분입니다.
+    </template>
+  </div>
+
+  <!-- 9. Checklist + how to verify -->
+  <div class="slide">
+    <div class="slide-header"><h2>전환 전 다섯 가지 점검</h2><p class="subtitle">클릭해서 체크 · 오른쪽은 확인 방법</p></div>
+    <div class="slide-body">
+      <div class="col-2">
+        <div class="stack">
+          <h3 class="text-orange">점검 항목</h3>
+          <ul class="checklist">
+            <li><span class="check"></span><span class="checklist-text">모든 Deployment에 PDB가 있는가 — 주 1회 수준 노드 교체를 무중단 흡수</span></li>
+            <li><span class="check"></span><span class="checklist-text">커스텀 AMI·userData 의존이 없는가 — 있다면 DaemonSet/사이드카로 이전</span></li>
+            <li><span class="check"></span><span class="checklist-text">노드 SSH에 의존하는 디버깅 runbook이 없는가</span></li>
+            <li><span class="check"></span><span class="checklist-text">Spot 전용 NodePool과 taint 설계가 준비됐는가</span></li>
+            <li><span class="check"></span><span class="checklist-text">비용 태그 전략 — <code>eks:kubernetes-node-pool-name</code> 태그를 비용 할당 태그로 활성화해 Cost Explorer에서 분리</span></li>
+          </ul>
+        </div>
+        <div class="stack">
+          <h3 class="text-blue">확인 방법</h3>
+          <div class="callout callout-info"><code>kubectl get pdb -A</code> — Deployment별 PDB 대조</div>
+          <div class="callout callout-info"><code>kubectl get nodepools</code> — Spot 풀·taint·system 풀 구성 확인</div>
+          <div class="callout callout-info">NodeDiagnostic — 노드 로그를 S3로 수집, SSH 없는 runbook으로 교체</div>
+          <div class="callout callout-info">비용 할당 태그 화면 — <code>eks:kubernetes-node-pool-name</code> 활성화 여부 확인</div>
+        </div>
       </div>
     </div>
     <template class="notes" data-timing="2min">
 [요약]
-- capacity-type: spot + 전용 taint 두 가지가 전부
-- consolidationPolicy는 v1 스키마 기준 spec.disruption 아래
-YAML은 기존 Karpenter v1과 완전히 동일합니다. 주의할 점 하나 — expireAfter 같은
-노드 수명 설정은 spec.template.spec 아래로 이동했고 spec.disruption이 아닙니다.
-v1 마이그레이션에서 가장 많이 틀리는 부분입니다.
-    </template>
-  </div>
-
-  <!-- 9. Checklist -->
-  <div class="slide">
-    <div class="slide-header"><h2>전환 전 다섯 가지 점검</h2><p class="subtitle">클릭해서 체크</p></div>
-    <div class="slide-body">
-      <ul class="checklist">
-        <li>모든 Deployment에 PDB가 있는가 — 21일 교체 주기 무중단 흡수</li>
-        <li>커스텀 AMI·userData 의존이 없는가 — 있다면 DaemonSet/사이드카로 이전</li>
-        <li>노드 SSH에 의존하는 디버깅 runbook이 없는가</li>
-        <li>Spot 전용 NodePool과 taint 설계가 준비됐는가</li>
-        <li>비용 태그 전략 — NodePool 단위 라벨로 Cost Explorer 분리</li>
-      </ul>
-    </div>
-    <template class="notes" data-timing="2min">
-[요약]
-- PDB·AMI 의존·SSH runbook·Spot 설계·비용 태그 다섯 항목
+- PDB·AMI 의존·SSH runbook·Spot 설계·비용 태그 다섯 항목 + 오른쪽 확인 방법
 - 클릭하면 체크 표시 — 청중과 함께 점검
 전환 체크리스트를 하나씩 클릭하면서 청중 스스로 자기 클러스터를 점검하게 합니다.
-특히 첫 번째 PDB 항목은 필수입니다 — Auto Mode는 물어보지 않고 노드를 교체하므로
-PDB가 없으면 순단이 그대로 사용자에게 전달됩니다.
+특히 첫 번째 PDB 항목은 필수입니다 — Auto Mode는 최대 수명 21일(기본 336시간=14일)에 더해
+새 AMI가 나오면 주 1회 수준으로 drift 교체를 하므로, PDB가 없으면 순단이 매주 사용자에게
+전달될 수 있습니다. 오른쪽 열은 각 항목을 확인하는 명령과 화면입니다 — kubectl get nodepools,
+NodeDiagnostic, 비용 할당 태그(eks:kubernetes-node-pool-name).
 {cue: question} "다섯 개 중 몇 개나 준비되셨나요?"
     </template>
   </div>
@@ -392,20 +403,20 @@ PDB가 없으면 순단이 그대로 사용자에게 전달됩니다.
         <div class="quiz-options quiz-grid">
           <button class="quiz-option" data-correct="false">A) EC2 콘솔에서 키페어를 교체한다</button>
           <button class="quiz-option" data-correct="false">B) 서포트 케이스로 SSH 허용을 요청한다</button>
-          <button class="quiz-option" data-correct="true">C) 노드 교체 + 관측성 도구로 대체한다 — 접속 자체가 불가</button>
+          <button class="quiz-option" data-correct="true">C) NodeDiagnostic·kubectl debug node로 진단하고, 필요하면 노드를 교체한다</button>
         </div>
       </div>
     </div>
     <template class="notes" data-timing="2min">
 [요약]
 - 상황 callout 먼저 읽기: 새벽 온콜, runbook 1단계가 노드 SSH
-- 정답 C — 노드는 불변 인프라, SSH/SSM 자체가 설계상 차단
+- 정답 C — SSH/SSM은 설계상 차단, 대신 NodeDiagnostic(로그→S3)·kubectl debug node --profile=sysadmin·aws ec2 get-console-output
 - 오답 A/B를 고른 분에게 3번 슬라이드 재강조
-상황 callout을 먼저 읽어 현장감을 주고 질문으로 넘어갑니다. 가벼운 퀴즈로 핵심
-메시지를 한 번 더 고정합니다. A나 B를 고르는 분이 실제로 많습니다 — Auto Mode
-노드는 SSH뿐 아니라 SSM 세션도 열리지 않는다는 것, 디버깅 패러다임 자체가
-바뀐다는 것을 다시 짚어주세요. runbook 1단계를 "노드 교체 + 로그 조회"로 바꾸는 것이
-9번 체크리스트 세 번째 항목입니다.
+상황 callout을 먼저 읽어 현장감을 주고 질문으로 넘어갑니다. A나 B를 고르는 분이 실제로 많습니다 —
+Auto Mode 노드는 SSH뿐 아니라 SSM 세션도 열리지 않지만, 진단 수단이 없는 것은 아닙니다.
+NodeDiagnostic 리소스로 노드 로그를 S3로 받고, kubectl debug node --profile=sysadmin으로 디버그
+컨테이너를 붙이고, aws ec2 get-console-output으로 콘솔 출력을 봅니다. runbook 1단계를
+"NodeDiagnostic으로 로그 수집"으로 바꾸는 것이 9번 체크리스트 세 번째 항목입니다.
     </template>
   </div>
 
