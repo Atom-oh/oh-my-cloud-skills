@@ -83,6 +83,12 @@ class SlideFramework {
       if (this.logoSrc) this.createLogo();
       this.initFragments(this.currentSlide);
       this.showSlide(this.currentSlide, false);
+      if (window.ReactiveFit) {
+        window.ReactiveFit.fitAll();
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(() => window.ReactiveFit.fitAll({ force: true }));
+        }
+      }
     });
   }
 
@@ -573,6 +579,8 @@ class SlideFramework {
       next.classList.add('active');
     }
 
+    if (window.ReactiveFit) window.ReactiveFit.fitSlide(next);
+
     this.currentSlide = index;
     this.updateProgress();
     if (this.sidebar) this.updateSidebarHighlight(index);
@@ -684,6 +692,161 @@ class SlideFramework {
   }
 }
 
+// ReactiveFit — PPT-style autofit of .slide-body content via CSS `zoom`.
+// Measured Chromium facts (standardized `zoom`) this code relies on:
+//  - offsetHeight/scrollWidth/clientWidth of the zoomed element are reported in its
+//    OWN unzoomed coordinates. The visual height inside the parent is therefore
+//    `box.offsetHeight * z`, and horizontal overflow is `box.scrollWidth > box.clientWidth`
+//    (clientWidth shrinks to containerWidth / z while scrollWidth stays in content units).
+//  - getBoundingClientRect() would include zoom AND the outer deck transform, so it is
+//    not used for the fit test.
+//  - rem/px lengths scale with zoom; percentage widths do not.
+(function () {
+  const MIN = 0.8;
+  const MAX = 1.35;
+  const TARGET = 0.94;
+  const STYLE_ID = 'reactive-fit-style';
+  const SKIP_SELECTOR = 'canvas, iframe, .archify, .archify-diagram';
+
+  function ensureStyle() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    // Forcing fragments visible for measurement must not leave transforms mid-transition.
+    style.textContent = '.fit-measuring *, .fit-measuring *::before, .fit-measuring *::after { transition: none !important; }';
+    document.head.appendChild(style);
+  }
+
+  function resolveMode(slideEl, deck) {
+    let mode = slideEl.dataset.fit || (deck && deck.dataset.fit) || 'auto';
+    mode = String(mode).trim().toLowerCase();
+    return (mode === 'shrink' || mode === 'off') ? mode : 'auto';
+  }
+
+  function fitSlide(slideEl, opts) {
+    opts = opts || {};
+    // 1. Only real slides, never while the deck is in overview mode.
+    if (!slideEl || !slideEl.classList || !slideEl.classList.contains('slide')) return null;
+    const deck = slideEl.closest('.slide-deck');
+    if (deck && deck.classList.contains('overview-mode')) return null;
+
+    // 2. Cover/title/thank-you slides have no body and are left alone.
+    const body = slideEl.querySelector('.slide-body');
+    if (!body) return null;
+
+    // 3. Mode: slide -> deck -> auto.
+    const mode = resolveMode(slideEl, deck);
+
+    // 4. Off, or pixel-exact content (canvas/iframe/archify): never zoom, never wrap.
+    if (mode === 'off' || slideEl.querySelector(SKIP_SELECTOR)) {
+      const existing = body.querySelector(':scope > .fit-box');
+      if (existing) existing.style.zoom = '';
+      delete slideEl.dataset.fitScale;
+      slideEl.removeAttribute('data-fit-overflow');
+      return null;
+    }
+
+    // 5. Cached result.
+    const cached = slideEl.dataset.fitScale;
+    if (!opts.force && cached !== undefined && cached !== '') return parseFloat(cached);
+
+    // 6. Make a display:none slide measurable (hidden, but laid out).
+    let restoreStyle = false;
+    let savedDisplay = '';
+    let savedVisibility = '';
+    if (slideEl.getClientRects().length === 0) {
+      restoreStyle = true;
+      savedDisplay = slideEl.style.display;
+      savedVisibility = slideEl.style.visibility;
+      slideEl.style.display = 'flex';
+      slideEl.style.visibility = 'hidden';
+    }
+
+    try {
+      // 7. Wrap the body children once so there is a single measurable, zoomable box.
+      let box = body.querySelector(':scope > .fit-box');
+      if (!box) {
+        box = document.createElement('div');
+        box.className = 'fit-box';
+        while (body.firstChild) box.appendChild(body.firstChild);
+        body.appendChild(box);
+      }
+
+      // 8. Disable transitions while measuring.
+      slideEl.classList.add('fit-measuring');
+      ensureStyle();
+
+      // 9. Measure the final layout: force hidden fragments visible.
+      const forced = Array.from(slideEl.querySelectorAll('.fragment:not(.visible)'));
+      forced.forEach(f => f.classList.add('visible'));
+
+      let z = 1;
+      let overflow = false;
+      try {
+        // 10. body.clientHeight is unzoomed (body itself is not zoomed), so it is the
+        //     real available height; compare against the box's visual height.
+        const avail = body.clientHeight * TARGET;
+        const fits = (zoom) => {
+          box.style.zoom = String(zoom);
+          return box.offsetHeight * zoom <= avail && box.scrollWidth <= box.clientWidth + 1;
+        };
+
+        // 11. Upper bound by mode; shrinkOnly never regrows past the cached value.
+        let hi = mode === 'shrink' ? 1 : MAX;
+        if (opts.shrinkOnly && cached !== undefined && cached !== '') {
+          const c = parseFloat(cached);
+          if (!isNaN(c)) hi = Math.min(hi, c);
+        }
+
+        if (avail <= 0) {
+          z = 1;
+        } else if (fits(hi)) {
+          z = hi;
+        } else if (!fits(MIN)) {
+          z = MIN;
+          overflow = true;
+        } else {
+          let lo = MIN; // fits
+          let h = hi;   // does not fit
+          for (let i = 0; i < 6; i++) {
+            const mid = (lo + h) / 2;
+            if (fits(mid)) lo = mid; else h = mid;
+          }
+          z = lo;
+        }
+        // Floor: never round up past a value that was measured to fit.
+        z = Math.floor(z * 1000) / 1000;
+
+        // 12. Apply and restore fragment state.
+        box.style.zoom = String(z);
+      } finally {
+        forced.forEach(f => f.classList.remove('visible'));
+        void box.offsetHeight; // reflow before transitions come back
+        slideEl.classList.remove('fit-measuring');
+      }
+
+      // 13. Publish the result.
+      slideEl.dataset.fitScale = String(z);
+      if (overflow) slideEl.setAttribute('data-fit-overflow', '');
+      else slideEl.removeAttribute('data-fit-overflow');
+      return z;
+    } finally {
+      if (restoreStyle) {
+        slideEl.style.display = savedDisplay;
+        slideEl.style.visibility = savedVisibility;
+      }
+    }
+  }
+
+  function fitAll(opts) {
+    document.querySelectorAll('.slide-deck .slide').forEach(slide => {
+      try { fitSlide(slide, opts); } catch (e) { /* one bad slide must not stop the rest */ }
+    });
+  }
+
+  window.ReactiveFit = { MIN, MAX, TARGET, fitSlide, fitAll };
+})();
+
 // Tab component helper
 function initTabs() {
   document.querySelectorAll('.tab-bar').forEach(bar => {
@@ -697,6 +860,8 @@ function initTabs() {
         container.querySelectorAll('.tab-content').forEach(c => {
           c.classList.toggle('active', c.dataset.tab === target);
         });
+        const s = tab.closest('.slide');
+        if (s && window.ReactiveFit) window.ReactiveFit.fitSlide(s, { force: true, shrinkOnly: true });
       });
     });
   });
@@ -751,6 +916,8 @@ function initCompareToggles() {
             c.classList.toggle('active', c.dataset.compare === target);
           });
         }
+        const s = btn.closest('.slide');
+        if (s && window.ReactiveFit) window.ReactiveFit.fitSlide(s, { force: true, shrinkOnly: true });
       });
     });
   });

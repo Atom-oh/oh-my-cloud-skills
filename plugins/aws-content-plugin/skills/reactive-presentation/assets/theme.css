@@ -221,7 +221,8 @@ body {
   inset: 0;
   display: none;
   flex-direction: column;
-  padding: var(--space-6);
+  /* Side margin approximates the PPTX PAD at a reduced value. */
+  padding: var(--space-6) 64px;
   opacity: 0;
   transition: opacity var(--transition-normal);
 }
@@ -259,13 +260,22 @@ body {
 }
 .slide h2 {
   font-family: var(--font-display);
-  font-size: var(--text-2xl); font-weight: var(--weight-semibold);
+  font-size: var(--fs-title); font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
   color: var(--text-primary);
   margin-top: var(--space-3); margin-bottom: var(--space-2);
+  line-height: var(--leading-tight);
+}
+/* Header title: tight block — margins + header padding total about 42px (was about 90px). */
+.slide-header h1,
+.slide-header h2 {
+  font-size: var(--fs-title);
+  line-height: var(--leading-tight);
+  margin-top: 0;
+  margin-bottom: var(--space-1);
 }
 .slide h3 {
-  font-size: var(--text-lg); font-weight: var(--weight-semibold);
+  font-size: var(--fs-subtitle); font-weight: var(--weight-semibold);
   color: var(--text-accent);
   margin-top: var(--space-3); margin-bottom: var(--space-1);
 }
@@ -283,18 +293,18 @@ body {
   margin-bottom: var(--space-1);
 }
 /* First heading in a container should not have extra top margin */
-.slide-body > h1:first-child,
-.slide-body > h2:first-child,
-.slide-body > h3:first-child { margin-top: 0; }
+:is(.slide-body, .fit-box) > h1:first-child,
+:is(.slide-body, .fit-box) > h2:first-child,
+:is(.slide-body, .fit-box) > h3:first-child { margin-top: 0; }
 .slide p, .slide li {
-  font-size: 1.05rem;
-  line-height: 1.7;
+  font-size: var(--fs-body);
+  line-height: var(--leading-body);
   color: var(--text-secondary);
 }
 .slide .subtitle {
-  font-size: 1.2rem;
+  font-size: var(--fs-subtitle);
   color: var(--text-muted);
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 /* --- Layout Helpers --- */
@@ -302,7 +312,7 @@ body {
    every slide header. One consistent, quiet mark that brands the whole deck;
    everything else stays disciplined. */
 .slide-header {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
   padding-bottom: var(--space-2);
   position: relative;
 }
@@ -322,6 +332,22 @@ body {
   gap: var(--space-3);
   overflow-y: auto;
 }
+/* Fit box — created at runtime by ReactiveFit (slide-framework.js) around the
+   .slide-body children. Auto height so its size is measurable; CSS `zoom` is applied
+   to it; auto block margins center it vertically in the body. */
+.fit-box {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block: auto;
+}
+/* Fill by default: grid/column children take the leftover body height and center
+   their rows; cards in a row stretch to equal height (grid default). */
+:is(.slide-body, .fit-box) > :is(.card-grid, .col-2, .col-3, .columns) {
+  flex: 1;
+  align-content: center;
+}
 .columns { display: flex; gap: var(--space-5); flex: 1; }
 .columns > * { flex: 1; }
 .col-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
@@ -329,7 +355,7 @@ body {
 /* Vertically center a sparse grid in the remaining slide height. Auto
    margins collapse to 0 when the grid overflows, so dense decks still
    scroll from the top instead of clipping. */
-.slide-body > .grid-vcenter { margin-top: auto; margin-bottom: auto; }
+:is(.slide-body, .fit-box) > .grid-vcenter { margin-top: auto; margin-bottom: auto; }
 .center-content {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -353,10 +379,18 @@ body {
   box-shadow: var(--shadow-glow);
 }
 .card-title {
-  font-size: 1.1rem; font-weight: 600;
+  font-size: var(--fs-subtitle); font-weight: 600;
   color: var(--text-accent);
   margin-bottom: var(--space-1);
 }
+.card-desc {
+  font-size: var(--fs-card);
+  line-height: var(--leading-body);
+  color: var(--on-surface-muted);
+  margin-top: var(--space-1);
+}
+/* Text inside a card reads at card size, not body size. */
+.slide :is(.card, .metric-card, .callout, .comparison) :is(p, li) { font-size: var(--fs-card); }
 
 /* --- Badges / Tags --- */
 .badge {
@@ -416,7 +450,7 @@ body {
      muted fails WCAG on both themes (measured 3.2 light / 3.9 dark) */
   color: var(--text-secondary);
   font-family: var(--font-main);
-  font-size: .88rem;
+  font-size: var(--fs-card);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -624,6 +658,7 @@ body {
   overflow: hidden;
   transition: max-height var(--transition-normal);
 }
+.slide .checklist-detail, .slide .checklist-detail :is(p, li) { font-size: var(--fs-card); }
 .checklist li.checked .checklist-detail {
   display: block;
 }
@@ -640,7 +675,7 @@ body {
 .slide table {
   width: 100%;
   border-collapse: collapse;
-  font-size: .92rem;
+  font-size: var(--fs-card);
 }
 .slide th, .slide td {
   padding: var(--space-2) var(--space-2);
@@ -661,7 +696,7 @@ body {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   border-left: 4px solid;
-  font-size: .95rem;
+  font-size: var(--fs-card);
 }
 /* .callout-* role variants are defined AFTER the .callout primitive block
    (token-backed primitives section) so they win source order; see below. */
@@ -838,8 +873,8 @@ body {
 
 .steps--horizontal .step-item { text-align: center; flex: 1; }
 .steps--vertical .step-item { display: flex; gap: 1rem; align-items: flex-start; }
-.step-label { font-weight: 600; margin-top: 0.5rem; font-size: 0.95rem; }
-.step-desc { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
+.step-label { font-weight: 600; margin-top: 0.5rem; font-size: var(--fs-subtitle); }
+.step-desc { font-size: var(--fs-card); opacity: 0.8; margin-top: 0.25rem; }
 
 .step-item.done .step-marker { background: var(--step-color); opacity: 0.6; }
 .step-item.active .step-marker { box-shadow: 0 0 0 4px var(--accent-subtle); transform: scale(1.1); }
@@ -875,6 +910,13 @@ input[type="range"]::-webkit-slider-thumb {
 .metric-card {
   text-align: center;
   padding: var(--space-3);
+  font-size: var(--fs-card);
+}
+/* Card heading pattern: <strong>Title</strong><div class="card-desc">…</div> */
+.metric-card > strong:first-child {
+  display: block;
+  font-size: var(--fs-subtitle);
+  margin-bottom: var(--space-1);
 }
 .metric-value {
   font-size: 2rem;
@@ -957,7 +999,7 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--bg-tertiary);
   color: var(--text-muted);
   font-family: var(--font-main);
-  font-size: .9rem;
+  font-size: var(--fs-card);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -1021,13 +1063,6 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-
-/* --- Responsive (projector safe) --- */
-@media (max-width: 1024px) {
-  .slide { padding: 32px 40px; }
-  .slide h1 { font-size: 2rem; }
-  .title-slide h1 { font-size: 2.4rem; }
-}
 
 /* --- Logo --- */
 .slide-logo {
@@ -1137,12 +1172,15 @@ input[type="range"]::-webkit-slider-thumb {
 /* --- Images --- */
 .slide-img {
   max-width: 90%;
-  max-height: 50vh;
+  max-height: 100%;
   object-fit: contain;
   border-radius: 8px;
   margin: 0 auto;
   display: block;
 }
+/* Inside a fit box the parent height is auto (percent caps resolve to none), so cap
+   images in rem: rem lengths scale with the fit zoom, percent widths do not. */
+.fit-box .slide-img { max-height: 28rem; }
 
 /* --- Compare Highlight (side-by-side mode) --- */
 .compare-highlight {

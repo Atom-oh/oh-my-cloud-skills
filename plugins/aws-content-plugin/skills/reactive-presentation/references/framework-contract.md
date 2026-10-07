@@ -95,6 +95,7 @@ Brand colors extracted from a PPTX arrive as `--pptx-accent1/dk1/lt1/dk2/lt2` an
 | Group | Tokens |
 |------|------|
 | Type scale (modular 1.25) | `--text-xs` `--text-sm` `--text-base` `--text-lg` `--text-xl` `--text-2xl` `--text-3xl` `--text-4xl` |
+| Projection type roles (fit-era defaults; 1rem = 24px) | `--fs-title` `--fs-subtitle` `--fs-body` `--fs-card` `--fs-caption` `--leading-body` |
 | Line height | `--leading-tight` `--leading-normal` `--leading-relaxed` |
 | Weight | `--weight-regular` `--weight-medium` `--weight-semibold` `--weight-bold` |
 | Letter spacing | `--tracking-tight` `--tracking-normal` `--tracking-wide` |
