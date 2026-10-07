@@ -90,3 +90,29 @@ for rule in UNDERFILL MIN_FONT FIT_OVERFLOW INVALID_FIT; do
 done
 assert_contains "$(cat "$RP/references/remarp-format-guide.md" 2>/dev/null || true)" "@fit" "remarp-format-guide.md documents the @fit directive"
 assert_contains "$(cat "$RP/SKILL.md" 2>/dev/null || true)" "measure_deck.py" "SKILL.md references measure_deck.py"
+
+# --- 7. Review round 1: code blocks fit, tab panel stack, Korean wrap, heading colors, canvas ---
+TCF="$(printf '%s' "$TC" | tr '\n' ' ')"
+assert_grep_match "\.fit-box \.code-block\s*\{[^}]*max-height:\s*none" "$TCF" "code blocks inside .fit-box drop max-height"
+assert_grep_match "\.fit-box \.code-block\s*\{[^}]*overflow:\s*visible" "$TCF" "code blocks inside .fit-box have no inner scroll (overflow: visible)"
+assert_grep_match "\.fit-box \.code-block\s*\{[^}]*width:\s*max-content" "$TCF" "a long code line widens the block so ReactiveFit measures it"
+assert_grep_match "\.tab-panels\s*\{[^}]*display:\s*grid" "$TCF" ".tab-panels is a grid stack"
+assert_grep_match "\.tab-panels > \.tab-content\s*\{[^}]*grid-area:\s*1\s*/\s*1" "$TCF" "all tab panels share one grid cell (tallest panel sets the height)"
+assert_grep_match "\.tab-panels > \.tab-content\s*\{[^}]*visibility:\s*hidden" "$TCF" "inactive stacked panels are visibility-hidden, not display:none"
+assert_grep_match "\.tab-panels > \.tab-content\.active\s*\{[^}]*visibility:\s*visible" "$TCF" "the active stacked panel is visible"
+assert_grep_match "\.slide-deck:lang\(ko\)\s*\{[^}]*text-wrap:\s*pretty" "$TCF" "Korean decks wrap body text with text-wrap: pretty"
+assert_grep_match ":lang\(ko\) :is\(h1, h2, h3, h4\)\s*\{[^}]*text-wrap-style:\s*balance" "$TCF" "Korean headings use balanced wrapping"
+assert_grep_match "\.slide :is\(h1, h2, h3, h4\)\.text-orange\s*\{" "$TCF" "heading utility colors out-rank .slide h3 (text-orange)"
+assert_grep_match "^\.nowrap\s*\{[^}]*white-space:\s*nowrap" "$TC" ".nowrap utility exists"
+assert_contains "$J" "tab-panels" "initTabs groups tab panels into a .tab-panels stack"
+AU="$RP/assets/animation-utils.js"
+DG_FONT="$(awk '/^function drawGroup\(/{f=1} f && /ctx\.font *=/{print NR; exit}' "$AU" 2>/dev/null)"
+DG_MEASURE="$(awk '/^function drawGroup\(/{f=1} f && /ctx\.measureText\(/{print NR; exit}' "$AU" 2>/dev/null)"
+DG_ORDER="no"
+if [ -n "$DG_FONT" ] && [ -n "$DG_MEASURE" ] && [ "$DG_FONT" -lt "$DG_MEASURE" ]; then DG_ORDER="yes"; fi
+assert_eq "yes" "$DG_ORDER" "drawGroup sets ctx.font (line ${DG_FONT:-?}) before measureText (line ${DG_MEASURE:-?})"
+if command -v node >/dev/null 2>&1; then
+  AU_CHECK="fail"
+  node --check "$AU" >/dev/null 2>&1 && AU_CHECK="ok"
+  assert_eq "ok" "$AU_CHECK" "animation-utils.js passes node --check"
+fi

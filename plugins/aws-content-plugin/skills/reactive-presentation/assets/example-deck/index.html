@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EKS Auto Mode — 운영이 사라진 클러스터</title>
   <!-- Golden example deck: the reference for hand-authored decks.
-       Deployment shape: this file + common/ (copied from skill assets/ by
-       scripts/deck_assets.py). Every pattern here passes check_deck.py and
-       measure_deck.py clean at 1280x720 / 1920x1080 / 3840x2160, light+dark. -->
+       Deployment shape: this file + common/ = the skill's assets/*.css and *.js, plus
+       the referenced official icons under common/aws-icons/services/ (copied from the
+       skill's icons/ library — only the ones this deck uses). Every pattern here passes
+       check_deck.py and measure_deck.py clean at 1280x720 / 1920x1080 / 3840x2160,
+       light+dark. -->
   <link rel="stylesheet" href="./common/theme.css">
   <style>
     /* Deck-local layout (tokens only — see framework-contract.md §10).
@@ -25,7 +27,8 @@
     .scale-canvas-wrap { max-width: 1440px; margin: 0 auto; width: 100%; }
     .quiz-q { font-size: var(--text-lg); font-weight: var(--weight-semibold); }
     .quiz-grid { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
-    .code-scroll { max-height: 60%; overflow-y: auto; }
+    .flow-icon-box { display: flex; align-items: center; justify-content: center; gap: var(--space-2); }
+    .flow-icon-box img { width: var(--space-6); height: var(--space-6); flex: none; }
     .closing-body { justify-content: center; align-items: center; text-align: center; }
     .closing-title { font-size: var(--text-4xl); }
     .closing-sub { color: var(--on-surface-muted); font-size: var(--text-lg); margin-top: var(--space-3); }
@@ -108,88 +111,77 @@
     <div class="slide-header"><h2>노드 운영, 네 가지가 사라졌다</h2><p class="subtitle">관리 주체의 이동</p></div>
     <div class="slide-body">
       <div class="col-2">
-        <div class="metric-card fragment fade-up" data-fragment-index="1">
+        <div class="metric-card card-text fragment fade-up" data-fragment-index="1">
           <strong class="text-blue">노드 프로비저닝</strong>
-          <div class="card-desc">
-            NodePool/NodeClass 내장 — Karpenter 설치·업그레이드 불필요
-          </div>
-          <div class="card-desc">
-            더 이상 안 하는 일: 컨트롤러 helm 차트 관리, CRD 버전 맞추기
-          </div>
+          <div class="card-desc">NodePool/NodeClass 내장 — Karpenter 설치·업그레이드 불필요</div>
+          <div class="card-desc card-note"><span class="card-note-label">더 이상 안 하는 일</span>컨트롤러 helm 차트 관리, CRD 버전 맞추기</div>
         </div>
-        <div class="metric-card fragment fade-up" data-fragment-index="2">
+        <div class="metric-card card-text fragment fade-up" data-fragment-index="2">
           <strong class="text-green">OS 패치</strong>
-          <div class="card-desc">
-            Bottlerocket 기반 — 21일 주기 자동 노드 교체
-          </div>
-          <div class="card-desc">
-            더 이상 안 하는 일: AMI 릴리스 추적, 패치 윈도우 조율, 노드 그룹 롤링
-          </div>
+          <div class="card-desc">Bottlerocket 기반 — 최대 수명 21일(기본 336시간=14일) + 주 1회 수준 AMI drift 교체</div>
+          <div class="card-desc card-note"><span class="card-note-label">더 이상 안 하는 일</span>AMI 릴리스 추적, 패치 윈도우 조율, 노드 그룹 롤링</div>
         </div>
-        <div class="metric-card fragment fade-up" data-fragment-index="3">
+        <div class="metric-card card-text fragment fade-up" data-fragment-index="3">
           <strong class="text-orange">핵심 애드온</strong>
-          <div class="card-desc">
-            CNI · EBS CSI · LB Controller가 노드에 내장 실행
-          </div>
-          <div class="card-desc">
-            더 이상 안 하는 일: 애드온 호환성 매트릭스 검사, 애드온 IRSA 설정
-          </div>
+          <div class="card-desc">노드 내장: 네트워킹·DNS·kube-proxy·EBS CSI 노드 기능</div>
+          <div class="card-desc">클러스터 밖(AWS 운영): Karpenter·LB Controller·EBS CSI 컨트롤러</div>
+          <div class="card-desc card-note"><span class="card-note-label">더 이상 안 하는 일</span>핵심 애드온 호환성 매트릭스 검사, 애드온별 IAM(IRSA/Pod Identity) 설정 → 클러스터 IAM 역할로 대체</div>
         </div>
-        <div class="metric-card fragment fade-up" data-fragment-index="4">
+        <div class="metric-card card-text fragment fade-up" data-fragment-index="4">
           <strong class="text-purple">보안 경화</strong>
-          <div class="card-desc">
-            SSH/SSM 접근 차단 — 노드는 불변(immutable) 인프라
-          </div>
-          <div class="card-desc">
-            대체 수단: 노드 교체 + CloudWatch Container Insights·로그 관측성
-          </div>
+          <div class="card-desc">SSH/SSM 접근 차단 — 노드는 불변(immutable) 인프라</div>
+          <div class="card-desc card-note"><span class="card-note-label">대체 수단</span>NodeDiagnostic(로그→S3) · <code>kubectl debug node --profile=sysadmin</code> · <code>aws ec2 get-console-output</code></div>
         </div>
       </div>
     </div>
     <template class="notes" data-timing="3min">
 [요약]
 - 프로비저닝·패치·애드온·경화 네 축이 AWS 관리로 이동 (2x2 카드)
-- 각 카드 둘째 줄: 운영자가 더 이상 안 하는 일 / 대체 수단
+- 각 카드 구분선 아래: 운영자가 더 이상 안 하는 일 / 대체 수단
 - 노드 SSH가 안 되는 건 버그가 아니라 설계
-카드 네 장을 하나씩 열면서 설명합니다. 첫 줄은 Auto Mode가 가져간 기능, 둘째 줄은
-그 결과 운영자가 더 이상 하지 않는 일입니다. 핵심 메시지: 노드가 불변 인프라가 되면서
-"노드에 들어가서 고친다"는 운영 관행 자체가 사라집니다. SSH가 막혀 있는 것에
-당황하는 분들이 많은데, 디버깅은 노드 교체와 관측성으로 대체하는 게 설계 의도입니다.
+카드 네 장을 하나씩 열면서 설명합니다. 첫 줄은 Auto Mode가 가져간 기능, 구분선 아래는 그 결과
+운영자가 더 이상 하지 않는 일입니다. OS 패치는 최대 수명 21일(기본 336시간=14일)에 더해 새 AMI가
+나오면 주 1회 수준으로 drift 교체가 일어난다는 점을 강조하세요. 애드온은 노드에 내장된 기능과
+클러스터 밖에서 AWS가 운영하는 컨트롤러로 나뉩니다. SSH가 막혀 있는 것에 당황하는 분들이 많은데,
+진단은 NodeDiagnostic·kubectl debug node·get-console-output으로 하고 문제 노드는 교체하는 게
+설계 의도입니다.
 {cue: pause} 카드 전부 공개 후 잠깐 멈추고 질문 받기.
     </template>
   </div>
 
-  <!-- 4. Two-column comparison -->
+  <!-- 4. Two-column comparison — one grid, so each row is equal height across columns -->
   <div class="slide">
     <div class="slide-header"><h2>Karpenter를 쓰고 있다면?</h2><p class="subtitle">자가 관리 대비 달라지는 지점</p></div>
     <div class="slide-body">
       <div class="col-2">
-        <div>
-          <h3 class="text-blue">자가 관리 Karpenter</h3>
-          <div class="callout callout-info">helm 설치·버전 업그레이드 직접 수행</div>
-          <div class="callout callout-info">NodePool CRD 전체 스펙 자유 설정</div>
-          <div class="callout callout-warning">컨트롤러 장애 시 스케일링 정지 — 우리 책임</div>
-        </div>
-        <div>
-          <h3 class="text-orange">EKS Auto Mode</h3>
-          <div class="callout callout-success">컨트롤러가 AWS 관리 영역에서 실행</div>
-          <div class="callout callout-success">기본 NodePool 2종 제공 (general-purpose · system)</div>
-          <div class="callout callout-warning">커스텀 AMI·userData 불가 — 표준화가 전제</div>
-        </div>
+        <h3 class="text-blue">자가 관리 Karpenter</h3>
+        <h3 class="text-orange">EKS Auto Mode</h3>
+        <div class="callout callout-info">helm 설치·버전 업그레이드 직접 수행</div>
+        <div class="callout callout-success">컨트롤러가 AWS 관리 영역에서 실행</div>
+        <div class="callout callout-info">NodePool CRD 전체 스펙 자유 설정</div>
+        <div class="callout callout-success">기본 NodePool 2종: general-purpose · system</div>
+        <div class="callout callout-info">EC2NodeClass로 AMI·userData까지 직접 정의</div>
+        <div class="callout callout-success">Auto Mode 전용 NodeClass·라벨 (eks.amazonaws.com)</div>
+        <div class="callout callout-info">노드 디버깅: SSH·SSM 접속을 직접 구성</div>
+        <div class="callout callout-success">노드 디버깅: NodeDiagnostic·<code>kubectl debug node</code></div>
+        <div class="callout callout-warning">컨트롤러 장애 시 스케일링 정지 — 우리 책임</div>
+        <div class="callout callout-warning">커스텀 AMI·userData 불가 — 표준화가 전제</div>
       </div>
     </div>
     <template class="notes" data-timing="3min">
 [요약]
 - Karpenter 운영 경험은 그대로 이전됨 (NodePool 개념 동일)
+- 행 단위 비교: 설치 · NodePool · NodeClass · 노드 디버깅 · 트레이드오프
 - 트레이드오프: 컨트롤러 무장애 vs 커스터마이징 제약
-왼쪽이 익숙한 자가 관리 모델, 오른쪽이 Auto Mode입니다. NodePool이라는 개념은
-동일하므로 학습 곡선은 낮습니다. 결정적 차이는 두 가지 — 컨트롤러 자체의 가용성을
-AWS가 책임진다는 것, 그리고 커스텀 AMI를 포기해야 한다는 것. 조직의 표준화 수준이
-선택 기준이 됩니다.
+왼쪽이 익숙한 자가 관리 모델, 오른쪽이 Auto Mode입니다. 같은 행끼리 비교하며 읽으세요.
+NodePool이라는 개념은 동일하므로 학습 곡선은 낮지만, NodeClass는 Auto Mode 전용이라 AMI·userData를
+직접 다루지 않습니다. 노드 디버깅도 SSH 대신 NodeDiagnostic·kubectl debug node로 바뀝니다. 결정적
+차이는 두 가지 — 컨트롤러 자체의 가용성을 AWS가 책임진다는 것, 그리고 커스텀 AMI를 포기해야
+한다는 것. 조직의 표준화 수준이 선택 기준이 됩니다.
     </template>
   </div>
 
-  <!-- 5. Tabs -->
+  <!-- 5. Tabs — panels stacked in .tab-panels so the tab bar never moves -->
   <div class="slide">
     <div class="slide-header"><h2>워크로드 유형별 배치 전략</h2><p class="subtitle">NodePool 선택 기준</p></div>
     <div class="slide-body">
@@ -199,43 +191,45 @@ AWS가 책임진다는 것, 그리고 커스텀 AMI를 포기해야 한다는 �
           <button class="tab-btn" data-tab="batch">배치 작업</button>
           <button class="tab-btn" data-tab="system">시스템 컴포넌트</button>
         </div>
-        <div class="tab-content active" data-tab="web">
-          <div class="stack">
-            <div class="card-grid">
-              <div class="metric-card"><strong class="text-blue">general-purpose</strong>
-                <div class="card-desc">기본 NodePool — On-Demand, 다양한 인스턴스 패밀리</div>
-                <div class="card-desc">별도 설정 없이 바로 스케줄링, 통합(consolidation)으로 유휴 노드 자동 회수</div></div>
-              <div class="metric-card"><strong class="text-green">PDB 필수</strong>
-                <div class="card-desc">21일 노드 교체 주기를 무중단으로 흡수</div>
-                <div class="card-desc">minAvailable + topologySpreadConstraints로 한 노드 교체가 한 replica만 건드리게</div></div>
+        <div class="tab-panels">
+          <div class="tab-content active" data-tab="web">
+            <div class="stack">
+              <div class="card-grid">
+                <div class="metric-card card-text"><strong class="text-blue">general-purpose</strong>
+                  <div class="card-desc">기본 NodePool — On-Demand, 다양한 인스턴스 패밀리</div>
+                  <div class="card-desc card-note">별도 설정 없이 바로 스케줄링, <span class="nowrap">통합(consolidation)으로</span> 유휴 노드 자동 회수</div></div>
+                <div class="metric-card card-text"><strong class="text-green">PDB 필수</strong>
+                  <div class="card-desc">노드 교체는 상시 — 주 1회 수준 AMI drift 교체 + 최대 수명 21일(기본 336시간=14일)</div>
+                  <div class="card-desc card-note">minAvailable + topologySpreadConstraints로 한 노드 교체가 한 replica만 건드리게</div></div>
+              </div>
+              <div class="callout callout-info">핵심 규칙 — 웹 서비스는 기본 풀로 충분하지만, PDB 없는 Deployment는 주 1회 수준의 노드 교체마다 순단이 사용자에게 전달됩니다.</div>
             </div>
-            <div class="callout callout-info">핵심 규칙 — 웹 서비스는 기본 풀로 충분하지만, PDB 없는 Deployment는 교체 주기마다 순단이 사용자에게 전달됩니다.</div>
           </div>
-        </div>
-        <div class="tab-content" data-tab="batch">
-          <div class="stack">
-            <div class="card-grid">
-              <div class="metric-card"><strong class="text-orange">커스텀 NodePool + Spot</strong>
-                <div class="card-desc">capacityType: spot — 중단 허용 워크로드에 최대 90% 절감</div>
-                <div class="card-desc">Spot 회수 2분 통지는 컨트롤러가 처리 — Job은 재시도(backoffLimit)만 챙기면 됨</div></div>
-              <div class="metric-card"><strong class="text-blue">taint 분리</strong>
-                <div class="card-desc">batch 전용 taint로 웹 워크로드 유입 차단</div>
-                <div class="card-desc">Job 쪽에는 toleration + nodeSelector를 함께 걸어 풀 밖으로 새지 않게</div></div>
+          <div class="tab-content" data-tab="batch">
+            <div class="stack">
+              <div class="card-grid">
+                <div class="metric-card card-text"><strong class="text-orange">커스텀 NodePool + Spot</strong>
+                  <div class="card-desc"><code>karpenter.sh/capacity-type: spot</code> — 중단 허용 워크로드에 최대 90% 절감</div>
+                  <div class="card-desc card-note">Spot 회수 2분 통지는 컨트롤러가 처리 — Job은 backoffLimit·podFailurePolicy로 중단 재시도 처리</div></div>
+                <div class="metric-card card-text"><strong class="text-blue">taint 분리</strong>
+                  <div class="card-desc">batch 전용 taint로 웹 워크로드 유입 차단</div>
+                  <div class="card-desc card-note">Job 쪽에는 toleration + nodeSelector를 함께 걸어 풀 밖으로 새지 않게</div></div>
+              </div>
+              <div class="callout callout-warning">핵심 규칙 — Spot은 반드시 별도 NodePool로 분리하고, 체크포인트가 없는 긴 작업은 On-Demand 풀에 남겨 두세요.</div>
             </div>
-            <div class="callout callout-warning">핵심 규칙 — Spot은 반드시 별도 NodePool로 분리하고, 체크포인트가 없는 긴 작업은 On-Demand 풀에 남겨 두세요.</div>
           </div>
-        </div>
-        <div class="tab-content" data-tab="system">
-          <div class="stack">
-            <div class="card-grid">
-              <div class="metric-card"><strong class="text-purple">system NodePool</strong>
-                <div class="card-desc">CriticalAddonsOnly taint — 애드온 전용 격리</div>
-                <div class="card-desc">CoreDNS·metrics-server 같은 클러스터 필수 컴포넌트가 여기에 배치됨</div></div>
-              <div class="metric-card"><strong class="text-red">과점유 주의</strong>
-                <div class="card-desc">시스템 풀에 일반 워크로드 tolerate 금지</div>
-                <div class="card-desc">tolerations: operator: Exists 같은 광범위 설정이 가장 흔한 유입 경로</div></div>
+          <div class="tab-content" data-tab="system">
+            <div class="stack">
+              <div class="card-grid">
+                <div class="metric-card card-text"><strong class="text-purple">system NodePool</strong>
+                  <div class="card-desc">CriticalAddonsOnly taint — 애드온 전용 격리</div>
+                  <div class="card-desc card-note">metrics-server 등 CriticalAddonsOnly를 tolerate하는 애드온 (CoreDNS는 노드 내장 서비스) — toleration은 배치를 허용할 뿐, 고정하려면 nodeSelector 병행</div></div>
+                <div class="metric-card card-text"><strong class="text-red">과점유 주의</strong>
+                  <div class="card-desc">시스템 풀에 일반 워크로드 tolerate 금지</div>
+                  <div class="card-desc card-note"><code>tolerations: operator: Exists</code> 같은 광범위 설정이 가장 흔한 유입 경로</div></div>
+              </div>
+              <div class="callout callout-danger">핵심 규칙 — 시스템 풀은 건드리지 않습니다. 일반 워크로드의 tolerations를 admission <span class="nowrap">정책(Kyverno 등)으로</span> 검사하세요.</div>
             </div>
-            <div class="callout callout-danger">핵심 규칙 — 시스템 풀은 건드리지 않습니다. 일반 워크로드의 tolerations를 admission 정책(Kyverno 등)으로 검사하세요.</div>
           </div>
         </div>
       </div>
@@ -245,11 +239,13 @@ AWS가 책임진다는 것, 그리고 커스텀 AMI를 포기해야 한다는 �
 - 탭 3개: 웹 → general-purpose, 배치 → Spot 커스텀 풀, 시스템 → system 풀
 - 각 탭 하단 callout이 그 유형의 핵심 규칙 한 줄
 - ↑↓ 키로도 탭 전환 가능
-워크로드 유형별로 탭을 넘기며 설명합니다. 웹 서비스는 기본 풀로 충분하지만 PDB가
-없으면 21일 교체 주기마다 순단이 생깁니다 — 이게 가장 흔한 시행착오입니다.
-배치는 Spot 전용 풀을 따로 파는 게 정석이고, 체크포인트 없는 긴 작업은 On-Demand에
-남겨 둡니다. 시스템 풀에는 일반 워크로드가 들어가지 않도록 tolerations을 admission
-정책으로 검사하세요. 각 탭의 하단 callout을 읽어 주고 다음 탭으로 넘어갑니다.
+워크로드 유형별로 탭을 넘기며 설명합니다. 웹 서비스는 기본 풀로 충분하지만 PDB가 없으면 노드
+교체마다 순단이 생깁니다 — 최대 수명 21일(기본 336시간=14일)에 더해 새 AMI가 나오면 주 1회 수준으로
+drift 교체가 일어나므로, 교체는 사실상 매주 있다고 보세요. 배치는 Spot 전용 풀을 따로 파는 게
+정석이고, Job은 backoffLimit·podFailurePolicy로 중단 재시도를 처리하며, 체크포인트 없는 긴 작업은
+On-Demand에 남겨 둡니다. 시스템 풀의 CriticalAddonsOnly taint는 metrics-server 같은 애드온이
+tolerate합니다 — CoreDNS는 Auto Mode가 노드마다 시스템 서비스로 실행합니다. toleration은 배치를
+허용할 뿐 강제하지 않으니, 일반 워크로드의 tolerations를 admission 정책으로 검사하세요.
 {cue: demo} 실제 클러스터에서 kubectl get nodepools 보여주기.
     </template>
   </div>
@@ -441,7 +437,7 @@ PDB가 없으면 순단이 그대로 사용자에게 전달됩니다.
 <script src="./common/presenter-view.js"></script>
 <script>
   const deck = new SlideFramework({
-    footer: '© 2026, Amazon Web Services, Inc. — EKS Auto Mode Deep Dive',
+    footer: '© 2026 Amazon Web Services, Inc. All rights reserved.',
     pagination: true,
     sidebar: true
   });
