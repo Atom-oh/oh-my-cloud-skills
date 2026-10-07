@@ -255,7 +255,7 @@ tolerate합니다 — CoreDNS는 Auto Mode가 노드마다 시스템 서비스�
     <div class="slide-header"><h2>Pod 하나가 노드를 만든다</h2><p class="subtitle">스케일 아웃 4단계 · ↑↓로 진행</p></div>
     <div class="slide-body">
       <div class="canvas-container scale-canvas-wrap">
-        <canvas id="scale-flow"></canvas>
+        <canvas id="scale-flow" role="img" aria-label="스케일 아웃 4단계: 1) Pending Pod가 unschedulable 상태로 대기, 2) Auto Mode 컨트롤러가 감지해 인스턴스 타입 계산, 3) RunInstances로 EC2가 기동되어 노드로 조인, 4) kube-scheduler가 Pod를 새 노드에 바인딩"></canvas>
       </div>
     </div>
     <template class="notes" data-timing="4min">
@@ -265,56 +265,58 @@ tolerate합니다 — CoreDNS는 Auto Mode가 노드마다 시스템 서비스�
 이 슬라이드가 오늘의 핵심입니다. ↓ 키를 눌러가며 네 단계를 보여주세요.
 1단계: Pod가 Pending으로 쌓입니다. 2단계: Auto Mode 컨트롤러가 unschedulable
 이벤트를 감지하고 최적 인스턴스 타입을 계산합니다. 3단계: EC2 인스턴스가 기동되고
-노드로 조인합니다. 4단계: 스케줄러가 Pod를 바인딩합니다. 전체 소요 시간은 보통
-40~60초 — CA 대비 절반 이하입니다.
+노드로 조인합니다. 4단계: 스케줄러가 Pod를 새 노드에 바인딩하고, Pending 그룹은 비워집니다.
+소요 시간은 환경마다 다르므로 숫자를 약속하지 말고, 데모 클러스터에서 직접 재 보세요.
 {cue: pause} 마지막 단계에서 소요 시간 질문 받기.
     </template>
   </div>
 
-  <!-- 7. HTML flow architecture -->
+  <!-- 7. HTML flow architecture — official AWS icons from common/aws-icons/ -->
   <div class="slide">
     <div class="slide-header"><h2>요청은 세 층을 지난다</h2><p class="subtitle">Auto Mode 데이터 플레인 구성</p></div>
     <div class="slide-body">
       <div class="flow-h">
         <div class="flow-group bg-blue fragment fade-up" data-fragment-index="1">
           <div class="flow-group-label">진입</div>
-          <div class="flow-box">ALB</div>
-          <div class="flow-box">LB Controller (내장)</div>
+          <div class="flow-box flow-icon-box"><img src="./common/aws-icons/services/Arch_Elastic-Load-Balancing_48.svg" alt="Elastic Load Balancing"><span>ALB</span></div>
+          <div class="flow-box">LB Controller — 클러스터 밖(AWS 운영)</div>
           <div class="flow-box">Ingress · Service 리소스</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-group bg-orange fragment fade-up" data-fragment-index="2">
           <div class="flow-group-label">워크로드</div>
-          <div class="flow-box">general-purpose 노드</div>
-          <div class="flow-box">Pod (VPC CNI 내장)</div>
-          <div class="flow-box">NetworkPolicy 리소스</div>
+          <div class="flow-box flow-icon-box"><img src="./common/aws-icons/services/Arch_Amazon-EC2_48.svg" alt="Amazon EC2"><span>general-purpose 노드</span></div>
+          <div class="flow-box">노드 내장: 네트워킹 · DNS · kube-proxy</div>
+          <div class="flow-box">NetworkPolicy 리소스 — 활성화 필요</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-group bg-green fragment fade-up" data-fragment-index="3">
           <div class="flow-group-label">스토리지</div>
-          <div class="flow-box">EBS CSI (내장)</div>
-          <div class="flow-box">gp3 볼륨</div>
+          <div class="flow-box flow-icon-box"><img src="./common/aws-icons/services/Arch_Amazon-Elastic-Block-Store_48.svg" alt="Amazon Elastic Block Store"><span>EBS gp3 볼륨</span></div>
+          <div class="flow-box">EBS CSI — 노드 기능은 내장, 컨트롤러는 클러스터 밖</div>
           <div class="flow-box">StorageClass 리소스</div>
         </div>
       </div>
       <div class="flow-desc">
-        <span class="step-label">helm 설치 0건</span>
+        <span class="step-label">내장 컴포넌트 helm 설치 0건</span>
         <span>→</span>
-        <span class="step-label">애드온 호환성 검사 제외</span>
+        <span class="step-label">내장 컴포넌트 업그레이드는 AWS 몫</span>
         <span>→</span>
-        <span class="step-label">업그레이드 = 컨트롤 플레인 버전만</span>
+        <span class="step-label">남는 업그레이드: 앱·자체 관리/EKS 애드온</span>
       </div>
+      <div class="callout callout-warning">NetworkPolicy는 ConfigMap <code>amazon-vpc-cni</code>의 <code>enable-network-policy-controller: "true"</code>로 활성화해야 동작합니다.</div>
     </div>
     <template class="notes" data-timing="2min">
 [요약]
-- 세 그룹 순차 공개: 진입(ALB) → 워크로드(노드/CNI) → 스토리지(EBS CSI)
-- '내장'이 붙은 컴포넌트는 애드온 설치 없이 동작
-- 하단 요약 행: helm 0건 → 호환성 검사 제외 → 업그레이드는 버전 하나
-플로우 그룹을 하나씩 열면서, 기존에는 각각 helm으로 설치하던 세 가지 컨트롤러가
-전부 내장으로 바뀌었다는 점을 강조합니다. 각 그룹 세 번째 상자는 우리가 여전히
-선언하는 Kubernetes 리소스(Ingress·NetworkPolicy·StorageClass)입니다. 업그레이드
-매트릭스에서 애드온 호환성 검사가 통째로 사라지는 게 운영상 가장 체감이 큰 변화이고,
-하단 요약 행이 그 결론입니다.
+- 세 그룹 순차 공개: 진입(ALB) → 워크로드(노드) → 스토리지(EBS)
+- 노드 내장: 네트워킹·DNS·kube-proxy·EBS CSI 노드 기능 / 클러스터 밖(AWS 운영): Karpenter·LB Controller·EBS CSI 컨트롤러
+- NetworkPolicy는 ConfigMap amazon-vpc-cni의 enable-network-policy-controller: "true"로 활성화해야 동작
+플로우 그룹을 하나씩 열면서, 기존에 helm으로 설치하던 컴포넌트가 어디로 갔는지 짚습니다.
+LB Controller와 EBS CSI 컨트롤러는 클러스터 밖 AWS 운영 영역에서 돌고, 네트워킹·DNS·kube-proxy와
+EBS CSI 노드 기능은 노드에 내장됩니다. 각 그룹 세 번째 상자는 우리가 여전히 선언하는 Kubernetes
+리소스(Ingress·NetworkPolicy·StorageClass)입니다. NetworkPolicy는 ConfigMap 설정으로 켜야 동작하니
+먼저 확인하세요. 하단 요약 행: 내장 컴포넌트의 설치·업그레이드는 사라지지만, 앱과 자체 관리 애드온,
+EKS 애드온 업그레이드는 여전히 우리 몫입니다.
     </template>
   </div>
 
@@ -470,29 +472,41 @@ PDB가 없으면 순단이 그대로 사용자에게 전달됩니다.
     ctx.clearRect(0, 0, BASE_W, BASE_H);
     refreshThemeColors();
 
-    // Static: pending pods queue + controller + scheduler
-    drawGroup(ctx, 20, 40, 200, 320, 'Pending Pods', Colors.blue);
-    drawPod(ctx, 60, 100, 40, step >= 4 ? 'running' : 'pending', 'pod-a');
-    drawPod(ctx, 130, 100, 40, step >= 4 ? 'running' : 'pending', 'pod-b');
-    drawBox(ctx, 320, 60, 200, 70, 'Auto Mode Controller', step >= 2 ? Colors.accent : Colors.gray || Colors.blue);
-    drawBox(ctx, 320, 270, 200, 70, 'kube-scheduler', Colors.blue);
+    // Layout on the 960x400 base: Pending group x20-200 · controller/scheduler x330-530 ·
+    // node x660-940. Gap labels sit inside the 130px gaps; nothing crosses a border.
+    drawGroup(ctx, 20, 40, 180, 320, 'Pending Pods', Colors.blue);
+    if (step < 4) {
+      drawPod(ctx, 75, 110, 40, 'pending');
+      drawPod(ctx, 145, 110, 40, 'pending');
+      drawText(ctx, 'pod-a', 75, 146, { size: 15, color: Colors.textSec });
+      drawText(ctx, 'pod-b', 145, 146, { size: 15, color: Colors.textSec });
+    } else {
+      drawText(ctx, '(비어 있음)', 110, 200, { size: 15, color: Colors.textSec });
+    }
+    drawBox(ctx, 330, 60, 200, 80, '', step >= 2 ? Colors.accent : Colors.blue);
+    drawText(ctx, 'Auto Mode Controller', 430, 88, { size: 15, weight: '600' });
+    drawBox(ctx, 330, 270, 200, 70, 'kube-scheduler', Colors.blue);
 
     if (step >= 1) {
-      drawArrow(ctx, 220, 130, 320, 100, Colors.yellow, true);
-      drawText(ctx, 'unschedulable', 235, 95, { size: 13, color: Colors.yellow });
+      drawArrow(ctx, 200, 110, 330, 100, Colors.yellow, true);
+      drawText(ctx, 'unschedulable', 265, 86, { size: 15, color: Colors.yellow });
     }
     if (step >= 2) {
-      drawText(ctx, '인스턴스 타입 계산', 330, 150, { size: 13, color: Colors.accent });
-      drawArrow(ctx, 520, 95, 640, 95, Colors.accent);
-      drawText(ctx, 'RunInstances', 535, 82, { size: 13, color: Colors.accent });
+      drawText(ctx, '인스턴스 타입 계산', 430, 116, { size: 15, color: Colors.accent });
+      drawArrow(ctx, 530, 100, 660, 100, Colors.accent);
+      drawText(ctx, 'RunInstances', 595, 84, { size: 15, color: Colors.accent });
     }
     if (step >= 3) {
-      drawNode(ctx, 640, 60, 280, 200, 'node (Bottlerocket)', step >= 4 ? 2 : 0, 4, {});
-      drawText(ctx, '~45s', 780, 45, { size: 14, color: Colors.green });
+      drawNode(ctx, 660, 60, 280, 200, 'node (Bottlerocket)', 0, 0, {});
+      if (step === 3) drawText(ctx, 'EC2 기동 → 노드 조인', 800, 160, { size: 15, color: Colors.textSec });
     }
     if (step >= 4) {
-      drawArrow(ctx, 520, 305, 700, 270, Colors.green);
-      drawText(ctx, 'bind', 600, 315, { size: 13, color: Colors.green });
+      drawPod(ctx, 750, 150, 40, 'running');
+      drawPod(ctx, 850, 150, 40, 'running');
+      drawText(ctx, 'pod-a', 750, 186, { size: 15, color: Colors.textSec });
+      drawText(ctx, 'pod-b', 850, 186, { size: 15, color: Colors.textSec });
+      drawArrow(ctx, 530, 305, 720, 260, Colors.green);
+      drawText(ctx, 'bind', 650, 302, { size: 15, color: Colors.green });
     }
   }
 
