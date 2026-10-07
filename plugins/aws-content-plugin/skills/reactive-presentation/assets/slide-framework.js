@@ -847,11 +847,23 @@ class SlideFramework {
   window.ReactiveFit = { MIN, MAX, TARGET, fitSlide, fitAll };
 })();
 
-// Tab component helper
+// Tab component helper. Groups each bar's sibling .tab-content panels into one
+// .tab-panels stack (theme.css puts them in a single grid cell), so the stack is as tall
+// as the tallest panel and switching tabs never moves the bar or re-centers the slide.
+// Runs on DOMContentLoaded before SlideFramework.init(), i.e. before the first fit.
 function initTabs() {
   document.querySelectorAll('.tab-bar').forEach(bar => {
     const tabs = bar.querySelectorAll('.tab-btn');
     const container = bar.parentElement;
+    if (container && !container.querySelector(':scope > .tab-panels')) {
+      const panels = Array.from(container.children).filter(c => c.classList.contains('tab-content'));
+      if (panels.length > 1) {
+        const stack = document.createElement('div');
+        stack.className = 'tab-panels';
+        container.insertBefore(stack, panels[0]);
+        panels.forEach(p => stack.appendChild(p));
+      }
+    }
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
         const target = tab.dataset.tab;

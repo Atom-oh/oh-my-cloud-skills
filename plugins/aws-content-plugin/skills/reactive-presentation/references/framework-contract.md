@@ -149,7 +149,11 @@ highlight(-red/-green), strike, fade-out`.
 **Auto-initialized components** (via `initTabs/initChecklists/
 initCompareToggles` on DOMContentLoaded):
 - Tabs: `.tab-bar > .tab-btn[data-tab="id"]` + sibling `.tab-content[data-tab="id"]`
-  (shown via `.active`). Also cyclable with ↑↓ keys.
+  (shown via `.active`). Also cyclable with ↑↓ keys. `initTabs` groups the bar's sibling
+  panels into one `.tab-panels` stack (authors may write `.tab-panels` directly): all panels
+  share one grid cell and inactive ones are `visibility: hidden`, so the stack is as tall as
+  the tallest panel — switching tabs never moves the tab bar, and ReactiveFit sizes the
+  slide for the tallest panel.
 - Checklist: `.checklist li` click-to-toggle (+ `.checklist-detail` expand).
 - Compare: `.compare-toggle > .compare-btn[data-compare]` + `.compare-content[data-compare]`;
   highlight mode when the container has `data-compare-mode="side-by-side"`.
@@ -216,16 +220,16 @@ utility (§6) for 5+ boxes or multi-tier diagrams. Use a static draw.io PNG/SVG 
 
 | Group | Classes | Notes |
 |------|--------|------|
-| Cards | `.card-grid` `.card` `.metric-card` `.metric-value/.metric-label` `.kpi-row/.kpi-card/.kpi-value/.kpi-label/.kpi-delta` `.badge(-blue/-green/-red/-yellow/-up/-down)` | For 4+ items, use cards instead of bullets |
+| Cards | `.card-grid` `.card` `.metric-card` `.card-desc` `.card-text` (left-aligned sentence card) `.card-note`/`.card-note-label` (divider + muted label for a card's secondary line) `.metric-value/.metric-label` `.kpi-row/.kpi-card/.kpi-value/.kpi-label/.kpi-delta` `.badge(-blue/-green/-red/-yellow/-up/-down)` | For 4+ items, use cards instead of bullets |
 | Callouts | `.callout` `.callout-info/-success/-warning/-danger` `.pain-quote` `.stat-highlight` | |
 | Layout | `.columns` `.col-2/.col-3` `.columns-1-2/-2-1/-3` `.grid-2x2/.grid-3x2` `.center-content` | |
 | Flow (HTML architecture) | `.flow-h/.flow-v` `.flow-group` `.flow-box` `.flow-arrow` `.flow-col` `.flow-step` `.flow-desc` `.icon-item` + `.bg-blue/-orange/-pink/-green/-purple/-red/-dark/-accent` | The default mechanism for 5+ box diagrams; stage height/width auto-normalize |
-| Tabs/compare | `.tab-bar/.tab-btn/.tab-content` `.tab-set` (self-contained) `.compare-toggle/.compare-btn/.compare-content/.compare-highlight` | Auto-init per §4 |
+| Tabs/compare | `.tab-bar/.tab-btn/.tab-content` `.tab-panels` (panel stack) `.tab-set` (self-contained) `.compare-toggle/.compare-btn/.compare-content/.compare-highlight` | Auto-init per §4 |
 | Timeline/steps | `.timeline/.timeline-step/-dot/-label/-desc/-connector` `.steps-container` `.steps--horizontal/--vertical/--circle/--rect/--icon` `.step-item/-marker/-label/-desc` `.agenda-timeline/.agenda-step/-dot/-label/-connector` | |
 | Checklist/quiz | `.checklist` `.checklist-detail` `.quiz`+`data-quiz` `.quiz-option`+`data-correct` | §4/§7 |
-| Code | `.code-block` `.code-label` + `.keyword/.string/.comment/.number/.function` span | Highlight either directly via spans or with the highlight.js CDN |
+| Code | `.code-block` `.code-label` + `.keyword/.string/.comment/.number/.function` span | Highlight either directly via spans or with the highlight.js CDN. Inside the fit box the block never scrolls — it takes part in fit (§11). Inline `<code>` in text is mono, same size, unbroken |
 | Dashboard | `.dashboard-grid` `.node-grid/.node-cell(-ready/-cordoned/-terminating/-empty)` `.event-log` `.data-table` `.qos-card/.qos-display` `.simulator-layout/.simulator-results` `.slider-container/-group/-row/-value` `.command-card/-header/-output` `.chart-container` `.yaml-output` `.mode-selector/-btn/-content` `.alert-toggle` | Interactive dashboards/simulators |
-| Typography helpers | `.eyebrow` `.heading-group` `.text-blue/-green/-orange/-pink/-purple/-red/-icon` | |
+| Typography helpers | `.eyebrow` `.heading-group` `.text-blue/-green/-orange/-pink/-purple/-red/-icon` (also win on h1-h4) `.nowrap` | |
 | Canvas | `.canvas-container` (aspect-ratio 960/400) `.canvas-controls` | |
 | Buttons | `.btn/.btn-primary/.btn-sm/.btn-group` `.export-toolbar/.export-btn` | |
 | Framework-only (do not use directly) | `.progress-bar` `.slide-counter/-number/-footer/-logo/-ref` `.nav-hint` `.slide-sidebar/.sidebar-thumb*` `.overview-mode` `.presenter-*` `.export-overlay/-progress*` | Generated/managed by JS |
@@ -315,6 +319,16 @@ revealed layout is what fits. Consequences for deck scripts and `:::script`/`:::
   Theme rules use `:is(.slide-body, .fit-box) > X` for this reason.
 - Percent-based heights inside the box resolve against an auto-height parent; cap images and
   fixed-size widgets in `rem` (which scales with the zoom), not `%`.
+- Code blocks take part in fit: inside `.fit-box`, `.code-block` has no inner scroll
+  (`overflow: visible`, `max-height: none`) and widens to its longest line
+  (`width: max-content; min-width: 100%`), so a long or tall listing makes ReactiveFit shrink
+  the slide — and `FIT_OVERFLOW` fires if it still does not fit at `MIN` — instead of being
+  clipped or scrolled. Do not cap code with `%` heights or `overflow-y: auto`; trim the
+  listing or split the slide. A slide that genuinely needs a scrolling listing opts out with
+  `data-fit="off"` (`@fit: off`). Start `<pre>` right after `.code-label` with no whitespace:
+  `.code-block` is `white-space: pre`, so indentation between the tags renders as blank lines.
+- Tabbed slides are measured with every panel stacked (§4), i.e. at the tallest panel, so the
+  tab-click re-fit (`shrinkOnly`) keeps the same zoom.
 
 **Result attributes** on the `.slide`:
 

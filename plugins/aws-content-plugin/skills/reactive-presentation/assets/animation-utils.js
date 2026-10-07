@@ -432,11 +432,13 @@ function drawGroup(ctx, x, y, w, h, label, color) {
   ctx.setLineDash([]);
 
   if (label) {
+    // Set the label font BEFORE measuring: measureText uses the current ctx.font, so the
+    // background chip was sized with whatever font the previous draw call left behind.
+    ctx.font = '500 12px Pretendard, sans-serif';
     ctx.fillStyle = Colors.bgSecond;
     const textWidth = ctx.measureText(label).width + 12;
     ctx.fillRect(x + 10, y - 10, textWidth, 20);
     ctx.fillStyle = color || Colors.textSec;
-    ctx.font = '500 12px Pretendard, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, x + 16, y);
