@@ -55,6 +55,7 @@ python3 {skill-dir}/scripts/measure_deck.py <deck> --viewports 1920x1080,1280x72
 | `UNDERFILL` | WARN | Visible content bounding box in `.slide-body` is < 55% of the body height. Slides without a `.slide-header`, or with class `title-slide`/`cover-slide`/`section-slide`/`closing-slide`, are exempt | Add content (card descriptions, a second row), enlarge the pattern, or merge with the next slide |
 | `MIN_FONT` | WARN / FAIL | Effective text size (computed `font-size` × fit zoom) below 22px (11pt) → WARN; below 18px (9pt) → FAIL. One finding per slide, pointing at the smallest element | Remove manual font shrinking; use role tokens (`--fs-caption` is the floor) and let the fit engine scale |
 | `FIT_OVERFLOW` | FAIL | Slide carries `data-fit-overflow` — content still does not fit at the minimum fit scale (0.8) | Split the slide |
+| `DECK_OFFSCREEN` | FAIL | The scaled deck box is not fully inside the viewport (each `--viewports` size, sidebar as loaded and hidden) — the bottom or side of every slide is cut off | Do not give `.slide-deck` auto margins or a viewport-based size; keep the theme.css fixed-canvas rules |
 
 **Density rules** (how the fit engine sizes a slide):
 

@@ -157,3 +157,21 @@ console.log([
 ' "$JS" 2>&1 || true)"
   assert_eq "icon=false half=false big=true full=true keep=false attr=true class=true" "$CHROME_OUT" "slideHidesChrome: icons and a half-slide image keep the chrome; >=60% image, data-hide-chrome, .full-bleed hide it; data-keep-chrome wins"
 fi
+
+# --- 9. Review round 3: deck stays in the viewport, quiz feedback is textual, thumbnail ids ---
+TC9FLAT="$(tr '\n' ' ' < "$RP/assets/theme.css" 2>/dev/null || true)"
+assert_grep_match "\.slide-deck \{[^}]*margin: 0;" "$TC9FLAT" ".slide-deck uses margin 0 so body centres an oversized deck (auto margins pushed it off-screen)"
+assert_grep_no_match "\.slide-deck \{[^}]*margin: auto" "$TC9FLAT" ".slide-deck has no auto margin"
+M9="$(cat "$RP/scripts/measure_deck.py" 2>/dev/null || true)"
+assert_contains "$M9" "DECK_OFFSCREEN" "measure_deck.py checks that the scaled deck box is inside the viewport (DECK_OFFSCREEN)"
+assert_contains "$M9" "hideSidebar" "DECK_OFFSCREEN also checks the deck with the sidebar hidden"
+Q9="$(cat "$RP/assets/quiz-component.js" 2>/dev/null || true)"
+assert_grep_match "feedback\.className = 'quiz-feedback'" "$Q9" "quiz-component creates .quiz-feedback when the author omitted it (no colour-only result)"
+assert_contains "$Q9" "aria-live" "quiz feedback is announced (aria-live)"
+assert_contains "$Q9" "shrinkOnly: true" "quiz re-fits the slide shrink-only after revealing feedback"
+assert_grep_no_match "font-size: \.88rem" "$Q9" "quiz explanation text is not below the caption floor"
+assert_contains "$(cat "$RP/assets/slide-framework.js" 2>/dev/null || true)" "removeAttribute('id')" "sidebar thumbnail clones drop ids (getElementById keeps returning the live slide)"
+GD9="$(cat "$RP/assets/example-deck/index.html" 2>/dev/null || true)"
+assert_contains "$GD9" 'class="quiz-feedback"' "golden deck quiz has a .quiz-feedback element"
+assert_grep_match 'data-correct="true" data-explain="' "$GD9" "golden deck quiz options carry data-explain"
+assert_grep_match "consolidateAfter" "$GD9" "golden deck NodePool sets consolidateAfter (required by the Karpenter v1.0 CRD)"

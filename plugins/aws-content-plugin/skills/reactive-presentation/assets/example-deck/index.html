@@ -43,6 +43,7 @@
     .closing-body { justify-content: center; align-items: center; text-align: center; }
     .closing-title { font-size: var(--text-4xl); }
     .closing-sub { color: var(--on-surface-muted); font-size: var(--text-lg); margin-top: var(--space-3); }
+    .closing-takeaway { margin-top: var(--space-5); color: var(--on-surface); font-weight: var(--weight-semibold); }
     .closing-link { margin-top: var(--space-6); }
     .closing-link a { color: var(--accent); }
   </style>
@@ -94,7 +95,7 @@
         <div class="agenda-step">
           <div class="agenda-dot">3</div>
           <div class="agenda-label"><strong>남는 책임과 마이그레이션</strong><span>10분</span>
-            <span class="agenda-note">PDB·AMI 의존·SSH runbook 점검표와 Karpenter 전환 포인트</span></div>
+            <span class="agenda-note">PDB(Pod<wbr>Disruption<wbr>Budget)·AMI 의존·SSH runbook 점검표와 Karpenter 전환 포인트</span></div>
         </div>
       </div>
       <div class="card-grid">
@@ -137,7 +138,7 @@
           <strong class="text-orange">핵심 애드온</strong>
           <div class="card-desc">노드 내장: 네트워킹·DNS·kube-proxy·<span class="nowrap">EBS CSI</span> 노드 기능</div>
           <div class="card-desc">클러스터 밖(AWS 운영): Karpenter·LB Controller·<span class="nowrap">EBS CSI</span> 컨트롤러</div>
-          <div class="card-desc card-note"><span class="card-note-label">더 이상 안 하는 일</span>핵심 애드온 호환성 매트릭스 검사, 애드온별 IAM(IRSA/Pod Identity) 설정 → 클러스터 IAM 역할로 대체</div>
+          <div class="card-desc card-note"><span class="card-note-label">더 이상 안 하는 일</span>핵심 애드온 호환성 매트릭스 검사, 애드온별 IRSA(IAM Roles for Service Accounts)·Pod Identity 설정 → 클러스터 IAM 역할로 대체</div>
         </div>
         <div class="metric-card card-text fragment fade-up" data-fragment-index="4">
           <strong class="text-purple">보안 경화</strong>
@@ -154,7 +155,8 @@
 카드 네 장을 하나씩 열면서 설명합니다. 첫 줄은 Auto Mode가 가져간 기능, 구분선 아래는 그 결과
 운영자가 더 이상 하지 않는 일입니다. OS 패치는 최대 수명 21일(기본 336시간=14일)에 더해 새 AMI가
 나오면 주 1회 수준으로 drift 교체가 일어난다는 점을 강조하세요. 애드온은 노드에 내장된 기능과
-클러스터 밖에서 AWS가 운영하는 컨트롤러로 나뉩니다. SSH가 막혀 있는 것에 당황하는 분들이 많은데,
+클러스터 밖에서 AWS가 운영하는 컨트롤러로 나뉩니다. 용어: CRD는 CustomResourceDefinition,
+CSI는 Container Storage Interface, SSM은 AWS Systems Manager입니다. SSH가 막혀 있는 것에 당황하는 분들이 많은데,
 진단은 NodeDiagnostic·kubectl debug node·get-console-output으로 하고 문제 노드는 교체하는 게
 설계 의도입니다.
 {cue: pause} 카드 전부 공개 후 잠깐 멈추고 질문 받기.
@@ -253,8 +255,9 @@ NodePool이라는 개념은 동일하므로 학습 곡선은 낮지만, NodeClas
 drift 교체가 일어나므로, 교체는 사실상 매주 있다고 보세요. 배치는 Spot 전용 풀을 따로 파는 게
 정석이고, Job은 backoffLimit·podFailurePolicy로 중단 재시도를 처리하며, 체크포인트 없는 긴 작업은
 On-Demand에 남겨 둡니다. 카드의 "최대 90% 절감"은 AWS가 Amazon EC2 Spot Instances 페이지에 게시한
-EC2 Spot 수치로 인용하세요. 시스템 풀의 CriticalAddonsOnly taint는 metrics-server 같은 애드온이
-tolerate합니다 — CoreDNS는 노드 내장 서비스로, Auto Mode가 노드마다 시스템 서비스로 실행합니다.
+EC2 Spot 수치로 인용하세요. 시스템 풀의 CriticalAddonsOnly taint는 CoreDNS 같은 EKS 애드온이
+tolerate합니다(AWS 문서 표현). 순수 Auto Mode 클러스터에서는 CoreDNS가 노드의 시스템 프로세스로 돌기
+때문에 애드온으로 설치할 필요가 없습니다.
 toleration은 배치를 허용할 뿐 강제하지 않으니, system 풀에 고정하려면 nodeSelector
 karpenter.sh/nodepool: system을 함께 걸고, 일반 워크로드의 tolerations는 admission 정책으로 검사하세요.
 {cue: demo} 실제 클러스터에서 kubectl get nodepools 보여주기 (약 2분).
@@ -319,7 +322,7 @@ karpenter.sh/nodepool: system을 함께 걸고, 일반 워크로드의 toleratio
     </div>
     <template class="notes" data-timing="3min">
 [요약]
-- 세 그룹 순차 공개: 진입(ALB) → 워크로드(노드) → 스토리지(EBS)
+- 세 그룹 순차 공개: 진입(ALB: Application Load Balancer) → 워크로드(노드) → 스토리지(EBS)
 - 노드 내장: 네트워킹·DNS·kube-proxy·EBS CSI 노드 기능 / 클러스터 밖(AWS 운영): Karpenter·LB Controller·EBS CSI 컨트롤러
 - NetworkPolicy는 ConfigMap amazon-vpc-cni의 enable-network-policy-controller: "true"로 활성화해야 동작
 플로우 그룹을 하나씩 열면서, 기존에 helm으로 설치하던 컴포넌트가 어디로 갔는지 짚습니다.
@@ -349,16 +352,18 @@ EKS 애드온 업그레이드는 여전히 우리 몫입니다.
           <span class="keyword">operator</span>: In
           <span class="keyword">values</span>: [<span class="string">"spot"</span>]  <span class="comment"># 중단 허용 워크로드 전용</span>
   <span class="keyword">disruption</span>:
-    <span class="keyword">consolidationPolicy</span>: WhenEmptyOrUnderutilized</pre></div>
+    <span class="keyword">consolidationPolicy</span>: WhenEmptyOrUnderutilized
+    <span class="keyword">consolidateAfter</span>: <span class="string">30s</span>  <span class="comment"># v1.0 CRD 필수 필드</span></pre></div>
     </div>
     <template class="notes" data-timing="2min">
 [요약]
 - 네 블록: nodeClassRef(Auto Mode NodeClass default) · taints(workload-type=batch:NoSchedule) · requirements(capacity-type: spot) · disruption
-- consolidationPolicy는 v1 스키마 기준 spec.disruption 아래
+- consolidationPolicy·consolidateAfter는 v1 스키마 기준 spec.disruption 아래 (consolidateAfter는 Karpenter v1.0 CRD에서 필수)
 API 모양은 karpenter.sh/v1 NodePool을 따르지만, Auto Mode는 자체 라벨과 NodeClass를 씁니다 —
 nodeClassRef가 group eks.amazonaws.com의 NodeClass default를 가리키는 이유입니다. taints는 5번
 슬라이드의 batch 전용 taint입니다 — Job 쪽에는 toleration과 nodeSelector를 함께 겁니다. Spot 지정은
-karpenter.sh/capacity-type 요구 조건 하나면 됩니다. 주의할 점 하나 — expireAfter 같은 노드 수명
+karpenter.sh/capacity-type 요구 조건 하나면 됩니다. disruption 블록에는 consolidateAfter도 함께 둡니다 —
+AWS 문서의 Auto Mode NodePool 예시도 30s를 씁니다. 주의할 점 하나 — expireAfter 같은 노드 수명
 설정은 spec.template.spec 아래에 두고 spec.disruption에 두지 않습니다. v1 마이그레이션에서 자주
 틀리는 부분입니다.
     </template>
@@ -412,10 +417,11 @@ eks:kubernetes-node-pool-name 태그는 Auto Mode가 클러스터 IAM 역할 정
           Auto Mode 노드에 SSH 접속이 필요한 상황, 올바른 대응은?
         </p>
         <div class="quiz-options quiz-grid">
-          <button class="quiz-option" data-correct="false">A) EC2 콘솔에서 키페어를 교체한다</button>
-          <button class="quiz-option" data-correct="false">B) 서포트 케이스로 SSH 허용을 요청한다</button>
-          <button class="quiz-option" data-correct="true">C) NodeDiagnostic·kubectl debug node로 진단하고, 필요하면 노드를 교체한다</button>
+          <button class="quiz-option" data-correct="false" data-explain="Auto Mode 노드는 SSH·SSM 접근 자체를 허용하지 않습니다 — 키페어를 바꿔도 접속 경로가 없습니다.">A) EC2 콘솔에서 키페어를 교체한다</button>
+          <button class="quiz-option" data-correct="false" data-explain="SSH·SSM 차단은 Auto Mode의 설계입니다 — 노드 진단은 Kubernetes·AWS API로 합니다.">B) 서포트 케이스로 SSH 허용을 요청한다</button>
+          <button class="quiz-option" data-correct="true" data-explain="NodeDiagnostic으로 노드 로그를 S3에 모으고, kubectl debug node로 노드를 살펴봅니다.">C) NodeDiagnostic·kubectl debug node로 진단하고, 필요하면 노드를 교체한다</button>
         </div>
+        <div class="quiz-feedback" aria-live="polite"></div>
       </div>
     </div>
     <template class="notes" data-timing="2min">
@@ -427,7 +433,9 @@ eks:kubernetes-node-pool-name 태그는 Auto Mode가 클러스터 IAM 역할 정
 Auto Mode 노드는 SSH뿐 아니라 SSM 세션도 열리지 않지만, 진단 수단이 없는 것은 아닙니다.
 NodeDiagnostic 리소스로 노드 로그를 S3로 받고, kubectl debug node --profile=sysadmin으로 디버그
 컨테이너를 붙이고, aws ec2 get-console-output으로 콘솔 출력을 봅니다. runbook 1단계를
-"NodeDiagnostic으로 로그 수집"으로 바꾸는 것이 9번 체크리스트 세 번째 항목입니다.
+"NodeDiagnostic으로 로그 수집"으로 바꾸는 것이 9번 체크리스트 세 번째 항목입니다. 참고로 2026년
+4월 22일부터 새 Auto Mode 인스턴스는 기본적으로 EC2 콘솔 목록과 DescribeInstances 같은 목록 API에서
+숨겨집니다 — 노드가 콘솔에 보이지 않으면 managed resource visibility 설정을 확인하세요.
     </template>
   </div>
 
@@ -438,6 +446,7 @@ NodeDiagnostic 리소스로 노드 로그를 S3로 받고, kubectl debug node --
       <p class="closing-sub">
         EKS Auto Mode — 운영이 사라진 클러스터
       </p>
+      <p class="closing-takeaway">노드 운영은 AWS가 가져갔고, 워크로드 설계 책임은 그대로 남는다</p>
       <p class="closing-link"><a href="./toc.html">← 세션 목차로</a></p>
     </div>
     <template class="notes" data-timing="5min">

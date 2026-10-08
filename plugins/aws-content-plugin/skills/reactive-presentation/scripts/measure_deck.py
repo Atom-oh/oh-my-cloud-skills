@@ -18,6 +18,8 @@ Checks per slide (per viewport, per theme, per canvas step):
   UNDERFILL     content fills < 55% of .slide-body height (WARN; cover/title/section/closing exempt)
   MIN_FONT      effective text size (font-size x CSS zoom) < 22px WARN, < 18px FAIL
   FIT_OVERFLOW  slide carries data-fit-overflow — content does not fit even at the minimum fit scale
+  DECK_OFFSCREEN the scaled .slide-deck box is not fully inside the viewport (checked with the
+                sidebar as the deck loads it, and hidden) — part of every slide is cut off
 
 UNDERFILL / MIN_FONT / FIT_OVERFLOW are measured once per slide (canvas step 0)
 after `ReactiveFit.fitSlide(slide, {force:true})` and de-duplicated across
@@ -353,6 +355,45 @@ _RATIO_PROBE_JS = """
 }
 """
 
+# Viewport containment of the scaled deck. Every other rule measures relative to the
+# slide, so a deck pushed partly off-screen (e.g. auto margins defeating body's
+# centering on a viewport shorter than 1080px) passes them all. `hide` first hides the
+# sidebar through the framework (so --deck-scale is recomputed), else just reports.
+_DECK_VIEW_JS = """
+(hide) => {
+  const d = document.querySelector('.slide-deck');
+  if (!d) return null;
+  if (hide) {
+    try {
+      if (typeof deck !== 'undefined' && deck && typeof deck.hideSidebar === 'function') deck.hideSidebar();
+    } catch (e) { /* best effort */ }
+    document.body.classList.remove('sidebar-visible');
+  }
+  const r = d.getBoundingClientRect();
+  return { left: r.left, top: r.top, right: r.right, bottom: r.bottom,
+           vw: window.innerWidth, vh: window.innerHeight,
+           sidebar: document.body.classList.contains('sidebar-visible') };
+}
+"""
+
+
+def _deck_view_findings(box, block, vp):
+    """DECK_OFFSCREEN finding (or none) for one _DECK_VIEW_JS result."""
+    if not box:
+        return []
+    out = max(-box['left'], -box['top'], box['right'] - box['vw'], box['bottom'] - box['vh'])
+    if out <= 2:
+        return []
+    edges = [name for name, v in (('left', -box['left']), ('top', -box['top']),
+                                  ('right', box['right'] - box['vw']),
+                                  ('bottom', box['bottom'] - box['vh'])) if v > 2]
+    state = 'sidebar on' if box['sidebar'] else 'sidebar off'
+    return [dict(rule='DECK_OFFSCREEN', severity='FAIL', file=block, slide=None,
+                 el='.slide-deck', viewport=vp, theme=None, step=None,
+                 message=(f"deck box extends {round(out)}px past the viewport "
+                          f"({'/'.join(edges)}, {state}) — part of every slide is cut off"))]
+
+
 _STEP_JS = """
 (dir) => {
   const slide = document.querySelector('.slide-deck .slide.active');
@@ -422,7 +463,13 @@ def measure(deck_dir: Path, blocks, viewports, themes, max_steps, shots_dir,
                             page.evaluate(
                                 "() => document.querySelector('.slide-deck')"
                                 ".classList.add('theme-dark')")
+                        if theme == themes[0]:
+                            findings.extend(_deck_view_findings(
+                                page.evaluate(_DECK_VIEW_JS, False), block, f"{vw}x{vh}"))
                         n = page.evaluate(_PREPARE_JS)
+                        if theme == themes[0]:
+                            findings.extend(_deck_view_findings(
+                                page.evaluate(_DECK_VIEW_JS, True), block, f"{vw}x{vh}"))
                         page.wait_for_timeout(200)
 
                         for i in range(n):

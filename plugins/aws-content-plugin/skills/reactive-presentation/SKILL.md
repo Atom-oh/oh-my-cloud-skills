@@ -94,7 +94,7 @@ Per-block checks: slide count matches · `SlideFramework` options (footer/logoSr
 python3 {skill-dir}/scripts/check_deck.py <deck>      # static: framework wiring, notes, quiz answers, raw hex/inline style
 python3 {skill-dir}/scripts/measure_deck.py <deck> --viewports 1920x1080,1280x720,3840x2160 --themes light,dark
 ```
-`measure_deck.py` renders in headless Chromium and reports OVERFLOW · OVERLAP · CLIPPED_TEXT · LOW_CONTRAST · RATIO_DRIFT · BROKEN_IMAGE · UNDERFILL · MIN_FONT · FIT_OVERFLOW. Bar: **no FAIL; UNDERFILL clean**. Thresholds and fixes: **authoring-rules.md §1 "Measured density gates"**.
+`measure_deck.py` renders in headless Chromium and reports OVERFLOW · OVERLAP · CLIPPED_TEXT · LOW_CONTRAST · RATIO_DRIFT · BROKEN_IMAGE · UNDERFILL · MIN_FONT · FIT_OVERFLOW · DECK_OFFSCREEN. Bar: **no FAIL; UNDERFILL clean**. Thresholds and fixes: **authoring-rules.md §1 "Measured density gates"**.
 
 > **Screenshot verification (required)**: use Playwright MCP to capture all interactive/Canvas slides at **FHD 1920×1080** (primary resolution) + **4K 3840×2160**. Check: text legibility, canvas proportions, no overflow, controls visible. Capture after interactions (tabs/sliders/buttons). **For Canvas step slides, walk through all steps with ArrowDown/Up, capturing each step** (check for overlap, alignment, legibility). Verify scaling with N (notes) and F (fullscreen). When reviewing captures, apply the **design self-critique: [references/design-direction.md](references/design-direction.md) §6 restraint checklist**.
 > Scaling: fixed 1920×1080 design canvas + `transform: scale(min(vw/1920, vh/1080))` → consistent pixels across FHD/4K.

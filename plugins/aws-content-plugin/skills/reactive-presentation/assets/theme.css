@@ -197,7 +197,12 @@ body {
   height: 1080px;
   width: calc(1080px * var(--slide-ratio-w) / var(--slide-ratio-h));
   flex: none;
-  margin: auto;
+  /* margin 0, not auto: on a viewport shorter (or narrower) than the 1080px layout box the
+     flex free space is negative, auto margins resolve to 0 AND disable body's centering, so
+     the box pinned to the top and the centre-origin scale pushed the bottom
+     (1080 - vh) / 2 px off-screen (180px at 1280x720). With margin 0 body's
+     align-items/justify-content centre the overflowing box on both axes. */
+  margin: 0;
   transform: scale(var(--deck-scale, 1));
   transform-origin: center center;
   position: relative;
@@ -671,14 +676,18 @@ body {
   flex-wrap: wrap;
 }
 .checklist li:hover { background: var(--bg-tertiary); }
+/* The box is an interactive control: sized in em so it tracks the item text (and the fit
+   zoom), centered on the first line ((1.45 - .75) / 2 = .35em with --leading-body), and
+   bordered in --on-surface-muted so it meets the 3:1 non-text contrast minimum
+   (--border measured about 1.2:1 against the page). */
 .checklist li .check {
-  width: var(--space-3); height: var(--space-3);
-  border: 2px solid var(--border);
+  width: .75em; height: .75em;
+  border: 2px solid var(--on-surface-muted);
   border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   transition: all var(--transition-fast);
   flex-shrink: 0;
-  margin-top: var(--space-1);
+  margin-top: .35em;
 }
 .checklist li.checked .check {
   background: var(--green);
@@ -1857,6 +1866,12 @@ body.sidebar-visible .slide-deck {
   transform-origin: top left;
   pointer-events: none;
   /* scale is calculated in JS and applied as inline style */
+}
+/* createSidebar() copies the slide's theme-dark/-light class onto the clone; paint it
+   like .slide.theme-dark so a dark cover stays dark in its thumbnail. */
+.sidebar-thumb-content.theme-dark {
+  background: var(--surface-1);
+  color: var(--on-surface);
 }
 
 /* Hide sidebar in fullscreen (the root is the fullscreen element) */

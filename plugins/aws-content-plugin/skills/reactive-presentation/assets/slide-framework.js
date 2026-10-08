@@ -209,6 +209,13 @@ class SlideFramework {
       const content = document.createElement('div');
       content.className = 'sidebar-thumb-content';
       content.innerHTML = slide.innerHTML;
+      // The clone sits BEFORE the deck (sidebar is prepended to body), so duplicated ids
+      // would make getElementById() return the thumbnail copy instead of the live slide.
+      content.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+      // Carry the slide's theme scope so a dark slide renders dark in its thumbnail too.
+      ['theme-dark', 'theme-light'].forEach(c => {
+        if (slide.classList.contains(c)) content.classList.add(c);
+      });
 
       // Calculate scale after layout: thumbWidth / 1920
       // Use a fixed approximation; actual width is ~196px (220 - 2*10 padding - 2*2 border)
