@@ -92,6 +92,12 @@ class QuizManager {
               });
               if (feedback) {
                 feedback.classList.remove('show');
+                // Feedback is gone again: re-fit fully so the retry is not left at the
+                // reduced zoom the shrink-only pass applied.
+                const retrySlide = quiz.closest('.slide');
+                if (retrySlide && window.ReactiveFit) {
+                  window.ReactiveFit.fitSlide(retrySlide, { force: true });
+                }
               }
             }, 1500);
           }

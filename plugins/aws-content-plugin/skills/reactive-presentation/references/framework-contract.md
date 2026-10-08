@@ -299,7 +299,7 @@ hand-shrink type to make a slide fit.
 **API** (`window.ReactiveFit`):
 
 ```js
-window.ReactiveFit = { MIN: 0.8, MAX: 1.35, TARGET: 0.94, fitSlide, fitAll }
+window.ReactiveFit = { MIN: 0.82, MAX: 1.35, TARGET: 0.94, fitSlide, fitAll }
 ReactiveFit.fitSlide(slideEl, { force, shrinkOnly })  // → applied zoom (number) or null when skipped
 ReactiveFit.fitAll({ force, shrinkOnly })             // fitSlide on every .slide-deck .slide (each in try/catch)
 ```
@@ -312,8 +312,8 @@ ReactiveFit.fitAll({ force, shrinkOnly })             // fitSlide on every .slid
 
 | Mode | Zoom range | Behavior |
 |------|-----------|----------|
-| `auto` | 0.8–1.35 | Default. Grows sparse slides and shrinks dense ones |
-| `shrink` | 0.8–1.0 | Only reduces; never enlarges |
+| `auto` | 0.82–1.35 | Default. Grows sparse slides and shrinks dense ones |
+| `shrink` | 0.82–1.0 | Only reduces; never enlarges |
 | `off` | — | Layout untouched; an existing `.fit-box` has its inline `zoom` cleared and the fit attributes are removed |
 
 In Remarp, `@fit: auto|shrink|off` on a slide emits `data-fit` on that slide's div; frontmatter
@@ -322,8 +322,9 @@ In Remarp, `@fit: auto|shrink|off` on a slide emits `data-fit` on that slide's d
 
 **Skip rules** (`fitSlide` returns `null`, nothing is wrapped or zoomed): the element is not a
 `.slide`, the deck is in `.overview-mode`, the slide has no `.slide-body` (cover/title/thank-you),
-mode is `off`, or the slide contains `canvas`, `iframe`, `.archify` or `.archify-diagram`
-(pixel-exact content).
+mode is `off`, or the slide contains `canvas`, `iframe`, `.archify`, `.archify-diagram` or `.mermaid`
+(pixel-exact or asynchronously rendered content). `MIN` is 0.82 so the 22px `--fs-caption` floor never
+renders below the 18px `MIN_FONT` FAIL line.
 
 **`.fit-box` wrapping**: on first fit the engine moves every child node of `.slide-body` into a
 runtime `<div class="fit-box">` and applies `zoom` to that box. It picks the largest zoom whose
@@ -350,7 +351,7 @@ revealed layout is what fits. Consequences for deck scripts and `:::script`/`:::
 **Result attributes** on the `.slide`:
 
 - `data-fit-scale="<zoom>"` — the applied zoom; also the cache key for non-forced calls.
-- `data-fit-overflow=""` — present only when content still overflows at `MIN` (0.8); the fit
+- `data-fit-overflow=""` — present only when content still overflows at `MIN` (0.82); the fit
   stays at 0.8. Split the slide.
 
 **When it runs**:

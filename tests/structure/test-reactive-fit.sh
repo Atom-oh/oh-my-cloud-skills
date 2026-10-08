@@ -189,3 +189,6 @@ assert_contains "$(cat "$RP/scripts/export_pptx.py" 2>/dev/null || true)" "deck.
 assert_contains "$(cat "$RP/scripts/measure_deck.py" 2>/dev/null || true)" "hidden_view = page.evaluate(_DECK_VIEW_JS, True)" "measure_deck hides the sidebar for every theme, not only the first"
 TC10FLAT="$(tr '\n' ' ' < "$RP/assets/theme.css" 2>/dev/null || true)"
 assert_grep_match "\.slide-deck\.overview-mode,[^{]*\{[^}]*height: 100vh !important;[^}]*align-self: flex-start;" "$TC10FLAT" "overview grid is viewport-tall and top-aligned (body centring hid its first rows)"
+MIN10="$(grep -oE 'const MIN = [0-9.]+' "$RP/assets/slide-framework.js" 2>/dev/null | grep -oE '[0-9.]+$' || true)"
+FLOOR10="$(python3 -c "import sys; print('ok' if float(sys.argv[1]) * 22 >= 18 else 'low')" "${MIN10:-0}" 2>/dev/null || echo err)"
+assert_eq "ok" "$FLOOR10" "ReactiveFit MIN keeps the 22px caption floor at or above the 18px MIN_FONT FAIL line"

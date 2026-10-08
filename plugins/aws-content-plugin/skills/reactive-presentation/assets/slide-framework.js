@@ -738,7 +738,8 @@ class SlideFramework {
 //    not used for the fit test.
 //  - rem/px lengths scale with zoom; percentage widths do not.
 (function () {
-  const MIN = 0.8;
+  // 0.82, not 0.8: the 22px caption floor times MIN must stay >= 18px (MIN_FONT FAIL).
+  const MIN = 0.82;
   const MAX = 1.35;
   const TARGET = 0.94;
   const STYLE_ID = 'reactive-fit-style';

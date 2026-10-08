@@ -7,8 +7,9 @@
   <!-- Golden example deck: the reference for hand-authored decks.
        Deployment shape: this file + common/ = the skill's assets/*.css and *.js, plus
        the referenced official icons under common/aws-icons/services/ (copied from the
-       skill's icons/ library — only the ones this deck uses). Every pattern here passes
-       check_deck.py and measure_deck.py clean at 1280x720 / 1920x1080 / 3840x2160,
+       skill's icons/ library — only the ones this deck uses). Assembled that way (the
+       in-repo folder alone has no common/, so check_deck.py reports BROKEN_REF), every
+       pattern here passes check_deck.py and measure_deck.py clean at 1280x720 / 1920x1080 / 3840x2160,
        light+dark. -->
   <link rel="stylesheet" href="./common/theme.css">
   <style>
@@ -435,7 +436,8 @@ NodeDiagnostic 리소스로 노드 로그를 S3로 받고, kubectl debug node --
 컨테이너를 붙이고, aws ec2 get-console-output으로 콘솔 출력을 봅니다. runbook 1단계를
 "NodeDiagnostic으로 로그 수집"으로 바꾸는 것이 9번 체크리스트 세 번째 항목입니다. 참고로 2026년
 4월 22일부터 새 Auto Mode 인스턴스는 기본적으로 EC2 콘솔 목록과 DescribeInstances 같은 목록 API에서
-숨겨집니다 — 노드가 콘솔에 보이지 않으면 managed resource visibility 설정을 확인하세요.
+숨겨집니다 — 노드가 콘솔에 보이지 않으면 managed resource visibility 설정을 확인하세요
+(출처: https://docs.aws.amazon.com/eks/latest/userguide/automode-learn-instances.html).
     </template>
   </div>
 

@@ -611,7 +611,7 @@ Slide directives control individual slide behavior. Place them on the line immed
 | `@class` | CSS class names | Additional CSS classes |
 | `@timing` | `Xmin` or `Xs` | Target duration for this slide |
 | `@canvas-id` | identifier | Canvas element ID for `@type: canvas` |
-| `@fit` | `auto`, `shrink`, `off` | Autofit mode for `.slide-body` content (emits `data-fit` on the slide; overrides frontmatter `fit`). `auto` scales 0.8–1.35, `shrink` only reduces (0.8–1.0), `off` leaves the layout untouched. Unknown values → `INVALID_FIT` warning in `validate` |
+| `@fit` | `auto`, `shrink`, `off` | Autofit mode for `.slide-body` content (emits `data-fit` on the slide; overrides frontmatter `fit`). `auto` scales 0.82–1.35, `shrink` only reduces (0.82–1.0), `off` leaves the layout untouched. Unknown values → `INVALID_FIT` warning in `validate` |
 | `@img` | `path [align] [size]` | Insert styled image (see below) |
 
 ### @img Directive

@@ -91,7 +91,7 @@ Per-block checks: slide count matches · `SlideFramework` options (footer/logoSr
 
 **Output gates (required on the built deck)**:
 ```bash
-python3 {skill-dir}/scripts/check_deck.py <deck>      # static: framework wiring, notes, quiz answers, raw hex/inline style
+python3 {skill-dir}/scripts/check_deck.py <deck>      # run on the built/assembled deck (with common/); static: framework wiring, notes, quiz answers, raw hex/inline style
 python3 {skill-dir}/scripts/measure_deck.py <deck> --viewports 1920x1080,1280x720,3840x2160 --themes light,dark
 ```
 `measure_deck.py` renders in headless Chromium and reports OVERFLOW · OVERLAP · CLIPPED_TEXT · LOW_CONTRAST · RATIO_DRIFT · BROKEN_IMAGE · UNDERFILL · MIN_FONT · FIT_OVERFLOW · DECK_OFFSCREEN. Bar: **no FAIL; UNDERFILL clean**. Thresholds and fixes: **authoring-rules.md §1 "Measured density gates"**.
