@@ -50,7 +50,7 @@
   --border:       #d0d7dc;
   --text-primary:   var(--on-surface);
   --text-secondary: #414d5c;
-  --text-muted:     #7d8998;
+  --text-muted:     #5f6b7a;  /* >=4.5:1 on #eaedee (footer, slide number) */
   --text-accent:  #0972d3;
   --border-focus: #0972d3;
   --cyan: #0891b2;
@@ -74,7 +74,7 @@
   --border:       #2e425a;
   --text-primary:   #e9ebed;
   --text-secondary: #9fb0c1;
-  --text-muted:     #6c7f93;
+  --text-muted:     #8d99a8;
   --text-accent:  #539fe5;
   --border-focus: #539fe5;
   --cyan: #00cec9;
@@ -99,7 +99,7 @@
   --border:       #d7d3c7;
   --text-primary:   var(--on-surface);
   --text-secondary: var(--on-surface-muted);
-  --text-muted:     #8a8474;
+  --text-muted:     #6b6557;
   --text-accent:  #b8560b;
   --border-focus: #b8560b;
 }
