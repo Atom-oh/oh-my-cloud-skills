@@ -1707,7 +1707,10 @@ class RemarpHTMLGenerator:
         _theme_cls = f' theme-{_theme_dir}' if _theme_dir in ('dark', 'light') else ''
         # `@fit: auto|shrink|off` wins over the frontmatter `fit:` default; invalid
         # values emit nothing (validation reports them separately).
-        _fit_mode = _normalize_fit(slide.directives.get('fit')) or self.default_fit
+        # An invalid per-slide value (INVALID_FIT) falls back to the deck default.
+        _fit_mode = _normalize_fit(slide.directives.get('fit'))
+        if _fit_mode not in FIT_MODES:
+            _fit_mode = self.default_fit
         _fit_attr = f' data-fit="{_fit_mode}"' if _fit_mode in FIT_MODES else ''
         # Match the first slide div whether or not it carries extra classes
         # (e.g. `slide title-slide`), preserving them while prepending the theme class.

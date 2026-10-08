@@ -467,9 +467,12 @@ def measure(deck_dir: Path, blocks, viewports, themes, max_steps, shots_dir,
                             findings.extend(_deck_view_findings(
                                 page.evaluate(_DECK_VIEW_JS, False), block, f"{vw}x{vh}"))
                         n = page.evaluate(_PREPARE_JS)
+                        # Every theme reloads the page, so the sidebar must be hidden
+                        # (and --deck-scale recomputed) each time; report it once.
+                        hidden_view = page.evaluate(_DECK_VIEW_JS, True)
                         if theme == themes[0]:
                             findings.extend(_deck_view_findings(
-                                page.evaluate(_DECK_VIEW_JS, True), block, f"{vw}x{vh}"))
+                                hidden_view, block, f"{vw}x{vh}"))
                         page.wait_for_timeout(200)
 
                         for i in range(n):

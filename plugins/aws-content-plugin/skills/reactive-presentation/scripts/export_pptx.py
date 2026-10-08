@@ -100,8 +100,10 @@ def _discover_blocks(project_dir: Path):
 
 # Runs inside the page: freeze motion, reveal fragments, finish canvas steps,
 # hide navigation chrome that has no meaning on a static slide. The sidebar
-# must also go: when visible it shrinks .slide-deck to calc(100vw - 220px),
-# so a 1920px viewport would capture a ~1700px deck.
+# must also go: while it is visible the framework scales the fixed 1920x1080
+# canvas into (100vw - 220px), so a 1920px viewport would capture a ~1700px deck.
+# Removing the class alone leaves --deck-scale stale, so hide it through the
+# framework and then pin the scale to the full viewport.
 _PREPARE_JS = """
 () => {
   const style = document.createElement('style');
@@ -110,7 +112,15 @@ _PREPARE_JS = """
     .progress-bar, .slide-counter, .nav-hint, .canvas-controls, .slide-sidebar { display: none !important; }
   `;
   document.head.appendChild(style);
+  try {
+    if (typeof deck !== 'undefined' && deck && typeof deck.hideSidebar === 'function') deck.hideSidebar();
+  } catch (e) { /* best effort */ }
   document.body.classList.remove('sidebar-visible');
+  const deckEl = document.querySelector('.slide-deck');
+  if (deckEl) {
+    const w = deckEl.offsetWidth || 1920, h = deckEl.offsetHeight || 1080;
+    deckEl.style.setProperty('--deck-scale', Math.min(window.innerWidth / w, window.innerHeight / h));
+  }
 
   // Lazy iframes inside display:none slides never load before capture —
   // force eager loading so @type: iframe slides don't export blank. A load

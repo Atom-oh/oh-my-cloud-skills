@@ -112,8 +112,9 @@ Brand colors extracted from a PPTX arrive as `--pptx-accent1/dk1/lt1/dk2/lt2` an
 
 ## 3. Scaling Model
 
-A fixed 1920×1080 design canvas: `.slide-deck` is scaled down as a whole to fit the viewport via
-`transform: scale(min(100vw/1920, 100vh/1080))`. Inside a slide, absolute px coordinates are safe to
+A fixed 1920×1080 design canvas: `.slide-deck` is scaled as a whole by `transform: scale(var(--deck-scale))`.
+`SlideFramework.updateDeckScale()` sets `--deck-scale` to `min(availW/1920, availH/1080)`, where `availW`
+excludes the 220px sidebar while it is visible, and recomputes it on resize and fullscreen changes. Inside a slide, absolute px coordinates are safe to
 use (the whole canvas scales together). **Never use viewport units (vw/vh) for content sizing** —
 they respond a second time outside the scale transform, breaking proportions.
 

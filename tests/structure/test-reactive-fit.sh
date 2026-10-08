@@ -80,6 +80,10 @@ assert_contains "$HTML" 'data-fit="shrink"' "undirected slide inherits frontmatt
 printf -- '---\nremarp: true\nratio: "16:9"\n---\n## Bogus slide\n\n@fit: bogus\n\nBody text here.\n' > "$D/bad.md"
 VOUT="$(PYTHONDONTWRITEBYTECODE=1 python3 "$SC" validate "$D/bad.md" --json 2>&1 || true)"
 assert_contains "$VOUT" "INVALID_FIT" "validate --json reports INVALID_FIT for @fit: bogus"
+mkdir -p "$D/fb"
+printf -- '---\nremarp: true\nratio: "16:9"\nfit: shrink\n---\n## Bogus slide\n\n@fit: bogus\n\nBody text here.\n' > "$D/fb/deck.md"
+PYTHONDONTWRITEBYTECODE=1 python3 "$SC" build "$D/fb/deck.md" >/dev/null 2>&1 || true
+assert_contains "$(cat "$D/fb/slides/default.html" 2>/dev/null || true)" 'data-fit="shrink"' "an invalid per-slide @fit falls back to the deck default (fit: shrink)"
 rm -rf "$D"
 
 # --- 6. Docs mention the engine, gate rule IDs, directive and measurement script ---
@@ -175,3 +179,13 @@ GD9="$(cat "$RP/assets/example-deck/index.html" 2>/dev/null || true)"
 assert_contains "$GD9" 'class="quiz-feedback"' "golden deck quiz has a .quiz-feedback element"
 assert_grep_match 'data-correct="true" data-explain="' "$GD9" "golden deck quiz options carry data-explain"
 assert_grep_match "consolidateAfter" "$GD9" "golden deck NodePool sets consolidateAfter (required by the Karpenter v1.0 CRD)"
+
+# --- 10. PR review: late-loading content, capture scale, overview, padding ---
+J10="$(cat "$RP/assets/slide-framework.js" 2>/dev/null || true)"
+assert_contains "$J10" "__fitRecheck" "fitSlide re-fits a slide when an image inside it finishes loading"
+assert_grep_match "SKIP_SELECTOR = '[^']*\\.mermaid" "$J10" "Mermaid slides are skipped like canvas (their SVG renders after the fit pass)"
+assert_contains "$J10" "paddingBottom" "fit's available height excludes the slide-body padding"
+assert_contains "$(cat "$RP/scripts/export_pptx.py" 2>/dev/null || true)" "deck.hideSidebar()" "export_pptx hides the sidebar through the framework so --deck-scale covers the full viewport"
+assert_contains "$(cat "$RP/scripts/measure_deck.py" 2>/dev/null || true)" "hidden_view = page.evaluate(_DECK_VIEW_JS, True)" "measure_deck hides the sidebar for every theme, not only the first"
+TC10FLAT="$(tr '\n' ' ' < "$RP/assets/theme.css" 2>/dev/null || true)"
+assert_grep_match "\.slide-deck\.overview-mode,[^{]*\{[^}]*height: 100vh !important;[^}]*align-self: flex-start;" "$TC10FLAT" "overview grid is viewport-tall and top-aligned (body centring hid its first rows)"

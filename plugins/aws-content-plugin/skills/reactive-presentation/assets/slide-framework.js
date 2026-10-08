@@ -348,8 +348,8 @@ class SlideFramework {
   // the slide (or an element in it) carries data-hide-chrome or .full-bleed, or one <img>
   // covers at least FULL_BLEED_AREA of the slide. Inline images — service icons, a diagram
   // or screenshot in a column — keep the chrome. data-keep-chrome on the slide always keeps
-  // it. Both rects come from getBoundingClientRect, so the deck transform and the
-  // ReactiveFit zoom cancel out of the ratio.
+  // it. Both rects come from getBoundingClientRect, so the deck transform cancels out of
+  // the ratio; the image rect includes the ReactiveFit zoom, i.e. its visual coverage.
   slideHidesChrome(slide) {
     const FULL_BLEED_AREA = 0.6;
     if (slide.hasAttribute('data-keep-chrome')) return false;
@@ -742,7 +742,9 @@ class SlideFramework {
   const MAX = 1.35;
   const TARGET = 0.94;
   const STYLE_ID = 'reactive-fit-style';
-  const SKIP_SELECTOR = 'canvas, iframe, .archify, .archify-diagram';
+  // .mermaid renders its SVG asynchronously after the fit pass, so like canvas it is
+  // left at its authored size rather than fitted against the raw diagram source.
+  const SKIP_SELECTOR = 'canvas, iframe, .archify, .archify-diagram, .mermaid';
 
   function ensureStyle() {
     if (document.getElementById(STYLE_ID)) return;
@@ -808,6 +810,16 @@ class SlideFramework {
         body.appendChild(box);
       }
 
+      // 7b. An image without intrinsic dimensions has no box until it loads; re-fit the
+      //     slide (grow or shrink) once it does, so the cached scale reflects the image.
+      box.querySelectorAll('img').forEach(img => {
+        if (img.complete || img.__fitRecheck) return;
+        img.__fitRecheck = true;
+        const refit = () => { try { fitSlide(slideEl, { force: true }); } catch (e) { /* keep deck usable */ } };
+        img.addEventListener('load', refit, { once: true });
+        img.addEventListener('error', refit, { once: true });
+      });
+
       // 8. Disable transitions while measuring.
       slideEl.classList.add('fit-measuring');
       ensureStyle();
@@ -821,7 +833,10 @@ class SlideFramework {
       try {
         // 10. body.clientHeight is unzoomed (body itself is not zoomed), so it is the
         //     real available height; compare against the box's visual height.
-        const avail = body.clientHeight * TARGET;
+        //     clientHeight includes the body's padding, which the box cannot use.
+        const bs = getComputedStyle(body);
+        const inner = body.clientHeight - (parseFloat(bs.paddingTop) || 0) - (parseFloat(bs.paddingBottom) || 0);
+        const avail = inner * TARGET;
         const fits = (zoom) => {
           box.style.zoom = String(zoom);
           return box.offsetHeight * zoom <= avail && box.scrollWidth <= box.clientWidth + 1;

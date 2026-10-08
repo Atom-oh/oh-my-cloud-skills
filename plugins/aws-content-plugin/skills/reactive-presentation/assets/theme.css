@@ -1907,8 +1907,11 @@ body.sidebar-visible .slide-deck {
   max-width: none !important;
   max-height: none !important;
   width: 100vw !important;
-  height: auto !important;
-  min-height: 100vh;
+  /* Viewport-tall and self-scrolling: body centres its child, so a taller
+     auto-height grid would push the first rows above the viewport. */
+  height: 100vh !important;
+  align-self: flex-start;
+  align-content: start;
   overflow: auto !important;
   background: #000;
 }
