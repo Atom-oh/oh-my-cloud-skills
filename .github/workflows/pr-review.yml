@@ -12,7 +12,9 @@ jobs:
     name: AI Code Review
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: oh-my-cloud-skills-claude-arm
-    timeout-minutes: 30
+    # Worst case: panel 3x300s + Kiro preflight, chair 450s, format retry 450s,
+    # fallback 300s (~37 min). A cancelled job skips the comment/gate steps.
+    timeout-minutes: 40
     concurrency:
       group: pr-review-${{ github.event.pull_request.number }}
       cancel-in-progress: true
