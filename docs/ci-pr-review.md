@@ -92,6 +92,14 @@ The repository chair publisher classifies the original semantic result before
 scrubbing and checks the scrubbed result again. A blocking primary result cannot
 turn into a format/CLI failure followed by a clean fallback. Unpublishable blocking
 details produce a static FAIL report; no unscrubbed model text is echoed or stored.
+When the publisher withholds the primary chair's answer for a presentation rule
+(`source_format_rejected` or `scrubbed_format_rejected`), `synthesize.sh` asks the same
+chair once more, with the same inputs and tools plus a reminder of the inline-code rule
+(`CHAIR_FORMAT_RETRY_TIMEOUT`, default 300s). The rejected text is not sent back. A
+first answer that was BLOCKED stays the result unless the retry is itself a published
+BLOCKED review, so a retry can reveal a blocker's details but never clear it. A
+nonblocking first answer is ERROR either way; if its retry is still unpublishable, the
+existing fallback chair runs as before. There is exactly one retry.
 The legacy Kiro CLI can render away Markdown code markers, so Kiro is asked for
 narrative findings and plain path/line references, without code snippets or inline
 markup. This preserves its AWS/operations review responsibility and avoids guessing
