@@ -219,6 +219,7 @@ PRIMARY_MODEL="${ANTHROPIC_MODEL:-global.anthropic.claude-fable-5-1}"
 FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-global.anthropic.claude-opus-5-5}"
 CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-450}"
 CHAIR_FALLBACK_TIMEOUT="${CHAIR_FALLBACK_TIMEOUT:-300}"
+CHAIR_FORMAT_RETRY_TIMEOUT="${CHAIR_FORMAT_RETRY_TIMEOUT:-300}"
 
 chair_label() { case "$1" in
   *fable-5-1*) echo "Claude Fable 5.1" ;;
@@ -228,8 +229,8 @@ chair_label() { case "$1" in
   *)           echo "$1" ;;
 esac ; }
 
-run_chair() {  # $1=model $2=timeout $3=allow-file-tools(1|0) -> "$OUT" after credential scrubbing
-  local model="$1" tmo="$2" allow_tools="$3"
+run_chair() {  # $1=model $2=timeout $3=allow-file-tools(1|0) [$4=prompt file] -> "$OUT" after credential scrubbing
+  local model="$1" tmo="$2" allow_tools="$3" prompt_file="${4:-$WORK/synth-prompt.txt}"
   # Explicit denials override permissions inherited from other sources.
   local allowed="" disallowed="Bash Write Edit NotebookEdit WebFetch WebSearch Task"
   if [ "$allow_tools" = "1" ]; then
@@ -238,15 +239,18 @@ run_chair() {  # $1=model $2=timeout $3=allow-file-tools(1|0) -> "$OUT" after cr
     disallowed="Read Grep Glob $disallowed"
   fi
   if ANTHROPIC_MODEL="$model" timeout "$tmo" \
-    claude -p "$(cat "$WORK/synth-prompt.txt")" --output-format text \
+    claude -p "$(cat "$prompt_file")" --output-format text \
     --allowedTools "$allowed" \
     --disallowedTools "$disallowed" \
     < "$WORK/synth-stdin.txt" 2>"$WORK/chair.err" |
-    python3 "$DIR/publish_chair.py" > "$OUT"; then
+    python3 "$DIR/publish_chair.py" 2>"$WORK/chair-publication.log" > "$OUT"; then
     CHAIR_CLI_RC=0
   else
     CHAIR_CLI_RC=$?
   fi
+  # The content-free publication record stays in the step log (see the runbook) and
+  # is read back below to recognise a presentation-only rejection.
+  [ -f "$WORK/chair-publication.log" ] && cat "$WORK/chair-publication.log" >&2
   local diagnostic
   diagnostic="$(provider_diagnostic "$WORK/chair.err")" || diagnostic=$'diagnostic_read_error\tDiagnostic parser failed'
   if [ -n "$diagnostic" ]; then
@@ -267,8 +271,64 @@ chair_valid() {
   [ "$status" = PASSED ] || [ "$status" = BLOCKED ]
 }
 
+chair_status() {
+  python3 "$DIR/../../plugins/co-agent/skills/pr-autofix/scripts/review_gate.py" \
+    markdown "$OUT" --status-only 2>/dev/null || echo ERROR
+}
+
+# Reason field of the publisher's content-free record (fixed codes, never model text).
+publication_reason() {
+  sed -n 's/^chair-publication: //p' "$WORK/chair-publication.log" 2>/dev/null | tail -1 |
+    python3 -c 'import json, sys
+try:
+    print(json.loads(sys.stdin.read()).get("reason", ""))
+except ValueError:
+    print("")'
+}
+
 run_chair "$PRIMARY_MODEL" "$CHAIR_TIMEOUT" 1
 CHAIR_USED="$PRIMARY_MODEL"
+
+# One bounded format-repair retry of the PRIMARY chair. The publisher withholds a
+# review whose presentation breaks the format contract (for example an inline-code
+# span that is not a single symbol/path), so none of its findings are visible. Ask
+# the same chair once more with the same inputs and tools plus a reminder of the
+# rule; no rejected model text is echoed back. A blocker the first answer carried
+# can never be cleared: unless the retry is a published BLOCKED review, the first
+# (withheld, BLOCKED) report stands. A nonblocking first answer is ERROR either way,
+# so its retry may publish PASSED or BLOCKED, or fall through to the fallback chair.
+case "$(publication_reason)" in
+  source_format_rejected|scrubbed_format_rejected)
+    if [ "${CHAIR_CLI_RC:-1}" = 0 ] && [ "$CHAIR_TERMINAL" = 0 ]; then
+      FIRST_STATUS="$(chair_status)"
+      cp "$OUT" "$WORK/chair-first.md"
+      echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' output was withheld by the review format contract (first status: $FIRST_STATUS); retrying the same chair once with a format reminder"
+      { cat "$WORK/synth-prompt.txt"
+        cat <<'RETRY_EOF'
+
+FORMAT RETRY: your previous answer was not publishable because it broke the output
+format contract above, so none of its findings reached the PR. Produce the complete
+review again with the same rigor. Inline backticks may contain ONLY a single
+whitespace-free symbol or path, such as a file name, function name or flag. Write
+CSS declarations, attribute values, commands, expressions and any phrase containing
+spaces, quotes, equals signs, percent signs or angle brackets as plain prose without
+backticks, or put them in a closed top-level fenced code block.
+RETRY_EOF
+      } > "$WORK/synth-prompt-retry.txt"
+      run_chair "$PRIMARY_MODEL" "$CHAIR_FORMAT_RETRY_TIMEOUT" 1 "$WORK/synth-prompt-retry.txt"
+      if [ "$FIRST_STATUS" = BLOCKED ]; then
+        RETRY_STATUS=ERROR
+        [ "${CHAIR_CLI_RC:-1}" = 0 ] && RETRY_STATUS="$(chair_status)"
+        if [ "$RETRY_STATUS" != BLOCKED ] || [ "$(publication_reason)" != published ]; then
+          cp "$WORK/chair-first.md" "$OUT"
+          CHAIR_CLI_RC=0
+          CHAIR_TERMINAL=0
+          rm -f "$WORK/chair-provider-failure.flag"
+        fi
+      fi
+    fi
+    ;;
+esac
 if ! chair_valid && [ "$CHAIR_TERMINAL" = 0 ]; then
   CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
   echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' failed CLI completion or structural validation (exit ${CHAIR_CLI_RC:-unknown}, ${CHAIR_TIMEOUT}s cap, tools on): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")' with no file tools"
