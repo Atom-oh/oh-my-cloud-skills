@@ -91,12 +91,15 @@ together; a missing dependency is an error.
 The repository chair publisher classifies the original semantic result before
 scrubbing and checks the scrubbed result again. A blocking primary result cannot
 turn into a format/CLI failure followed by a clean fallback. Unpublishable blocking
-details produce a static FAIL report; no unscrubbed model text is echoed or stored.
+details produce a static FAIL report; no unscrubbed model text is published or kept.
 When the publisher withholds the primary chair's answer for a presentation rule
 (`source_format_rejected` or `scrubbed_format_rejected`), `synthesize.sh` asks the same
-chair once more, with the same inputs and tools plus a reminder of the inline-code rule
-(`CHAIR_FORMAT_RETRY_TIMEOUT`, default `CHAIR_TIMEOUT`, i.e. 450s, because it re-sends the
-same input). The rejected text is not sent back. A
+chair once more to repair only the presentation (`CHAIR_FORMAT_RETRY_TIMEOUT`, default
+`CHAIR_TIMEOUT`, i.e. 450s). The retry receives the original inputs and tools, the
+publisher's content-free rule and line, and the chair's own previous answer after
+`scrub_secrets`; it is told to keep every finding, severity and the verdict. The raw
+answer is written only to the PR-scoped work directory and deleted as soon as the
+scrubbed copy exists; nothing from it reaches the PR except through the publisher. A
 first answer that was BLOCKED stays the result unless the retry is itself a published
 BLOCKED review, so a retry can reveal a blocker's details but never clear it. A
 nonblocking first answer is ERROR either way; if its retry is still unpublishable, the
