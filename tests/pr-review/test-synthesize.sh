@@ -425,6 +425,7 @@ for RETRY_CASE in pass_then_clean blocked_then_published blocked_then_clean; do
       write_report "$WORK/retry.md" "None." "PASS"
       EXPECT=BLOCKED ;;
   esac
+  printf 'Example key AKIAABCDEFGHIJKLMNOP was not used.\n' >> "$WORK/first.md"
   mkclaude_sequence "$WORK/first.md" "$WORK/retry.md"
   if bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
     STATUS="$(python3 plugins/co-agent/skills/pr-autofix/scripts/review_gate.py \
@@ -435,6 +436,15 @@ for RETRY_CASE in pass_then_clean blocked_then_published blocked_then_clean; do
       || fail "format retry ($RETRY_CASE) asks the primary chair exactly twice" "$(wc -l < "$MOCK_CALLS")"
     [ ! -e "$MOCK_FALLBACK_CALLED" ] && pass "format retry ($RETRY_CASE) needs no fallback chair" \
       || fail "format retry ($RETRY_CASE) needs no fallback chair"
+    grep -q '=== PREVIOUS ANSWER' "$WORK/synth-stdin-retry.txt" \
+      && grep -q 'margin: auto' "$WORK/synth-stdin-retry.txt" \
+      && pass "format retry ($RETRY_CASE) hands the chair its previous answer" \
+      || fail "format retry ($RETRY_CASE) hands the chair its previous answer"
+    ! grep -q 'AKIAABCDEFGHIJKLMNOP' "$WORK/synth-stdin-retry.txt" \
+      && grep -q 'REDACTED-AWS-KEY' "$WORK/synth-stdin-retry.txt" \
+      && [ ! -e "$WORK/chair-answer.raw" ] \
+      && pass "format retry ($RETRY_CASE) passes back only a credential-scrubbed copy" \
+      || fail "format retry ($RETRY_CASE) passes back only a credential-scrubbed copy"
     case "$RETRY_CASE" in
       blocked_then_published)
         grep -q 'the deck margin breaks layout' "$WORK/review.md" \

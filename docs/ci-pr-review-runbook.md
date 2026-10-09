@@ -55,7 +55,7 @@ completion or required peer coverage; the existing gate checks those separately.
 
 | Reason | Next action |
 |---|---|
-| `source_format_rejected` / `scrubbed_format_rejected` | The synthesis step already retried the primary chair once with a format reminder (two `chair-publication:` records in the log). If both were rejected, inspect `format_diagnostic.rule`; correct the named presentation rule while preserving findings and severity. |
+| `source_format_rejected` / `scrubbed_format_rejected` | The synthesis step already retried the primary chair once, handing it its own scrubbed answer to repair (two `chair-publication:` records in the log). If both were rejected, inspect `format_diagnostic.rule`; correct the named presentation rule while preserving findings and severity. |
 | `input_too_large` / `scrubbed_output_too_large` | Compare byte counts with `byte_limit` and obtain a concise complete report. |
 | `source_review_incomplete` / `scrubbed_review_incomplete` | Obtain a complete canonical review; do not treat missing evidence as empty Issues. |
 | `scrubber_failed` / `publisher_error` | Check the indicated processing stage and the trusted helper/dependency installation. Raw exception text is intentionally omitted. |
