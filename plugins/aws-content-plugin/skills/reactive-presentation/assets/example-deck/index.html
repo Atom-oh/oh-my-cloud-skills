@@ -132,7 +132,7 @@
         </div>
         <div class="metric-card card-text fragment fade-up" data-fragment-index="2">
           <strong class="text-green">OS 패치</strong>
-          <div class="card-desc">Bottlerocket 기반 — 최대 수명 21일(기본 336시간=14일) + 주 1회 수준 AMI drift 교체</div>
+          <div class="card-desc">Bottlerocket 기반 — 최대 수명 21일(기본 336시간=14일) + 최대 주 1회 AMI drift 교체</div>
           <div class="card-desc card-note"><span class="card-note-label">더 이상 안 하는 일</span>AMI 릴리스 추적, 패치 윈도우 조율, 노드 그룹 롤링</div>
         </div>
         <div class="metric-card card-text fragment fade-up" data-fragment-index="3">
@@ -155,7 +155,7 @@
 - 노드 SSH가 안 되는 건 버그가 아니라 설계
 카드 네 장을 하나씩 열면서 설명합니다. 첫 줄은 Auto Mode가 가져간 기능, 구분선 아래는 그 결과
 운영자가 더 이상 하지 않는 일입니다. OS 패치는 최대 수명 21일(기본 336시간=14일)에 더해 새 AMI가
-나오면 주 1회 수준으로 drift 교체가 일어난다는 점을 강조하세요. 애드온은 노드에 내장된 기능과
+나오면 최대 주 1회 drift 교체가 일어난다는 점을 강조하세요. 애드온은 노드에 내장된 기능과
 클러스터 밖에서 AWS가 운영하는 컨트롤러로 나뉩니다. 용어: CRD는 CustomResourceDefinition,
 CSI는 Container Storage Interface, SSM은 AWS Systems Manager입니다. SSH가 막혀 있는 것에 당황하는 분들이 많은데,
 진단은 NodeDiagnostic·kubectl debug node·get-console-output으로 하고 문제 노드는 교체하는 게
@@ -213,7 +213,7 @@ NodePool이라는 개념은 동일하므로 학습 곡선은 낮지만, NodeClas
                 <div class="card-desc">기본 NodePool — On-Demand, 다양한 인스턴스 패밀리</div>
                 <div class="card-desc card-note">별도 설정 없이 바로 스케줄링, <span class="nowrap">통합(consolidation)으로</span> 유휴 노드 자동 회수</div></div>
               <div class="metric-card card-text"><strong class="text-green">PDB 필수</strong>
-                <div class="card-desc">노드 교체는 상시 — 주 1회 수준 AMI drift 교체 + 최대 수명 21일(기본 336시간=14일)</div>
+                <div class="card-desc">노드 교체는 상시 — 최대 주 1회 AMI drift 교체 + 최대 수명 21일(기본 336시간=14일)</div>
                 <div class="card-desc card-note">minAvailable + topologySpreadConstraints로 한 노드 교체가 한 replica만 건드리게</div></div>
             </div>
           </div>
@@ -240,7 +240,7 @@ NodePool이라는 개념은 동일하므로 학습 곡선은 낮지만, NodeClas
         </div>
         <!-- Second stack, same data-tab ids: the per-tab rule keeps one position for every tab. -->
         <div class="tab-panels tab-rule">
-          <div class="tab-content active callout callout-info" data-tab="web">핵심 규칙 — 웹 서비스는 기본 풀로 충분하지만, PDB 없는 Deployment는 주 1회 수준의 노드 교체마다 순단이 사용자에게 전달됩니다.</div>
+          <div class="tab-content active callout callout-info" data-tab="web">핵심 규칙 — 웹 서비스는 기본 풀로 충분하지만, PDB 없는 Deployment는 최대 주 1회 노드 교체마다 순단이 사용자에게 전달됩니다.</div>
           <div class="tab-content callout callout-warning" data-tab="batch">핵심 규칙 — Spot은 반드시 별도 NodePool로 분리하고, 체크포인트가 없는 긴 작업은 On-Demand 풀에 남겨 두세요.</div>
           <div class="tab-content callout callout-danger" data-tab="system">핵심 규칙 — 시스템 풀은 건드리지 않습니다. 일반 워크로드의 tolerations를 admission <span class="nowrap">정책(Kyverno 등)으로</span> 검사하세요.</div>
         </div>
@@ -252,8 +252,9 @@ NodePool이라는 개념은 동일하므로 학습 곡선은 낮지만, NodeClas
 - 각 탭 하단 callout이 그 유형의 핵심 규칙 한 줄
 - ↑↓ 키로도 탭 전환 가능
 워크로드 유형별로 탭을 넘기며 설명합니다. 웹 서비스는 기본 풀로 충분하지만 PDB가 없으면 노드
-교체마다 순단이 생깁니다 — 최대 수명 21일(기본 336시간=14일)에 더해 새 AMI가 나오면 주 1회 수준으로
-drift 교체가 일어나므로, 교체는 사실상 매주 있다고 보세요. 배치는 Spot 전용 풀을 따로 파는 게
+교체마다 순단이 생깁니다 — 최대 수명 21일(기본 336시간=14일)에 더해 새 AMI가 나오면 최대 주 1회
+drift 교체가 일어나므로, 교체가 매주 있을 수 있다고 가정하세요
+(새 AMI는 최대 주 1회 배포: https://docs.aws.amazon.com/whitepapers/latest/security-overview-amazon-eks-auto-mode/eks-auto-mode-data-plane.html). 배치는 Spot 전용 풀을 따로 파는 게
 정석이고, Job은 backoffLimit·podFailurePolicy로 중단 재시도를 처리하며, 체크포인트 없는 긴 작업은
 On-Demand에 남겨 둡니다. 카드의 "최대 90% 절감"은 AWS가 Amazon EC2 Spot Instances 페이지에 게시한
 EC2 Spot 수치로 인용하세요. 시스템 풀의 CriticalAddonsOnly taint는 CoreDNS 같은 EKS 애드온이
@@ -319,13 +320,14 @@ karpenter.sh/nodepool: system을 함께 걸고, 일반 워크로드의 toleratio
         <span>→</span>
         <span class="step-label">남는 업그레이드: 앱·자체 관리/EKS 애드온</span>
       </div>
-      <div class="callout callout-warning">NetworkPolicy는 ConfigMap <code>amazon-vpc-cni</code>의 <code>enable-network-policy-controller: "true"</code>로 활성화해야 동작합니다.</div>
+      <div class="callout callout-warning">NetworkPolicy는 <code>kube-system</code>의 ConfigMap <code>amazon-vpc-cni</code>에서 <code>enable-network-policy-controller: "true"</code>로 활성화해야 동작합니다.</div>
     </div>
     <template class="notes" data-timing="3min">
 [요약]
 - 세 그룹 순차 공개: 진입(ALB: Application Load Balancer) → 워크로드(노드) → 스토리지(EBS)
 - 노드 내장: 네트워킹·DNS·kube-proxy·EBS CSI 노드 기능 / 클러스터 밖(AWS 운영): Karpenter·LB Controller·EBS CSI 컨트롤러
-- NetworkPolicy는 ConfigMap amazon-vpc-cni의 enable-network-policy-controller: "true"로 활성화해야 동작
+- NetworkPolicy는 kube-system 네임스페이스의 ConfigMap amazon-vpc-cni에 enable-network-policy-controller: "true"를 넣어야 동작
+  (출처: https://docs.aws.amazon.com/eks/latest/userguide/auto-net-pol.html)
 플로우 그룹을 하나씩 열면서, 기존에 helm으로 설치하던 컴포넌트가 어디로 갔는지 짚습니다.
 LB Controller와 EBS CSI 컨트롤러는 클러스터 밖 AWS 운영 영역에서 돌고, 네트워킹·DNS·kube-proxy와
 EBS CSI 노드 기능은 노드에 내장됩니다. 각 그룹 세 번째 상자는 우리가 여전히 선언하는 Kubernetes
@@ -377,7 +379,7 @@ AWS 문서의 Auto Mode NodePool 예시도 30s를 씁니다. 주의할 점 하�
       <div class="col-2 check-pairs">
         <h3 class="text-orange">점검 항목</h3>
         <h3 class="text-blue">확인 방법</h3>
-        <ul class="checklist"><li><span class="check"></span><span class="checklist-text">모든 Deployment에 PDB가 있는가 — 주 1회 수준 노드 교체를 무중단 흡수</span></li></ul>
+        <ul class="checklist"><li><span class="check"></span><span class="checklist-text">모든 Deployment에 PDB가 있는가 — 최대 주 1회 노드 교체를 무중단 흡수</span></li></ul>
         <div class="callout callout-info"><code>kubectl get pdb -A</code> — Deployment별 PDB 대조</div>
         <ul class="checklist"><li><span class="check"></span><span class="checklist-text">커스텀 AMI·userData 의존이 없는가 — 있다면 DaemonSet/사이드카로 이전</span></li></ul>
         <div class="callout callout-info">기존 EC2NodeClass <code>spec.userData</code>·<code>amiSelectorTerms</code> 사용 여부 — <code>kubectl get ec2nodeclass -o yaml</code></div>
@@ -395,7 +397,7 @@ AWS 문서의 Auto Mode NodePool 예시도 30s를 씁니다. 주의할 점 하�
 - 클릭하면 체크 표시 — 청중과 함께 점검
 전환 체크리스트를 하나씩 클릭하면서 청중 스스로 자기 클러스터를 점검하게 합니다.
 특히 첫 번째 PDB 항목은 필수입니다 — Auto Mode는 최대 수명 21일(기본 336시간=14일)에 더해
-새 AMI가 나오면 주 1회 수준으로 drift 교체를 하므로, PDB가 없으면 순단이 매주 사용자에게
+새 AMI가 나오면 최대 주 1회 drift 교체를 하므로, PDB가 없으면 순단이 매주 사용자에게
 전달될 수 있습니다. 오른쪽 열은 항목마다 확인 방법입니다 — 같은 행끼리 읽으세요: kubectl get pdb -A,
 kubectl get ec2nodeclass -o yaml(spec.userData·amiSelectorTerms), NodeDiagnostic,
 kubectl get nodepools -o yaml, 비용 할당 태그 화면. 비용 태그는 이렇게 안내하세요 —

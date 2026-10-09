@@ -838,9 +838,15 @@ class SlideFramework {
         const bs = getComputedStyle(body);
         const inner = body.clientHeight - (parseFloat(bs.paddingTop) || 0) - (parseFloat(bs.paddingBottom) || 0);
         const avail = inner * TARGET;
+        //     Width is checked on both levels: content overflowing the box, and the box
+        //     itself against the body. A shrink-to-fit box (e.g. a body with centred
+        //     row flex) never overflows internally, so only the second test catches it.
+        const innerW = body.clientWidth - (parseFloat(bs.paddingLeft) || 0) - (parseFloat(bs.paddingRight) || 0);
         const fits = (zoom) => {
           box.style.zoom = String(zoom);
-          return box.offsetHeight * zoom <= avail && box.scrollWidth <= box.clientWidth + 1;
+          return box.offsetHeight * zoom <= avail &&
+            box.offsetWidth * zoom <= innerW + 1 &&
+            box.scrollWidth <= box.clientWidth + 1;
         };
 
         // 11. Upper bound by mode; shrinkOnly never regrows past the cached value.
@@ -941,12 +947,19 @@ function initChecklists() {
       // Expand/collapse detail block if present
       const detail = item.querySelector('.checklist-detail');
       if (detail) {
+        // The detail adds or removes height after the slide was fitted: re-fit
+        // shrink-only on expand (never scroll), fully once it has collapsed again.
+        const slide = item.closest('.slide');
         if (item.classList.contains('checked')) {
           detail.style.display = 'block';
           detail.style.maxHeight = detail.scrollHeight + 'px';
+          if (slide && window.ReactiveFit) window.ReactiveFit.fitSlide(slide, { force: true, shrinkOnly: true });
         } else {
           detail.style.maxHeight = '0';
-          setTimeout(() => { detail.style.display = 'none'; }, 300);
+          setTimeout(() => {
+            detail.style.display = 'none';
+            if (slide && window.ReactiveFit) window.ReactiveFit.fitSlide(slide, { force: true });
+          }, 300);
         }
       }
     });

@@ -192,3 +192,7 @@ assert_grep_match "\.slide-deck\.overview-mode,[^{]*\{[^}]*height: 100vh !import
 MIN10="$(grep -oE 'const MIN = [0-9.]+' "$RP/assets/slide-framework.js" 2>/dev/null | grep -oE '[0-9.]+$' || true)"
 FLOOR10="$(python3 -c "import sys; print('ok' if float(sys.argv[1]) * 22 >= 18 else 'low')" "${MIN10:-0}" 2>/dev/null || echo err)"
 assert_eq "ok" "$FLOOR10" "ReactiveFit MIN keeps the 22px caption floor at or above the 18px MIN_FONT FAIL line"
+J11="$(cat "$RP/assets/slide-framework.js" 2>/dev/null || true)"
+assert_grep_match 'box\.offsetWidth \* zoom <= innerW' "$J11" "fit predicate checks the zoomed box width against the body (shrink-to-fit boxes never overflow internally)"
+assert_contains "$J11" "fully once it has collapsed again" "checklist detail expand/collapse re-fits the slide"
+assert_contains "$(cat "$RP/assets/example-deck/index.html" 2>/dev/null || true)" "kube-system" "golden deck names the kube-system namespace for the amazon-vpc-cni ConfigMap"

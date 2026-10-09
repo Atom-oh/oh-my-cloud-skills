@@ -352,7 +352,7 @@ revealed layout is what fits. Consequences for deck scripts and `:::script`/`:::
 
 - `data-fit-scale="<zoom>"` — the applied zoom; also the cache key for non-forced calls.
 - `data-fit-overflow=""` — present only when content still overflows at `MIN` (0.82); the fit
-  stays at 0.8. Split the slide.
+  stays at `MIN` (0.82). Split the slide.
 
 **When it runs**:
 
