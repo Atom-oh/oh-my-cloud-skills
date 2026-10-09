@@ -4,6 +4,10 @@
 # source 하므로, 스크립트가 비-zero로 끝나는 경로는 전부 if 로 감싼다.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT="$(cd "$HERE/../../scripts/pr-review" && pwd)/synthesize.sh"
+# The mocks select primary vs fallback by the model synthesize.sh exports. A model
+# inherited from the caller's shell (e.g. a Claude Code session) would replace the
+# primary default and send every call down the fallback branch.
+unset ANTHROPIC_MODEL CHAIR_FALLBACK_MODEL
 
 if ! declare -F pass >/dev/null 2>&1; then
   _t_fail=0
@@ -378,6 +382,75 @@ else
 fi
 unset MOCK_FALLBACK_CALLED
 rm -rf "$WORK" "$BIN"
+
+# Format-repair retry: a withheld primary answer gets exactly one same-chair retry.
+mkclaude_sequence() {  # $1=first report file $2=retry report file
+  export MOCK_FIRST="$1" MOCK_RETRY="$2" MOCK_CALLS="$WORK/primary-calls"
+  : > "$MOCK_CALLS"
+  cat > "$BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$ANTHROPIC_MODEL" == *fable* ]]; then
+  echo call >> "$MOCK_CALLS"
+  if [ "$(wc -l < "$MOCK_CALLS")" -eq 1 ]; then cat "$MOCK_FIRST"; else cat "$MOCK_RETRY"; fi
+else
+  touch "$MOCK_FALLBACK_CALLED"
+  cat "$MOCK_REVIEW_REPORT"
+fi
+EOF
+  chmod +x "$BIN/claude"
+}
+write_report() {  # $1=file $2=MAJOR body $3=verdict
+  printf '## Summary\nReviewed the diff.\n## Issues\n### CRITICAL\nNone.\n### MAJOR\n%s\n### MINOR\nNone.\n## Verdict\nVERDICT: %s\n' "$2" "$3" > "$1"
+}
+for RETRY_CASE in pass_then_clean blocked_then_published blocked_then_clean; do
+  setup
+  export MOCK_FALLBACK_CALLED="$WORK/fallback-called"
+  for cell in codex/FULL kiro-opus/FULL kiro-gpt/FULL; do
+    printf '%s\n' "$cell" >> "$WORK/responded.txt"
+    printf 'Completed review.\n' > "$WORK/slot/${cell/\//-}.md"
+  done
+  cp "$WORK/responded.txt" "$WORK/expected.txt"
+  case "$RETRY_CASE" in
+    pass_then_clean)
+      write_report "$WORK/first.md" "None." "PASS"
+      sed -i 's/^Reviewed the diff\.$/Reviewed `margin: auto` in the diff./' "$WORK/first.md"
+      write_report "$WORK/retry.md" "None." "PASS"
+      EXPECT=PASSED ;;
+    blocked_then_published)
+      write_report "$WORK/first.md" "- Defect: \`margin: auto\` breaks layout." "FAIL"
+      write_report "$WORK/retry.md" "- Defect: the deck margin breaks layout in theme.css." "FAIL"
+      EXPECT=BLOCKED ;;
+    blocked_then_clean)
+      write_report "$WORK/first.md" "- Defect: \`margin: auto\` breaks layout." "FAIL"
+      write_report "$WORK/retry.md" "None." "PASS"
+      EXPECT=BLOCKED ;;
+  esac
+  mkclaude_sequence "$WORK/first.md" "$WORK/retry.md"
+  if bash "$SCRIPT" "$WORK/diff.txt" "$WORK" 999 "test pr" "$WORK/review.md" >/dev/null 2>&1; then
+    STATUS="$(python3 plugins/co-agent/skills/pr-autofix/scripts/review_gate.py \
+      markdown "$WORK/review.md" --work-dir "$WORK" --status-only)"
+    [ "$STATUS" = "$EXPECT" ] && pass "format retry ($RETRY_CASE) ends $EXPECT" \
+      || fail "format retry ($RETRY_CASE) ends $EXPECT" "$STATUS"
+    [ "$(wc -l < "$MOCK_CALLS")" -eq 2 ] && pass "format retry ($RETRY_CASE) asks the primary chair exactly twice" \
+      || fail "format retry ($RETRY_CASE) asks the primary chair exactly twice" "$(wc -l < "$MOCK_CALLS")"
+    [ ! -e "$MOCK_FALLBACK_CALLED" ] && pass "format retry ($RETRY_CASE) needs no fallback chair" \
+      || fail "format retry ($RETRY_CASE) needs no fallback chair"
+    case "$RETRY_CASE" in
+      blocked_then_published)
+        grep -q 'the deck margin breaks layout' "$WORK/review.md" \
+          && pass "a published blocking retry shows its findings" \
+          || fail "a published blocking retry shows its findings" ;;
+      blocked_then_clean)
+        ! grep -q 'margin: auto' "$WORK/review.md" \
+          && pass "a clean retry cannot clear the first blocker; its details stay withheld" \
+          || fail "a clean retry cannot clear the first blocker; its details stay withheld" ;;
+    esac
+  else
+    fail "format retry ($RETRY_CASE) completes"
+  fi
+  unset MOCK_FALLBACK_CALLED MOCK_FIRST MOCK_RETRY MOCK_CALLS
+  rm -rf "$WORK" "$BIN"
+done
 
 # The publisher must retain blockers rejected by the downstream byte limit.
 for SIZE_CASE in original expanded; do
