@@ -23,7 +23,15 @@ class QuizManager {
     document.querySelectorAll('.quiz').forEach(quiz => {
       const id = quiz.dataset.quiz;
       const options = quiz.querySelectorAll('.quiz-option');
-      const feedback = quiz.querySelector('.quiz-feedback');
+      // Right/wrong must never be conveyed by colour alone (WCAG 1.4.1): a quiz authored
+      // without a .quiz-feedback element gets one, so the text result always appears.
+      let feedback = quiz.querySelector('.quiz-feedback');
+      if (!feedback) {
+        feedback = document.createElement('div');
+        feedback.className = 'quiz-feedback';
+        quiz.appendChild(feedback);
+      }
+      if (!feedback.hasAttribute('aria-live')) feedback.setAttribute('aria-live', 'polite');
       const state = { answered: false, correct: false };
       this.quizzes.set(id, state);
 
@@ -49,16 +57,22 @@ class QuizManager {
             const explanation = opt.dataset.explain || quiz.dataset.explain || '';
             if (isCorrect) {
               feedback.innerHTML = `<div class="quiz-result correct">
-                <span class="quiz-icon">&#10003;</span> 정답입니다!
+                <span class="quiz-icon" aria-hidden="true">&#10003;</span> 정답입니다!
                 ${explanation ? `<div class="quiz-explain">${explanation}</div>` : ''}
               </div>`;
             } else {
               feedback.innerHTML = `<div class="quiz-result wrong">
-                <span class="quiz-icon">&#10007;</span> 오답입니다. 다시 생각해보세요.
+                <span class="quiz-icon" aria-hidden="true">&#215;</span> 오답입니다. 다시 생각해보세요.
                 ${explanation ? `<div class="quiz-explain">${explanation}</div>` : ''}
               </div>`;
             }
             feedback.classList.add('show');
+            // The feedback adds height after the slide was fitted; re-fit shrink-only so
+            // the revealed text never pushes the slide into a scroll.
+            const slide = quiz.closest('.slide');
+            if (slide && window.ReactiveFit) {
+              window.ReactiveFit.fitSlide(slide, { force: true, shrinkOnly: true });
+            }
           }
 
           // Wrong answer: allow retry after brief feedback
@@ -78,6 +92,12 @@ class QuizManager {
               });
               if (feedback) {
                 feedback.classList.remove('show');
+                // Feedback is gone again: re-fit fully so the retry is not left at the
+                // reduced zoom the shrink-only pass applied.
+                const retrySlide = quiz.closest('.slide');
+                if (retrySlide && window.ReactiveFit) {
+                  window.ReactiveFit.fitSlide(retrySlide, { force: true });
+                }
               }
             }, 1500);
           }
@@ -190,7 +210,8 @@ const quizManager = new QuizManager();
       border-radius: 10px;
       font-size: .95rem;
       display: flex;
-      align-items: flex-start;
+      flex-wrap: wrap;
+      align-items: baseline;
       gap: 8px;
     }
     .quiz-result.correct {
@@ -207,8 +228,9 @@ const quizManager = new QuizManager();
       flex-shrink: 0;
     }
     .quiz-explain {
+      flex-basis: 100%;   /* explanation on its own line under the result */
       margin-top: 6px;
-      font-size: .88rem;
+      font-size: var(--fs-caption, .917rem);
       color: var(--text-secondary);
     }
 
@@ -227,7 +249,7 @@ const quizManager = new QuizManager();
       color: var(--accent-light);
     }
     .quiz-score-label {
-      font-size: .9rem;
+      font-size: var(--fs-caption, .917rem);
       color: var(--text-muted);
       margin-top: 4px;
     }

@@ -5,9 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EKS Auto Mode — 운영이 사라진 클러스터</title>
   <!-- Golden example deck: the reference for hand-authored decks.
-       Deployment shape: this file + common/ (copied from skill assets/ by
-       scripts/deck_assets.py). Every pattern here passes check_deck.py and
-       measure_deck.py clean at 1280x720 / 1920x1080 / 3840x2160, light+dark. -->
+       Deployment shape: this file + common/ = the skill's assets/*.css and *.js, plus
+       the referenced official icons under common/aws-icons/services/ (copied from the
+       skill's icons/ library — only the ones this deck uses). Assembled that way (the
+       in-repo folder alone has no common/, so check_deck.py reports BROKEN_REF), every
+       pattern here passes check_deck.py and measure_deck.py clean at 1280x720 / 1920x1080 / 3840x2160,
+       light+dark. -->
   <link rel="stylesheet" href="./common/theme.css">
   <style>
     /* Deck-local layout (tokens only — see framework-contract.md §10).
@@ -19,14 +22,29 @@
     .cover-speaker { margin-top: var(--space-7); }
     .cover-speaker-name { font-weight: var(--weight-semibold); }
     .cover-speaker-role { color: var(--on-surface-muted); font-size: var(--text-sm); }
-    .card-desc { color: var(--on-surface-muted); font-size: var(--text-sm); }
+    /* .card-desc is a theme.css primitive — do not redefine it here. */
+    .agenda-note { display: block; margin-top: var(--space-1); color: var(--on-surface-muted); font-size: var(--fs-card); line-height: var(--leading-body); }
+    .stack { display: flex; flex-direction: column; gap: var(--space-3); }
     .scale-canvas-wrap { max-width: 1440px; margin: 0 auto; width: 100%; }
+    /* Rule callout below the tab panels: a second .tab-panels stack (framework-contract.md §4). */
+    .tab-rule { margin-top: var(--space-3); }
+    /* Cards fill the stacked panel cell, so every tab shows equal-height cards. */
+    .panel-fill { height: 100%; }
+    /* Checklist rows paired with their method: one .col-2 grid, one single-item list per row. */
+    .check-pairs { align-items: center; row-gap: var(--space-3); }
+    .check-pairs > .checklist { margin: 0; }
     .quiz-q { font-size: var(--text-lg); font-weight: var(--weight-semibold); }
-    .quiz-grid { display: grid; gap: var(--space-3); margin-top: var(--space-4); }
-    .code-scroll { max-height: 60%; overflow-y: auto; }
+    /* Quiz rhythm on space tokens: scenario → question → options. The injected quiz styles
+       use fixed px, so these selectors carry one more class to win. */
+    .slide .quiz { padding: var(--space-6); }
+    .quiz .quiz-q { margin-top: var(--space-6); }
+    .quiz .quiz-grid { display: grid; gap: var(--space-4); margin-top: var(--space-5); }
+    .flow-icon-box { display: flex; align-items: center; justify-content: center; gap: var(--space-2); }
+    .flow-icon-box img { width: var(--space-6); height: var(--space-6); flex: none; }
     .closing-body { justify-content: center; align-items: center; text-align: center; }
     .closing-title { font-size: var(--text-4xl); }
     .closing-sub { color: var(--on-surface-muted); font-size: var(--text-lg); margin-top: var(--space-3); }
+    .closing-takeaway { margin-top: var(--space-5); color: var(--on-surface); font-weight: var(--weight-semibold); }
     .closing-link { margin-top: var(--space-6); }
     .closing-link a { color: var(--accent); }
   </style>
@@ -47,7 +65,7 @@
         <p class="cover-speaker-role">Sr. Solutions Architect, AWS</p>
       </div>
     </div>
-    <template class="notes" data-timing="1min">
+    <template class="notes" data-timing="2min">
 [요약]
 - 세션 소개와 발표자 소개
 - Level 300 — EKS 운영 경험자 대상
@@ -66,26 +84,39 @@
         <div class="agenda-step active">
           <div class="agenda-dot">1</div>
           <div class="agenda-connector"></div>
-          <div class="agenda-label"><strong>Auto Mode가 가져간 것</strong><span>15분</span></div>
+          <div class="agenda-label"><strong>Auto Mode가 가져간 것</strong><span>15분</span>
+            <span class="agenda-note">프로비저닝·패치·애드온·경화 — AWS 관리로 넘어간 경계를 긋습니다</span></div>
         </div>
         <div class="agenda-step">
           <div class="agenda-dot">2</div>
           <div class="agenda-connector"></div>
-          <div class="agenda-label"><strong>스케일링 동작 해부</strong><span>15분</span></div>
+          <div class="agenda-label"><strong>스케일링 동작 해부</strong><span>15분</span>
+            <span class="agenda-note">Pending Pod에서 EC2 기동, 바인딩까지 4단계를 캔버스로 따라갑니다</span></div>
         </div>
         <div class="agenda-step">
           <div class="agenda-dot">3</div>
-          <div class="agenda-label"><strong>남는 책임과 마이그레이션</strong><span>10분</span></div>
+          <div class="agenda-label"><strong>남는 책임과 마이그레이션</strong><span>10분</span>
+            <span class="agenda-note">PDB(Pod<wbr>Disruption<wbr>Budget)·AMI 의존·SSH runbook 점검표와 Karpenter 전환 포인트</span></div>
         </div>
       </div>
+      <div class="card-grid">
+        <div class="metric-card"><strong class="text-blue">라이브 데모</strong>
+          <div class="card-desc">2부에서 kubectl get nodepools로 실제 클러스터 확인</div></div>
+        <div class="metric-card"><strong class="text-orange">복습 퀴즈</strong>
+          <div class="card-desc">3부 끝에 한 문제 — 노드 SSH 패러다임 점검</div></div>
+        <div class="metric-card"><strong class="text-green">Q&amp;A</strong>
+          <div class="card-desc">마지막 5분 + 각 블록 사이 짧은 질문 가능</div></div>
+      </div>
     </div>
-    <template class="notes" data-timing="1min">
+    <template class="notes" data-timing="2min">
 [요약]
 - 3부 구성: 관리 범위 → 스케일링 내부 동작 → 남는 책임
-- 중간에 라이브 데모 1회
+- 하단 카드: 데모는 2부, 퀴즈는 3부 끝, Q&A는 마지막 5분
 아젠다는 세 블록입니다. 먼저 Auto Mode가 어떤 운영 업무를 AWS 쪽으로 가져갔는지
 경계를 명확히 하고, 두 번째로 스케일링이 실제로 어떻게 동작하는지 단계별로
 해부합니다. 마지막으로 그래도 여전히 우리가 책임져야 하는 영역을 정리합니다.
+각 단계 아래 한 줄 설명을 짚고, 하단 카드로 데모·퀴즈·Q&A 시점을 미리 안내하세요.
+시간 배분: 1부(1~4번 슬라이드) 15분 · 2부(5~8번, 데모 포함) 15분 · 3부(9~11번, 마지막 5분 Q&A) 10분.
     </template>
   </div>
 
@@ -93,75 +124,79 @@
   <div class="slide">
     <div class="slide-header"><h2>노드 운영, 네 가지가 사라졌다</h2><p class="subtitle">관리 주체의 이동</p></div>
     <div class="slide-body">
-      <div class="card-grid">
-        <div class="metric-card fragment fade-up" data-fragment-index="1">
+      <div class="col-2">
+        <div class="metric-card card-text fragment fade-up" data-fragment-index="1">
           <strong class="text-blue">노드 프로비저닝</strong>
-          <div class="card-desc">
-            NodePool/NodeClass 내장 — Karpenter 설치·업그레이드 불필요
-          </div>
+          <div class="card-desc">NodePool/NodeClass 내장 — Karpenter 설치·업그레이드 불필요</div>
+          <div class="card-desc card-note"><span class="card-note-label">더 이상 안 하는 일</span>컨트롤러 helm 차트 관리, CRD 버전 맞추기</div>
         </div>
-        <div class="metric-card fragment fade-up" data-fragment-index="2">
+        <div class="metric-card card-text fragment fade-up" data-fragment-index="2">
           <strong class="text-green">OS 패치</strong>
-          <div class="card-desc">
-            Bottlerocket 기반 — 21일 주기 자동 노드 교체
-          </div>
+          <div class="card-desc">Bottlerocket 기반 — 최대 수명 21일(기본 336시간=14일) + 최대 주 1회 AMI drift 교체</div>
+          <div class="card-desc card-note"><span class="card-note-label">더 이상 안 하는 일</span>AMI 릴리스 추적, 패치 윈도우 조율, 노드 그룹 롤링</div>
         </div>
-        <div class="metric-card fragment fade-up" data-fragment-index="3">
+        <div class="metric-card card-text fragment fade-up" data-fragment-index="3">
           <strong class="text-orange">핵심 애드온</strong>
-          <div class="card-desc">
-            CNI · EBS CSI · LB Controller가 노드에 내장 실행
-          </div>
+          <div class="card-desc">노드 내장: 네트워킹·DNS·kube-proxy·<span class="nowrap">EBS CSI</span> 노드 기능</div>
+          <div class="card-desc">클러스터 밖(AWS 운영): Karpenter·LB Controller·<span class="nowrap">EBS CSI</span> 컨트롤러</div>
+          <div class="card-desc card-note"><span class="card-note-label">더 이상 안 하는 일</span>핵심 애드온 호환성 매트릭스 검사, 애드온별 IRSA(IAM Roles for Service Accounts)·Pod Identity 설정 → 클러스터 IAM 역할로 대체</div>
         </div>
-        <div class="metric-card fragment fade-up" data-fragment-index="4">
+        <div class="metric-card card-text fragment fade-up" data-fragment-index="4">
           <strong class="text-purple">보안 경화</strong>
-          <div class="card-desc">
-            SSH/SSM 접근 차단 — 노드는 불변(immutable) 인프라
-          </div>
+          <div class="card-desc">SSH/SSM 접근 차단 — 노드는 불변(immutable) 인프라</div>
+          <div class="card-desc card-note"><span class="card-note-label">대체 수단</span>NodeDiagnostic(로그→S3) · <code>kubectl debug node --profile=sysadmin</code> · <code>aws ec2 get-console-output</code></div>
         </div>
       </div>
     </div>
-    <template class="notes" data-timing="3min">
+    <template class="notes" data-timing="6min">
 [요약]
-- 프로비저닝·패치·애드온·경화 네 축이 AWS 관리로 이동
+- 프로비저닝·패치·애드온·경화 네 축이 AWS 관리로 이동 (2x2 카드)
+- 각 카드 구분선 아래: 운영자가 더 이상 안 하는 일 / 대체 수단
 - 노드 SSH가 안 되는 건 버그가 아니라 설계
-카드 네 장을 하나씩 열면서 설명합니다. 핵심 메시지: 노드가 불변 인프라가 되면서
-"노드에 들어가서 고친다"는 운영 관행 자체가 사라집니다. SSH가 막혀 있는 것에
-당황하는 분들이 많은데, 디버깅은 노드 교체와 관측성으로 대체하는 게 설계 의도입니다.
+카드 네 장을 하나씩 열면서 설명합니다. 첫 줄은 Auto Mode가 가져간 기능, 구분선 아래는 그 결과
+운영자가 더 이상 하지 않는 일입니다. OS 패치는 최대 수명 21일(기본 336시간=14일)에 더해 새 AMI가
+나오면 최대 주 1회 drift 교체가 일어난다는 점을 강조하세요. 애드온은 노드에 내장된 기능과
+클러스터 밖에서 AWS가 운영하는 컨트롤러로 나뉩니다. 용어: CRD는 CustomResourceDefinition,
+CSI는 Container Storage Interface, SSM은 AWS Systems Manager입니다. SSH가 막혀 있는 것에 당황하는 분들이 많은데,
+진단은 NodeDiagnostic·kubectl debug node·get-console-output으로 하고 문제 노드는 교체하는 게
+설계 의도입니다.
 {cue: pause} 카드 전부 공개 후 잠깐 멈추고 질문 받기.
     </template>
   </div>
 
-  <!-- 4. Two-column comparison -->
+  <!-- 4. Two-column comparison — one grid, so each row is equal height across columns -->
   <div class="slide">
     <div class="slide-header"><h2>Karpenter를 쓰고 있다면?</h2><p class="subtitle">자가 관리 대비 달라지는 지점</p></div>
     <div class="slide-body">
       <div class="col-2">
-        <div>
-          <h3 class="text-blue">자가 관리 Karpenter</h3>
-          <div class="callout callout-info">helm 설치·버전 업그레이드 직접 수행</div>
-          <div class="callout callout-info">NodePool CRD 전체 스펙 자유 설정</div>
-          <div class="callout callout-warning">컨트롤러 장애 시 스케일링 정지 — 우리 책임</div>
-        </div>
-        <div>
-          <h3 class="text-orange">EKS Auto Mode</h3>
-          <div class="callout callout-success">컨트롤러가 AWS 관리 영역에서 실행</div>
-          <div class="callout callout-success">기본 NodePool 2종 제공 (general-purpose · system)</div>
-          <div class="callout callout-warning">커스텀 AMI·userData 불가 — 표준화가 전제</div>
-        </div>
+        <h3 class="text-blue">자가 관리 Karpenter</h3>
+        <h3 class="text-orange">EKS Auto Mode</h3>
+        <div class="callout callout-info">helm 설치·버전 업그레이드 직접 수행</div>
+        <div class="callout callout-success">컨트롤러가 AWS 관리 영역에서 실행</div>
+        <div class="callout callout-info">NodePool CRD 전체 스펙 자유 설정</div>
+        <div class="callout callout-success">기본 NodePool 2종: general-purpose · system</div>
+        <div class="callout callout-info">EC2NodeClass로 AMI·userData까지 직접 정의</div>
+        <div class="callout callout-success">Auto Mode 전용 NodeClass·라벨 (eks.amazonaws.com)</div>
+        <div class="callout callout-info">노드 디버깅: SSH·SSM 접속을 직접 구성</div>
+        <div class="callout callout-success">노드 디버깅: NodeDiagnostic·<code>kubectl debug node</code></div>
+        <div class="callout callout-warning">컨트롤러 장애 시 스케일링 정지 — 우리 책임</div>
+        <div class="callout callout-warning">커스텀 AMI·userData 불가 — 표준화가 전제</div>
       </div>
     </div>
-    <template class="notes" data-timing="3min">
+    <template class="notes" data-timing="5min">
 [요약]
 - Karpenter 운영 경험은 그대로 이전됨 (NodePool 개념 동일)
+- 행 단위 비교: 설치 · NodePool · NodeClass · 노드 디버깅 · 트레이드오프
 - 트레이드오프: 컨트롤러 무장애 vs 커스터마이징 제약
-왼쪽이 익숙한 자가 관리 모델, 오른쪽이 Auto Mode입니다. NodePool이라는 개념은
-동일하므로 학습 곡선은 낮습니다. 결정적 차이는 두 가지 — 컨트롤러 자체의 가용성을
-AWS가 책임진다는 것, 그리고 커스텀 AMI를 포기해야 한다는 것. 조직의 표준화 수준이
-선택 기준이 됩니다.
+왼쪽이 익숙한 자가 관리 모델, 오른쪽이 Auto Mode입니다. 같은 행끼리 비교하며 읽으세요.
+NodePool이라는 개념은 동일하므로 학습 곡선은 낮지만, NodeClass는 Auto Mode 전용이라 AMI·userData를
+직접 다루지 않습니다. 노드 디버깅도 SSH 대신 NodeDiagnostic·kubectl debug node로 바뀝니다. 결정적
+차이는 두 가지 — 컨트롤러 자체의 가용성을 AWS가 책임진다는 것, 그리고 커스텀 AMI를 포기해야
+한다는 것. 조직의 표준화 수준이 선택 기준이 됩니다.
     </template>
   </div>
 
-  <!-- 5. Tabs -->
+  <!-- 5. Tabs — panels stacked in .tab-panels so the tab bar never moves -->
   <div class="slide">
     <div class="slide-header"><h2>워크로드 유형별 배치 전략</h2><p class="subtitle">NodePool 선택 기준</p></div>
     <div class="slide-body">
@@ -171,41 +206,63 @@ AWS가 책임진다는 것, 그리고 커스텀 AMI를 포기해야 한다는 �
           <button class="tab-btn" data-tab="batch">배치 작업</button>
           <button class="tab-btn" data-tab="system">시스템 컴포넌트</button>
         </div>
-        <div class="tab-content active" data-tab="web">
-          <div class="card-grid">
-            <div class="metric-card"><strong class="text-blue">general-purpose</strong>
-              <div class="card-desc">기본 NodePool — On-Demand, 다양한 인스턴스 패밀리</div></div>
-            <div class="metric-card"><strong class="text-green">PDB 필수</strong>
-              <div class="card-desc">21일 노드 교체 주기를 무중단으로 흡수</div></div>
+        <div class="tab-panels">
+          <div class="tab-content active" data-tab="web">
+            <div class="card-grid panel-fill">
+              <div class="metric-card card-text"><strong class="text-blue">general-purpose</strong>
+                <div class="card-desc">기본 NodePool — On-Demand, 다양한 인스턴스 패밀리</div>
+                <div class="card-desc card-note">별도 설정 없이 바로 스케줄링, <span class="nowrap">통합(consolidation)으로</span> 유휴 노드 자동 회수</div></div>
+              <div class="metric-card card-text"><strong class="text-green">PDB 필수</strong>
+                <div class="card-desc">노드 교체는 상시 — 최대 주 1회 AMI drift 교체 + 최대 수명 21일(기본 336시간=14일)</div>
+                <div class="card-desc card-note">minAvailable + topologySpreadConstraints로 한 노드 교체가 한 replica만 건드리게</div></div>
+            </div>
+          </div>
+          <div class="tab-content" data-tab="batch">
+            <div class="card-grid panel-fill">
+              <div class="metric-card card-text"><strong class="text-orange">커스텀 NodePool + Spot</strong>
+                <div class="card-desc"><code>karpenter.sh/capacity-type: spot</code> — 중단 허용 워크로드에 최대 90% 절감</div>
+                <div class="card-desc card-note">Spot 회수 2분 통지는 컨트롤러가 처리 — Job은 backoffLimit·podFailurePolicy로 중단 재시도 처리</div></div>
+              <div class="metric-card card-text"><strong class="text-blue">taint 분리</strong>
+                <div class="card-desc">batch 전용 taint로 웹 워크로드 유입 차단</div>
+                <div class="card-desc card-note">Job 쪽에는 toleration + nodeSelector를 함께 걸어 풀 밖으로 새지 않게</div></div>
+            </div>
+          </div>
+          <div class="tab-content" data-tab="system">
+            <div class="card-grid panel-fill">
+              <div class="metric-card card-text"><strong class="text-purple">system NodePool</strong>
+                <div class="card-desc">CriticalAddonsOnly taint — 애드온 전용 격리</div>
+                <div class="card-desc card-note">CriticalAddonsOnly toleration + nodeSelector <code>karpenter.sh/nodepool: system</code></div></div>
+              <div class="metric-card card-text"><strong class="text-red">과점유 주의</strong>
+                <div class="card-desc">시스템 풀에 일반 워크로드 tolerate 금지</div>
+                <div class="card-desc card-note"><code>tolerations: operator: Exists</code> 같은 광범위 설정이 가장 흔한 유입 경로</div></div>
+            </div>
           </div>
         </div>
-        <div class="tab-content" data-tab="batch">
-          <div class="card-grid">
-            <div class="metric-card"><strong class="text-orange">커스텀 NodePool + Spot</strong>
-              <div class="card-desc">capacityType: spot — 중단 허용 워크로드에 최대 90% 절감</div></div>
-            <div class="metric-card"><strong class="text-blue">taint 분리</strong>
-              <div class="card-desc">batch 전용 taint로 웹 워크로드 유입 차단</div></div>
-          </div>
-        </div>
-        <div class="tab-content" data-tab="system">
-          <div class="card-grid">
-            <div class="metric-card"><strong class="text-purple">system NodePool</strong>
-              <div class="card-desc">CriticalAddonsOnly taint — 애드온 전용 격리</div></div>
-            <div class="metric-card"><strong class="text-red">과점유 주의</strong>
-              <div class="card-desc">시스템 풀에 일반 워크로드 tolerate 금지</div></div>
-          </div>
+        <!-- Second stack, same data-tab ids: the per-tab rule keeps one position for every tab. -->
+        <div class="tab-panels tab-rule">
+          <div class="tab-content active callout callout-info" data-tab="web">핵심 규칙 — 웹 서비스는 기본 풀로 충분하지만, PDB 없는 Deployment는 최대 주 1회 노드 교체마다 순단이 사용자에게 전달됩니다.</div>
+          <div class="tab-content callout callout-warning" data-tab="batch">핵심 규칙 — Spot은 반드시 별도 NodePool로 분리하고, 체크포인트가 없는 긴 작업은 On-Demand 풀에 남겨 두세요.</div>
+          <div class="tab-content callout callout-danger" data-tab="system">핵심 규칙 — 시스템 풀은 건드리지 않습니다. 일반 워크로드의 tolerations를 admission <span class="nowrap">정책(Kyverno 등)으로</span> 검사하세요.</div>
         </div>
       </div>
     </div>
-    <template class="notes" data-timing="3min">
+    <template class="notes" data-timing="5min">
 [요약]
 - 탭 3개: 웹 → general-purpose, 배치 → Spot 커스텀 풀, 시스템 → system 풀
+- 각 탭 하단 callout이 그 유형의 핵심 규칙 한 줄
 - ↑↓ 키로도 탭 전환 가능
-워크로드 유형별로 탭을 넘기며 설명합니다. 웹 서비스는 기본 풀로 충분하지만 PDB가
-없으면 21일 교체 주기마다 순단이 생깁니다 — 이게 가장 흔한 시행착오입니다.
-배치는 Spot 전용 풀을 따로 파는 게 정석이고, 시스템 풀에는 일반 워크로드가
-들어가지 않도록 tolerations을 검사하세요.
-{cue: demo} 실제 클러스터에서 kubectl get nodepools 보여주기.
+워크로드 유형별로 탭을 넘기며 설명합니다. 웹 서비스는 기본 풀로 충분하지만 PDB가 없으면 노드
+교체마다 순단이 생깁니다 — 최대 수명 21일(기본 336시간=14일)에 더해 새 AMI가 나오면 최대 주 1회
+drift 교체가 일어나므로, 교체가 매주 있을 수 있다고 가정하세요
+(새 AMI는 최대 주 1회 배포: https://docs.aws.amazon.com/whitepapers/latest/security-overview-amazon-eks-auto-mode/eks-auto-mode-data-plane.html). 배치는 Spot 전용 풀을 따로 파는 게
+정석이고, Job은 backoffLimit·podFailurePolicy로 중단 재시도를 처리하며, 체크포인트 없는 긴 작업은
+On-Demand에 남겨 둡니다. 카드의 "최대 90% 절감"은 AWS가 Amazon EC2 Spot Instances 페이지에 게시한
+EC2 Spot 수치로 인용하세요. 시스템 풀의 CriticalAddonsOnly taint는 CoreDNS 같은 EKS 애드온이
+tolerate합니다(AWS 문서 표현). 순수 Auto Mode 클러스터에서는 CoreDNS가 노드의 시스템 프로세스로 돌기
+때문에 애드온으로 설치할 필요가 없습니다.
+toleration은 배치를 허용할 뿐 강제하지 않으니, system 풀에 고정하려면 nodeSelector
+karpenter.sh/nodepool: system을 함께 걸고, 일반 워크로드의 tolerations는 admission 정책으로 검사하세요.
+{cue: demo} 실제 클러스터에서 kubectl get nodepools 보여주기 (약 2분).
     </template>
   </div>
 
@@ -214,109 +271,138 @@ AWS가 책임진다는 것, 그리고 커스텀 AMI를 포기해야 한다는 �
     <div class="slide-header"><h2>Pod 하나가 노드를 만든다</h2><p class="subtitle">스케일 아웃 4단계 · ↑↓로 진행</p></div>
     <div class="slide-body">
       <div class="canvas-container scale-canvas-wrap">
-        <canvas id="scale-flow"></canvas>
+        <canvas id="scale-flow" role="img" aria-label="스케일 아웃 4단계: 1) Pending Pod가 unschedulable 상태로 대기, 2) Auto Mode 컨트롤러가 감지해 인스턴스 타입 계산, 3) RunInstances로 EC2가 기동되어 노드로 조인, 4) kube-scheduler가 Pod를 새 노드에 바인딩"></canvas>
       </div>
     </div>
-    <template class="notes" data-timing="4min">
+    <template class="notes" data-timing="5min">
 [요약]
 - Pending Pod → 스케줄러 실패 → Auto Mode 컨트롤러 감지 → EC2 기동 → 바인딩
 - 단계별 캔버스: ↓ 키로 한 단계씩
 이 슬라이드가 오늘의 핵심입니다. ↓ 키를 눌러가며 네 단계를 보여주세요.
 1단계: Pod가 Pending으로 쌓입니다. 2단계: Auto Mode 컨트롤러가 unschedulable
 이벤트를 감지하고 최적 인스턴스 타입을 계산합니다. 3단계: EC2 인스턴스가 기동되고
-노드로 조인합니다. 4단계: 스케줄러가 Pod를 바인딩합니다. 전체 소요 시간은 보통
-40~60초 — CA 대비 절반 이하입니다.
+노드로 조인합니다. 4단계: 스케줄러가 Pod를 새 노드에 바인딩하고, Pending 그룹은 비워집니다.
+소요 시간은 환경마다 다르므로 숫자를 약속하지 말고, 데모 클러스터에서 직접 재 보세요.
 {cue: pause} 마지막 단계에서 소요 시간 질문 받기.
     </template>
   </div>
 
-  <!-- 7. HTML flow architecture -->
+  <!-- 7. HTML flow architecture — official AWS icons from common/aws-icons/ -->
   <div class="slide">
     <div class="slide-header"><h2>요청은 세 층을 지난다</h2><p class="subtitle">Auto Mode 데이터 플레인 구성</p></div>
     <div class="slide-body">
       <div class="flow-h">
         <div class="flow-group bg-blue fragment fade-up" data-fragment-index="1">
           <div class="flow-group-label">진입</div>
-          <div class="flow-box">ALB</div>
-          <div class="flow-box">LB Controller (내장)</div>
+          <div class="flow-box flow-icon-box"><img src="./common/aws-icons/services/Arch_Elastic-Load-Balancing_48.svg" alt="Elastic Load Balancing"><span>ALB</span></div>
+          <div class="flow-box">LB Controller — 클러스터 밖(AWS 운영)</div>
+          <div class="flow-box">Ingress · Service 리소스</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-group bg-orange fragment fade-up" data-fragment-index="2">
           <div class="flow-group-label">워크로드</div>
-          <div class="flow-box">general-purpose 노드</div>
-          <div class="flow-box">Pod (VPC CNI 내장)</div>
+          <div class="flow-box flow-icon-box"><img src="./common/aws-icons/services/Arch_Amazon-EC2_48.svg" alt="Amazon EC2"><span>general-purpose 노드</span></div>
+          <div class="flow-box">노드 내장: 네트워킹 · DNS · kube-proxy</div>
+          <div class="flow-box">NetworkPolicy 리소스 — 활성화 필요</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-group bg-green fragment fade-up" data-fragment-index="3">
           <div class="flow-group-label">스토리지</div>
-          <div class="flow-box">EBS CSI (내장)</div>
-          <div class="flow-box">gp3 볼륨</div>
+          <div class="flow-box flow-icon-box"><img src="./common/aws-icons/services/Arch_Amazon-Elastic-Block-Store_48.svg" alt="Amazon Elastic Block Store"><span>EBS gp3 볼륨</span></div>
+          <div class="flow-box">EBS CSI — 노드 기능은 내장, 컨트롤러는 클러스터 밖</div>
+          <div class="flow-box">StorageClass 리소스</div>
         </div>
       </div>
+      <div class="flow-desc">
+        <span class="step-label">내장 컴포넌트 helm 설치 0건</span>
+        <span>→</span>
+        <span class="step-label">내장 컴포넌트 업그레이드는 AWS 몫</span>
+        <span>→</span>
+        <span class="step-label">남는 업그레이드: 앱·자체 관리/EKS 애드온</span>
+      </div>
+      <div class="callout callout-warning">NetworkPolicy는 <code>kube-system</code>의 ConfigMap <code>amazon-vpc-cni</code>에서 <code>enable-network-policy-controller: "true"</code>로 활성화해야 동작합니다.</div>
     </div>
-    <template class="notes" data-timing="2min">
+    <template class="notes" data-timing="3min">
 [요약]
-- 세 그룹 순차 공개: 진입(ALB) → 워크로드(노드/CNI) → 스토리지(EBS CSI)
-- '내장'이 붙은 컴포넌트는 애드온 설치 없이 동작
-플로우 그룹을 하나씩 열면서, 기존에는 각각 helm으로 설치하던 세 가지 컨트롤러가
-전부 내장으로 바뀌었다는 점을 강조합니다. 업그레이드 매트릭스에서 애드온 호환성
-검사가 통째로 사라지는 게 운영상 가장 체감이 큰 변화입니다.
+- 세 그룹 순차 공개: 진입(ALB: Application Load Balancer) → 워크로드(노드) → 스토리지(EBS)
+- 노드 내장: 네트워킹·DNS·kube-proxy·EBS CSI 노드 기능 / 클러스터 밖(AWS 운영): Karpenter·LB Controller·EBS CSI 컨트롤러
+- NetworkPolicy는 kube-system 네임스페이스의 ConfigMap amazon-vpc-cni에 enable-network-policy-controller: "true"를 넣어야 동작
+  (출처: https://docs.aws.amazon.com/eks/latest/userguide/auto-net-pol.html)
+플로우 그룹을 하나씩 열면서, 기존에 helm으로 설치하던 컴포넌트가 어디로 갔는지 짚습니다.
+LB Controller와 EBS CSI 컨트롤러는 클러스터 밖 AWS 운영 영역에서 돌고, 네트워킹·DNS·kube-proxy와
+EBS CSI 노드 기능은 노드에 내장됩니다. 각 그룹 세 번째 상자는 우리가 여전히 선언하는 Kubernetes
+리소스(Ingress·NetworkPolicy·StorageClass)입니다. NetworkPolicy는 ConfigMap 설정으로 켜야 동작하니
+먼저 확인하세요. 하단 요약 행: 내장 컴포넌트의 설치·업그레이드는 사라지지만, 앱과 자체 관리 애드온,
+EKS 애드온 업그레이드는 여전히 우리 몫입니다.
     </template>
   </div>
 
-  <!-- 8. Code slide -->
+  <!-- 8. Code slide — the block takes part in fit: no inner scroll, <pre> directly after the label -->
   <div class="slide">
-    <div class="slide-header"><h2>커스텀 풀은 다섯 줄이면 된다</h2><p class="subtitle">Spot 배치 풀 NodePool 예시</p></div>
+    <div class="slide-header"><h2>Spot 풀은 네 블록이면 된다</h2><p class="subtitle">Auto Mode용 karpenter.sh/v1 NodePool</p></div>
     <div class="slide-body">
-      <div class="code-block code-scroll">
-        <div class="code-label">nodepool-batch.yaml</div>
-<pre><span class="keyword">apiVersion</span>: karpenter.sh/v1
+      <div class="code-block"><div class="code-label">nodepool-batch.yaml</div><pre><span class="keyword">apiVersion</span>: karpenter.sh/v1
 <span class="keyword">kind</span>: NodePool
 <span class="keyword">metadata</span>:
   <span class="keyword">name</span>: <span class="string">batch-spot</span>
 <span class="keyword">spec</span>:
   <span class="keyword">template</span>:
     <span class="keyword">spec</span>:
+      <span class="keyword">nodeClassRef</span>: {<span class="keyword">group</span>: <span class="string">eks.amazonaws.com</span>, <span class="keyword">kind</span>: NodeClass, <span class="keyword">name</span>: <span class="string">default</span>}
+      <span class="keyword">taints</span>: [{<span class="keyword">key</span>: <span class="string">workload-type</span>, <span class="keyword">value</span>: <span class="string">batch</span>, <span class="keyword">effect</span>: NoSchedule}]  <span class="comment"># 웹 워크로드 유입 차단</span>
       <span class="keyword">requirements</span>:
         - <span class="keyword">key</span>: <span class="string">karpenter.sh/capacity-type</span>
           <span class="keyword">operator</span>: In
           <span class="keyword">values</span>: [<span class="string">"spot"</span>]  <span class="comment"># 중단 허용 워크로드 전용</span>
-      <span class="keyword">taints</span>:
-        - <span class="keyword">key</span>: <span class="string">workload/batch</span>
-          <span class="keyword">effect</span>: NoSchedule
   <span class="keyword">disruption</span>:
-    <span class="keyword">consolidationPolicy</span>: WhenEmptyOrUnderutilized</pre>
-      </div>
+    <span class="keyword">consolidationPolicy</span>: WhenEmptyOrUnderutilized
+    <span class="keyword">consolidateAfter</span>: <span class="string">30s</span>  <span class="comment"># v1.0 CRD 필수 필드</span></pre></div>
     </div>
     <template class="notes" data-timing="2min">
 [요약]
-- capacity-type: spot + 전용 taint 두 가지가 전부
-- consolidationPolicy는 v1 스키마 기준 spec.disruption 아래
-YAML은 기존 Karpenter v1과 완전히 동일합니다. 주의할 점 하나 — expireAfter 같은
-노드 수명 설정은 spec.template.spec 아래로 이동했고 spec.disruption이 아닙니다.
-v1 마이그레이션에서 가장 많이 틀리는 부분입니다.
+- 네 블록: nodeClassRef(Auto Mode NodeClass default) · taints(workload-type=batch:NoSchedule) · requirements(capacity-type: spot) · disruption
+- consolidationPolicy·consolidateAfter는 v1 스키마 기준 spec.disruption 아래 (consolidateAfter는 Karpenter v1.0 CRD에서 필수)
+API 모양은 karpenter.sh/v1 NodePool을 따르지만, Auto Mode는 자체 라벨과 NodeClass를 씁니다 —
+nodeClassRef가 group eks.amazonaws.com의 NodeClass default를 가리키는 이유입니다. taints는 5번
+슬라이드의 batch 전용 taint입니다 — Job 쪽에는 toleration과 nodeSelector를 함께 겁니다. Spot 지정은
+karpenter.sh/capacity-type 요구 조건 하나면 됩니다. disruption 블록에는 consolidateAfter도 함께 둡니다 —
+AWS 문서의 Auto Mode NodePool 예시도 30s를 씁니다. 주의할 점 하나 — expireAfter 같은 노드 수명
+설정은 spec.template.spec 아래에 두고 spec.disruption에 두지 않습니다. v1 마이그레이션에서 자주
+틀리는 부분입니다.
     </template>
   </div>
 
-  <!-- 9. Checklist -->
+  <!-- 9. Checklist + how to verify — one grid, so each item sits in the same row as its method -->
   <div class="slide">
-    <div class="slide-header"><h2>전환 전 다섯 가지 점검</h2><p class="subtitle">클릭해서 체크</p></div>
+    <div class="slide-header"><h2>전환 전 다섯 가지 점검</h2><p class="subtitle">클릭해서 체크 · 오른쪽은 확인 방법</p></div>
     <div class="slide-body">
-      <ul class="checklist">
-        <li>모든 Deployment에 PDB가 있는가 — 21일 교체 주기 무중단 흡수</li>
-        <li>커스텀 AMI·userData 의존이 없는가 — 있다면 DaemonSet/사이드카로 이전</li>
-        <li>노드 SSH에 의존하는 디버깅 runbook이 없는가</li>
-        <li>Spot 전용 NodePool과 taint 설계가 준비됐는가</li>
-        <li>비용 태그 전략 — NodePool 단위 라벨로 Cost Explorer 분리</li>
-      </ul>
+      <div class="col-2 check-pairs">
+        <h3 class="text-orange">점검 항목</h3>
+        <h3 class="text-blue">확인 방법</h3>
+        <ul class="checklist"><li><span class="check"></span><span class="checklist-text">모든 Deployment에 PDB가 있는가 — 최대 주 1회 노드 교체를 무중단 흡수</span></li></ul>
+        <div class="callout callout-info"><code>kubectl get pdb -A</code> — Deployment별 PDB 대조</div>
+        <ul class="checklist"><li><span class="check"></span><span class="checklist-text">커스텀 AMI·userData 의존이 없는가 — 있다면 DaemonSet/사이드카로 이전</span></li></ul>
+        <div class="callout callout-info">기존 EC2NodeClass <code>spec.userData</code>·<code>amiSelectorTerms</code> 사용 여부 — <code>kubectl get ec2nodeclass -o yaml</code></div>
+        <ul class="checklist"><li><span class="check"></span><span class="checklist-text">노드 SSH에 의존하는 디버깅 runbook이 없는가</span></li></ul>
+        <div class="callout callout-info">NodeDiagnostic — 노드 로그를 S3로 수집, SSH 없는 runbook으로 교체</div>
+        <ul class="checklist"><li><span class="check"></span><span class="checklist-text">Spot 전용 NodePool과 taint 설계가 준비됐는가</span></li></ul>
+        <div class="callout callout-info"><code>kubectl get nodepools -o yaml</code> — Spot 풀·taint·system 풀 구성 확인</div>
+        <ul class="checklist"><li><span class="check"></span><span class="checklist-text">비용 할당 태그 <code>eks:kubernetes-node-pool-name</code> 활성화</span></li></ul>
+        <div class="callout callout-info">Billing 콘솔의 비용 할당 태그 화면 — 활성화 여부 확인</div>
+      </div>
     </div>
-    <template class="notes" data-timing="2min">
+    <template class="notes" data-timing="3min">
 [요약]
-- PDB·AMI 의존·SSH runbook·Spot 설계·비용 태그 다섯 항목
+- PDB·AMI 의존·SSH runbook·Spot 설계·비용 태그 다섯 항목, 같은 행 오른쪽이 확인 방법
 - 클릭하면 체크 표시 — 청중과 함께 점검
 전환 체크리스트를 하나씩 클릭하면서 청중 스스로 자기 클러스터를 점검하게 합니다.
-특히 첫 번째 PDB 항목은 필수입니다 — Auto Mode는 물어보지 않고 노드를 교체하므로
-PDB가 없으면 순단이 그대로 사용자에게 전달됩니다.
+특히 첫 번째 PDB 항목은 필수입니다 — Auto Mode는 최대 수명 21일(기본 336시간=14일)에 더해
+새 AMI가 나오면 최대 주 1회 drift 교체를 하므로, PDB가 없으면 순단이 매주 사용자에게
+전달될 수 있습니다. 오른쪽 열은 항목마다 확인 방법입니다 — 같은 행끼리 읽으세요: kubectl get pdb -A,
+kubectl get ec2nodeclass -o yaml(spec.userData·amiSelectorTerms), NodeDiagnostic,
+kubectl get nodepools -o yaml, 비용 할당 태그 화면. 비용 태그는 이렇게 안내하세요 —
+eks:kubernetes-node-pool-name 태그는 Auto Mode가 클러스터 IAM 역할 정책에 따라 인스턴스에 붙이고,
+그 태그를 비용 할당 태그로 활성화하는 일은 Billing 콘솔에서 우리가 합니다.
 {cue: question} "다섯 개 중 몇 개나 준비되셨나요?"
     </template>
   </div>
@@ -326,23 +412,34 @@ PDB가 없으면 순단이 그대로 사용자에게 전달됩니다.
     <div class="slide-header"><h2>복습 퀴즈</h2><p class="subtitle">한 문제만</p></div>
     <div class="slide-body">
       <div class="quiz" data-quiz="q1">
+        <div class="callout callout-info">
+          상황 — 새벽 2시, general-purpose 노드 한 대에서 Pod가 반복 재시작합니다. 온콜 runbook 1단계는
+          "노드에 SSH로 들어가 kubelet 로그 확인"인데, Auto Mode 노드입니다.
+        </div>
         <p class="quiz-q">
           Auto Mode 노드에 SSH 접속이 필요한 상황, 올바른 대응은?
         </p>
         <div class="quiz-options quiz-grid">
-          <button class="quiz-option" data-correct="false">A) EC2 콘솔에서 키페어를 교체한다</button>
-          <button class="quiz-option" data-correct="false">B) 서포트 케이스로 SSH 허용을 요청한다</button>
-          <button class="quiz-option" data-correct="true">C) 노드 교체 + 관측성 도구로 대체한다 — 접속 자체가 불가</button>
+          <button class="quiz-option" data-correct="false" data-explain="Auto Mode 노드는 SSH·SSM 접근 자체를 허용하지 않습니다 — 키페어를 바꿔도 접속 경로가 없습니다.">A) EC2 콘솔에서 키페어를 교체한다</button>
+          <button class="quiz-option" data-correct="false" data-explain="SSH·SSM 차단은 Auto Mode의 설계입니다 — 노드 진단은 Kubernetes·AWS API로 합니다.">B) 서포트 케이스로 SSH 허용을 요청한다</button>
+          <button class="quiz-option" data-correct="true" data-explain="NodeDiagnostic으로 노드 로그를 S3에 모으고, kubectl debug node로 노드를 살펴봅니다.">C) NodeDiagnostic·kubectl debug node로 진단하고, 필요하면 노드를 교체한다</button>
         </div>
+        <div class="quiz-feedback" aria-live="polite"></div>
       </div>
     </div>
     <template class="notes" data-timing="2min">
 [요약]
-- 정답 C — 노드는 불변 인프라, SSH/SSM 자체가 설계상 차단
+- 상황 callout 먼저 읽기: 새벽 온콜, runbook 1단계가 노드 SSH
+- 정답 C — SSH/SSM은 설계상 차단, 대신 NodeDiagnostic(로그→S3)·kubectl debug node --profile=sysadmin·aws ec2 get-console-output
 - 오답 A/B를 고른 분에게 3번 슬라이드 재강조
-가벼운 퀴즈로 핵심 메시지를 한 번 더 고정합니다. A나 B를 고르는 분이 실제로
-많습니다 — Auto Mode 노드는 SSH뿐 아니라 SSM 세션도 열리지 않는다는 것,
-디버깅 패러다임 자체가 바뀐다는 것을 다시 짚어주세요.
+상황 callout을 먼저 읽어 현장감을 주고 질문으로 넘어갑니다. A나 B를 고르는 분이 실제로 많습니다 —
+Auto Mode 노드는 SSH뿐 아니라 SSM 세션도 열리지 않지만, 진단 수단이 없는 것은 아닙니다.
+NodeDiagnostic 리소스로 노드 로그를 S3로 받고, kubectl debug node --profile=sysadmin으로 디버그
+컨테이너를 붙이고, aws ec2 get-console-output으로 콘솔 출력을 봅니다. runbook 1단계를
+"NodeDiagnostic으로 로그 수집"으로 바꾸는 것이 9번 체크리스트 세 번째 항목입니다. 참고로 2026년
+4월 22일부터 새 Auto Mode 인스턴스는 기본적으로 EC2 콘솔 목록과 DescribeInstances 같은 목록 API에서
+숨겨집니다 — 노드가 콘솔에 보이지 않으면 managed resource visibility 설정을 확인하세요
+(출처: https://docs.aws.amazon.com/eks/latest/userguide/automode-learn-instances.html).
     </template>
   </div>
 
@@ -353,15 +450,19 @@ PDB가 없으면 순단이 그대로 사용자에게 전달됩니다.
       <p class="closing-sub">
         EKS Auto Mode — 운영이 사라진 클러스터
       </p>
+      <p class="closing-takeaway">노드 운영은 AWS가 가져갔고, 워크로드 설계 책임은 그대로 남는다</p>
       <p class="closing-link"><a href="./toc.html">← 세션 목차로</a></p>
     </div>
-    <template class="notes" data-timing="1min">
+    <template class="notes" data-timing="5min">
 [요약]
 - 마무리 인사 + 목차 링크
-- Q&A 시간 안내
-마무리 인사와 함께 Q&A로 넘어갑니다. 목차 링크는 멀티 블록 세션에서 다음 블록으로
-이동하는 통로입니다. 시간이 남으면 데모 클러스터를 다시 열어 질문 기반으로
-자유 탐색을 진행하세요.
+- Q&A 시간 안내 (5분)
+- 핵심 메시지 한 줄 재강조: 노드 운영은 사라졌지만 PDB·taint·비용 태그는 우리 몫
+마무리 인사와 함께 Q&A로 넘어갑니다. 질문을 받기 전에 세 블록의 결론을 한 문장으로
+다시 묶어 주세요 — "노드 운영은 AWS가 가져갔고, 워크로드 설계 책임은 그대로 남는다."
+목차 링크는 멀티 블록 세션에서 다음 블록으로 이동하는 통로입니다. 시간이 남으면
+데모 클러스터를 다시 열어 질문 기반으로 자유 탐색을 진행하세요.
+{cue: question} "오늘 들은 것 중 내일 바로 적용할 항목이 있나요?"
     </template>
   </div>
 
@@ -373,7 +474,7 @@ PDB가 없으면 순단이 그대로 사용자에게 전달됩니다.
 <script src="./common/presenter-view.js"></script>
 <script>
   const deck = new SlideFramework({
-    footer: '© 2026, Amazon Web Services, Inc. — EKS Auto Mode Deep Dive',
+    footer: '© 2026 Amazon Web Services, Inc. All rights reserved.',
     pagination: true,
     sidebar: true
   });
@@ -406,29 +507,42 @@ PDB가 없으면 순단이 그대로 사용자에게 전달됩니다.
     ctx.clearRect(0, 0, BASE_W, BASE_H);
     refreshThemeColors();
 
-    // Static: pending pods queue + controller + scheduler
-    drawGroup(ctx, 20, 40, 200, 320, 'Pending Pods', Colors.blue);
-    drawPod(ctx, 60, 100, 40, step >= 4 ? 'running' : 'pending', 'pod-a');
-    drawPod(ctx, 130, 100, 40, step >= 4 ? 'running' : 'pending', 'pod-b');
-    drawBox(ctx, 320, 60, 200, 70, 'Auto Mode Controller', step >= 2 ? Colors.accent : Colors.gray || Colors.blue);
-    drawBox(ctx, 320, 270, 200, 70, 'kube-scheduler', Colors.blue);
+    // Layout on the 960x400 base: Pending group x20-200 · controller/scheduler x330-530 ·
+    // node x660-940. Gap labels sit inside the 130px gaps; nothing crosses a border.
+    drawGroup(ctx, 20, 40, 180, 320, 'Pending Pods', Colors.blue);
+    if (step < 4) {
+      drawPod(ctx, 75, 110, 40, 'pending');
+      drawPod(ctx, 145, 110, 40, 'pending');
+      drawText(ctx, 'pod-a', 75, 146, { size: 15, color: Colors.textSec });
+      drawText(ctx, 'pod-b', 145, 146, { size: 15, color: Colors.textSec });
+    } else {
+      drawText(ctx, '(비어 있음)', 110, 200, { size: 15, color: Colors.textSec });
+    }
+    drawBox(ctx, 330, 60, 200, 80, '', step >= 2 ? Colors.accent : Colors.blue);
+    drawText(ctx, 'Auto Mode Controller', 430, 88, { size: 15, weight: '600' });
+    drawBox(ctx, 330, 270, 200, 70, '', Colors.blue);
+    drawText(ctx, 'kube-scheduler', 430, 305, { size: 15, weight: '600' });
 
     if (step >= 1) {
-      drawArrow(ctx, 220, 130, 320, 100, Colors.yellow, true);
-      drawText(ctx, 'unschedulable', 235, 95, { size: 13, color: Colors.yellow });
+      drawArrow(ctx, 200, 110, 330, 100, Colors.yellow, true);
+      drawText(ctx, 'unschedulable', 265, 86, { size: 15, color: Colors.yellow });
     }
     if (step >= 2) {
-      drawText(ctx, '인스턴스 타입 계산', 330, 150, { size: 13, color: Colors.accent });
-      drawArrow(ctx, 520, 95, 640, 95, Colors.accent);
-      drawText(ctx, 'RunInstances', 535, 82, { size: 13, color: Colors.accent });
+      drawText(ctx, '인스턴스 타입 계산', 430, 116, { size: 15, color: Colors.accent });
+      drawArrow(ctx, 530, 100, 660, 100, Colors.accent);
+      drawText(ctx, 'RunInstances', 595, 84, { size: 15, color: Colors.accent });
     }
     if (step >= 3) {
-      drawNode(ctx, 640, 60, 280, 200, 'node (Bottlerocket)', step >= 4 ? 2 : 0, 4, {});
-      drawText(ctx, '~45s', 780, 45, { size: 14, color: Colors.green });
+      drawNode(ctx, 660, 60, 280, 200, 'node (Bottlerocket)', 0, 0, {});
+      if (step === 3) drawText(ctx, 'EC2 기동 → 노드 조인', 800, 160, { size: 15, color: Colors.textSec });
     }
     if (step >= 4) {
-      drawArrow(ctx, 520, 305, 700, 270, Colors.green);
-      drawText(ctx, 'bind', 600, 315, { size: 13, color: Colors.green });
+      drawPod(ctx, 750, 150, 40, 'running');
+      drawPod(ctx, 850, 150, 40, 'running');
+      drawText(ctx, 'pod-a', 750, 186, { size: 15, color: Colors.textSec });
+      drawText(ctx, 'pod-b', 850, 186, { size: 15, color: Colors.textSec });
+      drawArrow(ctx, 530, 305, 720, 260, Colors.green);
+      drawText(ctx, 'bind', 650, 302, { size: 15, color: Colors.green });
     }
   }
 

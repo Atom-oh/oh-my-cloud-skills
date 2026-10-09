@@ -43,7 +43,7 @@ Theme choice: default (AWS console light) · `theme: { mode: dark }` (squid-ink 
 > theme: { footer: "© 2026 Company. All rights reserved.", logo: "./common/logo.png" }
 > ```
 
-**Remarp essentials**: `remarp: true` frontmatter · `@type`/`@layout`/`@transition`/`@theme` directives · `{.click}`/`:::click` fragments · `:::notes` speaker notes · `:::canvas` DSL · `:::archify` explorable diagrams (Archify, ADR-020 — official icons auto-injected, build needs the pinned clone) · `::: left`/`::: right` columns. Full syntax: [references/remarp-format-guide.md](references/remarp-format-guide.md).
+**Remarp essentials**: `remarp: true` frontmatter · `@type`/`@layout`/`@transition`/`@theme`/`@fit` directives (`@fit: auto|shrink|off` controls the runtime fit engine; frontmatter `fit:` sets the deck default) · `{.click}`/`:::click` fragments · `:::notes` speaker notes · `:::canvas` DSL · `:::archify` explorable diagrams (Archify, ADR-020 — official icons auto-injected, build needs the pinned clone) · `::: left`/`::: right` columns. Full syntax: [references/remarp-format-guide.md](references/remarp-format-guide.md).
 
 > **Speaker notes**: every slide needs `:::notes` — enough content and structure for the presenter to speak to that slide from the notes alone (`{timing}`/`{cue}` markers + `[요약]` ("Summary") bullets + a conversational script). Missing or unstructured notes are flagged by validate as `MISSING_NOTES`/`NOTE_STRUCTURE`. Schema: remarp-format-guide.md "Structured Note Schema".
 
@@ -89,6 +89,13 @@ Get a content-review-agent PASS via `review content at [path]` before declaring 
 ### Phase 8 — Verify
 Per-block checks: slide count matches · `SlideFramework` options (footer/logoSrc/presenterNotes) · every Canvas ID has `setupCanvas()` · quiz `data-quiz`/`data-correct` · `./common/` relative paths · **theme-override.css linked (when extracted from PPTX)** · language · first slide = Session Cover (§0a/§0b, not `.title-slide`) · last slide = Thank You (`@toc: toc.html` in source).
 
+**Output gates (required on the built deck)**:
+```bash
+python3 {skill-dir}/scripts/check_deck.py <deck>      # run on the built/assembled deck (with common/); static: framework wiring, notes, quiz answers, raw hex/inline style
+python3 {skill-dir}/scripts/measure_deck.py <deck> --viewports 1920x1080,1280x720,3840x2160 --themes light,dark
+```
+`measure_deck.py` renders in headless Chromium and reports OVERFLOW · OVERLAP · CLIPPED_TEXT · LOW_CONTRAST · RATIO_DRIFT · BROKEN_IMAGE · UNDERFILL · MIN_FONT · FIT_OVERFLOW · DECK_OFFSCREEN. Bar: **no FAIL; UNDERFILL clean**. Thresholds and fixes: **authoring-rules.md §1 "Measured density gates"**.
+
 > **Screenshot verification (required)**: use Playwright MCP to capture all interactive/Canvas slides at **FHD 1920×1080** (primary resolution) + **4K 3840×2160**. Check: text legibility, canvas proportions, no overflow, controls visible. Capture after interactions (tabs/sliders/buttons). **For Canvas step slides, walk through all steps with ArrowDown/Up, capturing each step** (check for overlap, alignment, legibility). Verify scaling with N (notes) and F (fullscreen). When reviewing captures, apply the **design self-critique: [references/design-direction.md](references/design-direction.md) §6 restraint checklist**.
 > Scaling: fixed 1920×1080 design canvas + `transform: scale(min(vw/1920, vh/1080))` → consistent pixels across FHD/4K.
 
@@ -121,7 +128,7 @@ GitHub Pages: Settings → Pages → main / root.
 
 ## Resources
 **assets/** (→ `common/`): design-tokens.css · theme.css · theme-override-template.css · slide-framework.js · slide-renderer.js · presenter-view.js · animation-utils.js · quiz-component.js · export-utils.js
-**scripts/**: extract_pptx_theme.py · remarp_to_slides.py · export_pptx.py (headless PPTX) · marp_to_slides.py (legacy) · extract_aws_icons.py
+**scripts/**: extract_pptx_theme.py · remarp_to_slides.py · check_deck.py (static output gate) · measure_deck.py (rendered geometry/density gate) · export_pptx.py (headless PPTX) · marp_to_slides.py (legacy) · extract_aws_icons.py
 **references/**: design-direction.md (design principles/theme selection) · authoring-rules.md (authoring rules/patterns) · framework-guide.md (CSS/JS API) · slide-patterns.md (patterns by type) · remarp-format-guide.md (Remarp syntax) · interactive-patterns-guide.md (advanced interactions) · canvas-authoring-guide.md (Canvas DSL) · colors-reference.md (tokens) · pptx-theme-guide.md · aws-icons-guide.md · keyboard-shortcuts.md · marp-format-guide.md (legacy)
 
 > ⚡ **Token savings**: `slide-patterns.md`, `interactive-patterns-guide.md`, and `remarp-format-guide.md` are large files (~25K tokens each). Don't Read the whole file — instead **offset-read only the `##` section you need, using the exact line numbers from the `<!-- SECTION INDEX -->` at the top** (e.g., `Read(file, offset=L, limit=nextSectionL−L)`). If that section references another `##`/`§`, read that section too (to avoid missing cross-references).

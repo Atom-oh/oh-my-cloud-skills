@@ -15,6 +15,15 @@ Checks per slide (per viewport, per theme, per canvas step):
   RATIO_DRIFT   content scale does not follow the deck box across aspect ratios
   BROKEN_IMAGE  img.naturalWidth === 0
   CONSOLE       page errors / failed requests
+  UNDERFILL     content fills < 55% of .slide-body height (WARN; cover/title/section/closing exempt)
+  MIN_FONT      effective text size (font-size x CSS zoom) < 22px WARN, < 18px FAIL
+  FIT_OVERFLOW  slide carries data-fit-overflow — content does not fit even at the minimum fit scale
+  DECK_OFFSCREEN the scaled .slide-deck box is not fully inside the viewport (checked with the
+                sidebar as the deck loads it, and hidden) — part of every slide is cut off
+
+UNDERFILL / MIN_FONT / FIT_OVERFLOW are measured once per slide (canvas step 0)
+after `ReactiveFit.fitSlide(slide, {force:true})` and de-duplicated across
+viewports/themes — the fit engine works on the fixed canvas, so repeats are noise.
 
 Usage:
     python3 measure_deck.py <deck-dir-or-html> [--json] [--screenshots DIR]
@@ -66,6 +75,97 @@ _SHOW_SLIDE_JS = """
   });
   const h = slides[idx] ? slides[idx].querySelector('h1, h2, h3') : null;
   return h ? h.textContent.trim().slice(0, 60) : '';
+}
+"""
+
+# Re-run the fit engine on the slide we just forced visible. _SHOW_SLIDE_JS
+# bypasses SlideFramework.showSlide(), so the cached data-fit-scale may be
+# stale (or absent); force recomputation so density rules see the final zoom.
+_FIT_JS = """
+(idx) => {
+  const s = document.querySelectorAll('.slide-deck .slide')[idx];
+  if (!s || !window.ReactiveFit) return null;
+  return window.ReactiveFit.fitSlide(s, { force: true });
+}
+"""
+
+# Density pass over the active slide (once per slide, canvas step 0).
+# Returns a list of finding dicts like _MEASURE_JS.
+_DENSITY_JS = r"""
+() => {
+  const slide = document.querySelector('.slide-deck .slide.active');
+  if (!slide) return [];
+  const findings = [];
+
+  const sel = (el) => {
+    let s = el.tagName.toLowerCase();
+    if (el.id) return s + '#' + el.id;
+    if (el.classList.length) s += '.' + [...el.classList].slice(0, 2).join('.');
+    return s;
+  };
+  const shown = (el) => {
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 1 && r.height > 1;
+  };
+  const inTemplate = (el) => el.tagName === 'TEMPLATE' || !!el.closest('template');
+
+  // --- FIT_OVERFLOW: the fit engine hit MIN scale and content still spills ---
+  if (slide.hasAttribute('data-fit-overflow')) {
+    findings.push({ rule: 'FIT_OVERFLOW', severity: 'FAIL', el: sel(slide),
+      message: 'content does not fit even at the minimum fit scale — split the slide' });
+  }
+
+  const body = slide.querySelector('.slide-body');
+
+  // --- UNDERFILL: content occupies too little of the body height ---
+  const exempt = !slide.querySelector('.slide-header') ||
+    slide.matches('.title-slide, .cover-slide, .section-slide, .closing-slide') || !body;
+  if (!exempt) {
+    const bodyRect = body.getBoundingClientRect();
+    let top = Infinity, bottom = -Infinity;
+    for (const el of body.querySelectorAll('*')) {
+      if (inTemplate(el) || !shown(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.top < top) top = r.top;
+      if (r.bottom > bottom) bottom = r.bottom;
+    }
+    if (bodyRect.height > 0) {
+      // A body with no shown content is 0% full, not exempt.
+      const ratio = bottom > top ? (bottom - top) / bodyRect.height : 0;
+      if (ratio < 0.55) {
+        findings.push({ rule: 'UNDERFILL', severity: 'WARN', el: sel(body),
+          message: 'content fills ' + Math.round(ratio * 100) +
+            '% of the slide-body height (< 55%) — enlarge, add content, or merge slides' });
+      }
+    }
+  }
+
+  // --- MIN_FONT: effective text size = computed font-size x CSS zoom ---
+  const fallbackZoom = parseFloat(slide.dataset.fitScale || '1') || 1;
+  let count = 0, smallest = null, smallestPx = Infinity;
+  for (const el of slide.querySelectorAll('*')) {
+    if (inTemplate(el) || el.closest('svg')) continue;
+    let hasText = false;
+    for (const n of el.childNodes) {
+      if (n.nodeType === 3 && n.textContent.trim()) { hasText = true; break; }
+    }
+    if (!hasText || !shown(el)) continue;
+    const zoom = typeof el.currentCSSZoom === 'number' ? el.currentCSSZoom : fallbackZoom;
+    const px = parseFloat(getComputedStyle(el).fontSize) * zoom;
+    if (!(px < 22)) continue;
+    count++;
+    if (px < smallestPx) { smallestPx = px; smallest = el; }
+  }
+  if (smallest) {
+    findings.push({ rule: 'MIN_FONT', severity: smallestPx < 18 ? 'FAIL' : 'WARN',
+      el: sel(smallest),
+      message: count + ' text element(s) below 22px (11pt); smallest ' +
+        smallestPx.toFixed(1) + 'px (' + (smallestPx / 2).toFixed(1) + 'pt)' });
+  }
+
+  return findings;
 }
 """
 
@@ -256,6 +356,45 @@ _RATIO_PROBE_JS = """
 }
 """
 
+# Viewport containment of the scaled deck. Every other rule measures relative to the
+# slide, so a deck pushed partly off-screen (e.g. auto margins defeating body's
+# centering on a viewport shorter than 1080px) passes them all. `hide` first hides the
+# sidebar through the framework (so --deck-scale is recomputed), else just reports.
+_DECK_VIEW_JS = """
+(hide) => {
+  const d = document.querySelector('.slide-deck');
+  if (!d) return null;
+  if (hide) {
+    try {
+      if (typeof deck !== 'undefined' && deck && typeof deck.hideSidebar === 'function') deck.hideSidebar();
+    } catch (e) { /* best effort */ }
+    document.body.classList.remove('sidebar-visible');
+  }
+  const r = d.getBoundingClientRect();
+  return { left: r.left, top: r.top, right: r.right, bottom: r.bottom,
+           vw: window.innerWidth, vh: window.innerHeight,
+           sidebar: document.body.classList.contains('sidebar-visible') };
+}
+"""
+
+
+def _deck_view_findings(box, block, vp):
+    """DECK_OFFSCREEN finding (or none) for one _DECK_VIEW_JS result."""
+    if not box:
+        return []
+    out = max(-box['left'], -box['top'], box['right'] - box['vw'], box['bottom'] - box['vh'])
+    if out <= 2:
+        return []
+    edges = [name for name, v in (('left', -box['left']), ('top', -box['top']),
+                                  ('right', box['right'] - box['vw']),
+                                  ('bottom', box['bottom'] - box['vh'])) if v > 2]
+    state = 'sidebar on' if box['sidebar'] else 'sidebar off'
+    return [dict(rule='DECK_OFFSCREEN', severity='FAIL', file=block, slide=None,
+                 el='.slide-deck', viewport=vp, theme=None, step=None,
+                 message=(f"deck box extends {round(out)}px past the viewport "
+                          f"({'/'.join(edges)}, {state}) — part of every slide is cut off"))]
+
+
 _STEP_JS = """
 (dir) => {
   const slide = document.querySelector('.slide-deck .slide.active');
@@ -325,13 +464,23 @@ def measure(deck_dir: Path, blocks, viewports, themes, max_steps, shots_dir,
                             page.evaluate(
                                 "() => document.querySelector('.slide-deck')"
                                 ".classList.add('theme-dark')")
+                        if theme == themes[0]:
+                            findings.extend(_deck_view_findings(
+                                page.evaluate(_DECK_VIEW_JS, False), block, f"{vw}x{vh}"))
                         n = page.evaluate(_PREPARE_JS)
+                        # Every theme reloads the page, so the sidebar must be hidden
+                        # (and --deck-scale recomputed) each time; report it once.
+                        hidden_view = page.evaluate(_DECK_VIEW_JS, True)
+                        if theme == themes[0]:
+                            findings.extend(_deck_view_findings(
+                                hidden_view, block, f"{vw}x{vh}"))
                         page.wait_for_timeout(200)
 
                         for i in range(n):
                             if only_slides and (i + 1) not in only_slides:
                                 continue
                             title = page.evaluate(_SHOW_SLIDE_JS, i)
+                            page.evaluate(_FIT_JS, i)
                             page.wait_for_timeout(60)
 
                             probe = page.evaluate(_RATIO_PROBE_JS)
@@ -349,6 +498,12 @@ def measure(deck_dir: Path, blocks, viewports, themes, max_steps, shots_dir,
                                              viewport=f"{vw}x{vh}", theme=theme,
                                              step=step or None)
                                     findings.append(f)
+                                if step == 0:
+                                    for f in page.evaluate(_DENSITY_JS):
+                                        f.update(file=block, slide=i + 1, title=title,
+                                                 viewport=f"{vw}x{vh}", theme=theme,
+                                                 step=None)
+                                        findings.append(f)
                                 if shots_dir and step == 0:
                                     out = (shots_dir /
                                            f"{Path(block).stem}-s{i+1:02d}-{vw}x{vh}-{theme}.png")
@@ -374,6 +529,21 @@ def measure(deck_dir: Path, blocks, viewports, themes, max_steps, shots_dir,
             browser.close()
     finally:
         httpd.shutdown()
+
+    # --- density rules: one finding per (file, slide, rule, severity) ---
+    # Geometry is identical across viewports/themes on the fixed canvas, so
+    # repeats of UNDERFILL / MIN_FONT / FIT_OVERFLOW are noise. Keep the first.
+    _DENSITY_RULES = {'UNDERFILL', 'MIN_FONT', 'FIT_OVERFLOW'}
+    seen = set()
+    deduped = []
+    for f in findings:
+        if f['rule'] in _DENSITY_RULES:
+            key = (f['file'], f['slide'], f['rule'], f['severity'])
+            if key in seen:
+                continue
+            seen.add(key)
+        deduped.append(f)
+    findings = deduped
 
     # --- RATIO_DRIFT: content scale must follow the deck box ---
     for (block, slide, theme), rows in ratio_probes.items():

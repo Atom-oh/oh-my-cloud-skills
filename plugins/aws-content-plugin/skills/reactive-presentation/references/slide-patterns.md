@@ -424,7 +424,8 @@ Use this when showing a static structure, such as a full architecture overview. 
 <div class="slide">
   <div class="slide-header"><h2>AWS AIOps Service Map</h2></div>
   <div class="slide-body" style="display:flex; align-items:center; justify-content:center;">
-    <img src="diagrams/aiops-service-map.png" class="slide-img" style="max-width:90%; max-height:85%;" />
+    <img src="diagrams/aiops-service-map.png" class="slide-img" alt="AIOps service map" />
+    <!-- .slide-img already caps the size; a percent max-height does not resolve inside the fit box -->
   </div>
 </div>
 ```
@@ -813,7 +814,7 @@ Key points:
 ```html
 <div class="slide">
   <div class="slide-header"><h2>Summary & Quiz</h2></div>
-  <div class="slide-body" style="overflow-y:auto">
+  <div class="slide-body"><!-- no scrolling body: ReactiveFit scales the content to fit -->
     <div class="col-2" style="margin-bottom:16px">
       <div class="card"><div class="card-title">Key Point 1</div><p>Detail</p></div>
       <div class="card"><div class="card-title">Key Point 2</div><p>Detail</p></div>

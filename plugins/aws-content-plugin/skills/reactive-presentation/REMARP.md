@@ -224,6 +224,7 @@ Use `---` lines to separate slides. Place `@directive`s right after the `---`.
 | `@background` | Background color | CSS color or `url(...)` |
 | `@timing` | Presentation time | 3min, 90s |
 | `@canvas-id` | Canvas ID | Identifier |
+| `@fit` | Autofit of the slide body (see `references/remarp-format-guide.md`) | auto, shrink, off |
 
 ### Fragment Animation (`{.click}`)
 

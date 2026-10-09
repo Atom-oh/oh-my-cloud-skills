@@ -100,8 +100,10 @@ def _discover_blocks(project_dir: Path):
 
 # Runs inside the page: freeze motion, reveal fragments, finish canvas steps,
 # hide navigation chrome that has no meaning on a static slide. The sidebar
-# must also go: when visible it shrinks .slide-deck to calc(100vw - 220px),
-# so a 1920px viewport would capture a ~1700px deck.
+# must also go: while it is visible the framework scales the fixed 1920x1080
+# canvas into (100vw - 220px), so a 1920px viewport would capture a ~1700px deck.
+# Removing the class alone leaves --deck-scale stale, so hide it through the
+# framework and then pin the scale to the full viewport.
 _PREPARE_JS = """
 () => {
   const style = document.createElement('style');
@@ -110,7 +112,15 @@ _PREPARE_JS = """
     .progress-bar, .slide-counter, .nav-hint, .canvas-controls, .slide-sidebar { display: none !important; }
   `;
   document.head.appendChild(style);
+  try {
+    if (typeof deck !== 'undefined' && deck && typeof deck.hideSidebar === 'function') deck.hideSidebar();
+  } catch (e) { /* best effort */ }
   document.body.classList.remove('sidebar-visible');
+  const deckEl = document.querySelector('.slide-deck');
+  if (deckEl) {
+    const w = deckEl.offsetWidth || 1920, h = deckEl.offsetHeight || 1080;
+    deckEl.style.setProperty('--deck-scale', Math.min(window.innerWidth / w, window.innerHeight / h));
+  }
 
   // Lazy iframes inside display:none slides never load before capture —
   // force eager loading so @type: iframe slides don't export blank. A load
@@ -176,8 +186,8 @@ _SHOW_SLIDE_JS = """
   });
   // We bypass SlideFramework.showSlide(), so replicate its per-slide chrome
   // updates: pagination number, and footer/logo visibility + dark-logo swap
-  // (updateFooterVisibility hides the framework footer/logo on slides with
-  // an <img> and swaps logoDarkSrc on dark slides — without this, slide 0's
+  // (updateFooterVisibility hides the framework footer/logo on full-bleed
+  // slides and swaps logoDarkSrc on dark slides — without this, slide 0's
   // state is baked into every capture).
   const num = document.querySelector('.slide-number');
   if (num) num.textContent = (idx + 1) + ' / ' + slides.length;
@@ -190,6 +200,17 @@ _SHOW_SLIDE_JS = """
   } catch (e) { /* best effort */ }
   const h = el ? el.querySelector('h1, h2, h3') : null;
   return h ? h.textContent.trim() : '';
+}
+"""
+
+# Re-run the fit engine on the slide we just forced visible: _SHOW_SLIDE_JS
+# bypasses SlideFramework.showSlide(), so the cached data-fit-scale may be
+# stale. Same snippet as measure_deck.py so captures match the measured gate.
+_FIT_JS = """
+(idx) => {
+  const s = document.querySelectorAll('.slide-deck .slide')[idx];
+  if (!s || !window.ReactiveFit) return null;
+  return window.ReactiveFit.fitSlide(s, { force: true });
 }
 """
 
@@ -327,6 +348,12 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
                         page.wait_for_function(_MEDIA_READY_JS, timeout=5000)
                     except Exception:
                         print(f"  (warn) media still loading on slide {i + 1} of {block} — capturing anyway")
+                    # Best effort: refit now that media has its final size;
+                    # an export never fails because of fit.
+                    try:
+                        page.evaluate(_FIT_JS, i)
+                    except Exception:
+                        pass
                     page.wait_for_timeout(80)
 
                     # Best-effort: a notes nicety must never fail an export.

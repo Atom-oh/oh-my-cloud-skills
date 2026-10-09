@@ -50,7 +50,7 @@
   --border:       #d0d7dc;
   --text-primary:   var(--on-surface);
   --text-secondary: #414d5c;
-  --text-muted:     #7d8998;
+  --text-muted:     #5f6b7a;  /* >=4.5:1 on #eaedee (footer, slide number) */
   --text-accent:  #0972d3;
   --border-focus: #0972d3;
   --cyan: #0891b2;
@@ -74,7 +74,7 @@
   --border:       #2e425a;
   --text-primary:   #e9ebed;
   --text-secondary: #9fb0c1;
-  --text-muted:     #6c7f93;
+  --text-muted:     #8d99a8;
   --text-accent:  #539fe5;
   --border-focus: #539fe5;
   --cyan: #00cec9;
@@ -99,7 +99,7 @@
   --border:       #d7d3c7;
   --text-primary:   var(--on-surface);
   --text-secondary: var(--on-surface-muted);
-  --text-muted:     #8a8474;
+  --text-muted:     #6b6557;
   --text-accent:  #b8560b;
   --border-focus: #b8560b;
 }
@@ -197,7 +197,12 @@ body {
   height: 1080px;
   width: calc(1080px * var(--slide-ratio-w) / var(--slide-ratio-h));
   flex: none;
-  margin: auto;
+  /* margin 0, not auto: on a viewport shorter (or narrower) than the 1080px layout box the
+     flex free space is negative, auto margins resolve to 0 AND disable body's centering, so
+     the box pinned to the top and the centre-origin scale pushed the bottom
+     (1080 - vh) / 2 px off-screen (180px at 1280x720). With margin 0 body's
+     align-items/justify-content centre the overflowing box on both axes. */
+  margin: 0;
   transform: scale(var(--deck-scale, 1));
   transform-origin: center center;
   position: relative;
@@ -208,6 +213,12 @@ body {
      would otherwise show near-black text on its dark background. */
   color: var(--text-primary);
 }
+/* Korean: break between words (spaces), never inside a word; still break a token that
+   cannot fit at all, so nothing overflows. `text-wrap: pretty` (inherited by p/li/card/
+   callout text) avoids one-word last lines; headings balance their lines instead. The
+   heading rule uses the longhand so it never resets a heading's own white-space. */
+.slide-deck:lang(ko) { word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; }
+.slide-deck:lang(ko) :is(h1, h2, h3, h4) { text-wrap-style: balance; }
 /* Oversized flex item still centers visually: body is flex with centered
    axes; equal overflow is clipped on both sides until the transform shrinks
    the box into view. */
@@ -221,7 +232,8 @@ body {
   inset: 0;
   display: none;
   flex-direction: column;
-  padding: var(--space-6);
+  /* Side margin approximates the PPTX PAD at a reduced value. */
+  padding: var(--space-6) 64px;
   opacity: 0;
   transition: opacity var(--transition-normal);
 }
@@ -259,13 +271,22 @@ body {
 }
 .slide h2 {
   font-family: var(--font-display);
-  font-size: var(--text-2xl); font-weight: var(--weight-semibold);
+  font-size: var(--fs-title); font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
   color: var(--text-primary);
   margin-top: var(--space-3); margin-bottom: var(--space-2);
+  line-height: var(--leading-tight);
+}
+/* Header title: tight block — margins + header padding total about 42px (was about 90px). */
+.slide-header h1,
+.slide-header h2 {
+  font-size: var(--fs-title);
+  line-height: var(--leading-tight);
+  margin-top: 0;
+  margin-bottom: var(--space-1);
 }
 .slide h3 {
-  font-size: var(--text-lg); font-weight: var(--weight-semibold);
+  font-size: var(--fs-subtitle); font-weight: var(--weight-semibold);
   color: var(--text-accent);
   margin-top: var(--space-3); margin-bottom: var(--space-1);
 }
@@ -275,7 +296,7 @@ body {
 .eyebrow {
   display: block;
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--fs-caption);
   font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
@@ -283,18 +304,18 @@ body {
   margin-bottom: var(--space-1);
 }
 /* First heading in a container should not have extra top margin */
-.slide-body > h1:first-child,
-.slide-body > h2:first-child,
-.slide-body > h3:first-child { margin-top: 0; }
+:is(.slide-body, .fit-box) > h1:first-child,
+:is(.slide-body, .fit-box) > h2:first-child,
+:is(.slide-body, .fit-box) > h3:first-child { margin-top: 0; }
 .slide p, .slide li {
-  font-size: 1.05rem;
-  line-height: 1.7;
+  font-size: var(--fs-body);
+  line-height: var(--leading-body);
   color: var(--text-secondary);
 }
 .slide .subtitle {
-  font-size: 1.2rem;
+  font-size: var(--fs-subtitle);
   color: var(--text-muted);
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 /* --- Layout Helpers --- */
@@ -302,7 +323,7 @@ body {
    every slide header. One consistent, quiet mark that brands the whole deck;
    everything else stays disciplined. */
 .slide-header {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
   padding-bottom: var(--space-2);
   position: relative;
 }
@@ -322,6 +343,22 @@ body {
   gap: var(--space-3);
   overflow-y: auto;
 }
+/* Fit box — created at runtime by ReactiveFit (slide-framework.js) around the
+   .slide-body children. Auto height so its size is measurable; CSS `zoom` is applied
+   to it; auto block margins center it vertically in the body. */
+.fit-box {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block: auto;
+}
+/* Fill by default: grid/column children take the leftover body height and center
+   their rows; cards in a row stretch to equal height (grid default). */
+:is(.slide-body, .fit-box) > :is(.card-grid, .col-2, .col-3, .columns) {
+  flex: 1;
+  align-content: center;
+}
 .columns { display: flex; gap: var(--space-5); flex: 1; }
 .columns > * { flex: 1; }
 .col-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
@@ -329,7 +366,7 @@ body {
 /* Vertically center a sparse grid in the remaining slide height. Auto
    margins collapse to 0 when the grid overflows, so dense decks still
    scroll from the top instead of clipping. */
-.slide-body > .grid-vcenter { margin-top: auto; margin-bottom: auto; }
+:is(.slide-body, .fit-box) > .grid-vcenter { margin-top: auto; margin-bottom: auto; }
 .center-content {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -353,17 +390,42 @@ body {
   box-shadow: var(--shadow-glow);
 }
 .card-title {
-  font-size: 1.1rem; font-weight: 600;
+  font-size: var(--fs-subtitle); font-weight: 600;
   color: var(--text-accent);
   margin-bottom: var(--space-1);
 }
+.card-desc {
+  font-size: var(--fs-card);
+  line-height: var(--leading-body);
+  color: var(--on-surface-muted);
+  margin-top: var(--space-1);
+}
+/* Sentence card: a .metric-card that carries sentences (not a number tile) reads
+   left-aligned — centered multi-line text is hard to scan. */
+.metric-card.card-text { text-align: left; }
+/* Secondary line of a card ("what you no longer do", "alternative"): hairline divider
+   plus an optional muted label on its own line. */
+.card-note {
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+}
+.card-note-label {
+  display: block;
+  font-size: var(--fs-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--on-surface-muted);
+  margin-bottom: var(--space-1);
+}
+/* Text inside a card reads at card size, not body size. */
+.slide :is(.card, .metric-card, .callout, .comparison) :is(p, li) { font-size: var(--fs-card); }
 
 /* --- Badges / Tags --- */
 .badge {
   display: inline-block;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-pill);
-  font-size: .78rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
   letter-spacing: .02em;
 }
@@ -381,7 +443,7 @@ body {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   font-family: var(--font-main);
-  font-size: .9rem;
+  font-size: var(--fs-caption);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -395,7 +457,7 @@ body {
   background: var(--accent-light);
   border-color: var(--accent-light);
 }
-.btn-sm { padding: var(--space-1) var(--space-2); font-size: .82rem; }
+.btn-sm { padding: var(--space-1) var(--space-2); font-size: var(--fs-caption); }
 .btn-group { display: flex; gap: var(--space-1); flex-wrap: wrap; }
 
 /* --- Tabs --- */
@@ -416,7 +478,7 @@ body {
      muted fails WCAG on both themes (measured 3.2 light / 3.9 dark) */
   color: var(--text-secondary);
   font-family: var(--font-main);
-  font-size: .88rem;
+  font-size: var(--fs-card);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -429,6 +491,18 @@ body {
 }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
+/* Panel stack: initTabs() groups a tab bar's sibling panels into .tab-panels (authors may
+   write it directly). Every panel shares one grid cell, so the stack is as tall as the
+   tallest panel: switching tabs never moves the tab bar or the content below it, and
+   ReactiveFit sizes the slide once, for the tallest panel. Inactive panels stay laid out
+   but invisible (and out of the accessibility tree and the tab order). */
+.tab-panels { display: grid; grid-template-columns: minmax(0, 1fr); }
+.tab-panels > .tab-content { display: block; grid-area: 1 / 1; visibility: hidden; }
+.tab-panels > .tab-content.active { visibility: visible; }
+/* Self-contained .tab-set panels toggle the hidden attribute: keep them laid out in the
+   stack (author CSS beats the UA [hidden] display:none) and only invisible. */
+.tab-panels > .tc { display: block; grid-area: 1 / 1; }
+.tab-panels > .tc[hidden] { visibility: hidden; }
 
 /* --- Code Blocks --- */
 .code-block {
@@ -437,7 +511,7 @@ body {
   border-radius: var(--radius-md);
   padding: var(--space-3);
   font-family: var(--font-mono);
-  font-size: .85rem;
+  font-size: var(--fs-caption);
   line-height: 1.65;
   color: #c9d1d9;
   overflow-x: auto;
@@ -452,11 +526,22 @@ body {
 .code-block .number  { color: #fdcb6e; }
 .code-label {
   position: absolute; top: 8px; right: 12px;
-  font-size: .7rem;
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
   background: var(--bg-secondary);
   padding: 2px 8px;
   border-radius: 4px;
+}
+/* Inside the fit box a code block takes part in fit (framework-contract §11): no inner
+   scroll container — a scroller hides its overflow from the fit measurement — and a long
+   line widens the block itself, so ReactiveFit shrinks the slide instead of the code
+   being clipped or scrolled. (Percent max-heights do not resolve reliably in the
+   auto-height box anyway.) A slide that needs a scrolling listing sets data-fit="off". */
+.fit-box .code-block {
+  max-height: none;
+  overflow: visible;
+  width: max-content;
+  min-width: 100%;
 }
 
 /* --- Canvas Container --- */
@@ -595,14 +680,18 @@ body {
   flex-wrap: wrap;
 }
 .checklist li:hover { background: var(--bg-tertiary); }
+/* The box is an interactive control: sized in em so it tracks the item text (and the fit
+   zoom), centered on the first line ((1.45 - .75) / 2 = .35em with --leading-body), and
+   bordered in --on-surface-muted so it meets the 3:1 non-text contrast minimum
+   (--border measured about 1.2:1 against the page). */
 .checklist li .check {
-  width: var(--space-3); height: var(--space-3);
-  border: 2px solid var(--border);
+  width: .75em; height: .75em;
+  border: 2px solid var(--on-surface-muted);
   border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
   transition: all var(--transition-fast);
   flex-shrink: 0;
-  margin-top: var(--space-1);
+  margin-top: .35em;
 }
 .checklist li.checked .check {
   background: var(--green);
@@ -611,8 +700,11 @@ body {
 .checklist li.checked .check::after {
   content: '\2713';
   color: #fff;
-  font-size: .75rem;
+  font-size: var(--fs-caption);
 }
+/* The text beside the checkbox takes the remaining width (basis 0), so a long item wraps
+   next to its box instead of dropping below it on the wrapping flex line. */
+.checklist-text { flex: 1 1 0; min-width: 0; }
 
 /* Checklist expandable detail */
 .checklist-detail {
@@ -624,13 +716,14 @@ body {
   overflow: hidden;
   transition: max-height var(--transition-normal);
 }
+.slide .checklist-detail, .slide .checklist-detail :is(p, li) { font-size: var(--fs-card); }
 .checklist li.checked .checklist-detail {
   display: block;
 }
 .checklist li.has-detail .checklist-text::after {
   content: ' ▸';
   color: var(--text-muted);
-  font-size: .75rem;
+  font-size: var(--fs-caption);
 }
 .checklist li.has-detail.checked .checklist-text::after {
   content: ' ▾';
@@ -640,7 +733,7 @@ body {
 .slide table {
   width: 100%;
   border-collapse: collapse;
-  font-size: .92rem;
+  font-size: var(--fs-card);
 }
 .slide th, .slide td {
   padding: var(--space-2) var(--space-2);
@@ -661,7 +754,7 @@ body {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   border-left: 4px solid;
-  font-size: .95rem;
+  font-size: var(--fs-card);
 }
 /* .callout-* role variants are defined AFTER the .callout primitive block
    (token-backed primitives section) so they win source order; see below. */
@@ -685,7 +778,7 @@ body {
   background: var(--bg-tertiary);
   border: 2px solid var(--border);
   display: flex; align-items: center; justify-content: center;
-  font-size: .75rem; font-weight: 700;
+  font-size: var(--fs-caption); font-weight: 700;
   color: var(--text-muted);
   z-index: 1;
   transition: all var(--transition-normal);
@@ -706,9 +799,9 @@ body {
 }
 .timeline-label {
   margin-top: var(--space-1);
-  font-size: .78rem;
+  font-size: var(--fs-caption);
   color: var(--text-muted);
-  max-width: 4.2rem;
+  max-width: 6rem;
 }
 .timeline-connector {
   flex: 1;
@@ -720,10 +813,10 @@ body {
 }
 .timeline-connector.done { background: var(--accent); opacity: .5; }
 .timeline-desc {
-  font-size: .7rem;
+  font-size: var(--fs-caption);
   color: var(--text-muted);
   margin-top: var(--space-1);
-  max-width: 5rem;
+  max-width: 7rem;
   line-height: 1.3;
 }
 
@@ -781,16 +874,16 @@ body {
 .agenda-label {
   margin-top: var(--space-3);
   text-align: center;
-  max-width: 7rem;
+  max-width: 12rem;
 }
 .agenda-label strong {
   display: block;
-  font-size: 0.95rem;
+  font-size: var(--fs-subtitle);
   color: var(--text-primary, #e8eaf0);
   margin-bottom: 0.2rem;
 }
 .agenda-label span {
-  font-size: 0.8rem;
+  font-size: var(--fs-card);
   color: var(--text-muted);
 }
 .agenda-connector {
@@ -838,8 +931,8 @@ body {
 
 .steps--horizontal .step-item { text-align: center; flex: 1; }
 .steps--vertical .step-item { display: flex; gap: 1rem; align-items: flex-start; }
-.step-label { font-weight: 600; margin-top: 0.5rem; font-size: 0.95rem; }
-.step-desc { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
+.step-label { font-weight: 600; margin-top: 0.5rem; font-size: var(--fs-subtitle); }
+.step-desc { font-size: var(--fs-card); opacity: 0.8; margin-top: 0.25rem; }
 
 .step-item.done .step-marker { background: var(--step-color); opacity: 0.6; }
 .step-item.active .step-marker { box-shadow: 0 0 0 4px var(--accent-subtle); transform: scale(1.1); }
@@ -865,7 +958,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .slider-value {
   font-family: var(--font-mono);
-  font-size: .9rem;
+  font-size: var(--fs-caption);
   color: var(--accent-light);
   min-width: 60px;
   text-align: right;
@@ -875,6 +968,13 @@ input[type="range"]::-webkit-slider-thumb {
 .metric-card {
   text-align: center;
   padding: var(--space-3);
+  font-size: var(--fs-card);
+}
+/* Card heading pattern: <strong>Title</strong><div class="card-desc">…</div> */
+.metric-card > strong:first-child {
+  display: block;
+  font-size: var(--fs-subtitle);
+  margin-bottom: var(--space-1);
 }
 .metric-value {
   font-size: 2rem;
@@ -883,7 +983,7 @@ input[type="range"]::-webkit-slider-thumb {
   color: var(--accent-light);
 }
 .metric-label {
-  font-size: .82rem;
+  font-size: var(--fs-caption);
   color: var(--text-muted);
   margin-top: 4px;
 }
@@ -895,7 +995,7 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: var(--radius-sm);
   padding: var(--space-2);
   font-family: var(--font-mono);
-  font-size: .78rem;
+  font-size: var(--fs-caption);
   line-height: 1.6;
   max-height: 10rem;
   overflow-y: auto;
@@ -926,7 +1026,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .title-slide .meta {
   margin-top: var(--space-5);
-  font-size: .9rem;
+  font-size: var(--fs-caption);
   color: var(--text-muted);
 }
 
@@ -957,7 +1057,7 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--bg-tertiary);
   color: var(--text-muted);
   font-family: var(--font-main);
-  font-size: .9rem;
+  font-size: var(--fs-card);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -986,7 +1086,7 @@ input[type="range"]::-webkit-slider-thumb {
   aspect-ratio: 1;
   border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
-  font-size: .7rem; font-weight: 700;
+  font-size: var(--fs-caption); font-weight: 700;
   transition: all var(--transition-normal);
   cursor: default;
 }
@@ -1021,13 +1121,6 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-
-/* --- Responsive (projector safe) --- */
-@media (max-width: 1024px) {
-  .slide { padding: 32px 40px; }
-  .slide h1 { font-size: 2rem; }
-  .title-slide h1 { font-size: 2.4rem; }
-}
 
 /* --- Logo --- */
 .slide-logo {
@@ -1137,12 +1230,15 @@ input[type="range"]::-webkit-slider-thumb {
 /* --- Images --- */
 .slide-img {
   max-width: 90%;
-  max-height: 50vh;
+  max-height: 100%;
   object-fit: contain;
   border-radius: 8px;
   margin: 0 auto;
   display: block;
 }
+/* Inside a fit box the parent height is auto (percent caps resolve to none), so cap
+   images in rem: rem lengths scale with the fit zoom, percent widths do not. */
+.fit-box .slide-img { max-height: 28rem; }
 
 /* --- Compare Highlight (side-by-side mode) --- */
 .compare-highlight {
@@ -1578,7 +1674,7 @@ input[type="range"]::-webkit-slider-thumb {
   flex-shrink: 0;
 }
 .flow-arrow .arrow-label {
-  font-size: 0.7rem;
+  font-size: var(--fs-caption);
   margin-top: 0.25rem;
 }
 
@@ -1587,6 +1683,7 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 0.75rem 1rem;
   border-radius: 8px;
   font-weight: 500;
+  font-size: var(--fs-card);
   text-align: center;
   min-width: 120px;
   width: 100%;             /* fill the group → uniform box width across stages */
@@ -1605,7 +1702,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 48px;
 }
 .icon-item span {
-  font-size: 0.75rem;
+  font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
 .icon-item.sm img { width: 32px; height: 32px; }
@@ -1631,18 +1728,37 @@ input[type="range"]::-webkit-slider-thumb {
 .text-purple { color: #6366f1; }
 .text-pink   { color: var(--pink); }
 .theme-dark .text-purple { color: #818cf8; }
+/* Utility colors must beat the heading defaults: `.slide h3` (0,1,1) out-ranks a bare
+   `.text-orange` (0,1,0), so a colored heading silently fell back to --text-accent. */
+.slide :is(h1, h2, h3, h4).text-blue   { color: var(--blue); }
+.slide :is(h1, h2, h3, h4).text-orange { color: var(--orange); }
+.slide :is(h1, h2, h3, h4).text-green  { color: var(--green); }
+.slide :is(h1, h2, h3, h4).text-red    { color: var(--red); }
+.slide :is(h1, h2, h3, h4).text-purple { color: #6366f1; }
+.slide :is(h1, h2, h3, h4).text-pink   { color: var(--pink); }
+.theme-dark :is(h1, h2, h3, h4).text-purple { color: #818cf8; }
+/* Smile orange on the light page measures 2.6:1 (< 3:1 even for large text): light-theme
+   orange headings take the darker amber the paper preset already uses (4.3:1). */
+.slide-deck:not(.theme-dark) .slide:not(.theme-dark) :is(h1, h2, h3, h4).text-orange { color: #b45309; }
+
+/* Keep a token together — e.g. a Korean particle after ")" (keep-all still breaks there). */
+.nowrap { white-space: nowrap; }
+/* Inline code in slide text: mono at the surrounding size (the UA `monospace` default
+   would shrink it) and never broken mid-identifier; a too-long token widens its box and
+   ReactiveFit shrinks the slide. Code blocks use <pre> and are styled separately. */
+.slide :not(pre) > code { font-family: var(--font-mono); font-size: 1em; white-space: nowrap; }
 
 /* --- Text Icon (for services without icon files) --- */
 .text-icon {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   color: var(--text-secondary);
 }
@@ -1658,7 +1774,7 @@ input[type="range"]::-webkit-slider-thumb {
   flex: 1 1 0;            /* equal width, spread evenly across the row */
 }
 .flow-group .flow-group-label {
-  font-size: 0.85rem;
+  font-size: var(--fs-card);
   color: var(--text-secondary);
   margin-bottom: 0.25rem;
 }
@@ -1669,7 +1785,7 @@ input[type="range"]::-webkit-slider-thumb {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-card);
   color: var(--text-secondary);
   margin-top: 1rem;
 }
@@ -1679,6 +1795,7 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--bg-card);
   border: 1px solid var(--border);
   font-weight: 500;
+  font-size: inherit;
 }
 
 /* ============================================================
@@ -1754,6 +1871,12 @@ body.sidebar-visible .slide-deck {
   pointer-events: none;
   /* scale is calculated in JS and applied as inline style */
 }
+/* createSidebar() copies the slide's theme-dark/-light class onto the clone; paint it
+   like .slide.theme-dark so a dark cover stays dark in its thumbnail. */
+.sidebar-thumb-content.theme-dark {
+  background: var(--surface-1);
+  color: var(--on-surface);
+}
 
 /* Hide sidebar in fullscreen (the root is the fullscreen element) */
 :root:fullscreen .slide-sidebar,
@@ -1788,8 +1911,11 @@ body.sidebar-visible .slide-deck {
   max-width: none !important;
   max-height: none !important;
   width: 100vw !important;
-  height: auto !important;
-  min-height: 100vh;
+  /* Viewport-tall and self-scrolling: body centres its child, so a taller
+     auto-height grid would push the first rows above the viewport. */
+  height: 100vh !important;
+  align-self: flex-start;
+  align-content: start;
   overflow: auto !important;
   background: #000;
 }
@@ -1851,7 +1977,7 @@ body.sidebar-visible .slide-deck {
   gap: 6px;
   padding: 6px 12px;
   border-radius: 6px;
-  font-size: 0.8rem;
+  font-size: var(--fs-caption);
   font-weight: 500;
 }
 
@@ -1888,8 +2014,8 @@ body.sidebar-visible .slide-deck {
 .kpi-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1.2rem; text-align: center; flex: 1; min-width: 120px; transition: box-shadow 0.2s ease; }
 .kpi-card:hover { box-shadow: 0 0 0 1px var(--border), 0 8px 16px rgba(0,0,0,0.08); }
 .kpi-value { font-size: 2rem; font-weight: 700; color: var(--accent); letter-spacing: -0.03em; }
-.kpi-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.3rem; }
-.kpi-delta { font-size: 0.8rem; margin-top: 0.3rem; }
+.kpi-label { font-size: var(--fs-caption); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.3rem; }
+.kpi-delta { font-size: var(--fs-caption); margin-top: 0.3rem; }
 .kpi-delta.positive { color: var(--green); }
 .kpi-delta.negative { color: var(--red); }
 
@@ -1901,8 +2027,8 @@ body.sidebar-visible .slide-deck {
 .chart-container:hover { box-shadow: 0 0 0 1px var(--border), 0 8px 16px rgba(0,0,0,0.08); }
 
 /* Data Table */
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.data-table th { padding: 0.6rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.data-table { width: 100%; border-collapse: collapse; font-size: var(--fs-card); }
+.data-table th { padding: 0.6rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-muted); font-weight: 600; font-size: var(--fs-caption); text-transform: uppercase; letter-spacing: 0.05em; }
 .data-table td { padding: 0.6rem; border-bottom: 1px solid var(--border); }
 .data-table tr:hover td { background: rgba(108,92,231,0.05); }
 
@@ -1910,14 +2036,14 @@ body.sidebar-visible .slide-deck {
 .stat-highlight { font-size: 3rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
 
 /* Badge for tables */
-.badge-up { font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(0,184,148,0.12); color: var(--green); }
-.badge-down { font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(225,112,85,0.12); color: var(--red); }
+.badge-up { font-size: var(--fs-caption); font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(0,184,148,0.12); color: var(--green); }
+.badge-down { font-size: var(--fs-caption); font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(225,112,85,0.12); color: var(--red); }
 
 /* ===== Interactive Pattern Classes ===== */
 
 /* Mode Selector */
 .mode-selector { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-.mode-btn { padding: 10px 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-tertiary); color: var(--text-secondary); font-family: var(--font-main); font-size: .9rem; cursor: pointer; transition: all var(--transition-fast); }
+.mode-btn { padding: 10px 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-tertiary); color: var(--text-secondary); font-family: var(--font-main); font-size: var(--fs-caption); cursor: pointer; transition: all var(--transition-fast); }
 .mode-btn:hover { border-color: var(--accent); }
 .mode-btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
 .mode-content { display: none; }
@@ -1926,12 +2052,12 @@ body.sidebar-visible .slide-deck {
 /* Slider Controls */
 .slider-group { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
 .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-.slider-row label { width: 100px; font-size: .82rem; color: var(--text-secondary); }
+.slider-row label { width: 100px; font-size: var(--fs-caption); color: var(--text-secondary); }
 .slider-row input[type="range"] { flex: 1; }
-.slider-row .value { font-family: var(--font-mono); font-size: .82rem; color: var(--accent-light); min-width: 60px; text-align: right; }
+.slider-row .value { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--accent-light); min-width: 60px; text-align: right; }
 
 /* YAML Output */
-.yaml-output { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-family: var(--font-mono); font-size: .82rem; color: #c9d1d9; white-space: pre; overflow-x: auto; line-height: 1.6; }
+.yaml-output { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-family: var(--font-mono); font-size: var(--fs-caption); color: #c9d1d9; white-space: pre; overflow-x: auto; line-height: 1.6; }
 
 /* QoS Indicators */
 .qos-display { display: flex; gap: 16px; }
@@ -1958,7 +2084,7 @@ body.sidebar-visible .slide-deck {
 /* Command Card */
 .command-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; cursor: pointer; transition: all var(--transition-fast); }
 .command-card:hover { border-color: var(--accent); }
-.command-header { padding: 12px 16px; font-family: var(--font-mono); font-size: .82rem; color: var(--accent-light); background: var(--bg-tertiary); }
+.command-header { padding: 12px 16px; font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--accent-light); background: var(--bg-tertiary); }
 .command-output { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
 .command-card.expanded .command-output { max-height: 300px; }
 

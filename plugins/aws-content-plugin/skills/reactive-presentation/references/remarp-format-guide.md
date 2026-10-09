@@ -3,78 +3,78 @@
 <!--
   L84    File Convention
   L109   Global Frontmatter
-  L238   Block File Format
-  L253   Why Cloud Computing?
-  L261   AWS Global Infrastructure
-  L292   오늘의 내용
-  L395   My Tabbed Slide
-  L544   Slide Directives
-  L562   Slide Title
-  L603   AWS AIOps Service Map
-  L639   Column and Grid Layouts
-  L649   Feature Comparison
-  L672   Service Options
-  L702   AWS Pillars
-  L732   Architecture Overview
-  L744   Element Animations (Fragments)
-  L753   Build Process
-  L767   Deployment Stages
-  L796   Out of Order Reveal
-  L859   Animation Showcase
-  L1000  AIOps 아키텍처
-  L1034  Roadmap
-  L1040  Roadmap
-  L1065  Canvas DSL
-  L1140  Simple Architecture
-  L1244  Data Pipeline
-  L1324  Speaker Notes
-  L1331  Slide Title
-  L1456  Interactive Slide Types
-  L1466  Knowledge Check
-  L1495  EC2 vs Lambda
-  L1518  Configuration Examples
-  L1559  Project Milestones
-  L1583  Upgrade Steps
-  L1612  Agenda
-  L1652  이번 세션에서 다룰 내용
-  L1670  Agenda
-  L1686  Process Flow
-  L1712  Deployment Checklist
-  L1737  Data Visualization in Remarp
-  L1911  Code Blocks
-  L2006  Backward Compatibility
-  L2038  Options
-  L2072  Options
-  L2091  Complete Example: Multi-Block Presentation
-  L2144  What is Serverless?
-  L2160  Serverless vs Traditional
-  L2182  Lambda Execution Model
-  L2202  Quick Check
-  L2229  Common Patterns
-  L2249  API Backend Pattern
-  L2266  Code Examples
-  L2311  Evolution of Serverless
-  L2354  Lab Prerequisites
-  L2364  Step 1: Create Lambda Function
-  L2388  Step 2: Deploy
-  L2416  Final Architecture
-  L2433  Lab Complete!
-  L2458  CLI Usage
-  L2479  Quick Reference
-  L2528  Theme Frontmatter Schema
-  L2578  Canvas DSL Preset Specification
-  L2620  Canvas DSL Icon Specification
-  L2777  Mermaid Block Specification
-  L2812  @ref Directive Specification
-  L2824  Slide Content
-  L2845  Animations Field Schema
-  L2892  Architecture Flow
-  L2901  Remarp Component Examples
-  L2913  System Health
-  L2954  Weekly Trends
-  L3006  Migration Status
-  L3057  Instance Comparison
-  L3114  Cost Breakdown
+  L239   Block File Format
+  L254   Why Cloud Computing?
+  L262   AWS Global Infrastructure
+  L293   오늘의 내용
+  L397   My Tabbed Slide
+  L582   Slide Directives
+  L600   Slide Title
+  L642   AWS AIOps Service Map
+  L678   Column and Grid Layouts
+  L688   Feature Comparison
+  L711   Service Options
+  L741   AWS Pillars
+  L771   Architecture Overview
+  L783   Element Animations (Fragments)
+  L792   Build Process
+  L806   Deployment Stages
+  L835   Out of Order Reveal
+  L898   Animation Showcase
+  L1039  AIOps 아키텍처
+  L1073  Roadmap
+  L1079  Roadmap
+  L1104  Canvas DSL
+  L1179  Simple Architecture
+  L1283  Data Pipeline
+  L1363  Speaker Notes
+  L1370  Slide Title
+  L1495  Interactive Slide Types
+  L1505  Knowledge Check
+  L1534  EC2 vs Lambda
+  L1557  Configuration Examples
+  L1598  Project Milestones
+  L1622  Upgrade Steps
+  L1651  Agenda
+  L1691  이번 세션에서 다룰 내용
+  L1709  Agenda
+  L1725  Process Flow
+  L1751  Deployment Checklist
+  L1776  Data Visualization in Remarp
+  L1950  Code Blocks
+  L2045  Backward Compatibility
+  L2077  Options
+  L2111  Options
+  L2130  Complete Example: Multi-Block Presentation
+  L2183  What is Serverless?
+  L2199  Serverless vs Traditional
+  L2221  Lambda Execution Model
+  L2241  Quick Check
+  L2268  Common Patterns
+  L2288  API Backend Pattern
+  L2305  Code Examples
+  L2350  Evolution of Serverless
+  L2393  Lab Prerequisites
+  L2403  Step 1: Create Lambda Function
+  L2427  Step 2: Deploy
+  L2455  Final Architecture
+  L2472  Lab Complete!
+  L2497  CLI Usage
+  L2518  Quick Reference
+  L2568  Theme Frontmatter Schema
+  L2618  Canvas DSL Preset Specification
+  L2660  Canvas DSL Icon Specification
+  L2817  Mermaid Block Specification
+  L2852  @ref Directive Specification
+  L2864  Slide Content
+  L2885  Animations Field Schema
+  L2932  Architecture Flow
+  L2941  Remarp Component Examples
+  L2953  System Health
+  L2994  Weekly Trends
+  L3046  Migration Status
+  L3097  Instance Comparison
+  L3154  Cost Breakdown
 -->
 
 # Remarp Format Guide
@@ -176,6 +176,7 @@ transition:
 | `theme` | object | No | Theme configuration |
 | `author` | string | No | (deprecated) Fallback for `speaker.name` |
 | `transition` | object | No | Transition defaults |
+| `fit` | string | No | Deck-wide autofit default: `auto` \| `shrink` \| `off` (per-slide `@fit` wins; YAML `fit: off` is accepted). Unknown values → `INVALID_FIT` warning in `validate` |
 | `keys` | object | No | Keyboard shortcut overrides |
 
 ### Block Definition
@@ -610,6 +611,7 @@ Slide directives control individual slide behavior. Place them on the line immed
 | `@class` | CSS class names | Additional CSS classes |
 | `@timing` | `Xmin` or `Xs` | Target duration for this slide |
 | `@canvas-id` | identifier | Canvas element ID for `@type: canvas` |
+| `@fit` | `auto`, `shrink`, `off` | Autofit mode for `.slide-body` content (emits `data-fit` on the slide; overrides frontmatter `fit`). `auto` scales 0.82–1.35, `shrink` only reduces (0.82–1.0), `off` leaves the layout untouched. Unknown values → `INVALID_FIT` warning in `validate` |
 | `@img` | `path [align] [size]` | Insert styled image (see below) |
 
 ### @img Directive
@@ -2524,6 +2526,7 @@ remarp validate presentation.md
 @class: <css-classes>
 @timing: Xmin|Xs
 @canvas-id: <identifier>
+@fit: auto|shrink|off
 ```
 
 ### Layouts

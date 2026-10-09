@@ -18,6 +18,14 @@
   --text-3xl: 2.441rem;  /* line-height: var(--leading-tight) */
   --text-4xl: 3.052rem;  /* line-height: var(--leading-tight) */
 
+  /* --- Projection type roles (1rem = 24px on the 1920x1080 canvas; 1pt = 2px) --- */
+  --fs-title: 2.667rem;     /* 64px = 32pt — slide header title */
+  --fs-subtitle: 1.333rem;  /* 32px = 16pt — header subtitle, card titles, h3 */
+  --fs-body: 1.333rem;      /* 32px = 16pt — paragraphs and list items */
+  --fs-card: 1.167rem;      /* 28px = 14pt — card/table/callout/step text */
+  --fs-caption: .917rem;    /* 22px = 11pt — the floor: labels, badges, code */
+  --leading-body: 1.45;     /* body line-height (was 1.7) */
+
   /* --- Typography roles: line-height ------------------------------------ */
   --leading-tight: 1.2;
   --leading-normal: 1.5;
