@@ -219,7 +219,9 @@ PRIMARY_MODEL="${ANTHROPIC_MODEL:-global.anthropic.claude-fable-5-1}"
 FALLBACK_MODEL="${CHAIR_FALLBACK_MODEL:-global.anthropic.claude-opus-5-5}"
 CHAIR_TIMEOUT="${CHAIR_TIMEOUT:-450}"
 CHAIR_FALLBACK_TIMEOUT="${CHAIR_FALLBACK_TIMEOUT:-300}"
-CHAIR_FORMAT_RETRY_TIMEOUT="${CHAIR_FORMAT_RETRY_TIMEOUT:-300}"
+# The retry re-sends the same input, so it needs the primary's budget: on PR #245 a
+# 300s cap killed a retry whose first answer had taken 194s.
+CHAIR_FORMAT_RETRY_TIMEOUT="${CHAIR_FORMAT_RETRY_TIMEOUT:-$CHAIR_TIMEOUT}"
 
 chair_label() { case "$1" in
   *fable-5-1*) echo "Claude Fable 5.1" ;;
@@ -288,6 +290,8 @@ except ValueError:
 
 run_chair "$PRIMARY_MODEL" "$CHAIR_TIMEOUT" 1
 CHAIR_USED="$PRIMARY_MODEL"
+LAST_ATTEMPT="primary"
+LAST_CAP="$CHAIR_TIMEOUT"
 
 # One bounded format-repair retry of the PRIMARY chair. The publisher withholds a
 # review whose presentation breaks the format contract (for example an inline-code
@@ -316,10 +320,17 @@ backticks, or put them in a closed top-level fenced code block.
 RETRY_EOF
       } > "$WORK/synth-prompt-retry.txt"
       run_chair "$PRIMARY_MODEL" "$CHAIR_FORMAT_RETRY_TIMEOUT" 1 "$WORK/synth-prompt-retry.txt"
+      LAST_ATTEMPT="format retry"
+      LAST_CAP="$CHAIR_FORMAT_RETRY_TIMEOUT"
       if [ "$FIRST_STATUS" = BLOCKED ]; then
         RETRY_STATUS=ERROR
         [ "${CHAIR_CLI_RC:-1}" = 0 ] && RETRY_STATUS="$(chair_status)"
-        if [ "$RETRY_STATUS" != BLOCKED ] || [ "$(publication_reason)" != published ]; then
+        RETRY_REASON="$(publication_reason)"
+        if [ "$RETRY_STATUS" != BLOCKED ] || [ "$RETRY_REASON" != published ]; then
+          # Content-free record of the discarded retry before its state is reset.
+          RETRY_PROVIDER=no
+          [ "$CHAIR_TERMINAL" = 1 ] && RETRY_PROVIDER=terminal
+          echo "::notice::format retry not kept (status ${RETRY_STATUS}, publication ${RETRY_REASON:-none}, exit ${CHAIR_CLI_RC:-unknown}, ${LAST_CAP}s cap, provider failure: ${RETRY_PROVIDER}); the first blocking report stands"
           cp "$WORK/chair-first.md" "$OUT"
           CHAIR_CLI_RC=0
           CHAIR_TERMINAL=0
@@ -331,7 +342,7 @@ RETRY_EOF
 esac
 if ! chair_valid && [ "$CHAIR_TERMINAL" = 0 ]; then
   CHAIR_ERR_EXCERPT="$(chair_err_excerpt "$WORK/chair.err")"
-  echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' failed CLI completion or structural validation (exit ${CHAIR_CLI_RC:-unknown}, ${CHAIR_TIMEOUT}s cap, tools on): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")' with no file tools"
+  echo "::warning::chair '$(chair_label "$PRIMARY_MODEL")' failed CLI completion or structural validation (last attempt: ${LAST_ATTEMPT}, exit ${CHAIR_CLI_RC:-unknown}, ${LAST_CAP}s cap, tools on): $CHAIR_ERR_EXCERPT — falling back to '$(chair_label "$FALLBACK_MODEL")' with no file tools"
   run_chair "$FALLBACK_MODEL" "$CHAIR_FALLBACK_TIMEOUT" 0
   chair_valid && CHAIR_USED="$FALLBACK_MODEL"
 fi
