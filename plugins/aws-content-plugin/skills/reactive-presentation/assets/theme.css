@@ -499,6 +499,10 @@ body {
 .tab-panels { display: grid; grid-template-columns: minmax(0, 1fr); }
 .tab-panels > .tab-content { display: block; grid-area: 1 / 1; visibility: hidden; }
 .tab-panels > .tab-content.active { visibility: visible; }
+/* Self-contained .tab-set panels toggle the hidden attribute: keep them laid out in the
+   stack (author CSS beats the UA [hidden] display:none) and only invisible. */
+.tab-panels > .tc { display: block; grid-area: 1 / 1; }
+.tab-panels > .tc[hidden] { visibility: hidden; }
 
 /* --- Code Blocks --- */
 .code-block {

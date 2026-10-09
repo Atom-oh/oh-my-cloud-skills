@@ -163,6 +163,9 @@ initCompareToggles` on DOMContentLoaded):
   parent, so content that changes per tab but sits below the panels (e.g. a one-line rule
   callout) goes in a second `.tab-panels` stack with the same `data-tab` ids: it then keeps
   one position for every tab instead of following each panel's height.
+- Self-contained tabs (`.tab-set` + sibling `.tc` panels toggled by the inline handler in
+  authoring-rules.md): the framework stacks the `.tc` panels the same way; a `.tc[hidden]`
+  panel stays laid out and only `visibility: hidden`, so the fit covers the tallest panel.
 - Checklist: `.checklist li` click-to-toggle (+ `.checklist-detail` expand).
 - Compare: `.compare-toggle > .compare-btn[data-compare]` + `.compare-content[data-compare]`;
   highlight mode when the container has `data-compare-mode="side-by-side"`.

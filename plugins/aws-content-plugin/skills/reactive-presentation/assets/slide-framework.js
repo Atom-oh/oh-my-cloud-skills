@@ -909,7 +909,24 @@ class SlideFramework {
 // .tab-panels stack (theme.css puts them in a single grid cell), so the stack is as tall
 // as the tallest panel and switching tabs never moves the bar or re-centers the slide.
 // Runs on DOMContentLoaded before SlideFramework.init(), i.e. before the first fit.
+// The self-contained .tab-set pattern (authoring-rules.md: inline onclick toggling the
+// hidden attribute on sibling .tc panels) gets the same stack; its handler still finds
+// the panels because it searches the parent's descendants.
+function stackTabSetPanels() {
+  document.querySelectorAll('.tab-set').forEach(set => {
+    const container = set.parentElement;
+    if (!container || container.querySelector(':scope > .tab-panels')) return;
+    const panels = Array.from(container.children).filter(c => c.classList.contains('tc'));
+    if (panels.length < 2) return;
+    const stack = document.createElement('div');
+    stack.className = 'tab-panels';
+    container.insertBefore(stack, panels[0]);
+    panels.forEach(p => stack.appendChild(p));
+  });
+}
+
 function initTabs() {
+  stackTabSetPanels();
   document.querySelectorAll('.tab-bar').forEach(bar => {
     const tabs = bar.querySelectorAll('.tab-btn');
     const container = bar.parentElement;

@@ -131,8 +131,9 @@ _DENSITY_JS = r"""
       if (r.top < top) top = r.top;
       if (r.bottom > bottom) bottom = r.bottom;
     }
-    if (bodyRect.height > 0 && bottom > top) {
-      const ratio = (bottom - top) / bodyRect.height;
+    if (bodyRect.height > 0) {
+      // A body with no shown content is 0% full, not exempt.
+      const ratio = bottom > top ? (bottom - top) / bodyRect.height : 0;
       if (ratio < 0.55) {
         findings.push({ rule: 'UNDERFILL', severity: 'WARN', el: sel(body),
           message: 'content fills ' + Math.round(ratio * 100) +
