@@ -13,7 +13,7 @@
   Independent first impressions maximize diversity — nobody is primed by anyone.
 - **Chair triage, so noise dies early**: the chair (host) does not forward raw output.
   It validates citations, verifies each claim against the actual plan/diff, drops
-  `unsupported`/duplicate/trivial findings, and writes a short **curated digest** of only
+  refuted/duplicate/trivial findings, and writes a short **curated digest** of only
   the findings that matter.
 - **Parallel verify, so what survives is cross-checked**: the digest goes back to the
   panel (again in parallel) with a confirm/refute prompt. A finding survives only if it
@@ -51,11 +51,11 @@ gate-eligible pair, `&` + `wait`, per-pair `timeout`/`fits` guards, capture to
 > runs in the host session following this same procedure.
 
 1. `check_citations.py` over all find-phase findings **when the artifact is a
-   diff** (H4) → drop `unsupported`, flag `needs-review`. A plan doc (H2) is not
-   a unified diff — the script would classify every finding `unsupported` and
-   empty the digest into a false pass; for plan artifacts do the citation check
-   manually in step 2 (a finding's quoted text/section must exist in the plan).
-2. Verify every surviving finding **against the actual artifact** — agreement across pairs
+   diff** (H4) → the chair verifies `unsupported`/`needs-review` claims before
+   dismissal. A plan doc (H2) is not a unified diff and the helper rejects it;
+   verify its quotations/sections directly in step 2. Helper errors and unresolved
+   citations cannot erase active CRITICAL/MAJOR findings or produce PASS.
+2. Verify every finding **against the actual artifact** — agreement across pairs
    is a signal, not proof (shared training bias repeats the same wrong artifact).
 3. Dedupe (same file/line/claim), then keep what is **meaningful**: all CRITICAL/MAJOR
    candidates + any MINOR the chair judges load-bearing. Drop style noise.
@@ -63,7 +63,7 @@ gate-eligible pair, `&` + `wait`, per-pair `timeout`/`fits` guards, capture to
    claim, severity, evidence (file/line), which pairs raised it. Keep it small (the
    verify context = artifact + digest and must pass each pair's `fits` check).
 
-If triage leaves **zero** findings, the gate passes — skip phase V (nothing to verify;
+If completed triage leaves **zero** findings with no unresolved checks/errors, the gate passes — skip phase V (nothing to verify;
 a verify round over an empty digest just invites invented findings).
 
 ### Phase V — verify (parallel)

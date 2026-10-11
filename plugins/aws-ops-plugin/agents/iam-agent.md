@@ -38,7 +38,7 @@ a wildcard, and proves it with `kubectl auth can-i` and `sts get-caller-identity
 ### IRSA
 ```bash
 # Check OIDC provider
-aws eks describe-cluster --name $CLUSTER_NAME --query 'cluster.identity.oidc.issuer'
+aws eks describe-cluster --name "$CLUSTER_NAME" --query 'cluster.identity.oidc.issuer'
 aws iam list-open-id-connect-providers
 
 # Check service account
@@ -49,8 +49,27 @@ aws iam get-role --role-name <role-name> --query 'Role.AssumeRolePolicyDocument'
 
 # Test from pod
 kubectl exec -it <pod> -- aws sts get-caller-identity
-kubectl exec -it <pod> -- env | grep AWS_
+# Print only known variable names/presence; filtering runs inside the pod.
+kubectl exec <pod> -- sh -c '
+  command -v printenv >/dev/null 2>&1 || { printf "%s\n" "printenv is required" >&2; exit 1; }
+  for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN \
+              AWS_ROLE_ARN AWS_WEB_IDENTITY_TOKEN_FILE AWS_PROFILE AWS_DEFAULT_PROFILE \
+              AWS_CONTAINER_CREDENTIALS_RELATIVE_URI AWS_CONTAINER_CREDENTIALS_FULL_URI \
+              AWS_CONTAINER_AUTHORIZATION_TOKEN AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE \
+              AWS_REGION AWS_DEFAULT_REGION; do
+    if printenv "$name" >/dev/null 2>&1; then
+      printf "%s=present\n" "$name"
+    else
+      printf "%s=absent\n" "$name"
+    fi
+  done'
 ```
+
+Never dump the pod's environment or credential/token files. Keep the filter inside
+`kubectl exec` so credential values cannot reach host stdout, stderr or a captured
+transcript. The fixed list also prevents multiline values from posing as extra
+variable names. Presence checks show which credential-provider inputs are configured;
+`sts get-caller-identity` supplies the nonsecret principal identity separately.
 
 ### Pod Identity
 ```bash
@@ -58,10 +77,10 @@ kubectl exec -it <pod> -- env | grep AWS_
 kubectl get pods -n kube-system -l app.kubernetes.io/name=eks-pod-identity-agent
 
 # List associations
-aws eks list-pod-identity-associations --cluster-name $CLUSTER_NAME
+aws eks list-pod-identity-associations --cluster-name "$CLUSTER_NAME"
 
 # Describe association
-aws eks describe-pod-identity-association --cluster-name $CLUSTER_NAME --association-id <id>
+aws eks describe-pod-identity-association --cluster-name "$CLUSTER_NAME" --association-id <id>
 ```
 
 **Cross-account access (GA 2025-06, verified)** — a pod can now reach AWS resources in
@@ -113,8 +132,8 @@ kubectl describe clusterrolebinding <binding>
 kubectl get configmap aws-auth -n kube-system -o yaml
 
 # Check access entries (EKS API)
-aws eks list-access-entries --cluster-name $CLUSTER_NAME
-aws eks describe-access-entry --cluster-name $CLUSTER_NAME --principal-arn <arn>
+aws eks list-access-entries --cluster-name "$CLUSTER_NAME"
+aws eks describe-access-entry --cluster-name "$CLUSTER_NAME" --principal-arn <arn>
 ```
 
 ---

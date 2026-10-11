@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Prove native Kiro/patch hook execution using a loopback Responses fixture.
 
-Requires Codex 0.154-compatible APIs and freshly generated Kiro adapters.
+Requires Codex plugin/app-server APIs and freshly generated Kiro adapters.
 Only --report survives cleanup. No external inference or user-config writes.
-The model name selects client tool capabilities; the fixture generates every reply.
+The fixture model selects client tool capabilities; it never invokes that model.
+The default gpt-5.5 advertises direct shell/freeform patch tools in CLI 0.162.1.
 """
 import argparse
 from contextlib import ExitStack
@@ -68,12 +69,13 @@ class ResponsesFixture(http.server.BaseHTTPRequestHandler):
             require(self.path == "/v1/responses", "Unexpected fixture endpoint")
             server.routing_seen |= "kiro loaded." in json.dumps(request.get("input", []))
             server.requests += 1
+            tools = RPC["response_tools"](
+                request, server.tool_catalogs.get(request.get("previous_response_id")))
+            server.observed_tools = [tool.get("name") for tool in tools if tool.get("name")]
             if server.phase != "baseline" and server.phase not in server.sent:
                 server.sent.add(server.phase)
-                tools = [sub for tool in request["tools"]
-                         for sub in (tool["tools"] if tool["type"] == "namespace" else [tool])]
                 name = "exec_command" if server.phase == "bash" else "apply_patch"
-                offered = next(tool for tool in tools if tool.get("name") == name)
+                offered = RPC["response_tool"](tools, name)
                 item = {"id": "tool_" + str(server.requests), "call_id": "call_" + server.phase, "name": name}
                 if server.phase == "bash":
                     item.update(type="function_call", arguments=json.dumps({
@@ -85,10 +87,13 @@ class ResponsesFixture(http.server.BaseHTTPRequestHandler):
                     item.update(type="custom_tool_call",
                                 input=PATCH if server.phase == "patch" else denial_patch(server.phase))
         except Exception as exc:
-            server.error = str(exc)  # Finish the turn so the assertion fails without retry storms.
+            server.error = str(exc) or type(exc).__name__
+            # Finish the turn so the assertion fails without retry storms.
         response = {"id": "resp_" + str(server.requests), "object": "response", "created_at": 1,
-                    "model": "gpt-5.4", "status": "completed", "output": [item],
+                    "model": server.model, "status": "completed", "output": [item],
                     "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}}
+        if server.error is None:
+            server.tool_catalogs[response["id"]] = tools
         events = [
             {"type": "response.created", "response": {**response, "status": "in_progress", "output": []}},
             {"type": "response.output_item.added", "output_index": 0, "item": item},
@@ -116,7 +121,7 @@ def stop(process):
     process.stdout.close()
 
 
-def probe(root, temp_dir, report, project_init=False):
+def probe(root, temp_dir, report, project_init=False, model="gpt-5.5"):
     source = root / "plugins/kiro"
     require((source / ".codex-plugin/hook.py").read_bytes() ==
             (root / "scripts/codex/hook.py").read_bytes(), "Regenerate Kiro adapters before this test")
@@ -168,34 +173,33 @@ def probe(root, temp_dir, report, project_init=False):
         (fake / "kiro-cli").write_text(
             f"#!/usr/bin/env python3\nfrom pathlib import Path\nPath({str(provider_called)!r}).touch()\nexit(97)\n")
         (fake / "kiro-cli").chmod(0o755)
-        env = {key: os.environ[key] for key in ("PATH", "HOME", "LANG", "LC_ALL") if key in os.environ}
+        home = tmp / "home"
+        home.mkdir()
+        env = {key: os.environ[key] for key in ("PATH", "LANG", "LC_ALL") if key in os.environ}
         pattern = "^NATIVE_NO_ORPHANS_" + tmp.name.replace(" ", "_") + "$"
         require(subprocess.run(["pgrep", "-f", pattern], capture_output=True).returncode == 1,
                 "Orphan fixture pattern unexpectedly matches a process")
-        env.update(CODEX_HOME=str(state), PATH=str(fake) + os.pathsep + env["PATH"],
+        env.update(HOME=str(home), CODEX_HOME=str(state), PATH=str(fake) + os.pathsep + env["PATH"],
                    KIRO_REAP_PATTERN=pattern, TMPDIR=str(tmp), PYTHONDONTWRITEBYTECODE="1")
         subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "init", "-q", str(workspace)], check=True, env=env)
         server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), ResponsesFixture)
         server.workspace, server.phase, server.sent = workspace, "baseline", set()
         server.routing_seen, server.requests, server.error = False, 0, None
+        server.model, server.tool_catalogs, server.observed_tools = model, {}, []
         stack.callback(server.server_close)
         threading.Thread(target=server.serve_forever, daemon=True).start()
         stack.callback(server.shutdown)
         (state / "config.toml").write_text(
-            'model="gpt-5.4"\nmodel_provider="fixture"\n[model_providers.fixture]\n'
+            'model=' + json.dumps(model) + '\nmodel_provider="fixture"\n[model_providers.fixture]\n'
             f'name="Loopback fixture"\nbase_url="http://127.0.0.1:{server.server_port}/v1"\n'
             'wire_api="responses"\nrequires_openai_auth=false\n')
-
-        if project_init:
-            # Only this disposable consumer is trusted. Hook definitions still start untrusted.
-            with (state / "config.toml").open("a") as config:
-                config.write("\n[projects." + json.dumps(str(workspace)) + "]\ntrust_level=\"trusted\"\n")
 
         def cli(*args):
             return subprocess.run(["codex", *args], cwd=workspace, env=env, check=True,
                                   capture_output=True, text=True, timeout=30).stdout
 
         report["version"] = cli("--version").strip()
+        report["model"] = model
         cli("plugin", "marketplace", "add", str(market))
         installed = {name: Path(json.loads(cli("plugin", "add", name + "@native-proof", "--json"))["installedPath"])
                      for name in ("kiro", "patch-capture")}
@@ -203,6 +207,7 @@ def probe(root, temp_dir, report, project_init=False):
                  "hooks/session-routing.sh", "hooks/pre-commit-review.sh", "hooks/pre-push-review.sh"]
         require(all((source / name).read_bytes() == (installed["kiro"] / name).read_bytes() for name in files),
                 "Installed Kiro hook sources differ")
+        report["source_files_verified"] = files
         log = stack.enter_context((tmp / "server.log").open("w"))
         process = subprocess.Popen(["codex", "app-server", "--stdio"], cwd=workspace, env=env,
                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=log, text=True)
@@ -218,7 +223,7 @@ def probe(root, temp_dir, report, project_init=False):
             return RPC["request"](process, selector, request_id, method, params, events.append)
 
         def thread():
-            return call("thread/start", {"cwd": str(workspace), "model": "gpt-5.4", "modelProvider": "fixture",
+            return call("thread/start", {"cwd": str(workspace), "model": model, "modelProvider": "fixture",
                         "ephemeral": True, "approvalPolicy": "on-request", "sandbox": "workspace-write"})["thread"]["id"]
 
         def turn(thread_id):
@@ -228,8 +233,12 @@ def probe(root, temp_dir, report, project_init=False):
                 done = [e for e in events if e.get("method") == "turn/completed" and
                         e["params"]["turn"]["id"] == result["turn"]["id"]]
                 if done:
+                    report["last_phase"] = server.phase
+                    report["observed_tools"] = server.observed_tools
+                    report["last_turn"] = done[-1]["params"]["turn"]
                     require(done[-1]["params"]["turn"]["status"] == "completed" and server.error is None,
-                            server.error or "Fixture turn failed")
+                            server.error or f"Fixture turn failed in {server.phase}: "
+                            + json.dumps(done[-1]["params"]["turn"].get("error")))
                     return
                 events.append(RPC["receive"](process, selector, deadline - time.monotonic()))
 
@@ -237,7 +246,17 @@ def probe(root, temp_dir, report, project_init=False):
                             "capabilities": {"experimentalApi": True}})
         process.stdin.write('{"method":"initialized"}\n')
         process.stdin.flush()
+        if project_init:
+            untrusted_project = call("hooks/list", {"cwds": [str(workspace)]})["data"][0]["hooks"]
+            report["project_trust_before"] = untrusted_project
+            require(len(untrusted_project) == 7 and all(h.get("pluginId") for h in untrusted_project),
+                    "Untrusted consumer unexpectedly exposed project hooks")
+            # Only this disposable consumer is trusted. Hook definitions remain untrusted.
+            call("config/value/write", {"filePath": str(state / "config.toml"),
+                 "keyPath": "projects." + json.dumps(str(workspace)) + ".trust_level",
+                 "mergeStrategy": "upsert", "value": "trusted"})
         before = call("hooks/list", {"cwds": [str(workspace)]})["data"][0]["hooks"]
+        report["trust_before"] = before
         require(len(before) == (10 if project_init else 7) and all(h["trustStatus"] == "untrusted" for h in before), "Unexpected initial trust")
         turn(thread())
         require(not server.routing_seen and not payload_file.exists(), "Untrusted hook executed")
@@ -252,6 +271,7 @@ def probe(root, temp_dir, report, project_init=False):
                  "keyPath": "hooks.state." + json.dumps(hook["key"]) + ".trusted_hash",
                  "mergeStrategy": "upsert", "value": hook["currentHash"]})
         after = call("hooks/list", {"cwds": [str(workspace)]})["data"][0]["hooks"]
+        report["trust_after"] = after
         require(all(h["trustStatus"] == "trusted" for h in after), "Trust write did not take effect")
         current = thread()
         report["denials"] = {}
@@ -301,12 +321,14 @@ def main():
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--tmp-dir", default="/var/tmp")
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--model", default="gpt-5.5",
+                        help="Local fixture capability profile; requires direct shell/freeform patch tools")
     parser.add_argument("--project-init", action="store_true",
                         help="Also execute the packaged project-init templates in a trusted disposable project")
     args = parser.parse_args()
     report = {"passed": False}
     try:
-        probe(args.root.resolve(), args.tmp_dir, report, args.project_init)
+        probe(args.root.resolve(), args.tmp_dir, report, args.project_init, args.model)
     except Exception as exc:
         report["error"] = str(exc)
     if args.report:

@@ -16,6 +16,40 @@ import tempfile
 import time
 
 
+def response_tools(payload, previous_tools=None):
+    """Read declared tools, including namespaces or an explicit Responses delta."""
+    tools = payload.get("tools")
+    if tools is None:
+        if payload.get("previous_response_id") and previous_tools is not None:
+            return previous_tools
+        raise RuntimeError("Responses fixture request has no tools declaration or known "
+                           "previous_response_id; inspect the selected model's tool mode")
+    if not isinstance(tools, list):
+        raise RuntimeError("Responses fixture tools must be a list")
+    flattened = []
+    for tool in tools:
+        if not isinstance(tool, dict):
+            raise RuntimeError("Responses fixture tool must be an object")
+        if tool.get("type") == "namespace":
+            nested = tool.get("tools")
+            if not isinstance(nested, list):
+                raise RuntimeError("Responses fixture namespace tools must be a list")
+            flattened.extend(response_tools({"tools": nested}))
+        else:
+            flattened.append(tool)
+    return flattened
+
+
+def response_tool(tools, name):
+    matches = [tool for tool in tools if tool.get("name") == name]
+    if len(matches) != 1:
+        offered = ", ".join(sorted(str(t.get("name")) for t in tools if t.get("name")))
+        raise RuntimeError(f"Responses fixture needs exactly one {name} tool; "
+                           f"found {len(matches)} (offered: {offered or 'none'}). "
+                           "Select a fixture model with direct shell/freeform patch support.")
+    return matches[0]
+
+
 def receive(process, selector, timeout=30):
     """Read one frame, retaining coalesced/partial frames for subsequent calls."""
     deadline = time.monotonic() + timeout

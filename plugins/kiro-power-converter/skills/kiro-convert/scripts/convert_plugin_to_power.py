@@ -19,6 +19,8 @@ import argparse
 import json
 import os
 import re
+import secrets
+import stat
 import shutil
 import subprocess
 import sys
@@ -56,6 +58,8 @@ SECRET_KEY_NAMES = re.compile(
 )
 
 # Claude Code → Kiro tool category mapping
+SAFE_DIRFD_SUPPORTED = hasattr(os, 'O_NOFOLLOW') and os.rename in os.supports_dir_fd
+
 TOOL_CATEGORY_MAP = {
     'Bash': 'shell',
     'Read': 'read',
@@ -66,6 +70,298 @@ TOOL_CATEGORY_MAP = {
     'AskUserQuestion': '@builtin/askUser',
     '*': '*',
 }
+
+
+# ---------------------------------------------------------------------------
+# Safe paths and transactional publication
+# ---------------------------------------------------------------------------
+
+def safe_component(value: str) -> str:
+    """Metadata names must identify a single file/directory component."""
+    if not isinstance(value, str) or not value or value in ('.', '..') or '/' in value or '\\' in value:
+        raise ValueError('Name must be a non-empty path component')
+    return value
+
+
+def paths_overlap(first: Path, second: Path) -> bool:
+    return first == second or first in second.parents or second in first.parents
+
+
+def validate_destination(sources: list, destination: Path) -> Path:
+    """Refuse roots, source overlap and symlink traversal before writing."""
+    destination = Path(os.path.abspath(os.path.expanduser(str(destination))))
+    resolved = destination.resolve()
+    protected = {Path(destination.anchor), Path.home().resolve(), Path.cwd().resolve(),
+                 Path(tempfile.gettempdir()).resolve()}
+    for base in (Path.home(), Path.cwd()):
+        protected.add((base / '.kiro').resolve())
+        protected.add((base / '.kiro' / 'powers').resolve())
+    if resolved in protected or resolved.parent == Path(resolved.anchor):
+        raise ValueError(f'Unsafe output root: {destination}')
+    for source in sources:
+        if paths_overlap(Path(source).resolve(), resolved):
+            raise ValueError(f'Source and destination overlap: {source} -> {destination}')
+    # Refuse traversal rather than replacing a link or writing through its parent.
+    for component in (destination, *destination.parents):
+        if component.is_symlink():
+            raise ValueError(f'Symlink in output path: {component}')
+    return destination
+
+
+def validate_power_destination(sources: list, destination: Path) -> Path:
+    """Only replace empty directories or recognizable prior power exports."""
+    destination = validate_destination(sources, destination)
+    if destination.exists():
+        if not destination.is_dir():
+            raise ValueError(f'Power output must be a directory: {destination}')
+        if any(destination.iterdir()) and not (destination / 'POWER.md').is_file():
+            raise ValueError(f'Refusing to replace an unrelated directory without POWER.md: {destination}')
+    return destination
+
+
+def same_identity(first, second) -> bool:
+    return (first.st_dev, first.st_ino) == (second.st_dev, second.st_ino)
+
+
+def open_directory(path: Path, create: bool = False) -> int:
+    """Walk each absolute component through no-follow directory descriptors."""
+    if not SAFE_DIRFD_SUPPORTED:
+        raise RuntimeError('Safe publication requires POSIX no-follow directory descriptors')
+    path = Path(os.path.abspath(str(path)))
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    descriptor = os.open(path.anchor, flags)
+    try:
+        for component in path.parts[1:]:
+            if create:
+                try:
+                    os.mkdir(component, mode=0o755, dir_fd=descriptor)
+                except FileExistsError:
+                    pass
+            child = os.open(component, flags, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def descriptor_path(descriptor: int) -> Path:
+    """Use a kernel-owned descriptor link while legacy builders create staged files."""
+    for directory in ('/proc/self/fd', '/dev/fd'):
+        path = Path(directory) / str(descriptor)
+        try:
+            if same_identity(path.stat(), os.fstat(descriptor)):
+                return path
+        except OSError:
+            pass
+    raise RuntimeError('Safe staging requires descriptor-backed /proc/self/fd or /dev/fd paths')
+
+
+def remove_entry(parent_fd: int, name: str, expected=None) -> None:
+    """Delete an anchored entry recursively; never follow directory symlinks."""
+    identity = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    if expected is not None and not same_identity(identity, expected):
+        raise RuntimeError(f'Cleanup entry identity changed: {name}')
+    if stat.S_ISDIR(identity.st_mode):
+        child_fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_fd)
+        try:
+            if not same_identity(identity, os.fstat(child_fd)):
+                raise RuntimeError(f'Cleanup directory identity changed: {name}')
+            for child in os.listdir(child_fd):
+                child_identity = os.stat(child, dir_fd=child_fd, follow_symlinks=False)
+                remove_entry(child_fd, child, child_identity)
+            current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+            if not same_identity(current, identity):
+                raise RuntimeError(f'Cleanup directory link changed: {name}')
+            os.rmdir(name, dir_fd=parent_fd)
+        finally:
+            os.close(child_fd)
+    else:
+        # unlink removes the link itself; neither the leaf nor its parent is followed.
+        os.unlink(name, dir_fd=parent_fd)
+
+
+class DirectoryAnchor:
+    """Retain the intended parent inode across path renames or replacements."""
+    def __init__(self, path: Path):
+        self.path = path
+        self.fd = open_directory(path, create=True)
+        self.identity = os.fstat(self.fd)
+
+    def verify(self):
+        current_fd = open_directory(self.path)
+        try:
+            if not same_identity(self.identity, os.fstat(current_fd)):
+                raise RuntimeError(f'Output parent identity changed: {self.path}')
+        finally:
+            os.close(current_fd)
+
+    def close(self):
+        os.close(self.fd)
+
+
+class StagingArea:
+    """Private sibling directory with descriptor-based publication and cleanup."""
+    def __init__(self, anchor: DirectoryAnchor, prefix: str = '.kiro-stage-'):
+        self.anchor = anchor
+        self.name = prefix + secrets.token_hex(12)
+        self.fd = None
+        anchor.verify()
+        os.mkdir(self.name, mode=0o700, dir_fd=anchor.fd)
+        try:
+            self.fd = os.open(self.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                              dir_fd=anchor.fd)
+            self.identity = os.fstat(self.fd)
+            self.path = descriptor_path(self.fd)
+            anchor.verify()
+        except BaseException:
+            if self.fd is not None:
+                os.close(self.fd)
+            remove_entry(anchor.fd, self.name)
+            raise
+
+    def verify(self):
+        identity = os.stat(self.name, dir_fd=self.anchor.fd, follow_symlinks=False)
+        if not same_identity(identity, self.identity) or not stat.S_ISDIR(identity.st_mode):
+            raise RuntimeError('Staging directory link identity changed')
+
+    def cleanup(self):
+        try:
+            self.verify()
+            remove_entry(self.anchor.fd, self.name, self.identity)
+        except (OSError, RuntimeError) as error:
+            # Cleanup is after publication/rollback, never a new path-based retry.
+            # Do not turn a committed result into failure with changed destinations.
+            print(f'  [WARN] Retained temporary directory {self.name}: {error}', file=sys.stderr)
+        finally:
+            os.close(self.fd)
+
+
+def publish_staged(publications: list, sources: list) -> None:
+    """Publish via retained descriptors and roll back without following new paths.
+
+    Each publication is (staging_area, staged_name, destination). The area retains
+    the destination parent descriptor from before conversion started.
+    """
+    backups = []
+    published = []
+    completed = False
+    try:
+        for area, staged_name, destination in publications:
+            validate_destination(sources, destination)
+            area.anchor.verify()
+            area.verify()
+            staged_identity = os.stat(staged_name, dir_fd=area.fd, follow_symlinks=False)
+            try:
+                previous = os.stat(destination.name, dir_fd=area.anchor.fd, follow_symlinks=False)
+            except FileNotFoundError:
+                previous = None
+            if previous is not None and stat.S_ISDIR(previous.st_mode) != stat.S_ISDIR(staged_identity.st_mode):
+                raise ValueError(f'Output type differs from destination: {destination}')
+            backup = StagingArea(area.anchor, prefix='.kiro-backup-')
+            backups.append((area, destination, backup, previous))
+            area.anchor.verify()
+            backup.verify()
+            if previous is not None:
+                current = os.stat(destination.name, dir_fd=area.anchor.fd, follow_symlinks=False)
+                if not same_identity(current, previous):
+                    raise RuntimeError(f'Output identity changed: {destination}')
+                os.rename(destination.name, 'previous', src_dir_fd=area.anchor.fd, dst_dir_fd=backup.fd)
+                if not same_identity(os.stat('previous', dir_fd=backup.fd, follow_symlinks=False), previous):
+                    raise RuntimeError(f'Output changed during backup: {destination}')
+            area.anchor.verify()
+            current = os.stat(staged_name, dir_fd=area.fd, follow_symlinks=False)
+            if not same_identity(current, staged_identity):
+                raise RuntimeError('Staged output identity changed')
+            os.rename(staged_name, destination.name, src_dir_fd=area.fd, dst_dir_fd=area.anchor.fd)
+            published.append((area, destination, staged_identity))
+            area.anchor.verify()
+        completed = True
+    except BaseException:
+        for area, destination, identity in reversed(published):
+            remove_entry(area.anchor.fd, destination.name, identity)
+        for area, destination, backup, previous in reversed(backups):
+            if previous is not None:
+                try:
+                    current = os.stat('previous', dir_fd=backup.fd, follow_symlinks=False)
+                except FileNotFoundError:
+                    continue
+                if not same_identity(current, previous):
+                    raise RuntimeError(f'Backup identity changed; retained for recovery: {backup.name}')
+                os.rename('previous', destination.name, src_dir_fd=backup.fd, dst_dir_fd=area.anchor.fd)
+        raise
+    finally:
+        for _, _, backup, _ in backups:
+            # Retain previous content if restoration itself failed.
+            if completed or not os.listdir(backup.fd):
+                backup.cleanup()
+            else:
+                os.close(backup.fd)
+
+
+def publish_text(content: str, output: Path, sources: list) -> None:
+    """Use the same anchored transaction for standalone Markdown/JSON files."""
+    output = validate_destination(sources, output)
+    anchor = DirectoryAnchor(output.parent)
+    area = None
+    try:
+        area = StagingArea(anchor)
+        (area.path / 'document').write_text(content, encoding='utf-8')
+        publish_staged([(area, 'document', output)], sources)
+    finally:
+        try:
+            if area is not None:
+                area.cleanup()
+        finally:
+            anchor.close()
+
+
+def yaml_scalar(value) -> str:
+    """JSON string scalars are valid YAML and preserve quotes/Unicode/newlines."""
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def decode_yaml_scalar(value: str) -> str:
+    """Read plain, single-quoted or YAML double-quoted string scalars."""
+    if value.startswith('"') and value.endswith('"'):
+        try:
+            # JSON decoding also combines escaped Unicode surrogate pairs.
+            return json.loads(value)
+        except json.JSONDecodeError:
+            pass
+        escapes = {'0': '\0', 'a': '\a', 'b': '\b', 't': '\t', 'n': '\n',
+                   'v': '\v', 'f': '\f', 'r': '\r', 'e': '\x1b',
+                   ' ': ' ', '"': '"', '/': '/', '\\': '\\',
+                   'N': '\x85', '_': '\xa0', 'L': '\u2028', 'P': '\u2029'}
+        inner = value[1:-1]
+        output = []
+        index = 0
+        while index < len(inner):
+            character = inner[index]
+            index += 1
+            if character != '\\':
+                output.append(character)
+                continue
+            if index == len(inner):
+                raise ValueError('Incomplete YAML escape')
+            escape = inner[index]
+            index += 1
+            if escape in escapes:
+                output.append(escapes[escape])
+            elif escape in ('x', 'u', 'U'):
+                length = {'x': 2, 'u': 4, 'U': 8}[escape]
+                hexadecimal = inner[index:index + length]
+                if len(hexadecimal) != length or not re.fullmatch(r'[0-9A-Fa-f]+', hexadecimal):
+                    raise ValueError('Invalid YAML Unicode escape')
+                output.append(chr(int(hexadecimal, 16)))
+                index += length
+            else:
+                raise ValueError(f'Unsupported YAML escape: {escape}')
+        return ''.join(output)
+    if value.startswith("'") and value.endswith("'"):
+        return value[1:-1].replace("''", "'")
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +394,10 @@ def parse_yaml_frontmatter(content: str) -> tuple:
     current_key = None
     current_list = None
 
-    for line in fm_lines:
+    index = 0
+    while index < len(fm_lines):
+        line = fm_lines[index]
+        index += 1
         stripped = line.strip()
         if not stripped:
             continue
@@ -107,9 +406,7 @@ def parse_yaml_frontmatter(content: str) -> tuple:
         if stripped.startswith('- '):
             if current_key is not None and current_list is not None:
                 val = stripped[2:].strip()
-                if len(val) >= 2 and val[0] in ('"', "'") and val[-1] == val[0]:
-                    val = val[1:-1]
-                current_list.append(val)
+                current_list.append(decode_yaml_scalar(val))
             continue
 
         # Key: value pair
@@ -121,15 +418,33 @@ def parse_yaml_frontmatter(content: str) -> tuple:
             key = m.group(1)
             val = m.group(2).strip()
 
-            if not val:
+            if val in ('|', '|-', '|+', '>', '>-', '>+'):
+                block = []
+                while index < len(fm_lines) and (not fm_lines[index].strip() or fm_lines[index].startswith((' ', '\t'))):
+                    block.append(fm_lines[index])
+                    index += 1
+                nonempty = [line for line in block if line.strip()]
+                indent = min((len(line) - len(line.lstrip()) for line in nonempty), default=0)
+                text = '\n'.join(line[indent:] for line in block)
+                if val.startswith('>'):
+                    text = re.sub(r'(?<=\S)\n(?=\S)', ' ', text)
+                    text = re.sub(r'\n{2,}', lambda match: '\n' * (len(match[0]) - 1), text)
+                if val.endswith('-'):
+                    text = text.rstrip('\n')
+                elif not val.endswith('+'):
+                    text = text.rstrip('\n') + '\n'
+                else:
+                    text += '\n'
+                result[key] = text
+                current_key = None
+                current_list = None
+            elif not val:
                 current_key = key
                 current_list = []
             else:
                 current_key = None
                 current_list = None
-                if len(val) >= 2 and val[0] in ('"', "'") and val[-1] == val[0]:
-                    val = val[1:-1]
-                result[key] = val
+                result[key] = decode_yaml_scalar(val)
 
     if current_key is not None and current_list is not None:
         result[current_key] = current_list
@@ -150,7 +465,7 @@ def convert_agent_to_steering(agent_path: str, out_dir: str) -> Path:
     content = Path(agent_path).read_text(encoding='utf-8')
     fm, body = parse_yaml_frontmatter(content)
 
-    name = fm.get('name', Path(agent_path).stem)
+    name = safe_component(fm.get('name', Path(agent_path).stem))
     description = fm.get('description', '')
     model = fm.get('model', 'sonnet')
 
@@ -161,7 +476,7 @@ def convert_agent_to_steering(agent_path: str, out_dir: str) -> Path:
         description = f'{d} (Advanced reasoning)'
 
     out_path = Path(out_dir) / f'{name}.md'
-    new_fm = f'---\nname: {name}\ndescription: "{description}"\ninclusion: auto\n---'
+    new_fm = f'---\nname: {yaml_scalar(name)}\ndescription: {yaml_scalar(description)}\ninclusion: auto\n---'
     out_path.write_text(f'{new_fm}\n\n{body}\n', encoding='utf-8')
     return out_path
 
@@ -192,20 +507,20 @@ def convert_skill_to_steering(skill_dir: str, out_dir: str) -> list:
     content = skill_md.read_text(encoding='utf-8')
     fm, body = parse_yaml_frontmatter(content)
 
-    name = fm.get('name', skill_path.name)
+    name = safe_component(fm.get('name', skill_path.name))
     description = fm.get('description', '')
     triggers = fm.get('triggers', [])
 
     # Merge triggers into description
     if triggers:
-        trigger_str = ', '.join(f'\\"{t}\\"' for t in triggers)
+        trigger_str = ', '.join(f'"{t}"' for t in triggers)
         d = description.rstrip()
         if d and not d.endswith('.'):
             d += '.'
         description = f'{d} Triggers: {trigger_str}'
 
     out_path = Path(out_dir) / f'{name}.md'
-    new_fm = f'---\nname: {name}\ndescription: "{description}"\ninclusion: auto\n---'
+    new_fm = f'---\nname: {yaml_scalar(name)}\ndescription: {yaml_scalar(description)}\ninclusion: auto\n---'
     out_path.write_text(f'{new_fm}\n\n{body}\n', encoding='utf-8')
 
     # Convert reference files
@@ -219,14 +534,14 @@ def convert_skill_to_steering(skill_dir: str, out_dir: str) -> list:
             # Detect fileMatch vs manual
             globs = detect_filematch_globs(ref_file.stem, ref_content)
             if globs:
-                globs_yaml = '\n'.join(f'  - "{g}"' for g in globs)
+                globs_yaml = '\n'.join(f'  - {yaml_scalar(g)}' for g in globs)
                 ref_fm = (
-                    f'---\nname: ref-{name}-{ref_file.stem}\n'
-                    f'description: "{ref_file.stem.replace("-", " ").title()} patterns"\n'
+                    f'---\nname: {yaml_scalar(f"ref-{name}-{ref_file.stem}")}\n'
+                    f'description: {yaml_scalar(ref_file.stem.replace("-", " ").title() + " patterns")}\n'
                     f'inclusion: fileMatch\nglobs:\n{globs_yaml}\n---'
                 )
             else:
-                ref_fm = f'---\nname: ref-{name}-{ref_file.stem}\ninclusion: manual\n---'
+                ref_fm = f'---\nname: {yaml_scalar(f"ref-{name}-{ref_file.stem}")}\ninclusion: manual\n---'
 
             ref_out = Path(out_dir) / ref_name
             ref_out.write_text(f'{ref_fm}\n\n{ref_content}\n', encoding='utf-8')
@@ -235,7 +550,7 @@ def convert_skill_to_steering(skill_dir: str, out_dir: str) -> list:
     return ref_files
 
 
-def convert_skill_to_kiro_skill(skill_dir: str, out_dir: str,
+def _build_kiro_skill(skill_dir: str, out_dir: str,
                                 author: str = '',
                                 version: str = '') -> str:
     """Convert a Claude Code skill to Kiro skill format (preserving structure).
@@ -247,13 +562,13 @@ def convert_skill_to_kiro_skill(skill_dir: str, out_dir: str,
     content = skill_md.read_text(encoding='utf-8')
     fm, body = parse_yaml_frontmatter(content)
 
-    name = fm.get('name', skill_path.name)
+    name = safe_component(fm.get('name', skill_path.name))
     description = fm.get('description', '')
     triggers = fm.get('triggers', [])
 
     # Merge triggers into description for Kiro matching
     if triggers:
-        trigger_str = ', '.join(f'\\"{t}\\"' for t in triggers)
+        trigger_str = ', '.join(f'"{t}"' for t in triggers)
         d = description.rstrip()
         if d and not d.endswith('.'):
             d += '.'
@@ -262,15 +577,15 @@ def convert_skill_to_kiro_skill(skill_dir: str, out_dir: str,
     # Build new frontmatter
     fm_lines = [
         '---',
-        f'name: {name}',
-        f'description: "{description}"',
+        f'name: {yaml_scalar(name)}',
+        f'description: {yaml_scalar(description)}',
     ]
     if author or version:
         fm_lines.append('metadata:')
         if author:
-            fm_lines.append(f'  author: "{author}"')
+            fm_lines.append(f'  author: {yaml_scalar(author)}')
         if version:
-            fm_lines.append(f'  version: "{version}"')
+            fm_lines.append(f'  version: {yaml_scalar(version)}')
     fm_lines.append('---')
 
     out_skill_dir = Path(out_dir) / name
@@ -283,22 +598,39 @@ def convert_skill_to_kiro_skill(skill_dir: str, out_dir: str,
     refs_dir = skill_path / 'references'
     if refs_dir.exists():
         out_refs = out_skill_dir / 'references'
-        if out_refs.exists():
-            shutil.rmtree(out_refs)
         shutil.copytree(refs_dir, out_refs)
 
     # Copy scripts/
     scripts_dir = skill_path / 'scripts'
     if scripts_dir.exists():
         out_scripts = out_skill_dir / 'scripts'
-        if out_scripts.exists():
-            shutil.rmtree(out_scripts)
         shutil.copytree(scripts_dir, out_scripts)
 
     return str(out_skill_dir)
 
 
-def convert_skill_standalone(skill_path: str, out_path: str) -> str:
+def convert_skill_to_kiro_skill(skill_dir: str, out_dir: str,
+                                author: str = '', version: str = '') -> str:
+    """Preserve a skill with transactional replacement of its own output tree."""
+    fm, _ = parse_yaml_frontmatter((Path(skill_dir) / 'SKILL.md').read_text(encoding='utf-8'))
+    name = safe_component(fm.get('name', Path(skill_dir).name))
+    output = validate_destination([skill_dir], Path(out_dir) / name)
+    anchor = DirectoryAnchor(output.parent)
+    area = None
+    try:
+        area = StagingArea(anchor)
+        _build_kiro_skill(skill_dir, str(area.path), author, version)
+        publish_staged([(area, name, output)], [skill_dir])
+    finally:
+        try:
+            if area is not None:
+                area.cleanup()
+        finally:
+            anchor.close()
+    return str(output)
+
+
+def standalone_content(skill_path: str) -> tuple:
     """Convert a single skill to a standalone steering file.
 
     Reference content is inlined rather than placed in separate files.
@@ -311,18 +643,18 @@ def convert_skill_standalone(skill_path: str, out_path: str) -> str:
     content = skill_md.read_text(encoding='utf-8')
     fm, body = parse_yaml_frontmatter(content)
 
-    name = fm.get('name', skill_dir.name)
+    name = safe_component(fm.get('name', skill_dir.name))
     description = fm.get('description', '')
     triggers = fm.get('triggers', [])
 
     if triggers:
-        trigger_str = ', '.join(f'\\"{t}\\"' for t in triggers)
+        trigger_str = ', '.join(f'"{t}"' for t in triggers)
         d = description.rstrip()
         if d and not d.endswith('.'):
             d += '.'
         description = f'{d} Triggers: {trigger_str}'
 
-    new_fm = f'---\nname: {name}\ndescription: "{description}"\ninclusion: auto\n---'
+    new_fm = f'---\nname: {yaml_scalar(name)}\ndescription: {yaml_scalar(description)}\ninclusion: auto\n---'
 
     # Inline reference content
     ref_section = ''
@@ -332,12 +664,53 @@ def convert_skill_standalone(skill_path: str, out_path: str) -> str:
             ref_content = ref_file.read_text(encoding='utf-8').strip()
             ref_section += f'\n\n---\n\n## Reference: {ref_file.stem}\n\n{ref_content}'
 
+    return name, f'{new_fm}\n\n{body}{ref_section}\n'
+
+
+def convert_skill_standalone(skill_path: str, out_path: str) -> str:
+    """Convert one skill and publish its complete file via an anchored parent."""
+    name, content = standalone_content(skill_path)
     output = Path(out_path)
     if output.is_dir():
         output = output / f'{name}.md'
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(f'{new_fm}\n\n{body}{ref_section}\n', encoding='utf-8')
+    output = validate_destination([skill_path], output)
+    publish_text(content, output, [skill_path])
     return str(output)
+
+
+def convert_skills_standalone(skill_paths: list, out_path: str) -> list:
+    """Publish a repeatable --skill request as one anchored transaction."""
+    if len(skill_paths) == 1:
+        return [convert_skill_standalone(skill_paths[0], out_path)]
+    output = validate_destination(skill_paths, Path(out_path))
+    if output.exists() and not output.is_dir():
+        raise ValueError('Multiple skills require an output directory')
+    contents = [standalone_content(source) for source in skill_paths]
+    names = [name for name, _ in contents]
+    if len(set(names)) != len(names):
+        raise ValueError('Duplicate standalone skill name')
+    anchor = DirectoryAnchor(output.parent)
+    area = None
+    try:
+        area = StagingArea(anchor)
+        staged = area.path / 'steering'
+        if output.exists():
+            shutil.copytree(descriptor_path(anchor.fd) / output.name, staged, symlinks=True)
+        else:
+            staged.mkdir()
+        for name, content in contents:
+            target = staged / f'{name}.md'
+            if target.is_symlink():
+                raise ValueError(f'Symlink in standalone output: {name}.md')
+            target.write_text(content, encoding='utf-8')
+        publish_staged([(area, 'steering', output)], skill_paths)
+    finally:
+        try:
+            if area is not None:
+                area.cleanup()
+        finally:
+            anchor.close()
+    return [str(output / f'{name}.md') for name in names]
 
 
 def convert_claude_md_to_routing(claude_md_path: str, out_dir: str) -> Path:
@@ -350,47 +723,81 @@ def convert_claude_md_to_routing(claude_md_path: str, out_dir: str) -> Path:
 
 
 def sanitize_env_value(key: str, value: str) -> str:
-    """Convert hardcoded secrets to ``${VAR}`` syntax if detected."""
-    if SECRET_PATTERNS.match(str(value)):
-        return f'${{{key}}}'
-    if SECRET_KEY_NAMES.search(key):
+    """Keep credential placeholders; replace possible literal secrets."""
+    if re.fullmatch(r'(?:[A-Za-z][A-Za-z0-9_-]* )?\$\{[A-Za-z_][A-Za-z0-9_]*\}', str(value)):
+        return value
+    if SECRET_PATTERNS.match(str(value)) or SECRET_KEY_NAMES.search(key):
         return f'${{{key}}}'
     return value
 
 
-def convert_mcp_json(source_path: str, output_path: str) -> list:
-    """Convert ``.mcp.json`` to ``mcp.json``.
-
-    Removes ``type`` field; adds ``autoApprove``, ``disabled``, ``disabledTools``.
-    Converts hardcoded secrets to ``${VAR}`` syntax.
-    Returns list of environment variable names that need user setup.
-    """
-    data = json.loads(Path(source_path).read_text(encoding='utf-8'))
-    servers = data.get('mcpServers', {})
-    env_vars_needed = []
-
-    for _name, cfg in servers.items():
+def mcp_document(servers: dict) -> tuple:
+    """Convert server declarations without mutating source config or placeholders."""
+    if not isinstance(servers, dict):
+        raise ValueError('MCP servers must be an object')
+    servers = json.loads(json.dumps(servers))
+    env_vars_needed = set()
+    for name, cfg in sorted(servers.items()):
+        if not isinstance(cfg, dict):
+            raise ValueError(f'MCP server must be an object: {name}')
         cfg.pop('type', None)
-        if 'autoApprove' not in cfg:
-            cfg['autoApprove'] = []
-        if 'disabled' not in cfg:
-            cfg['disabled'] = False
-        if 'disabledTools' not in cfg:
-            cfg['disabledTools'] = []
+        cfg.setdefault('autoApprove', [])
+        cfg.setdefault('disabled', False)
+        cfg.setdefault('disabledTools', [])
+        for field in ('env', 'headers'):
+            values = cfg.get(field, {})
+            if not isinstance(values, dict):
+                raise ValueError(f'MCP {field} must be an object: {name}')
+            for key, value in values.items():
+                # HTTP Authorization is also a credential-bearing field.
+                placeholder_key = re.sub(r'[^A-Za-z0-9_]', '_', key).upper() if field == 'headers' else key
+                cfg[field][key] = sanitize_env_value(placeholder_key, str(value))
+        serialized = json.dumps(cfg)
+        env_vars_needed.update(re.findall(r'\$\{([A-Za-z_][A-Za-z0-9_]*)\}', serialized))
+    return json.dumps({'mcpServers': servers}, indent=2, ensure_ascii=False) + '\n', sorted(env_vars_needed)
 
-        # Sanitize env values
-        if 'env' in cfg and isinstance(cfg['env'], dict):
-            for key, val in list(cfg['env'].items()):
-                new_val = sanitize_env_value(key, str(val))
-                if new_val != str(val):
-                    cfg['env'][key] = new_val
-                    env_vars_needed.append(key)
 
-    out = {'mcpServers': servers}
-    Path(output_path).write_text(
-        json.dumps(out, indent=2, ensure_ascii=False) + '\n', encoding='utf-8'
-    )
-    return env_vars_needed
+def convert_mcp_servers(servers: dict, output_path: str) -> list:
+    """Serialize inline declarations and publish a safe standalone JSON file."""
+    content, needed = mcp_document(servers)
+    publish_text(content, Path(output_path), [])
+    return needed
+
+
+def convert_mcp_json(source_path: str, output_path: str) -> list:
+    """Convert standalone MCP config using the shared server conversion."""
+    data = json.loads(Path(source_path).read_text(encoding='utf-8'))
+    if not isinstance(data, dict):
+        raise ValueError('MCP configuration must be an object')
+    content, needed = mcp_document(data.get('mcpServers', {}))
+    publish_text(content, Path(output_path), [source_path])
+    return needed
+
+
+def collect_mcp_servers(source: Path, plugin_data: dict) -> tuple:
+    """Merge inline servers and .mcp.json; the latter wins named conflicts."""
+    inline = plugin_data.get('mcpServers', {})
+    if isinstance(inline, str):
+        config_path = (source / inline).resolve()
+        if source.resolve() not in config_path.parents:
+            raise ValueError('Manifest MCP configuration must stay inside the source plugin')
+        inline = json.loads(config_path.read_text(encoding='utf-8')).get('mcpServers', {})
+    if not isinstance(inline, dict):
+        raise ValueError('Manifest mcpServers must be an object or a plugin-relative file path')
+    servers = dict(inline)
+    conflicts = []
+    config_path = source / '.mcp.json'
+    if config_path.exists():
+        data = json.loads(config_path.read_text(encoding='utf-8'))
+        standalone = data.get('mcpServers', {})
+        if not isinstance(standalone, dict):
+            raise ValueError('.mcp.json mcpServers must be an object')
+        for name, configuration in sorted(standalone.items()):
+            if name in servers and servers[name] != configuration:
+                conflicts.append(name)
+                print(f'  [WARN] MCP conflict for {name}: .mcp.json overrides the manifest declaration')
+            servers[name] = configuration
+    return servers, conflicts
 
 
 # ---------------------------------------------------------------------------
@@ -410,17 +817,31 @@ def convert_hooks(hooks_config: dict, out_dir: str,
 
     hook_files = []
     onboarding_prompts = []
+    statuses = []
 
+    if not isinstance(hooks_config, dict):
+        raise ValueError('Hook configuration must be an object')
     for event_name, matchers in hooks_config.items():
         if not isinstance(matchers, list):
-            continue
+            raise ValueError(f'Hook event must contain a matcher list: {event_name}')
 
         for i, matcher_block in enumerate(matchers):
+            if not isinstance(matcher_block, dict) or not isinstance(matcher_block.get('hooks', []), list):
+                raise ValueError(f'Invalid hook matcher block: {event_name}[{i}]')
             matcher = matcher_block.get('matcher', '')
             hook_list = matcher_block.get('hooks', [])
 
             for j, hook in enumerate(hook_list):
+                if not isinstance(hook, dict):
+                    raise ValueError(f'Invalid hook handler: {event_name}[{i}].hooks[{j}]')
                 hook_type = hook.get('type', '')
+                action_field = {'command': 'command', 'prompt': 'prompt'}.get(hook_type)
+                if action_field and (not isinstance(hook.get(action_field), str) or not hook[action_field].strip()):
+                    raise ValueError(f'Missing/empty hook action: {event_name}[{i}].hooks[{j}]')
+                status = {'handler': f'{event_name}[{i}].hooks[{j}]',
+                          'event': event_name, 'type': hook_type, 'status': 'manual',
+                          'reason': 'Unsupported event or action; no equivalent generated behavior'}
+                statuses.append(status)
 
                 # SessionStart → no Kiro equivalent, collect prompts
                 if event_name == 'SessionStart':
@@ -428,6 +849,11 @@ def convert_hooks(hooks_config: dict, out_dir: str,
                         prompt_text = hook.get('prompt', '')
                         if prompt_text:
                             onboarding_prompts.append(prompt_text)
+                            status['status'] = 'onboarding'
+                            status['reason'] = 'Prompt included in POWER.md; it does not execute on session start'
+                    if status['status'] == 'manual':
+                        status['reason'] = 'SessionStart has no equivalent; command is not executed or approximated'
+                    print(f'  [WARN] {status["handler"]}: {status["reason"]}')
                     continue
 
                 # Map event name
@@ -444,8 +870,7 @@ def convert_hooks(hooks_config: dict, out_dir: str,
                 tool_name = TOOL_CATEGORY_MAP.get(matcher, matcher.lower()) if matcher else '*'
 
                 # Build hook name
-                suffix = f'-{i}' if i > 0 else ''
-                suffix += f'-{j}' if j > 0 else ''
+                suffix = f'-{i}-{j}'
                 hook_name = f'{kiro_trigger}-{tool_name.replace("/", "-")}{suffix}'
 
                 # Build Kiro hook
@@ -479,10 +904,12 @@ def convert_hooks(hooks_config: dict, out_dir: str,
                     encoding='utf-8',
                 )
                 hook_files.append(filename)
+                status.update(status='generated', file=filename, reason='Generated mapping; verify target hook trust, command paths and payload compatibility before activation')
 
     return {
         'hook_files': hook_files,
         'onboarding_prompts': onboarding_prompts,
+        'statuses': statuses,
     }
 
 
@@ -556,15 +983,15 @@ def generate_power_md(plugin_data: dict, keywords: list, output_path: str,
 
     # --- Frontmatter ---
     lines = ['---']
-    lines.append(f'name: {name}')
-    lines.append(f'displayName: {display_name}')
-    lines.append(f'description: "{description}"')
+    lines.append(f'name: {yaml_scalar(name)}')
+    lines.append(f'displayName: {yaml_scalar(display_name)}')
+    lines.append(f'description: {yaml_scalar(description)}')
     if keywords:
         lines.append('keywords:')
         for kw in keywords:
-            lines.append(f'  - "{kw}"')
+            lines.append(f'  - {yaml_scalar(kw)}')
     if author:
-        lines.append(f'author: {author}')
+        lines.append(f'author: {yaml_scalar(author)}')
     lines.append('---')
     lines.append('')
 
@@ -596,8 +1023,14 @@ def generate_power_md(plugin_data: dict, keywords: list, output_path: str,
             lines.append('')
         if converted and converted.get('mcp'):
             lines.append('MCP servers are configured in `mcp.json`. '
-                         'They will be auto-registered when the power is installed.')
+                         'Verify target registration, command paths and prerequisites before using them.')
             lines.append('')
+
+    if converted and converted.get('hook_statuses'):
+        lines.extend(['## Hook Conversion Coverage', ''])
+        for status in converted['hook_statuses']:
+            lines.append(f'- `{status["handler"]}`: **{status["status"]}** — {status["reason"]}')
+        lines.append('')
 
     # --- Body: Steering Mappings ---
     if converted:
@@ -758,21 +1191,31 @@ def search_marketplace(query: str) -> list:
 # ---------------------------------------------------------------------------
 
 def install_power(source_dir: str, target_dir: str) -> None:
-    """Copy converted power to installation target."""
-    target = Path(target_dir)
-    if target.exists():
-        shutil.rmtree(target)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(source_dir, target)
+    """Stage a complete copy before descriptor-based installation publication."""
+    source = Path(source_dir)
+    if not source.is_dir():
+        raise FileNotFoundError(f'Power directory not found: {source}')
+    target = validate_power_destination([source], Path(target_dir))
+    anchor = DirectoryAnchor(target.parent)
+    area = None
+    try:
+        area = StagingArea(anchor)
+        shutil.copytree(source, area.path / 'power')
+        publish_staged([(area, 'power', target)], [source])
+    finally:
+        try:
+            if area is not None:
+                area.cleanup()
+        finally:
+            anchor.close()
 
 
 # ---------------------------------------------------------------------------
 # Full Plugin Conversion
 # ---------------------------------------------------------------------------
 
-def convert_plugin(source_dir: str, output_dir: str,
-                   target: str = 'export',
-                   preserve_skills: bool = False) -> dict:
+def _build_plugin(source_dir: str, output_dir: str,
+                  preserve_skills: bool = False) -> dict:
     """Full plugin conversion: Claude Code plugin → Kiro Power."""
     source = Path(source_dir)
     output = Path(output_dir)
@@ -794,10 +1237,8 @@ def convert_plugin(source_dir: str, output_dir: str,
         author = str(author_data) if author_data else ''
     version = plugin_data.get('version', '')
 
-    # Prepare output
-    if output.exists():
-        shutil.rmtree(output)
-    output.mkdir(parents=True, exist_ok=True)
+    # The caller supplies a fresh staging directory.
+    output.mkdir(parents=True, exist_ok=False)
     steering_dir = output / 'steering'
     steering_dir.mkdir(exist_ok=True)
 
@@ -810,6 +1251,8 @@ def convert_plugin(source_dir: str, output_dir: str,
         'mcp': False,
         'large_assets': [],
         'env_vars': [],
+        'mcp_conflicts': [],
+        'hook_statuses': [],
     }
 
     # 1. Agents → steering
@@ -827,7 +1270,7 @@ def convert_plugin(source_dir: str, output_dir: str,
                 if preserve_skills:
                     kiro_skills_dir = output / 'skills'
                     kiro_skills_dir.mkdir(exist_ok=True)
-                    convert_skill_to_kiro_skill(
+                    _build_kiro_skill(
                         str(skill_item), str(kiro_skills_dir),
                         author=author, version=version,
                     )
@@ -845,11 +1288,14 @@ def convert_plugin(source_dir: str, output_dir: str,
     if claude_md.exists():
         convert_claude_md_to_routing(str(claude_md), str(steering_dir))
 
-    # 4. .mcp.json → mcp.json
+    # 4. Inline manifest and standalone MCP declarations.
     env_vars = []
-    mcp_json = source / '.mcp.json'
-    if mcp_json.exists():
-        env_vars = convert_mcp_json(str(mcp_json), str(output / 'mcp.json'))
+    mcp_servers, conflicts = collect_mcp_servers(source, plugin_data)
+    converted['mcp_conflicts'] = conflicts
+    if mcp_servers:
+        content, env_vars = mcp_document(mcp_servers)
+        # The builder's path is backed by its retained staging descriptor.
+        (output / 'mcp.json').write_text(content, encoding='utf-8')
         converted['mcp'] = True
         converted['env_vars'] = env_vars
 
@@ -861,7 +1307,11 @@ def convert_plugin(source_dir: str, output_dir: str,
         hooks_result = convert_hooks(hooks_config, str(hooks_out_dir),
                                      plugin_data.get('name', ''))
         converted['hooks'] = hooks_result['hook_files']
+        converted['hook_statuses'] = hooks_result['statuses']
         onboarding_prompts = hooks_result['onboarding_prompts']
+
+    # Preserve every handler's conversion status in the deliverable.
+    (output / 'conversion-report.json').write_text(json.dumps(converted, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
 
     # 6. Extract keywords and generate POWER.md
     keywords = extract_keywords(
@@ -877,18 +1327,48 @@ def convert_plugin(source_dir: str, output_dir: str,
         onboarding_prompts=onboarding_prompts,
     )
 
-    # 7. Install to target
-    power_name = plugin_data.get('name', 'converted-power')
-    if target == 'global':
-        dest = Path.home() / '.kiro' / 'powers' / power_name
-        install_power(str(output), str(dest))
-        print(f'Installed to: {dest}')
-    elif target == 'project':
-        dest = Path.cwd() / '.kiro' / 'powers' / power_name
-        install_power(str(output), str(dest))
-        print(f'Installed to: {dest}')
-
     return converted
+
+
+def convert_plugin(source_dir: str, output_dir: str,
+                   target: str = 'export', preserve_skills: bool = False) -> dict:
+    """Build and validate the full power before publishing output/install trees."""
+    source = Path(source_dir)
+    manifest = source / '.claude-plugin' / 'plugin.json'
+    plugin_data = json.loads(manifest.read_text(encoding='utf-8'))
+    power_name = safe_component(plugin_data.get('name', 'converted-power'))
+    if target not in ('export', 'global', 'project'):
+        raise ValueError(f'Unsupported target: {target}')
+    output = validate_power_destination([source], Path(output_dir))
+    destinations = [output]
+    if target != 'export':
+        base = Path.home() if target == 'global' else Path.cwd()
+        installation = validate_power_destination([source, output], base / '.kiro' / 'powers' / power_name)
+        destinations.append(installation)
+    anchors = []
+    areas = []
+    try:
+        for destination in destinations:
+            anchor = DirectoryAnchor(destination.parent)
+            anchors.append(anchor)
+            areas.append(StagingArea(anchor))
+        staged_output = areas[0].path / 'power'
+        converted = _build_plugin(str(source), str(staged_output), preserve_skills=preserve_skills)
+        publications = [(areas[0], 'power', output)]
+        if len(destinations) > 1:
+            shutil.copytree(staged_output, areas[1].path / 'power')
+            publications.append((areas[1], 'power', destinations[1]))
+        publish_staged(publications, [source])
+        if len(destinations) > 1:
+            print(f'Installed to: {destinations[1]}')
+        return converted
+    finally:
+        try:
+            for area in areas:
+                area.cleanup()
+        finally:
+            for anchor in anchors:
+                anchor.close()
 
 
 # ---------------------------------------------------------------------------
@@ -919,6 +1399,8 @@ def print_report(converted: dict, source: str, output: str,
         names = ', '.join(d[0] for d in converted['large_assets'])
         print(f'  Large assets: {len(converted["large_assets"])} skipped ({names})')
     print(bar)
+    for status in converted.get('hook_statuses', []):
+        print(f'  Hook {status["handler"]}: {status["status"]} — {status["reason"]}')
 
     if converted['agents']:
         print('\n  Steering (agents):')
@@ -1041,8 +1523,9 @@ def main():
     if args.skill:
         if not args.output:
             parser.error('--output is required for skill conversion')
-        for skill_path in args.skill:
-            out = convert_skill_standalone(skill_path, args.output)
+        if args.target != 'export' or args.preserve_skills:
+            parser.error('--target and --preserve-skills apply to full plugin conversion only')
+        for out in convert_skills_standalone(args.skill, args.output):
             print(f'Converted skill: {out}')
         return
 

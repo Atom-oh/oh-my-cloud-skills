@@ -87,11 +87,13 @@ DIFF=$(git diff "origin/$BASE...HEAD" 2>/dev/null); [ -z "$DIFF" ] && DIFF=$(git
    files): *"Review this diff. Report [SEVERITY] file:line — issue. Cover correctness,
    error handling, security, tests, and AWS Well-Architected concerns."* Exact per-CLI
    commands (incl. the size guard): `references/ai-cli-adapters.md`.
-4. **Validate citations (all modes)**: collect each AI's findings as JSON
+4. **Validate citations for the artifact**: collect each AI's findings as JSON
    `[{ai,severity,file,line,snippet,issue}]` and run
-   `python3 scripts/check_citations.py <diff_file> <findings.json>`. **Drop
-   `unsupported`** (paths/lines the diff doesn't contain); treat `needs-review` with
-   caution — verify, don't vote-count.
+   `python3 scripts/check_citations.py <diff_file> <findings.json>` for diffs only.
+   The chair verifies `unsupported` and `needs-review` claims against the actual
+   artifact before dismissal. Plans, ADRs and decision briefs require direct
+   quotation/section checks instead. Helper errors and unresolved citations
+   cannot erase active CRITICAL/MAJOR findings or produce PASS.
 5. **The host synthesizes** one report: consensus (issues ≥2 AIs agree on) vs dissent /
    unique findings (name the AI), a severity table, Well-Architected notes
    (`references/aws-well-architected.md`), and a PASS/REVIEW/FAIL verdict — rubric and
@@ -184,8 +186,11 @@ from state). Authoritative phases: `references/consensus-pipeline.md`.
   regenerated; an ADR/spec without a plan gets a TDD plan generated first.
 - **Plan gate** (default-on; `--trust-plan` skips it only when the plan was reviewed
   upstream): fan the plan to the panel (`co_agent_config.py` `matrix`/`pairs` +
-  `ai-cli-adapters.md`), validate findings with `scripts/check_citations.py` (drop
-  `unsupported`), synthesize by agreement + evidence, iterate until no CRITICAL/MAJOR.
+  `ai-cli-adapters.md`), then the chair validates each quotation/section and claim
+  against the actual plan text. Do not send plans to the diff-only
+  `scripts/check_citations.py`; retain unresolved CRITICAL/MAJOR findings until
+  fixed or refuted with evidence. Synthesize by agreement + evidence and iterate
+  until no CRITICAL/MAJOR.
   Clean tree required; session state via `scripts/consensus_state.py`.
 - **Implement (Stage B)**: per task — checkpoint → TDD → `scope_guard.py` (stay in the
   plan's file set) → security-mandate veto → test gate (`tests/run-all.sh` must pass) →
@@ -269,7 +274,7 @@ over context limit, errored).
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
 - `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md (size cap, marker, secrets); `--emit-marker` for generation
 - `scripts/co_agent_config.py` + `co-agent.defaults.json` — panel settings (model/effort/enabled/timeout); driven by the **`/co-agent:configure`** command, overrides in `.claude/co-agent.local.json`
-- `scripts/check_citations.py` — tiered citation validation (supported/needs-review/unsupported) for all review modes
+- `scripts/check_citations.py` — diff-only citation classification (supported/needs-review/unsupported); plans and other documents use chair quotation/section checks
 - `references/consensus-pipeline.md` — **AUTHORITATIVE** for `/co-agent:consensus`: P0–P5 phases, entry decision table, Stage A/B/C roadmap
 - `references/consensus-mode.md` — the reusable consensus GATE mechanics (parallel fan-out + citation validation + quorum) used by `review` and pipeline gates P2/P4
 - `references/hybrid-gate.md` — the **hybrid** gate used by `/co-agent:harness` (default `review_mode`): parallel find → chair triage → parallel verify

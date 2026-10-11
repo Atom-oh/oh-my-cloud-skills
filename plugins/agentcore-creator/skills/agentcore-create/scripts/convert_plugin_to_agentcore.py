@@ -7,8 +7,9 @@ Supports 4 input sources:
   3. Marketplace plugin name (--marketplace)
   4. Individual skill/agent (--skill / --agent)
 
-Output: agentcore-deploy/ directory with Runtime agents, Gateway configs,
-        Memory documents, Lambda tool handlers, and deployment script.
+Output: agentcore-deploy/ directory with Runtime agents (or raw local-test code),
+        Gateway configs, Memory documents, hook gap report, and deployment script.
+Lambda tool-handler generation is not implemented.
 
 Requirements: Python 3.8+, no external dependencies.
 """
@@ -295,7 +296,40 @@ def resolve_model_id(model_str: str) -> str:
     return MODEL_MAP.get(model_str, DEFAULT_MODEL)
 
 
-def generate_system_prompt(agent: dict, skills: list) -> str:
+def hook_migration_records(inventory: dict) -> list:
+    """Describe each handler's actual conversion; command hooks are never run."""
+    records = []
+    instruction_events = {"SessionStart", "PreToolUse", "PostToolUse"}
+    for event, groups in inventory.get("hooks", {}).items():
+        for group_index, group in enumerate(groups, 1):
+            for handler_index, hook in enumerate(group.get("hooks", []), 1):
+                h_type = hook.get("type", "unknown")
+                purpose = hook.get("prompt" if h_type == "prompt" else "command", "")
+                identifier = f"{event}/{group_index}/{handler_index}"
+                if (event in instruction_events and h_type == "prompt"
+                        and isinstance(purpose, str) and purpose.strip()
+                        and inventory.get("agents")):
+                    status = "generated instruction"
+                    detail = "Advisory text in agents/system-prompts/*.md; no hook adapter or enforcement"
+                elif h_type in {"command", "prompt"}:
+                    status = "manual follow-up"
+                    detail = "No handler or enforcement generated; review and implement an explicit equivalent"
+                else:
+                    status = "not migrated"
+                    detail = "Unsupported handler type; no generated equivalent"
+                records.append({
+                    "id": identifier,
+                    "event": event,
+                    "matcher": group.get("matcher", "*"),
+                    "type": h_type,
+                    "purpose": purpose,
+                    "status": status,
+                    "detail": detail,
+                })
+    return records
+
+
+def generate_system_prompt(agent: dict, skills: list, hook_records: list = None) -> str:
     """Synthesize a system prompt from agent body and skill workflows."""
     parts = [f"# {agent['name']}\n"]
 
@@ -331,10 +365,21 @@ def generate_system_prompt(agent: dict, skills: list) -> str:
         for ns in ref_namespaces:
             parts.append(f"- `{ns}`")
 
+    instructions = [record for record in hook_records or []
+                    if record["status"] == "generated instruction"]
+    if instructions:
+        parts.append("\n## Imported Hook Instructions (Advisory Only)\n")
+        parts.append("These instructions do not execute native hooks, enforce tool matchers, "
+                     "or replace validation/review gates.")
+        for record in instructions:
+            parts.append(f"\n### {record['id']} (source matcher: {record['matcher']})\n")
+            parts.append(record["purpose"])
+
     return "\n\n".join(parts)
 
 
-def generate_agent_code(agent_name: str, model_id: str, framework: str) -> str:
+def generate_agent_code(agent_name: str, model_id: str, framework: str,
+                        region: str = "us-east-1") -> str:
     """Generate Python agent code with BedrockAgentCoreApp wrapper."""
     # Opus 4.7+/Sonnet 5/Fable 5 compatibility note: these models reject
     # temperature/top_p/top_k and thinking.type="enabled" with budget_tokens.
@@ -375,6 +420,7 @@ from strands.models.bedrock import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 app = BedrockAgentCoreApp()
+DEFAULT_REGION = {json.dumps(region)}
 
 
 @app.entrypoint
@@ -385,7 +431,7 @@ async def invoke(payload, context):
 
     model = BedrockModel(
         model_id="{model_id}",
-        region_name=context.get("region", "us-east-1"),
+        region_name=DEFAULT_REGION,
         max_tokens=16000,  # default; raise to 64000 for long outputs (streaming recommended)
 {request_fields_line}    )
 
@@ -434,12 +480,13 @@ import boto3
 # Default inference config — adjust per use case
 # Modern-Opus/Fable note: do NOT add temperature/topP/topK on these models (400 error)
 DEFAULT_MAX_TOKENS = 16000
+DEFAULT_REGION = {json.dumps(region)}
 
 
 class LocalTestAgent:
     """Agent using boto3 Bedrock Runtime for local testing."""
 
-    def __init__(self, region: str = "us-east-1"):
+    def __init__(self, region: str = DEFAULT_REGION):
         self.client = boto3.client("bedrock-runtime", region_name=region)
         self.model_id = "{model_id}"
         prompt_path = Path(__file__).parent / "system-prompts" / "{agent_name}.md"
@@ -652,7 +699,7 @@ def generate_gateway_config(inventory: dict, output_dir: Path):
 
 
 def generate_hooks_gap_analysis(inventory: dict, output_dir: Path):
-    """Generate hooks gap analysis document."""
+    """Report actual per-handler outputs, without claiming absent protections."""
     hooks = inventory.get("hooks", {})
     if not hooks:
         return
@@ -660,44 +707,28 @@ def generate_hooks_gap_analysis(inventory: dict, output_dir: Path):
     lines = [
         "# Hooks Gap Analysis",
         "",
-        "Claude Code hooks that could not be directly mapped to AgentCore equivalents.",
+        "Per-handler conversion status. Generated instructions are advisory text, "
+        "not native hook execution or enforced protections.",
         "",
-        "| Event | Type | Original Purpose | AgentCore Handling |",
-        "|-------|------|------------------|--------------------|",
+        "| Handler | Matcher | Type | Original Purpose | Status | Actual Output / Follow-up |",
+        "|---------|---------|------|------------------|--------|---------------------------|",
     ]
 
-    for event, hook_list in hooks.items():
-        for hook_group in hook_list:
-            matcher = hook_group.get("matcher", "*")
-            for hook in hook_group.get("hooks", []):
-                h_type = hook.get("type", "unknown")
-                if h_type == "command":
-                    purpose = hook.get("command", "")[:60]
-                else:
-                    purpose = hook.get("prompt", "")[:60]
+    def cell(value):
+        return str(value).replace("|", "\\|").replace("\n", "<br>")
 
-                if event == "SessionStart":
-                    handling = "Migrated to agent system prompt init section"
-                elif event == "PostToolUse":
-                    handling = "Converted to guardrail instruction in system prompt"
-                elif event == "PreToolUse":
-                    handling = "Converted to pre-check instruction in system prompt"
-                elif event == "Stop":
-                    handling = "No equivalent; manual review step recommended"
-                else:
-                    handling = "Documented as gap"
-
-                lines.append(
-                    f"| {event} ({matcher}) | {h_type} | {purpose}... | {handling} |"
-                )
+    for record in hook_migration_records(inventory):
+        values = [record[key] for key in ("id", "matcher", "type", "purpose", "status", "detail")]
+        lines.append("| " + " | ".join(cell(value) for value in values) + " |")
 
     lines.extend([
         "",
         "## Recommendations",
         "",
-        "- SessionStart prompts: Already included in agent system prompt",
-        "- PostToolUse error detection: Agent guardrails cover this",
-        "- Stop review gates: Implement as separate review step in CI/CD pipeline",
+        "- Verify every generated instruction in the listed system prompts.",
+        "- Command hooks are not executed or translated into enforcement.",
+        "- Implement required pre-checks, validators and Stop review gates explicitly "
+        "before relying on them in a deployment.",
     ])
 
     (output_dir / "hooks-gap-analysis.md").write_text(
@@ -856,9 +887,12 @@ agentcore-creator plugin (oh-my-cloud-skills marketplace)
 def convert(plugin_root: Path, output_dir: Path, region: str, framework: str,
             enable_memory: bool, enable_gateway: bool, enable_lambda: bool):
     """Main conversion pipeline."""
+    if enable_lambda:
+        raise ValueError("--enable-lambda is not implemented; no output has been changed")
     manifest = load_plugin_manifest(plugin_root)
     inventory = build_inventory(plugin_root, manifest)
     print_inventory(inventory)
+    hook_records = hook_migration_records(inventory)
 
     # Prepare output
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -883,11 +917,11 @@ def convert(plugin_root: Path, output_dir: Path, region: str, framework: str,
         model_id = resolve_model_id(agent.get("model", "sonnet"))
 
         # System prompt
-        prompt = generate_system_prompt(agent, inventory["skills"])
+        prompt = generate_system_prompt(agent, inventory["skills"], hook_records)
         (prompts_dir / f"{name}.md").write_text(prompt, encoding="utf-8")
 
         # Agent code
-        code = generate_agent_code(name, model_id, framework)
+        code = generate_agent_code(name, model_id, framework, region)
         (agents_dir / f"{name}.py").write_text(code, encoding="utf-8")
 
         agent_config["agents"].append({
@@ -939,7 +973,7 @@ def convert(plugin_root: Path, output_dir: Path, region: str, framework: str,
 
     # Summary
     gw_count = len(inventory.get("mcp_servers", {}))
-    hook_count = sum(len(hl) for hl in inventory.get("hooks", {}).values())
+    hook_count = len(hook_records)
 
     print(f"\n{'=' * 60}")
     print(f"  AgentCore Conversion Complete")
@@ -991,9 +1025,11 @@ def main():
     parser.add_argument("--disable-gateway", action="store_true",
                         help="Skip Gateway generation (Gateway is generated by default)")
     parser.add_argument("--enable-lambda", action="store_true", default=False,
-                        help="Also generate Lambda tool scaffolding (off by default)")
+                        help="Unsupported: Lambda tool scaffolding is not implemented")
 
     args = parser.parse_args()
+    if args.enable_lambda:
+        parser.error("--enable-lambda is not implemented; no output has been changed")
 
     enable_memory = not args.disable_memory
     enable_gateway = not args.disable_gateway
@@ -1017,19 +1053,20 @@ def main():
                 "and convert with --source instead.",
                 file=sys.stderr,
             )
-            sys.exit(1)
+            return 1
 
         output_dir = Path(args.output)
         convert(plugin_root, output_dir, args.region, args.framework,
                 enable_memory, enable_gateway, args.enable_lambda)
+        return 0
 
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        return 1
     except Exception as e:
         print(f"Conversion failed: {e}", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

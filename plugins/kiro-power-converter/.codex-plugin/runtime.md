@@ -54,6 +54,14 @@ search a different installation, or assume the consumer has `plugins/` in its re
   appropriate and available, pass the procedure, task and installed paths to an
   available general-purpose agent. Otherwise execute the procedure in this host.
   Do not register a made-up native agent type or treat a source file as executed.
+- `TeamCreate`, `TaskCreate`, `TaskList`, `TaskUpdate`, `TeamDelete` and `team_name`
+  describe orchestration, rather than additional Codex tools. The host keeps a task
+  list with owners, dependencies, status and returned evidence. Use available agent
+  spawn/message/wait/cleanup tools for independent ready tasks and update that list
+  after results arrive. Pass the specialist procedure and installed paths explicitly.
+  If those tools or required isolation are unavailable, execute tasks sequentially
+  inline and disclose that choice. Do not call absent Claude team APIs, invent team
+  identifiers, or mark a task complete merely because it was delegated.
 - Claude `model`, `effort`, `memory`, `tools` and `allowed-tools` frontmatter is not
   a Codex configuration or permission boundary. Use supported host capabilities
   and actual permissions. Do not translate `opus` or `sonnet` into guessed model

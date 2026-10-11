@@ -8,7 +8,7 @@
 
 ## Why
 - **Model diversity** (different families catch different bugs) > intra-family duplication.
-- **Citation validation** turns "verify, don't vote-count" into a mechanical filter.
+- **Citation validation** gives the chair evidence to verify before synthesis.
 
 ## The gate (one round)
 1. Consent + scope; print `co_agent_config.py matrix` (provider·model·ctx + max calls).
@@ -21,7 +21,17 @@
    each directly via the `references/ai-cli-adapters.md` fan-out `case "$ai"` block, which
    maps every key to its exact command line. (Note the Kiro binary is `kiro-cli`, never a
    bare `kiro`.)
-3. `check_citations.py` classifies findings → drop `unsupported`, flag `needs-review`.
+3. Validate citations for the artifact type:
+   - **Plan (P2):** the chair checks each quotation/section and claim against the
+     actual plan text. A fabricated quotation can be refuted with evidence; a real
+     MAJOR finding stays active until fixed or refuted. Do not run the diff helper
+     on a plan.
+   - **Task/cumulative diff (P3/P4/standalone review):** `check_citations.py` classifies
+     citations in unified/git diffs, including empty and deletion-only diffs. The
+     chair checks `unsupported`/`needs-review` claims against the actual artifact
+     before dismissal; labels alone do not erase active CRITICAL/MAJOR findings.
+     A helper error, malformed input or unresolved citation requires review and
+     cannot count as PASS.
 4. Chair synthesis: **raw agreement + evidence strength**, attribute dissent. No confidence
    weighting (contradicts the chair principle).
 5. **Quorum guard**: ≤1 usable pair → single-opinion review, not "consensus".

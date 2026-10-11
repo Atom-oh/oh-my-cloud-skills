@@ -47,14 +47,13 @@ inherit the host session's shell variables — define it yourself):
 1. **Diff artifacts only (H4 cumulative diff):** aggregate the panel's
    `find-*.md` responses into the findings-JSON form `check_citations.py`
    expects (its usage header documents the shape), then run
-   `python3 "$SK/check_citations.py" <diff> <findings.json>` → drop
-   `unsupported`, flag `needs-review`. **A plan doc (H2) is not a unified
-   diff** — the script would parse nothing, classify every finding
-   `unsupported`, and silently empty the digest into a false pass. For plan
-   artifacts skip the script and do the citation check yourself in step 2:
-   a finding survives only if its quoted text/section actually appears in
-   the plan.
-2. Verify every surviving finding against the actual artifact yourself —
+   `python3 "$SK/check_citations.py" <diff> <findings.json>`; verify
+   `unsupported`/`needs-review` claims before dismissal. **A plan doc (H2) is
+   not a unified diff** and the helper rejects it. For plans skip the script
+   and check each quotation/section and claim yourself in step 2. Helper errors
+   and unresolved citations cannot erase active CRITICAL/MAJOR findings or
+   produce PASS.
+2. Verify every finding against the actual artifact yourself —
    agreement across pairs is a signal, not proof.
 3. Dedupe; keep what is load-bearing (all CRITICAL/MAJOR candidates), drop
    style noise.
@@ -62,7 +61,7 @@ inherit the host session's shell variables — define it yourself):
    claim, severity, evidence (file/line), which pairs raised it. Keep it small
    (verify context = artifact + digest and must pass each pair's `fits` check).
 
-**Zero findings after triage → report "gate passes, skip Phase V"** (a verify
+**Completed triage with zero findings and no unresolved checks/errors → report "gate passes, skip Phase V"** (a verify
 round over an empty digest just invites invented findings).
 
 ## Round close — after Phase V

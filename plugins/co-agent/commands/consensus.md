@@ -50,8 +50,10 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
    No plan → GENERATE a TDD+Tidy plan from the ADR/spec (bite-sized `- [ ]` tasks, exact
    file paths, per-task commits) and write it to `docs/superpowers/plans/`, then parse it.
 4. **P2 gate (unless `--trust-plan`)**: fan the plan out to the panel (`pairs` → per-(ai,model)
-   fan-out per `references/ai-cli-adapters.md`), `check_citations.py` the findings, drop
-   `unsupported`, synthesize by agreement+evidence. Iterate ≤ `consensus.max_rounds` until no
+   fan-out per `references/ai-cli-adapters.md`). The chair verifies each finding's quotation,
+   section and claim against the actual plan; do not pass a plan to the diff-only
+   `check_citations.py`. Retain unresolved CRITICAL/MAJOR findings until fixed or refuted
+   with evidence, then synthesize by agreement+evidence. Iterate ≤ `consensus.max_rounds` until no
    CRITICAL/MAJOR. Verify the plan is implementable, scoped, complete, and violates no AWS
    security mandate. Set phase: `consensus_state.py set . phase P2`.
 5. **Report** the reviewed plan + gate verdict. (Implementation = Stage B.)
@@ -76,14 +78,17 @@ the review checkpoint. Requires a clean tree; commits locally only (never push/r
    d. **Test gate**: `bash tests/run-all.sh` (+ project tests) MUST pass; on failure, revert to
       the checkpoint and either fix within `consensus.max_rounds` or `task-abort`.
    e. **Multi-model gate**: run the consensus gate (references/consensus-mode.md) on the task's
-      diff; drop `unsupported` findings; if CRITICAL/MAJOR remain, fix (≤ max_rounds) or abort.
+      diff; run `check_citations.py` and have the chair verify `unsupported`/`needs-review`
+      claims. A helper error or unresolved citation cannot clear CRITICAL/MAJOR;
+      if any remain, fix (≤ max_rounds) or abort.
    f. **Commit** the single task (explicit paths) and `consensus_state.py task-done . <i>`.
 2. When all tasks are done, set `status done` (the Stop hook then allows stopping). Report.
 
 ## Stage C — final gate + report (`P4`, `P5`) and full-pipeline default
 1. **P4 final gate**: capture the cumulative implementation diff, scoped to the plan's files —
    `python3 "$SK/consensus_state.py" cumulative-diff . --plan <plan> --base <trunk>` — and run the
-   multi-model consensus gate on it (references/consensus-mode.md). Drop `unsupported` findings;
+   multi-model consensus gate on it (references/consensus-mode.md). The chair verifies citation
+   classifications against the diff; helper errors and unresolved findings still require review;
    if CRITICAL/MAJOR remain, fix (≤ `consensus.max_rounds`) and re-run; require tests green.
 2. **P5 report**: `python3 "$SK/consensus_state.py" set . status done` then
    `python3 "$SK/consensus_state.py" report .` — emits the run summary (tasks done/aborted, rounds,

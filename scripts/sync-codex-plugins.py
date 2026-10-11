@@ -20,6 +20,22 @@ COMMAND_ALIASES = {
 # Keep the public command alias, but let its canonical skill own automatic routing.
 EXPLICIT_COMMANDS = {("kiro", "delegate")}
 
+# Explicit applicability avoids advertising Claude-only operations as Codex migration.
+PROJECT_INIT_DESCRIPTIONS = {
+    "init-project": "Initialize project documentation, instructions and reusable skills for Codex or Claude Code.",
+    "project-scaffolder": "Scaffold project documentation and host-adapted instruction and skill files.",
+    "doc-sync-checker": "Check documentation freshness, references and the selected host's project instructions.",
+    "sync-docs": "Synchronize project documentation with current code and the selected host's instructions.",
+    "add-module": "Add a module and document its structure with the selected host's scoped instructions.",
+    "add-adr": "Record an architecture decision in the project's ADR structure.",
+    "add-runbook": "Add an operational runbook using the project's documentation structure.",
+    "add-reference-doc": "Add a technical reference document using the project's documentation structure.",
+    "generate-readme": "Generate a README from verified project structure, capabilities and evidence.",
+    "generate-changelog": "Generate a changelog from the project's actual changes.",
+    "source-command-health-check": "Assess project health using checks applicable to the selected host.",
+    "migrate-hooks": "Migrate legacy Claude Code project hooks and subagent files; Codex hooks require a separate target check.",
+}
+
 
 def dump(value):
     return json.dumps(value, indent=2, ensure_ascii=False) + "\n"
@@ -125,8 +141,7 @@ def generated_files(root, plugins=None):
             # augments the existing skill instead of becoming a duplicate.
             description = sources[0][1]["description"]
             if name == "project-init":
-                description = (description.replace("Claude Code", "Codex or Claude Code")
-                               .replace("CLAUDE.md", "AGENTS.md or CLAUDE.md"))
+                description = PROJECT_INIT_DESCRIPTIONS.get(skill_name, description)
             path = adapter / "skills" / skill_name / "SKILL.md"
             source_paths = [str(s.relative_to(plugin)) for s, _ in sources]
             inventory["skills"].append({

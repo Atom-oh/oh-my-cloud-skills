@@ -24,6 +24,9 @@ Setup installs site dependencies and local Git hooks, and may create `.env` from
 `.env.example`. Run the checks below explicitly; setup is not validation evidence.
 For Codex installation, discovery and hook trust, follow
 [Codex runtime verification](reference/codex-runtime-verification.md).
+Before executing a particular feature, check its
+[runtime readiness](reference/plugin-runtime-readiness.md): loading a package does
+not establish format dependencies, browser startup, peer authentication or hook trust.
 
 Build the public site from its own directory:
 

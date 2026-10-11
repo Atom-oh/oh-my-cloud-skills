@@ -142,9 +142,12 @@ done < <(python3 "$CFG" pairs --host "$HOST")   # pairs is silent; the trim/budg
 
 The chain is **advisory input**, not the verdict. The host:
 
-1. Runs `check_citations.py` over the accumulated findings → drop `unsupported`, flag
-   `needs-review`. A finding a later peer marked CONFIRMED still needs a real citation.
-2. Verifies each surviving finding **against the actual plan/diff** — a relay can propagate
+1. Runs `check_citations.py` over accumulated findings for **diff artifacts only**;
+   verifies `unsupported`/`needs-review` claims before dismissal. For plans, checks
+   each quotation/section against the actual plan text instead. Helper errors and
+   unresolved citations cannot erase active CRITICAL/MAJOR findings or produce PASS.
+   A finding a later peer marked CONFIRMED still needs a real citation.
+2. Verifies each finding **against the actual plan/diff** — a relay can propagate
    an early peer's mistake down the chain, so confirm, don't trust the "CONFIRMED" label.
 3. Attributes dissent: "Reviewer 2 refuted Reviewer 1's X" is signal, keep it in the report.
 4. Emits the verdict (PASS / REVIEW / FAIL) and, on CRITICAL/MAJOR, the fix list.

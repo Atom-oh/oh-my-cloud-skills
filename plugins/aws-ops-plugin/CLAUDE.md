@@ -8,15 +8,18 @@ Uses AWS MCP servers for real-time documentation and resource analysis.
 
 ## MCP Integration
 
-This plugin bundles 2 MCP servers. The remaining 3 (`awsknowledge`, `awspricing`, `awsiac`) are provided by the `deploy-on-aws` plugin and available when both plugins are loaded.
+This plugin bundles `awsdocs` and `awsapi`. Discover additional knowledge, pricing
+and IaC capabilities from the active session; this marketplace does not provide a
+`deploy-on-aws` companion. Use documented CLI alternatives where available and
+report required missing tools or credentials instead of counting them as verified.
 
 | MCP Server | Source | Purpose | Used By |
 |------------|--------|---------|---------|
 | `awsdocs` | **this plugin** | AWS official documentation search/read | All agents |
 | `awsapi` | **this plugin** | AWS API direct calls (describe, list, etc.) | eks, network, iam, storage, database, observability, analytics, wellarchitected |
-| `awsknowledge` | deploy-on-aws | AWS architecture knowledge, recommendations, regional info | All agents |
-| `awspricing` | deploy-on-aws | Cost analysis, pricing queries | cost-agent |
-| `awsiac` | deploy-on-aws | CloudFormation/CDK validation, troubleshooting | eks-agent, ops-coordinator |
+| `awsknowledge` | Separately configured capability | AWS architecture knowledge, recommendations, regional info | All agents |
+| `awspricing` | Separately configured capability | Cost analysis, pricing queries | cost-agent |
+| `awsiac` | Separately configured capability | CloudFormation/CDK validation, troubleshooting | eks-agent, ops-coordinator |
 
 ---
 

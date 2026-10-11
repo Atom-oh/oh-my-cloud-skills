@@ -14,14 +14,14 @@ allowed-tools:
 
 # decision-reconcile — ADR decision reversal
 
-Also triggers on 의사결정 번복, 의사결정 모순, ADR 번복, 결정 번복, ADR 모순 검토, decision reversal, ADR contradiction, conflicting ADR. Uses varied Claude model tiers plus optional external AI CLIs, each given a different review lens.
+Also triggers on 의사결정 번복, 의사결정 모순, ADR 번복, 결정 번복, ADR 모순 검토, decision reversal, ADR contradiction, conflicting ADR. Uses available host subagents plus optional external AI CLIs, each given a different review lens.
 
 Find the contradictions that accumulate across a repo's ADRs — two Accepted ADRs
 mandating opposite things, a newer decision silently reversing an older one, an ADR the
 code no longer matches — and resolve them with a user-approved **superseding ADR** plus
 status corrections. The consumers are the ADR set itself and every future reader/agent
 that trusts it. Excellent looks like: every reported contradiction backed by verifiable
-quotes, panel diversity (varied model tiers × varied review lenses) surfacing the
+quotes, panel diversity (actual providers/models × varied review lenses) surfacing the
 non-obvious conflicts a single pass misses, and nothing rewritten without the user's
 go-ahead.
 
@@ -33,7 +33,7 @@ go-ahead.
 
 ```
 collect ADRs (script) → deterministic pre-checks → fan out diverse panel
-  (Claude model tiers ± external CLIs, one lens each) → verify quotes → synthesize
+  (available host subagents ± external CLIs, one lens each) → verify quotes → synthesize
   consensus/dissent → recommend resolution → draft superseding ADR → update statuses
 ```
 
@@ -54,21 +54,24 @@ stop; there is nothing to reconcile.
 
 ## Step 2: Confirm scope (only if an external panel will be used)
 
-The Claude model-tier panel is in-process and needs no consent. **But if you will also
+Host subagents use the current host's delegation capabilities. **If you will also
 fan out to external AI CLIs** (Step 3, optional), the ADR text leaves the machine to
 third-party services — confirm with `AskUserQuestion` first (ADRs may name internal
-systems). Skip this when staying Claude-only or when the user already opted in this
+systems). Skip this when staying within the host or when the user already opted in this
 session.
 
 ## Step 3: Fan out the diverse panel
 
-Assign **one lens per agent** from `references/contradiction-taxonomy.md` and **vary the
-model tier** — the diversity is what surfaces non-obvious contradictions.
+Assign **one lens per available agent** from `references/contradiction-taxonomy.md`.
+Use distinct models/providers only where the current host actually supports them;
+different lenses are useful even when every worker runs the same model.
 
-**Primary — Claude model-tier subagents (always available, self-contained).** Dispatch
-in parallel with the `Agent` tool, one per lens, each with a different `model` and the
-lens-specific prompt, all given the same ADR JSON. Example mapping (rationale in the
-taxonomy):
+**Primary — host subagents, when supported.** On Claude Code, the `Agent` tool can
+dispatch the model-tier example below. On Codex, use its available native delegation
+tools and roles; these Markdown procedures do not register Claude tiers or a native
+`Agent` tool. If delegation is unavailable, the chair performs the four lenses
+sequentially and reports a solo review. Give all workers the same ADR JSON and
+enforce read-only review with the host's actual controls. Example Claude mapping:
 
 | Agent | `model` | Lens | Returns |
 |-------|---------|------|---------|
@@ -92,13 +95,17 @@ command -v claude   >/dev/null 2>&1 && echo "claude available"
 If the **co-agent** plugin is loaded, prefer delegating this fan-out to it (it owns the
 adapters, size guards, and citation validation — `co-agent` skill, Review mode).
 Otherwise exclude the current host, then invoke peers read-only, capturing each to a file:
-`kiro-cli chat "<prompt>" --no-interactive --trust-tools=read,grep --wrap never` ·
-`codex exec -s read-only "<prompt>"` or the read-only Claude adapter when Codex hosts.
-Never call `agy` or `gemini`: both are retired by ADR-022. Degrade gracefully: if none are installed,
-the Claude-only panel is complete — say so, never hard-fail on a missing CLI.
+Use the canonical `co-agent` `references/ai-cli-adapters.md` commands: Kiro reads a
+temporary ADR digest through `fs_read` (`--trust-tools=fs_read`, never `read,grep`);
+Codex/Claude receive the digest on stdin with their read-only flags. Keep the argv
+instruction fixed and quote the context path; do not interpolate ADR content into
+shell commands. Never call `agy` or `gemini`: both are retired by ADR-022.
+Installation alone is not readiness. Report which host workers and external peers
+actually returned usable results, skipped peers, and the actual model/provider
+diversity. Missing external CLIs can leave a host-only or solo advisory review.
 
 > **External CLIs get a digest, not repo access** — they can only find logical conflicts
-> between ADR texts (C1/C4/C5). **C3 reality-drift stays a Claude-tier job** (L3): only
+> between ADR texts (C1/C4/C5). **C3 reality-drift stays a host review job** (L3): only
 > the in-process subagents read the actual code / `CLAUDE.md` / `plugin.json`. Their
 > value is **cross-family signal** — when a different model family flags a pair Claude
 > waved off (or vice-versa), that split is meaningful (synthesis note in the taxonomy).

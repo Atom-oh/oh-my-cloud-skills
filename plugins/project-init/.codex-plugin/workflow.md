@@ -56,3 +56,7 @@ do not copy the source's hard-coded denominator. Replace Claude-specific checks
 with the corresponding Codex checks.
 Unrequested integrations may be N/A with a reason. Missing requested automation,
 invalid skill metadata, failed tests, or unverified hook trust are gaps, not passes.
+
+`migrate-hooks` retains a Claude-only migration source. The Codex entry explicitly
+checks the target and routes native hook inspection/repair to the trust sequence
+above. An absent `.claude/` directory is not evidence of a successful Codex migration.

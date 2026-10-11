@@ -162,14 +162,24 @@ traffic through the gateway (GA 2026-06) — mechanism depends on the runtime's 
 
 ## Hooks Gap Analysis Rules
 
-| Hook Event | Hook Type | AgentCore Handling |
-|------------|-----------|-------------------|
-| `SessionStart` | `prompt` | System prompt initialization section |
-| `SessionStart` | `command` | Agent init script (best effort) |
-| `PostToolUse` | `command` (error detection) | System prompt guardrail: "After executing commands, check for error patterns: ..." |
-| `PostToolUse` | `command` (validation) | System prompt guardrail: "After writing files, validate: ..." |
-| `PreToolUse` | `command` | System prompt pre-check: "Before executing, verify: ..." |
-| `Stop` | `command` (review gate) | No equivalent; documented as manual step |
+The converter reports every handler separately in `hooks-gap-analysis.md`; event,
+group/handler index, matcher, original text and actual output are retained.
+
+| Hook Event | Hook Type | Actual Conversion Status |
+|------------|-----------|--------------------------|
+| `SessionStart`, `PreToolUse`, `PostToolUse` | Non-empty `prompt`, with agents selected | **generated instruction**: original prompt text appears in each generated system prompt's Imported Hook Instructions section |
+| Any event | `command` | **manual follow-up**: no handler, init script, validator or enforcement generated |
+| `Stop`, other events, empty prompt, or no agents selected | `prompt` | **manual follow-up**: no advisory instruction generated |
+| Any event | Unsupported type | **not migrated**: no generated equivalent |
+
+Generated instructions are advisory model text. They do not execute hooks, enforce
+tool matchers, or replace validation, guardrails or review gates. The converter never
+runs original hook commands. Implement required protections explicitly, then test
+them separately before deployment.
+
+**Lambda scaffolding:** `--enable-lambda` is unsupported and fails before any output
+mutation. Generated Gateway target configuration does not include executable Lambda
+handlers; adding those handlers is a separate implementation task.
 
 ## CLAUDE.md Conversion
 

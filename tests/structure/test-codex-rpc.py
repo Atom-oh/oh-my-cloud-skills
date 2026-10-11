@@ -13,6 +13,30 @@ SPEC.loader.exec_module(RUNTIME)
 
 
 class RpcTests(unittest.TestCase):
+    def test_fixture_flattens_namespace_tools(self):
+        declared = [{"type": "namespace", "name": "functions", "tools": [
+            {"type": "custom", "name": "apply_patch"}, {"type": "function", "name": "exec_command"}]}]
+        tools = RUNTIME.response_tools({"tools": declared})
+        self.assertEqual("custom", RUNTIME.response_tool(tools, "apply_patch")["type"])
+
+    def test_fixture_reuses_only_an_explicit_known_response_catalog(self):
+        tools = [{"type": "custom", "name": "apply_patch"}]
+        self.assertEqual(tools, RUNTIME.response_tools({"previous_response_id": "known"}, tools))
+        for request, previous in (({}, tools), ({"previous_response_id": "unknown"}, None)):
+            with self.assertRaisesRegex(RuntimeError, "no tools declaration"):
+                RUNTIME.response_tools(request, previous)
+        self.assertEqual([], RUNTIME.response_tools({"tools": [], "previous_response_id": "known"}, tools))
+
+    def test_fixture_reports_missing_or_ambiguous_patch_support(self):
+        with self.assertRaisesRegex(RuntimeError, "found 0.*exec_command"):
+            RUNTIME.response_tool([{"type": "function", "name": "exec_command"}], "apply_patch")
+        with self.assertRaisesRegex(RuntimeError, "found 2"):
+            RUNTIME.response_tool([{"name": "apply_patch"}, {"name": "apply_patch"}], "apply_patch")
+        for payload in ({"tools": {}}, {"tools": ["invalid"]},
+                        {"tools": [{"type": "namespace", "tools": {}}]}):
+            with self.assertRaises(RuntimeError):
+                RUNTIME.response_tools(payload)
+
     def test_coalesced_notification_does_not_hide_the_response(self):
         code = (
             "import os,sys\n"
