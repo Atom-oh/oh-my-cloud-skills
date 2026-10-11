@@ -16,7 +16,7 @@ without transformation:
 |--------------------|----------------|----------------|
 | `skills/<name>/` directory (SKILL.md + references/ + scripts/) | Skill source: `{"git": {"url", "path"}}` or `{"s3": {"uri"}}` | **None** — attach the directory as-is; references ship inside the skill (no Memory chunking) |
 | Agent `.md` body + SKILL.md workflows | `instructions` (system prompt) | Same merge rules as the Runtime path (Body Mapping / SKILL.md Body below) |
-| `model` frontmatter | Harness model config | Same `MODEL_MAP` aliases; omitting model defaults the harness to Claude Sonnet 4.6 on Bedrock |
+| `model` frontmatter | Harness model config | Set an explicit current `MODEL_MAP` ID; the managed service's omitted-model default does not track the converter aliases |
 | `mcpServers` | Harness MCP tools or Gateway targets | Remote MCP endpoints attach directly; stdio servers still need Gateway/Lambda (see Gateway Target Type Selection) |
 | `tools` (Bash, Read/Write, web) | Built-in tool toggles | Shell + `file_operations` built-in; browser / code interpreter are config toggles |
 | `tools`/`allowed-tools` restrictions | AgentCore Policy | Optional hard enforcement at the Gateway layer instead of prompt-only |
@@ -41,7 +41,7 @@ compatibility caveats".
 | `name` | Agent name | Preserve as-is; validate against AgentCore naming rules (alphanumeric + hyphens, 1-128 chars) |
 | `description` | Agent description | Preserve; strip trigger keyword list (moved to routing config) |
 | `tools` | Tool permissions | Map to AgentCore tool list: `Read`/`Glob`/`Grep` -> knowledge retrieval, `Bash` -> code execution, `Write`/`Edit` -> file operations |
-| `model` | Bedrock model ID | `MODEL_MAP` in `scripts/convert_plugin_to_agentcore.py` is the single source of truth — currently `sonnet` -> Sonnet 5, `opus` -> Opus 5, `haiku` -> Haiku 4.5, `fable` -> Fable 5 (all `us.anthropic.*` inference-profile IDs) |
+| `model` | Bedrock model ID | `MODEL_MAP` in `scripts/convert_plugin_to_agentcore.py` is the single source of truth — currently `sonnet` -> Sonnet 5.5, `opus` -> Opus 5.5, `haiku` -> Haiku 5.5, `fable` -> Fable 5.1 (all default to `us.anthropic.*` inference-profile IDs; explicit selections are preserved) |
 | `skills` | System prompt sections | Each referenced skill's SKILL.md body merged into system prompt |
 | `mcpServers` | Gateway targets | Each server becomes a Gateway target definition |
 
@@ -229,11 +229,61 @@ agentcore destroy       # Tear down
 
 Generated agent code uses `BedrockModel(model_id=...)` via Strands. Different Claude model versions on Bedrock have different parameter requirements — the generated code must respect these or requests will return 400.
 
-### Opus 5 / Sonnet 5 (`us.anthropic.claude-opus-5`, `us.anthropic.claude-sonnet-5`) — current `opus` / `sonnet` aliases
+### Opus 5.5 / Sonnet 5.5 — current `opus` / `sonnet` aliases
 
-The Claude 5 generation is what `MODEL_MAP` resolves the aliases to. Opus 5 is the current
-most-capable Opus at the same price as Opus 4.8; Sonnet 5 is cheaper than Sonnet 4.6 and
-supersedes it as the balanced default. Both keep the Opus 4.7 parameter contract (below)
+`MODEL_MAP` resolves `opus` to `us.anthropic.claude-opus-5-5` and `sonnet` to
+`us.anthropic.claude-sonnet-5-5`. Both support adaptive thinking and all five
+effort levels. The converter explicitly uses `high` to preserve its demanding
+workload profile rather than inheriting Opus 5.5's new `medium` default.
+
+- Emit `thinking.type: "adaptive"` and `output_config.effort`; do not copy legacy
+  `budget_tokens` or sampling parameters into generated requests.
+- Opus 5.5 does not accept `thinking.type: "disabled"` at any effort level.
+- Keep explicit refusal handling for Opus 5.5. A successful HTTP status alone
+  does not prove that the model supplied a usable answer.
+- Verify the exact regional/global inference profile in the current Bedrock
+  catalog. Explicit full IDs are preserved instead of remapped to an alias.
+
+The resolver preserves syntactically valid explicit Anthropic Bedrock IDs,
+including AU/JP and other geographic prefixes; unsupported selections fail
+clearly. It does not certify that a profile exists or is available from a given
+source Region. Verify the chosen profile using its AWS detail page or
+`GetInferenceProfile`, including destination Regions when data residency matters.
+
+### Haiku 5.5 — current `haiku` alias
+
+`haiku` resolves to `us.anthropic.claude-haiku-5-5`. Unlike Haiku 4.5, Haiku 5.5
+supports adaptive thinking and all five effort levels. The converter emits
+`medium`, its balanced default; evaluate `low` separately for simple, high-volume
+work. Thinking consumes the output-token budget, so leave room for it.
+
+### Fable 5.1 — current `fable` alias
+
+`fable` resolves to `us.anthropic.claude-fable-5-1`. Generate adaptive thinking
+with explicit `high` effort and refusal handling. Confirm the selected Bedrock
+profile's access, data-sharing, and retention requirements before deployment;
+do not assume access or zero retention. An organization-policy conflict blocks
+deployment and must be surfaced during Phase 2, not after resource creation.
+The current AWS model card requires opt-in to AWS review through data-retention
+mode `aws_review`; do not reuse the older model's retention-mode name.
+
+Current primary references:
+
+- [AWS Claude Opus 5.5 model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-opus-5-5.html)
+- [AWS Claude Sonnet 5.5 model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-sonnet-5-5.html)
+- [AWS Claude Haiku 5.5 model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-haiku-5-5.html)
+- [AWS Claude Fable 5.1 model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-fable-5-1.html)
+- [Anthropic effort guide](https://docs.anthropic.com/en/docs/build-with-claude/effort)
+
+The current cards list no in-Region invocation through `bedrock-runtime`.
+The generated Converse client requires a supported profile; raw base-model IDs
+listed for `bedrock-mantle` are not interchangeable with its geographic/global
+inference profile IDs.
+
+### Opus 5 / Sonnet 5 (`us.anthropic.claude-opus-5`, `us.anthropic.claude-sonnet-5`) — pinned deployments
+
+Explicit Claude 5 IDs remain supported for pinned deployments, but no longer
+back the floating aliases. Both keep the Opus 4.7 parameter contract (below)
 with two additions the generated code must respect:
 
 - **Thinking is on by default** — omitting `thinking` runs adaptive thinking (unlike Opus
@@ -256,7 +306,7 @@ Opus 4.8 remains a valid ID for deployments that must stay pinned. It inherits t
 
 > Confirm the exact Bedrock inference-profile ID and output ceiling against the current AWS Bedrock model catalog before pinning in production. 4.6/4.7/4.8 remain valid IDs for deployments that must stay pinned.
 
-### Fable 5 (`us.anthropic.claude-fable-5`, also `anthropic.claude-fable-5` / `global.anthropic.claude-fable-5`)
+### Fable 5 (`us.anthropic.claude-fable-5`, also `anthropic.claude-fable-5` / `global.anthropic.claude-fable-5`) — pinned deployments
 
 Fable 5 extends the Opus 5 / Opus 4.8 adaptive-thinking pattern but with real behavioral and deployment differences the converter/generated code must account for:
 
@@ -282,7 +332,7 @@ Token counting on 4.7 differs from 4.6 — same input produces higher token coun
 
 `budget_tokens` is deprecated (still functional during migration) — use `thinking.type: "adaptive"` for new code. Assistant-turn prefills return 400 on both 4.6 models — use structured outputs (`output_config.format`) or system prompt instructions instead.
 
-### Haiku 4.5 (`us.anthropic.claude-haiku-4-5`)
+### Haiku 4.5 — pinned deployments
 
 No `effort` parameter support — Opus 4.5+, Sonnet 4.6+, and Fable 5 accept it; Haiku 4.5 does not.
 
@@ -302,7 +352,7 @@ For full migration details, see [Model Migration Guide](https://platform.claude.
 **AgentCore Harness graduated out of this list** — it reached GA on 2026-06-17 and is now a
 first-class conversion target with its own mapping section (Harness Conversion above) and
 reference (`agentcore-harness.md`). GA added built-in memory by default, more providers via
-LiteLLM + Bedrock Mantle (GPT-5.5/5.4 on Bedrock), the AWS-curated skills catalog with
+LiteLLM + Bedrock Mantle (OpenAI models selected from the current provider catalog), the AWS-curated skills catalog with
 one-toggle setup, versioning/endpoints, Step Functions integration, BYO filesystem (S3
 Files/EFS), and export-to-Strands.
 

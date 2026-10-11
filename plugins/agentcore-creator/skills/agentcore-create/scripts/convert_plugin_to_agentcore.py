@@ -30,36 +30,41 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 # SINGLE SOURCE OF TRUTH for alias -> Bedrock ID (the reference docs point here).
-# Aliases float to the current Claude 5 generation: `opus` -> Opus 5 (same price
-# as Opus 4.8, stronger), `sonnet` -> Sonnet 5 (cheaper than Sonnet 4.6). 4.6/4.7/4.8
-# stay valid IDs for pinned deployments; the no-sampling / no-`budget_tokens` param
-# contract (see generate_agent_code below) applies to Opus 4.7+, Sonnet 5 and Fable 5.
+# Aliases float to Claude 5.5, except Fable 5.1. Explicit Bedrock model IDs
+# remain available for pinned deployments; capability checks use the model ID
+# without its geographic inference-profile prefix.
 MODEL_MAP = {
-    "sonnet": "us.anthropic.claude-sonnet-5",
-    "opus": "us.anthropic.claude-opus-5",
-    "haiku": "us.anthropic.claude-haiku-4-5",
-    "fable": "us.anthropic.claude-fable-5",
+    "sonnet": "us.anthropic.claude-sonnet-5-5",
+    "opus": "us.anthropic.claude-opus-5-5",
+    "haiku": "us.anthropic.claude-haiku-5-5",
+    "fable": "us.anthropic.claude-fable-5-1",
 }
 
-DEFAULT_MODEL = "us.anthropic.claude-sonnet-5"
+DEFAULT_MODEL = MODEL_MAP["sonnet"]
 
 # Models that accept the `effort` request field (see agentcore-mapping-rules.md
-# "Model-Specific Compatibility Notes"). Haiku 4.5 does NOT support it.
+# "Model-Specific Compatibility Notes"). Haiku 5.5 supports it; Haiku 4.5 does not.
 EFFORT_CAPABLE_MODELS = {
-    "us.anthropic.claude-opus-5",
-    "us.anthropic.claude-sonnet-5",
-    "us.anthropic.claude-opus-4-8",
-    "us.anthropic.claude-opus-4-7",
-    "us.anthropic.claude-sonnet-4-6",
-    "us.anthropic.claude-fable-5",
+    "anthropic.claude-opus-5-5",
+    "anthropic.claude-sonnet-5-5",
+    "anthropic.claude-haiku-5-5",
+    "anthropic.claude-fable-5-1",
+    "anthropic.claude-opus-5",
+    "anthropic.claude-sonnet-5",
+    "anthropic.claude-opus-4-8",
+    "anthropic.claude-opus-4-7",
+    "anthropic.claude-sonnet-4-6",
+    "anthropic.claude-fable-5",
 }
 DEFAULT_EFFORT = "high"
 
-# Models whose safety classifiers can return stop_reason="refusal" as an HTTP 200 —
-# generated code must treat that as a distinct outcome, not a success.
+# Models documented to emit provider refusals. Generated handlers also recognize
+# a refusal from any other model instead of treating it as a successful answer.
 REFUSAL_CHECK_MODELS = {
-    "us.anthropic.claude-fable-5",
-    "us.anthropic.claude-opus-5",
+    "anthropic.claude-fable-5-1",
+    "anthropic.claude-opus-5-5",
+    "anthropic.claude-fable-5",
+    "anthropic.claude-opus-5",
 }
 
 
@@ -292,8 +297,17 @@ def print_inventory(inv: dict):
 # ---------------------------------------------------------------------------
 
 def resolve_model_id(model_str: str) -> str:
-    """Map Claude Code model name to Bedrock model ID."""
-    return MODEL_MAP.get(model_str, DEFAULT_MODEL)
+    """Resolve aliases or preserve explicit IDs without changing their geography.
+
+    Syntax preservation does not certify catalog or source-Region availability.
+    """
+    if isinstance(model_str, str) and model_str in MODEL_MAP:
+        return MODEL_MAP[model_str]
+    if isinstance(model_str, str) and re.fullmatch(
+            r"(?:[a-z][a-z0-9-]*\.)?anthropic\.claude-[a-z0-9:-]+", model_str):
+        return model_str
+    raise ValueError("Unsupported model selection; use a known alias or an explicit "
+                     "Anthropic Bedrock model/inference-profile ID")
 
 
 def hook_migration_records(inventory: dict) -> list:
@@ -381,32 +395,26 @@ def generate_system_prompt(agent: dict, skills: list, hook_records: list = None)
 def generate_agent_code(agent_name: str, model_id: str, framework: str,
                         region: str = "us-east-1") -> str:
     """Generate Python agent code with BedrockAgentCoreApp wrapper."""
-    # Opus 4.7+/Sonnet 5/Fable 5 compatibility note: these models reject
-    # temperature/top_p/top_k and thinking.type="enabled" with budget_tokens.
+    # Omit sampling fields across supported models. Restrictions vary; current
+    # Fable permits fixed-value exceptions, not arbitrary sampling combinations.
+    # Current reasoning models use adaptive thinking rather than budget_tokens.
     # Effort-capable models (see EFFORT_CAPABLE_MODELS) get adaptive thinking +
     # output_config.effort wired in below -- this used to be documented-only
     # in agentcore-mapping-rules.md but never actually emitted here.
-    effort_capable = model_id in EFFORT_CAPABLE_MODELS
-    needs_refusal_check = model_id in REFUSAL_CHECK_MODELS
+    canonical_model_id = re.sub(r"^[a-z][a-z0-9-]*\.(?=anthropic\.)", "", model_id)
+    effort_capable = canonical_model_id in EFFORT_CAPABLE_MODELS
+    model_effort = "medium" if canonical_model_id == "anthropic.claude-haiku-5-5" else DEFAULT_EFFORT
 
     if framework == "strands":
         if effort_capable:
             request_fields_line = (
                 f'        additional_request_fields={{"thinking": {{"type": "adaptive"}}, '
-                f'"output_config": {{"effort": "{DEFAULT_EFFORT}"}}}},  '
+                f'"output_config": {{"effort": "{model_effort}"}}}},  '
                 f'# tune effort: medium/high/xhigh\n'
             )
         else:
             request_fields_line = (
                 f'        # {model_id} does not support adaptive thinking / effort\n'
-            )
-        refusal_check = ""
-        if needs_refusal_check:
-            refusal_check = (
-                '\n    # Fable 5 / Opus 5 return stop_reason="refusal" as an HTTP 200, not an error --\n'
-                '    # check it explicitly rather than assuming any 200 response is usable.\n'
-                '    if getattr(result, "stop_reason", None) == "refusal":\n'
-                '        return {"result": "", "refused": True}\n'
             )
         return f'''"""
 AgentCore agent: {agent_name}
@@ -440,8 +448,13 @@ async def invoke(payload, context):
         system_prompt=system_prompt,
     )
 
-    result = agent(payload.get("prompt", "")){refusal_check}
-    return {{"result": str(result)}}
+    result = agent(payload.get("prompt", ""))
+    if getattr(result, "stop_reason", None) == "refusal":
+        return {{"result": "", "refused": True}}
+    text = str(result)
+    if not text.strip():
+        raise ValueError("Model returned no supported text content")
+    return {{"result": text}}
 
 
 if __name__ == "__main__":
@@ -451,20 +464,12 @@ if __name__ == "__main__":
         if effort_capable:
             request_fields_line = (
                 f'            additionalModelRequestFields={{"thinking": {{"type": "adaptive"}}, '
-                f'"output_config": {{"effort": "{DEFAULT_EFFORT}"}}}},  '
+                f'"output_config": {{"effort": "{model_effort}"}}}},  '
                 f'# tune effort: medium/high/xhigh\n'
             )
         else:
             request_fields_line = (
                 f'            # {model_id} does not support adaptive thinking / effort\n'
-            )
-        refusal_check = ""
-        if needs_refusal_check:
-            refusal_check = (
-                '        # Fable 5 / Opus 5 return stopReason="refusal" as an HTTP 200, not an error --\n'
-                '        # check it explicitly rather than assuming any 200 response is usable.\n'
-                '        if response["stopReason"] == "refusal":\n'
-                '            return ""\n'
             )
         return f'''"""
 AgentCore agent (raw Python): {agent_name}
@@ -478,9 +483,13 @@ import boto3
 
 
 # Default inference config — adjust per use case
-# Modern-Opus/Fable note: do NOT add temperature/topP/topK on these models (400 error)
+# Sampling fields are intentionally omitted; verify per-model restrictions before adding them.
 DEFAULT_MAX_TOKENS = 16000
 DEFAULT_REGION = {json.dumps(region)}
+
+
+class ModelRefusalError(RuntimeError):
+    """The model refused the request instead of returning a usable answer."""
 
 
 class LocalTestAgent:
@@ -502,8 +511,14 @@ class LocalTestAgent:
             messages=self.messages,
             inferenceConfig={{"maxTokens": DEFAULT_MAX_TOKENS}},
 {request_fields_line}        )
-{refusal_check}        text = response["output"]["message"]["content"][0]["text"]
-        self.messages.append({{"role": "assistant", "content": [{{"text": text}}]}})
+        if response.get("stopReason") == "refusal":
+            raise ModelRefusalError("Model refused the request")
+        message = response["output"]["message"]
+        text = "".join(block["text"] for block in message["content"] if "text" in block)
+        if not text.strip():
+            raise ValueError("Model returned no supported text content")
+        # Keep signed reasoning and other original blocks for subsequent turns.
+        self.messages.append(message)
         return text
 
 
@@ -891,6 +906,8 @@ def convert(plugin_root: Path, output_dir: Path, region: str, framework: str,
         raise ValueError("--enable-lambda is not implemented; no output has been changed")
     manifest = load_plugin_manifest(plugin_root)
     inventory = build_inventory(plugin_root, manifest)
+    resolved_models = [resolve_model_id(agent.get("model", "sonnet"))
+                       for agent in inventory["agents"]]
     print_inventory(inventory)
     hook_records = hook_migration_records(inventory)
 
@@ -912,9 +929,8 @@ def convert(plugin_root: Path, output_dir: Path, region: str, framework: str,
     prompts_dir = agents_dir / "system-prompts"
     prompts_dir.mkdir(exist_ok=True)
 
-    for agent in inventory["agents"]:
+    for agent, model_id in zip(inventory["agents"], resolved_models):
         name = agent["name"]
-        model_id = resolve_model_id(agent.get("model", "sonnet"))
 
         # System prompt
         prompt = generate_system_prompt(agent, inventory["skills"], hook_records)

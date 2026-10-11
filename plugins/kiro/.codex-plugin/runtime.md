@@ -77,6 +77,12 @@ search a different installation, or assume the consumer has `plugins/` in its re
   it — the gap is real cost, not just a naming mismatch. When it matters, either
   raise/lower the session for the procedure or delegate explicitly
   (`codex exec -m <model> -c model_reasoning_effort="<effort>"`).
+- When explicit Codex model selection is requested, use the current supported
+  catalog: `gpt-6.1-sol` for implementation, `gpt-6-luna` for narrow work,
+  `gpt-6-astra` for complex analysis, and `gpt-5.6-terra` for the retained Terra
+  tier. Verify exact provider IDs with `codex debug models`; Bedrock catalog IDs
+  may use `openai.` or an inference-profile prefix. This guidance neither
+  registers native agents nor changes automatic model inheritance or fallback.
 - Any procedure this host delegates onward — a subagent, a peer AI, a worktree
   implementer — should have its RETURNED output bounded the same way the source
   skill's own output-budget guidance intends (see the linked procedure's own

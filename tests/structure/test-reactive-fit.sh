@@ -202,3 +202,83 @@ TC12FLAT="$(tr '\n' ' ' < "$RP/assets/theme.css" 2>/dev/null || true)"
 assert_grep_match "\.tab-panels > \.tc \{ display: block; grid-area: 1 / 1; \}" "$TC12FLAT" "stacked .tc panels stay laid out despite the hidden attribute"
 assert_grep_match "\.tab-panels > \.tc\[hidden\] \{ visibility: hidden; \}" "$TC12FLAT" "hidden .tc panels are invisible but keep their height in the stack"
 assert_contains "$(cat "$RP/scripts/measure_deck.py" 2>/dev/null || true)" "A body with no shown content is 0% full" "UNDERFILL treats an empty content body as 0% full"
+
+# --- 13. Real-deck pass (EKS Hybrid Nodes rebuild): chrome band, balanced cards, templates ---
+TC13FLAT="$(tr '\n' ' ' < "$RP/assets/theme.css" 2>/dev/null || true)"
+assert_grep_match "\.slide-deck:has\(> \.slide-logo, > \.slide-footer\) > \.slide \{[^}]*padding-bottom: var\(--chrome-band" "$TC13FLAT" "slides reserve the logo/footer band at the bottom when that chrome exists"
+assert_grep_match "\.card-grid:where\(:has\(> :nth-child\(5\)\)\) \{ grid-template-columns: repeat\(3, 1fr\); \}" "$TC13FLAT" "5-6 cards balance into 3 columns instead of one narrow row"
+assert_grep_match "\.card, \.metric-card, \.callout \{ overflow-wrap: break-word; \}" "$TC13FLAT" "card text wraps long tokens inside its box"
+assert_grep_match "\.title-slide h1 \{[^}]*font-size: calc\(var\(--fs-title\) \* 1\.5\);" "$TC13FLAT" "section/title slide heading uses the projector title scale"
+J13="$(cat "$RP/assets/slide-framework.js" 2>/dev/null || true)"
+assert_contains "$J13" "cells.every(c => c.scrollWidth <= c.clientWidth + 1)" "fit predicate shrinks until no card overflows horizontally (nowrap code in a fixed-min track)"
+Q13="$(cat "$RP/assets/quiz-component.js" 2>/dev/null || true)"
+assert_contains "$Q13" "font-size: var(--fs-subtitle, 1.05rem);" "quiz question uses the projector subtitle size"
+assert_contains "$Q13" "font-size: var(--fs-card, .95rem);" "quiz options use the projector card size"
+R13="$(cat "$RP/scripts/remarp_to_slides.py" 2>/dev/null || true)"
+assert_grep_match "font-size:calc\(var\(--fs-title\) \* 1\.5\); color:var\(--text-primary\);\">Thank You" "$R13" "closing slide title uses the projector title scale"
+assert_grep_no_match "top:-20%; right:-10%" "$R13" "cover glow stays inside the slide box (measure_deck OVERFLOW)"
+HL13="$(cd "$RP/scripts" 2>/dev/null && python3 -c "
+import remarp_to_slides as r
+g = r.RemarpHTMLGenerator.__new__(r.RemarpHTMLGenerator)
+out = g._highlight_code('''echo '{\"type\": \"HYBRID_LINUX\"}' ''', 'bash')
+print('nul' if chr(0) in out else 'clean')
+" 2>/dev/null || echo err)"
+assert_eq "clean" "$HL13" "code highlighter restores a \"...\" token nested in a '...' token (no raw NUL placeholder bytes)"
+
+# --- 14. Reveal groups: data-reveal paces a peer group (one click or slide entry), not one card per click ---
+TC14FLAT="$(tr '\n' ' ' < "$RP/assets/theme.css" 2>/dev/null || true)"
+assert_grep_match "\.slide:is\(\.entering, \.active\) \[data-reveal=\"stagger\"\]:not\(\.fragment\) > \* \{[^}]*animation: rp-stagger-in" "$TC14FLAT" "a non-fragment stagger group cascades in when its slide is shown"
+assert_grep_match "\.fragment\[data-reveal=\"stagger\"\]\.visible > \* \{[^}]*transition-delay: calc\(var\(--rp-i, 0\) \* var\(--rp-step\)\)" "$TC14FLAT" "a fragment stagger group cascades its children on one click"
+assert_grep_match "\.fragment\.zoom-in \{" "$TC14FLAT" "zoom-in fragment animation (documented) exists"
+J14="$(cat "$RP/assets/slide-framework.js" 2>/dev/null || true)"
+assert_contains "$J14" "child.style.setProperty('--rp-i', i)" "framework numbers reveal-group children for the cascade delay"
+RV14="$(mktemp -d)"
+{
+  echo '<html><head><link rel="stylesheet" href="common/theme.css"></head><body><div class="slide-deck">'
+  for s in 1 2 3 4; do
+    echo '<div class="slide">'
+    for k in 1 2 3 4; do echo "<div class=\"card fragment fade-up\" data-fragment-index=\"$k\">c</div>"; done
+    echo '</div>'
+  done
+  echo '</div></body></html>'
+} > "$RV14/index.html"
+CD14="$(python3 "$RP/scripts/check_deck.py" "$RV14/index.html" 2>&1 || true)"
+assert_contains "$CD14" "REVEAL_PACE" "check_deck flags 3+ adjacent slides that each take 4+ single-item clicks"
+assert_contains "$CD14" "REVEAL_MONOTONY" "check_deck flags a file whose fragments all share one animation"
+sed -i 's/<div class="slide">/<div class="slide"><div class="card-grid fragment" data-reveal="stagger" data-fragment-index="5"><div>a<\/div><\/div>/' "$RV14/index.html"
+CD14B="$(python3 "$RP/scripts/check_deck.py" "$RV14/index.html" 2>&1 || true)"
+assert_grep_no_match "REVEAL_MONOTONY" "$CD14B" "a data-reveal group counts as varied pacing"
+rm -rf "$RV14"
+VL14="$(cd "$RP/scripts" 2>/dev/null && python3 -c "
+import remarp_to_slides as r, inspect
+src = inspect.getsource(r)
+print('ok' if \"'data-reveal=' in html_block\" in src else 'missing')
+" 2>/dev/null || echo err)"
+assert_eq "ok" "$VL14" "STATIC_HTML accepts a data-reveal group as an explicit reveal choice"
+assert_grep_match "\.fragment\.fade-right \{[^}]*transform: translateX\(-20px\);" "$TC14FLAT" "fade-right enters from the left and moves right (left-to-right flows)"
+assert_grep_match "\[data-reveal-anim=\"right\"\] \{ --rp-from: translateX\(-28px\); \}" "$TC14FLAT" "reveal-anim right moves its children left to right, like fade-right"
+COL14="$(cd "$RP/scripts" 2>/dev/null && python3 -c "
+import remarp_to_slides as r
+md = '''---
+remarp: true
+---
+@type: content
+## T
+
+::::left
+L-side
+::::
+
+::::right
+R-side
+::::
+
+Trailing caption line
+'''
+cfg, blocks = r.RemarpParser(md).parse()
+s = [x for b in blocks.values() for x in b if x.columns][0]
+g = r.RemarpHTMLGenerator.__new__(r.RemarpHTMLGenerator)
+out = g._gen_content_slide(s)
+print('kept' if 'Trailing caption line' in out and 'R-side' in out else 'dropped')
+" 2>&1 | tail -1 || echo err)"
+assert_eq "kept" "$COL14" "content outside ::::left/::::right columns still renders below them"

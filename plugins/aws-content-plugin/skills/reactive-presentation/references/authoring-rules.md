@@ -28,7 +28,7 @@ python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 | `MISSING_NOTES` | WARNING | Missing `:::notes` block | Write 150+ character speaker notes |
 | `NOTE_STRUCTURE` | WARNING | A content slide's notes lack the `[요약]` ("Summary") hierarchy | Add `[요약]` ("Summary") (3-5 bullets) at the top of `:::notes` |
 | `TITLE_LENGTH` | WARNING | Slide title exceeds 28 characters | Shorten to a headline of 28 characters or fewer (§3 Slide Title Voice) |
-| `STATIC_HTML` | WARNING | 3+ `:::html` elements but no fragments | Add `fragment fade-up` + `data-fragment-index` |
+| `STATIC_HTML` | WARNING | 3+ `:::html` elements with neither fragments nor `data-reveal` | Choose a reveal (§4 rule 5): `data-reveal="stagger"`, per-item fragments, or `data-reveal="static"` |
 | `INVALID_FIT` | WARNING | `@fit:` directive or frontmatter `fit:` is not `auto`, `shrink` or `off` | Use `@fit: auto\|shrink\|off` (or drop it — `auto` is the default) |
 
 `validate --json` emits an array of diagnostics and exits nonzero for CRITICAL
@@ -112,7 +112,13 @@ Exceeding 28 characters triggers `validate`'s `TITLE_LENGTH` warning. Full examp
 2. **Card grid**: 4+ listed items → use the `.card-grid` token class (bullet lists forbidden)
 3. **Self-contained**: every interaction is completed via an inline onclick inside `:::html` (no external JS dependency)
 4. **Visual hierarchy**: color must use only semantic role tokens (`var(--accent/--info/--success/--warning/--danger)`). Hardcoded hex/rgba and solid-color backgrounds are forbidden
-5. **`:::html` reactive**: 3+ peer elements must appear sequentially via `class="fragment fade-up" data-fragment-index="N"` (static HTML forbidden)
+5. **`:::html` reveal rhythm**: every group of 3+ peer elements needs a deliberate reveal, chosen by how the talk uses it. Revealing every card on its own click, with the same animation, slide after slide, is monotone and loses the room.
+   - **Builds point by point** (an argument, a before/after, a process the speaker walks through): give each item its own fragment (`class="fragment …" data-fragment-index="N"`).
+   - **A set discussed as a whole** (constraints, feature cards, options, a reference list): one click for the group. Write `<div class="card-grid fragment" data-reveal="stagger" data-fragment-index="N">`; the cards cascade in on that click.
+   - **Context the audience needs right away** (the slide's subject, a diagram legend, badges): use `data-reveal="stagger"` without `.fragment`. The group cascades in when the slide opens.
+   - **Reference or recap material** (link lists, summary tables): `data-reveal="static"`.
+   - Vary the entrance by meaning: `fade-right` or `data-reveal-anim="right"` for left-to-right flows, `zoom-in` or `data-reveal-anim="zoom"` for the conclusion or key number, `fade-up` for lists.
+   - Mix these across a block. Avoid three adjacent slides that each take 4+ single-item clicks. `check_deck.py` flags that run as `REVEAL_PACE`. `REVEAL_MONOTONY` applies when at least four slides have fragments, all fragment entrances share at most one animation, and the file has no reveal group.
 
 > **Theme**: light by default. Dark mode is set via `class="… theme-dark"` on the deck root. Per-slide dark mode uses `@theme: dark`. All colors auto-adapt to both via theme.css tokens.
 

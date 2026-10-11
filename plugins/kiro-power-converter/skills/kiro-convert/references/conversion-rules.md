@@ -32,6 +32,10 @@ subtree content is captured without following links. Publication rechecks that
 snapshot and refuses a destination created, replaced or edited during the build,
 preserving the new content. Standalone folder copies use the same preflight
 snapshot so files added after copying cannot be silently discarded.
+Single-file Markdown and MCP conversions capture their destination before
+generating content or reading the MCP source, then recheck it before staging and
+publication. Selecting a standalone filename from skill metadata does not build
+its content; the content builder runs after that file's snapshot.
 These checks detect build-time changes; they do not lock out every malicious
 writer racing the final rename window. Parent replacement during a run cannot
 redirect descriptor-based writes or cleanup into an outside directory; a changed

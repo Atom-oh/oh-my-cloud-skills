@@ -95,7 +95,7 @@ When no PPTX template is provided, use this CSS-only cover with a dark gradient 
 ```html
 <!-- Session Cover — CSS-only fallback -->
 <div class="slide" style="background:linear-gradient(135deg, var(--surface-2) 0%, var(--surface-1) 50%, var(--surface-2) 100%); padding:0; overflow:hidden; position:relative;">
-  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, var(--accent-subtle) 0%, transparent 70%); pointer-events:none;"></div>
+  <div style="position:absolute; top:0; right:0; width:50%; height:60%; background:radial-gradient(ellipse, var(--accent-subtle) 0%, transparent 70%); pointer-events:none;"></div>
   <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:var(--accent); border-radius:var(--radius-sm);"></div>
   <h1 style="position:absolute; left:5%; top:45%; font-size:var(--text-4xl); color:var(--on-surface); font-weight:var(--weight-regular); line-height:var(--leading-tight); width:60%; margin:0;">Session Title</h1>
   <p style="position:absolute; left:5%; top:60%; font-size:var(--text-xl); color:var(--on-surface-muted); width:60%; margin:0;">Subtitle</p>
@@ -440,7 +440,7 @@ For multi-layer architectures, service ecosystems, multi-node maps, and similar 
 
 > **Rule**: If there are 5 or more boxes, do not use `:::canvas` — use `:::html` + `:::css` instead.
 >
-> **Rule**: If a `:::html` block has 3 or more sibling elements, applying sequential reveal via `class="fragment fade-up" data-fragment-index="N"` is required. Static HTML is not allowed.
+> **Rule**: a `:::html` block with 3 or more sibling elements must declare its reveal: per-item fragments when the talk builds point by point, a `data-reveal="stagger"` group for a set discussed as a whole, or `data-reveal="static"` for reference material. See authoring-rules.md §4 rule 5 and vary the choice across the deck.
 
 #### Remarp Source Format (used directly by the agent)
 

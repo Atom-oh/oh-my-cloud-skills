@@ -237,6 +237,11 @@ body {
   opacity: 0;
   transition: opacity var(--transition-normal);
 }
+/* Logo/footer chrome occupies the bottom band (a PPTX theme can lift its logo to ~92%
+   of the height): keep slide content, and so the ReactiveFit space, clear of it. */
+.slide-deck:has(> .slide-logo, > .slide-footer) > .slide {
+  padding-bottom: var(--chrome-band, var(--space-8));
+}
 /* Per-slide dark scope: a slide carrying .theme-dark re-binds its tokens to the dark
    palette (see .theme-dark above) and gets a dark surface + light text, so a mostly
    light deck can intersperse dark cover/section/emphasis slides (light:dark mix). */
@@ -372,6 +377,9 @@ body {
   align-items: center; justify-content: center;
   text-align: center; flex: 1;
 }
+/* A long unbroken token (a label key, a URL, inline code) wraps inside its box instead
+   of spilling over the neighbouring card under word-break: keep-all. */
+.card, .metric-card, .callout { overflow-wrap: break-word; }
 
 /* --- Cards --- */
 .card {
@@ -1014,19 +1022,19 @@ input[type="range"]::-webkit-slider-thumb {
   text-align: center;
 }
 .title-slide h1 {
-  font-size: 3rem;
+  font-size: calc(var(--fs-title) * 1.5);
   font-family: var(--font-display);
   letter-spacing: var(--tracking-tight);
   color: var(--text-primary);
   margin-bottom: var(--space-3);
 }
 .title-slide .subtitle {
-  font-size: 1.3rem;
+  font-size: calc(var(--fs-subtitle) * 1.2);
   color: var(--text-secondary);
 }
 .title-slide .meta {
   margin-top: var(--space-5);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-card);
   color: var(--text-muted);
 }
 
@@ -1374,9 +1382,10 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 /* fade-left */
+/* fade-left: moves leftward, entering from the right */
 .fragment.fade-left {
   opacity: 0;
-  transform: translateX(-20px);
+  transform: translateX(20px);
 }
 .fragment.fade-left.visible {
   opacity: 1;
@@ -1384,9 +1393,10 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 /* fade-right */
+/* fade-right: moves rightward, entering from the left (left-to-right flows) */
 .fragment.fade-right {
   opacity: 0;
-  transform: translateX(20px);
+  transform: translateX(-20px);
 }
 .fragment.fade-right.visible {
   opacity: 1;
@@ -1460,6 +1470,62 @@ input[type="range"]::-webkit-slider-thumb {
 .fragment.fade-out.visible {
   opacity: 0;
   pointer-events: none;
+}
+
+/* zoom-in (emphasis) */
+.fragment.zoom-in {
+  opacity: 0;
+  transform: scale(0.85);
+}
+.fragment.zoom-in.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ============================================================
+   Reveal Groups — data-reveal on a container of peer elements
+   stagger on a .fragment : one click reveals the group; children cascade in
+   stagger on a plain box : children cascade in when the slide is shown
+   static              : shown with the slide, no motion (an explicit choice)
+   data-reveal-anim = up (default) | down | left | right | zoom | fade — the
+   direction the children move, matching fade-up/fade-right
+   data-reveal-pace = fast | slow (cascade step 50ms / 160ms; default 90ms)
+   slide-framework.js numbers each child as --rp-i. Export and measure freeze
+   motion, so the final (fully shown) state is what they capture.
+   ============================================================ */
+[data-reveal="stagger"] { --rp-from: translateY(18px); --rp-step: 90ms; }
+[data-reveal="stagger"][data-reveal-anim="down"]  { --rp-from: translateY(-18px); }
+[data-reveal="stagger"][data-reveal-anim="left"]  { --rp-from: translateX(28px); }
+[data-reveal="stagger"][data-reveal-anim="right"] { --rp-from: translateX(-28px); }
+[data-reveal="stagger"][data-reveal-anim="zoom"]  { --rp-from: scale(0.88); }
+[data-reveal="stagger"][data-reveal-anim="fade"]  { --rp-from: none; }
+[data-reveal="stagger"][data-reveal-pace="fast"]  { --rp-step: 50ms; }
+[data-reveal="stagger"][data-reveal-pace="slow"]  { --rp-step: 160ms; }
+
+@keyframes rp-stagger-in {
+  from { opacity: 0; transform: var(--rp-from); }
+  to   { opacity: 1; transform: none; }
+}
+/* Entrance cascade. .entering and .active both match, so the animation is not
+   restarted when the slide transition hands over from one class to the other. */
+.slide:is(.entering, .active) [data-reveal="stagger"]:not(.fragment) > * {
+  animation: rp-stagger-in 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--rp-i, 0) * var(--rp-step) + 120ms);
+}
+/* Click cascade: the container is the fragment step; its children follow it. */
+.fragment[data-reveal="stagger"] > * {
+  opacity: 0;
+  transform: var(--rp-from);
+  transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.fragment[data-reveal="stagger"].visible > * {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(var(--rp-i, 0) * var(--rp-step));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal="stagger"] > * { animation: none !important; transition-delay: 0s !important; transform: none !important; }
 }
 
 /* Heading-group spacing: consecutive heading+content fragment sections */
@@ -2119,6 +2185,12 @@ body.sidebar-visible .slide-deck {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--space-3);
 }
+/* Balanced rows on the 1920px canvas: auto-fit would put 5–8 cards in one row of
+   narrow, deeply wrapped columns. :where() keeps the base specificity, so a deck's
+   own grid-template-columns still wins. */
+.card-grid:where(:has(> :nth-child(5))) { grid-template-columns: repeat(3, 1fr); }
+.card-grid:where(:has(> :nth-child(7))) { grid-template-columns: repeat(4, 1fr); }
+.card-grid:where(:has(> :nth-child(9):last-child)) { grid-template-columns: repeat(3, 1fr); }
 
 /* Surface-based content primitives */
 .metric-card,

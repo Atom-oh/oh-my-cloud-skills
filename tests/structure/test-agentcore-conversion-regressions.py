@@ -1,5 +1,6 @@
 """Execute generated agents with local SDK-shaped stubs; no AWS requests."""
 import asyncio
+import copy
 from contextlib import redirect_stdout
 import importlib.util
 import io
@@ -74,6 +75,81 @@ class ConversionTests(unittest.TestCase):
             spec.loader.exec_module(module)
         return module
 
+    def model_module(self, model_id, framework, stubs):
+        """Load a real generated module without importing any provider SDK."""
+        directory = self.root / f"model-{len(list(self.root.glob('model-*')))}"
+        (directory / "system-prompts").mkdir(parents=True)
+        (directory / "system-prompts/fixture-agent.md").write_text("Offline model fixture.")
+        path = directory / "agent.py"
+        path.write_text(CONVERTER.generate_agent_code("fixture-agent", model_id, framework, REGION))
+        spec = importlib.util.spec_from_file_location(directory.name, path)
+        module = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, stubs):
+            spec.loader.exec_module(module)
+        return module
+
+    def sdk_stubs(self, framework, calls, response):
+        if framework == "raw":
+            class Client:
+                def converse(self, **kwargs):
+                    calls.append(("request", copy.deepcopy(kwargs)))
+                    return copy.deepcopy(response)
+
+            def client(service, *, region_name):
+                calls.append(("client", service, region_name))
+                return Client()
+
+            boto3 = types.ModuleType("boto3")
+            boto3.client = client
+            return {"boto3": boto3}
+
+        class BedrockAgentCoreApp:
+            def entrypoint(self, handler):
+                return handler
+
+        class BedrockModel:
+            def __init__(self, *, region_name=None, **model_config):
+                calls.append(("model", region_name, model_config))
+
+        class AgentResult:
+            def __init__(self):
+                self.stop_reason = response["stopReason"]
+                self.message = response["output"]["message"]
+
+            def __str__(self):
+                # Match the public Strands AgentResult text-block behavior.
+                return "".join(block["text"] + "\n" for block in self.message["content"]
+                               if "text" in block)
+
+        class Agent:
+            def __init__(self, *, model, system_prompt):
+                self.system_prompt = system_prompt
+
+            def __call__(self, prompt):
+                calls.append(("request", prompt, self.system_prompt))
+                return AgentResult()
+
+        runtime = types.ModuleType("bedrock_agentcore.runtime")
+        runtime.BedrockAgentCoreApp = BedrockAgentCoreApp
+        strands = types.ModuleType("strands")
+        strands.Agent = Agent
+        bedrock = types.ModuleType("strands.models.bedrock")
+        bedrock.BedrockModel = BedrockModel
+        return {
+            "bedrock_agentcore": types.ModuleType("bedrock_agentcore"),
+            "bedrock_agentcore.runtime": runtime,
+            "strands": strands,
+            "strands.models": types.ModuleType("strands.models"),
+            "strands.models.bedrock": bedrock,
+        }
+
+    @staticmethod
+    def model_response(content=None, stop_reason="end_turn"):
+        if content is None:
+            content = [{"text": "offline final answer"}]
+        return {"stopReason": stop_reason,
+                "output": {"message": {"role": "assistant", "content": content}}}
+
     def test_strands_handler_reaches_model_with_sdk_context_and_selected_region(self):
         calls = []
 
@@ -120,7 +196,9 @@ class ConversionTests(unittest.TestCase):
         class Client:
             def converse(self, **kwargs):
                 calls.append(("converse", kwargs))
-                return {"output": {"message": {"content": [{"text": "offline raw reply"}]}}}
+                return {"stopReason": "end_turn",
+                        "output": {"message": {"role": "assistant",
+                                               "content": [{"text": "offline raw reply"}]}}}
 
         def client(service, **kwargs):
             calls.append(("client", service, kwargs))
@@ -138,6 +216,124 @@ class ConversionTests(unittest.TestCase):
         self.assertEqual(calls[1][1]["messages"][0]["content"], [{"text": "offline raw request"}])
         self.assertEqual(calls[1][1]["inferenceConfig"]["maxTokens"], 16000)
         self.assertEqual(agent.messages[-1]["role"], "assistant")
+
+    def test_generated_aliases_and_profile_syntax_dispatch_correct_model_effort(self):
+        # Structural/profile preservation coverage does not certify regional access.
+        prefixes = ("", "us.", "global.", "eu.", "apac.", "au.", "jp.", "ca.", "us-gov.")
+        for alias, mapped in CONVERTER.MODEL_MAP.items():
+            self.assertEqual(CONVERTER.resolve_model_id(alias), mapped)
+            for prefix in prefixes:
+                model_id = prefix + mapped[len("us."):]
+                self.assertEqual(CONVERTER.resolve_model_id(model_id), model_id)
+                for framework in ("raw", "strands"):
+                    with self.subTest(alias=alias, prefix=prefix, framework=framework):
+                        calls = []
+                        stubs = self.sdk_stubs(framework, calls, self.model_response())
+                        module = self.model_module(model_id, framework, stubs)
+                        if framework == "raw":
+                            agent = module.LocalTestAgent()
+                            self.assertEqual(agent.invoke("offline request"), "offline final answer")
+                            self.assertEqual(calls[0], ("client", "bedrock-runtime", REGION))
+                            request = calls[1][1]
+                            self.assertEqual(request["modelId"], model_id)
+                            self.assertEqual(request["inferenceConfig"], {"maxTokens": 16000})
+                            fields = request["additionalModelRequestFields"]
+                        else:
+                            result = asyncio.run(module.invoke({"prompt": "offline request"}, RequestContext()))
+                            self.assertEqual(result, {"result": "offline final answer\n"})
+                            self.assertEqual(calls[0][1], REGION)
+                            request = calls[0][2]
+                            self.assertEqual(request["model_id"], model_id)
+                            self.assertEqual(request["max_tokens"], 16000)
+                            fields = request["additional_request_fields"]
+                        self.assertEqual(fields, {
+                            "thinking": {"type": "adaptive"},
+                            "output_config": {"effort": "medium" if alias == "haiku" else "high"},
+                        })
+
+    def test_pinned_legacy_haiku_omits_unsupported_reasoning_fields(self):
+        model_id = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+        self.assertEqual(CONVERTER.resolve_model_id(model_id), model_id)
+        for framework in ("raw", "strands"):
+            with self.subTest(framework=framework):
+                calls = []
+                module = self.model_module(model_id, framework,
+                                           self.sdk_stubs(framework, calls, self.model_response()))
+                if framework == "raw":
+                    module.LocalTestAgent().invoke("offline request")
+                    request = calls[1][1]
+                    self.assertEqual(request["modelId"], model_id)
+                    self.assertNotIn("additionalModelRequestFields", request)
+                else:
+                    asyncio.run(module.invoke({"prompt": "offline request"}, RequestContext()))
+                    self.assertEqual(calls[0][2]["model_id"], model_id)
+                    self.assertNotIn("additional_request_fields", calls[0][2])
+
+    def test_raw_reasoning_first_multitext_preserves_signed_history(self):
+        response = self.model_response([
+            {"reasoningContent": {"reasoningText": {
+                "text": "synthetic reasoning", "signature": "synthetic signature"}}},
+            {"text": "offline answer"}, {"text": " continued"},
+        ])
+        calls = []
+        module = self.model_module(CONVERTER.MODEL_MAP["haiku"], "raw",
+                                   self.sdk_stubs("raw", calls, response))
+        agent = module.LocalTestAgent()
+        self.assertEqual(agent.invoke("first request"), "offline answer continued")
+        self.assertEqual(agent.messages[-1], response["output"]["message"])
+        agent.invoke("second request")
+        self.assertEqual(calls[2][1]["messages"][1], response["output"]["message"])
+
+    def test_refusal_is_distinct_for_every_alias_in_both_frameworks(self):
+        response = self.model_response([], "refusal")
+        for alias, model_id in CONVERTER.MODEL_MAP.items():
+            for framework in ("raw", "strands"):
+                with self.subTest(alias=alias, framework=framework):
+                    module = self.model_module(
+                        model_id, framework, self.sdk_stubs(framework, [], response))
+                    if framework == "raw":
+                        with self.assertRaises(module.ModelRefusalError):
+                            module.LocalTestAgent().invoke("offline request")
+                    else:
+                        result = asyncio.run(module.invoke({"prompt": "offline request"}, RequestContext()))
+                        self.assertEqual(result, {"result": "", "refused": True})
+
+    def test_empty_or_unsupported_model_output_cannot_report_success(self):
+        for content in ([], [{"reasoningContent": {"redactedContent": b"synthetic"}}],
+                        [{"text": ""}], [{"text": "   "}]):
+            for framework in ("raw", "strands"):
+                with self.subTest(content=content, framework=framework):
+                    module = self.model_module(
+                        CONVERTER.MODEL_MAP["opus"], framework,
+                        self.sdk_stubs(framework, [], self.model_response(content)))
+                    with self.assertRaisesRegex(ValueError, "no supported text content"):
+                        if framework == "raw":
+                            module.LocalTestAgent().invoke("offline request")
+                        else:
+                            asyncio.run(module.invoke({"prompt": "offline request"}, RequestContext()))
+
+    def test_unsupported_model_selections_do_not_fall_back_to_us_sonnet(self):
+        for selected in ("unknown", "amazon.nova-pro-v1:0", "anthropic.claude-haiku-5-5\"\nbad"):
+            with self.subTest(selected=selected):
+                with self.assertRaisesRegex(ValueError, "Unsupported model selection"):
+                    CONVERTER.resolve_model_id(selected)
+
+    def test_invalid_model_selection_precedes_output_mutation(self):
+        (self.source / "agents/fixture-agent.md").write_text(
+            "---\nname: fixture-agent\nmodel: unknown\n---\nAnswer the prompt.\n")
+        for exists in (False, True):
+            with self.subTest(exists=exists):
+                output = self.root / ("prior-output" if exists else "no-output")
+                if exists:
+                    output.mkdir()
+                    (output / "sentinel").write_bytes(b"prior artifact")
+                with self.assertRaisesRegex(ValueError, "Unsupported model selection"):
+                    CONVERTER.convert(self.source, output, REGION, "raw", False, False, False)
+                if exists:
+                    self.assertEqual(list(output.iterdir()), [output / "sentinel"])
+                    self.assertEqual((output / "sentinel").read_bytes(), b"prior artifact")
+                else:
+                    self.assertFalse(output.exists())
 
     def test_hook_report_matches_generated_instructions_and_missing_handlers(self):
         output = self.convert("strands")

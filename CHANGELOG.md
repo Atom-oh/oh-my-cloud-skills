@@ -13,6 +13,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-10-11
+
+A patch release. All eight plugins share this version.
+
+### Added
+
+- Add projector-scale type tokens, the `ReactiveFit` autofit engine, and the
+  `UNDERFILL`/`MIN_FONT`/`FIT_OVERFLOW` density gates to reactive-presentation
+  (#245).
+- Add reveal groups to reactive-presentation. `data-reveal="stagger"` cascades a
+  container's children in: on one click when it is a `.fragment`, or on slide entry
+  when it is not. `data-reveal="static"` shows a group at once, as an explicit
+  choice. `data-reveal-anim` (`up`, `down`, `left`, `right`, `zoom`, `fade`) and
+  `data-reveal-pace` (`fast`, `slow`) tune the cascade. Also add the documented
+  `.fragment.zoom-in` animation, which had no CSS.
+- Add the `REVEAL_PACE` and `REVEAL_MONOTONY` warnings to `check_deck.py`.
+  `REVEAL_PACE` flags three or more adjacent slides that each need four or more
+  clicks. `REVEAL_MONOTONY` applies when at least four slides have fragments,
+  at most one fragment entrance animation is used, and the file has no reveal group.
+
+### Changed
+
+- The Remarp `STATIC_HTML` rule and the authoring guides no longer require every
+  group of three or more items to reveal one by one. Authors choose a per-item
+  build, a group cascade, an entry cascade, or static, based on how the speaker
+  presents the group.
+- Move co-agent's Codex default and pr-autofix escalation to
+  `openai.gpt-6.1-sol`, and use `openai.gpt-6-luna` in the narrow implementer
+  example. Codex guidance distinguishes the Sol, Luna, Astra and retained Terra
+  roles; exact provider IDs still require checking that provider's catalog.
+- Update AgentCore's Opus, Sonnet and Haiku aliases to Claude 5.5 and its Fable
+  alias to Claude Fable 5.1. Explicit supported Bedrock model/profile IDs remain
+  separate from Codex and Kiro model names.
+
+### Fixed
+
+- `.fragment.fade-left` and `.fragment.fade-right` animated in the opposite
+  direction to the guide. `fade-right` now enters from the left and moves right;
+  `fade-left` enters from the right. Existing decks that use these classes animate
+  the other way.
+- The Remarp builder dropped content written after a `::::left`/`::::right`
+  column block. That content is now rendered below the columns.
+- Preserve fragment and renderer markers in content outside column blocks, and
+  restore nested code-highlight placeholders without leaving raw NUL bytes.
+- Keep stagger reveal animations running through layout measurement, and freeze
+  their final state for exports so delayed children are captured visibly.
+- Harden Power conversion and installation against source/output overlap,
+  symlink redirection and destination changes during conversion. Standalone
+  Markdown and MCP files now capture their destination before generating content;
+  concurrent changes are refused and preserved (#250, #251).
+- Preserve MCP credential placeholders and inline declarations, serialize Power
+  metadata safely, and report unconverted hooks explicitly (#250).
+- Guard Kiro support-file preparation, remove credential values from IAM
+  diagnostics, preserve valid consensus plan findings, and correct AgentCore
+  request-context/region handling and hook coverage reports (#250, #251).
+- Restore native Codex patch/project-hook verification using a loopback capability
+  fixture, and clarify team orchestration, migration applicability, dependencies
+  and project/hook trust requirements (#250).
+- The PR-review chair format retry now repairs its own scrubbed answer, gets the
+  primary budget, and is retried once when the format is withheld. Discarded
+  retries are logged (#246, #247, #248).
+- ADR-026's `COVERAGE_NOTICE` now covers per-cell roster completeness (#244).
+
 ## [3.0.0] - 2026-09-25
 
 This major release retires a plugin (breaking for consumers who had it installed)

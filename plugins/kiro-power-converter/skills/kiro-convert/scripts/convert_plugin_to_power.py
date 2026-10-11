@@ -379,13 +379,17 @@ def publish_staged(publications: list, sources: list) -> None:
                 os.close(backup.fd)
 
 
-def publish_text(content: str, output: Path, sources: list) -> None:
-    """Use the same anchored transaction for standalone Markdown/JSON files."""
+def publish_text(content, output: Path, sources: list) -> None:
+    """Publish text or call its deferred builder after capturing the destination."""
     output = validate_destination(sources, output)
     anchor = DirectoryAnchor(output.parent)
     area = None
     try:
         snapshot = DestinationSnapshot(anchor, output)
+        content = content() if callable(content) else content
+        if not isinstance(content, str):
+            raise ValueError('Standalone content must be a string')
+        snapshot.verify()
         area = StagingArea(anchor)
         (area.path / 'document').write_text(content, encoding='utf-8')
         publish_staged([(area, 'document', output, snapshot)], sources)
@@ -750,11 +754,21 @@ def standalone_content(skill_path: str) -> tuple:
 
 def convert_skill_standalone(skill_path: str, out_path: str) -> str:
     """Convert one skill and publish its complete file via an anchored parent."""
-    name, content = standalone_content(skill_path)
     output = Path(out_path)
+    expected_name = None
     if output.is_dir():
-        output = output / f'{name}.md'
+        skill_dir = Path(skill_path)
+        fm, _ = parse_yaml_frontmatter((skill_dir / 'SKILL.md').read_text(encoding='utf-8'))
+        expected_name = safe_component(fm.get('name', skill_dir.name))
+        output = output / f'{expected_name}.md'
     output = validate_destination([skill_path], output)
+
+    def content():
+        name, document = standalone_content(skill_path)
+        if expected_name is not None and name != expected_name:
+            raise ValueError('Standalone skill name changed during conversion')
+        return document
+
     publish_text(content, output, [skill_path])
     return str(output)
 
@@ -842,17 +856,29 @@ def mcp_document(servers: dict) -> tuple:
 
 def convert_mcp_servers(servers: dict, output_path: str) -> list:
     """Serialize inline declarations and publish a safe standalone JSON file."""
-    content, needed = mcp_document(servers)
+    needed = []
+
+    def content():
+        document, variables = mcp_document(servers)
+        needed.extend(variables)
+        return document
+
     publish_text(content, Path(output_path), [])
     return needed
 
 
 def convert_mcp_json(source_path: str, output_path: str) -> list:
     """Convert standalone MCP config using the shared server conversion."""
-    data = json.loads(Path(source_path).read_text(encoding='utf-8'))
-    if not isinstance(data, dict):
-        raise ValueError('MCP configuration must be an object')
-    content, needed = mcp_document(data.get('mcpServers', {}))
+    needed = []
+
+    def content():
+        data = json.loads(Path(source_path).read_text(encoding='utf-8'))
+        if not isinstance(data, dict):
+            raise ValueError('MCP configuration must be an object')
+        document, variables = mcp_document(data.get('mcpServers', {}))
+        needed.extend(variables)
+        return document
+
     publish_text(content, Path(output_path), [source_path])
     return needed
 
