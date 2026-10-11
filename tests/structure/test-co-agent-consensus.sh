@@ -11,7 +11,7 @@ assert_file_exists "$CO/references/consensus-mode.md" "consensus-mode.md exists"
 
 # --- citation tiers ---
 CD=$(mktemp "${TMPDIR:-/tmp}/cit.XXXXXX.diff"); CJ=$(mktemp "${TMPDIR:-/tmp}/cit.XXXXXX.json")
-printf 'diff --git a/foo.py b/foo.py\n--- a/foo.py\n+++ b/foo.py\n@@ -1,2 +1,3 @@\n ctx\n+open(path)\n+x = 1\n' > "$CD"
+printf 'diff --git a/foo.py b/foo.py\n--- a/foo.py\n+++ b/foo.py\n@@ -1,1 +1,3 @@\n ctx\n+open(path)\n+x = 1\n' > "$CD"
 printf '[{"ai":"kiro-cli","severity":"HIGH","file":"foo.py","line":2,"snippet":"open(path)","issue":"leak"},{"ai":"codex","severity":"LOW","file":"foo.py","line":99,"issue":"far"},{"ai":"gemini","severity":"HIGH","file":"ghost.py","line":1,"issue":"halluc"}]' > "$CJ"
 COUT=$(python3 "$CIT" "$CD" "$CJ" 2>&1)
 assert_contains "$COUT" "1 supported" "citation: one supported"

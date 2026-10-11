@@ -1,5 +1,5 @@
 interface:
   display_name: "Doc Sync Checker"
-  short_description: "Check if project documentation is in sync with current code state. Returns list of missing or outdated documents with quality scores."
+  short_description: "Check documentation freshness, references and the selected host's project instructions."
 policy:
   allow_implicit_invocation: false

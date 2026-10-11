@@ -87,6 +87,12 @@ The generated TOC already includes PDF/ZIP/PPTX export buttons. A parent collect
 Get a content-review-agent PASS via `review content at [path]` before declaring deployment/completion — the Quality Gate rule from the plugin's CLAUDE.md.
 
 ### Phase 8 — Verify
+Check browser startup before measuring or capturing slides. The local path needs
+the Python Playwright package and its Chromium executable; a configured MCP may
+use a different channel. Report the actual missing package/browser and follow
+authorized setup instructions rather than treating package loading as readiness.
+PDF image extraction additionally needs PyMuPDF; see `scripts/convert_to_remarp.py`.
+
 Per-block checks: slide count matches · `SlideFramework` options (footer/logoSrc/presenterNotes) · every Canvas ID has `setupCanvas()` · quiz `data-quiz`/`data-correct` · `./common/` relative paths · **theme-override.css linked (when extracted from PPTX)** · language · first slide = Session Cover (§0a/§0b, not `.title-slide`) · last slide = Thank You (`@toc: toc.html` in source).
 
 **Output gates (required on the built deck)**:

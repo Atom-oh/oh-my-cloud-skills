@@ -1083,39 +1083,35 @@ assert_eq "2" "$KC_WRITER_RC" "co-agent rejects Kiro as a delegated sandbox writ
 assert_eq "" "$(cat "$KC_SANDBOX_ROOT/out")" "co-agent emits no write flags for Kiro"
 rm -rf "$KC_SANDBOX_ROOT"
 
-# --- round-12 fix: kiro-delegate-agent.md's own symlink-refusal example must actually
-# `exit` on finding a symlink, not just `echo` a warning and let the caller's mkdir/cp
-# proceed anyway — a check that never stops anything isn't a check. Extract the exact
-# code fence from the doc and run it for real against a directory containing a planted
-# symlink component, confirming it exits non-zero and that mkdir/cp never ran. ---
+# Support preparation now lives in one bundled helper. Execute the maintained
+# invocation with task text in a file rather than testing removed shell cp loops.
 AGENT_MD="$(cat plugins/kiro/agents/kiro-delegate-agent.md)"
 SNIPPET=$(printf '%s\n' "$AGENT_MD" | sed -n '/^       ```bash$/,/^       ```$/p' | sed '1d;$d')
-assert_contains "$SNIPPET" "exit 1" "kiro-delegate-agent.md's symlink-refusal code fence contains an actual exit, not just echo"
-RSYMWT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-symlink-wt.XXXXXX")
-OUTSIDE_WT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-symlink-wt-outside.XXXXXX")
-mkdir -p "$RSYMWT/.kiro"
-ln -s "$OUTSIDE_WT" "$RSYMWT/.kiro/agents"
-SNIPPET_RC=0
-bash -c "$(printf '%s' "$SNIPPET" | sed "s|<wt>|$RSYMWT|g")" >/dev/null 2>&1 || SNIPPET_RC=$?
-assert_eq "1" "$SNIPPET_RC" "running the doc's actual symlink-check snippet against a planted symlink exits 1 (halts), not 0"
-assert_grep_no_match "kiro-implementer\|kiro-reviewer" "$(ls "$OUTSIDE_WT" 2>/dev/null)" "the snippet exiting before mkdir/cp means nothing was ever written into the symlink target"
-rm -rf "$RSYMWT" "$OUTSIDE_WT"
-
-# --- round-13 fix: the symlink check must cover the LEAF write targets too, not just
-# the three parent directories — a symlink planted at .kiro/agents/kiro-implementer.json
-# itself (parents stay real directories) is exactly the gap round 12's fix missed. Also
-# confirm the snippet's candidate list literally names all three new leaves. ---
-assert_contains "$SNIPPET" ".kiro/specs/<name>" "the symlink-check snippet also checks the dynamic spec leaf directory (.kiro/specs/<name>)"
-assert_contains "$SNIPPET" ".kiro/agents/kiro-implementer.json" "the symlink-check snippet also checks the implementer-agent leaf FILE, not just its parent directory"
-assert_contains "$SNIPPET" ".kiro/task-prompt.md" "the symlink-check snippet also checks the task-prompt leaf FILE"
-RSYMLEAF=$(mktemp -d "${TMPDIR:-/tmp}/kiro-symlink-leaf.XXXXXX")
-OUTSIDE_LEAF=$(mktemp -d "${TMPDIR:-/tmp}/kiro-symlink-leaf-outside.XXXXXX")
-mkdir -p "$RSYMLEAF/.kiro/agents"   # parents are REAL directories, not symlinks
-ln -s "$OUTSIDE_LEAF/evil.json" "$RSYMLEAF/.kiro/agents/kiro-implementer.json"
-SNIPPET_LEAF_RC=0
-bash -c "$(printf '%s' "$SNIPPET" | sed "s|<wt>|$RSYMLEAF|g; s|<name>|whatever|g")" >/dev/null 2>&1 || SNIPPET_LEAF_RC=$?
-assert_eq "1" "$SNIPPET_LEAF_RC" "the symlink-check snippet exits 1 when only a LEAF FILE is a symlink and its parent directories are real (the exact gap round 12's fix missed)"
-rm -rf "$RSYMLEAF" "$OUTSIDE_LEAF"
+assert_contains "$SNIPPET" 'prepare_worktree.py" prepare --root "$ROOT"' "delegate procedure calls the installed support helper with the checkout root"
+assert_contains "$SNIPPET" '< "$RUN_DIR/task-<task-id>-prompt.txt"' "delegate procedure supplies task text through stdin"
+KPREP_FIXTURE=$(mktemp -d "${TMPDIR:-/tmp}/kiro-prep-doc.XXXXXX")
+mkdir -p "$KPREP_FIXTURE/source/.kiro/agents" "$KPREP_FIXTURE/source/.kiro/specs/somename" "$KPREP_FIXTURE/worktree/.kiro" "$KPREP_FIXTURE/outside" "$KPREP_FIXTURE/logs"
+git -C "$KPREP_FIXTURE/source" init -q
+git -C "$KPREP_FIXTURE/worktree" init -q
+printf '%s\n' '{}' > "$KPREP_FIXTURE/source/.kiro/agents/kiro-implementer.json"
+for KPREP_SPEC in requirements design tasks; do
+  printf '%s\n' 'spec fixture' > "$KPREP_FIXTURE/source/.kiro/specs/somename/$KPREP_SPEC.md"
+done
+printf '%s\n' 'literal task $(touch unexpected)' > "$KPREP_FIXTURE/logs/task-fixture-prompt.txt"
+printf '%s\n' 'outside sentinel' > "$KPREP_FIXTURE/outside/sentinel"
+ln -s "$KPREP_FIXTURE/outside" "$KPREP_FIXTURE/worktree/.kiro/agents"
+KPREP_DOC_COMMAND=$(printf '%s' "$SNIPPET" | sed "s|<wt>|$KPREP_FIXTURE/worktree|g; s|<name>|somename|g; s|<task-id>|fixture|g")
+KPREP_DOC_RC=0
+SK="$PWD/plugins/kiro/skills/kiro-delegate/scripts" ROOT="$KPREP_FIXTURE/source" RUN_DIR="$KPREP_FIXTURE/logs" bash -c "$KPREP_DOC_COMMAND" >/dev/null 2>&1 || KPREP_DOC_RC=$?
+assert_eq "1" "$KPREP_DOC_RC" "the documented preparation call refuses a symlink destination"
+assert_eq "outside sentinel" "$(cat "$KPREP_FIXTURE/outside/sentinel")" "documented preparation does not modify an outside symlink target"
+rm "$KPREP_FIXTURE/worktree/.kiro/agents"
+KPREP_DOC_RC=0
+SK="$PWD/plugins/kiro/skills/kiro-delegate/scripts" ROOT="$KPREP_FIXTURE/source" RUN_DIR="$KPREP_FIXTURE/logs" bash -c "$KPREP_DOC_COMMAND" >/dev/null 2>&1 || KPREP_DOC_RC=$?
+assert_eq "0" "$KPREP_DOC_RC" "the documented preparation call succeeds in a clean worktree"
+assert_eq 'literal task $(touch unexpected)' "$(cat "$KPREP_FIXTURE/worktree/.kiro/task-prompt.md")" "the documented call preserves task text as literal data"
+assert_eq "" "$(git -C "$KPREP_FIXTURE/worktree" ls-files --others --exclude-standard)" "prepared support files are excluded from capture"
+rm -rf "$KPREP_FIXTURE"
 
 # --- round-15 fix: step 1 (main checkout side, spec writing) must ALSO refuse a planted
 # symlink at $ROOT/.kiro and $ROOT/.kiro/specs — step 3's worktree-side loop alone leaves
@@ -1153,45 +1149,11 @@ SNIPPET_ROOT_LEAF_RC=0
 bash -c "$(printf '%s' "$SNIPPET_ROOT" | sed "s|\$ROOT|$RROOTLEAF|g; s|<name>|somename|g")" >/dev/null 2>&1 || SNIPPET_ROOT_LEAF_RC=$?
 assert_eq "1" "$SNIPPET_ROOT_LEAF_RC" "step 1's symlink check exits 1 when only the tasks.md LEAF is a symlink and its parent directories are real"
 rm -rf "$RROOTLEAF" "$OUTSIDE_ROOTLEAF"
-# round-17 fix (caught during verification, not in the original review): step 3's
-# WORKTREE-side loop (round 12/13) had the SAME missing-trailing-`exit 0` bug — every
-# prior test for it only ever exercised the "symlink present" branch, never the clean
-# case, so this latent bug went uncaught until now.
-SNIPPET7=$(printf '%s\n' "$AGENT_MD" | sed -n '/^       ```bash$/,/^       ```$/p' | sed '1d;$d')
-assert_contains "$SNIPPET7" "exit 0" "kiro-delegate-agent.md's step-3 (worktree-side) symlink-refusal code fence contains a trailing exit 0 for the clean case"
-RWTCLEAN=$(mktemp -d "${TMPDIR:-/tmp}/kiro-wt-clean.XXXXXX")
-SNIPPET7_CLEAN_RC=0
-bash -c "$(printf '%s' "$SNIPPET7" | sed "s|<wt>|$RWTCLEAN|g; s|<name>|somename|g")" >/dev/null 2>&1 || SNIPPET7_CLEAN_RC=$?
-assert_eq "0" "$SNIPPET7_CLEAN_RC" "step 3's worktree-side symlink-check snippet exits 0 (proceed) when nothing is planted"
-rm -rf "$RWTCLEAN"
-
-# --- round-15 fix: .git/info/exclude has no effect on a path git ALREADY TRACKS — only
-# on untracked ones. If a consumer repo already tracks something at
-# .kiro/agents/kiro-implementer.json, .kiro/specs/<name>/, or .kiro/task-prompt.md, the
-# copy-in would silently fail scope_guard and drop the WHOLE patch, every single task.
-# kiro-delegate-agent.md's step 3 now has its own already-tracked check (distinct
-# 9-space-indented code fence, separate from the 7-space symlink-check one) — extract
-# and run it for real: must ABORT (exit 1) when a support path is already tracked, and
-# pass clean (exit 0) otherwise. ---
-SNIPPET_TRACKED=$(printf '%s\n' "$AGENT_MD" | sed -n '/^         ```bash$/,/^         ```$/p' | sed '1d;$d')
-assert_contains "$SNIPPET_TRACKED" "ls-files --error-unmatch" "kiro-delegate-agent.md's already-tracked check uses git ls-files --error-unmatch"
-RTRACKED=$(mktemp -d "${TMPDIR:-/tmp}/kiro-tracked-support.XXXXXX")
-git -C "$RTRACKED" init -q
-git -C "$RTRACKED" config user.email t@t.t; git -C "$RTRACKED" config user.name t
-mkdir -p "$RTRACKED/.kiro/agents"
-printf '{}' > "$RTRACKED/.kiro/agents/kiro-implementer.json"
-git -C "$RTRACKED" add .kiro/agents/kiro-implementer.json
-git -C "$RTRACKED" commit -q -m "repo already tracks a plugin-reserved support path"
-TRACKED_OUT=$(bash -c "$(printf '%s' "$SNIPPET_TRACKED" | sed "s|<wt>|$RTRACKED|g")" 2>&1) && TRACKED_RC=0 || TRACKED_RC=$?
-assert_eq "1" "$TRACKED_RC" "the already-tracked check aborts (exit 1) when kiro-implementer.json is already tracked in the worktree"
-assert_contains "$TRACKED_OUT" "ABORT" "the abort prints an actionable reason naming the already-tracked path"
-rm -rf "$RTRACKED"
-RCLEANWT=$(mktemp -d "${TMPDIR:-/tmp}/kiro-clean-support.XXXXXX")
-git -C "$RCLEANWT" init -q
-CLEAN_RC=0
-bash -c "$(printf '%s' "$SNIPPET_TRACKED" | sed "s|<wt>|$RCLEANWT|g")" >/dev/null 2>&1 || CLEAN_RC=$?
-assert_eq "0" "$CLEAN_RC" "the already-tracked check passes clean (exit 0) when none of the three support paths is tracked — a real bug: the check's own loop leaves a stray non-zero exit status from the LAST non-matching git ls-files call unless an explicit trailing exit 0 overrides it"
-rm -rf "$RCLEANWT"
+# Whole reserved-path collisions and race behavior are exercised by
+# test-kiro-worktree-preparation.py; this suite checks source routing stays explicit.
+assert_contains "$AGENT_MD" "before any preparation write" "delegate procedure requires tracked collision preflight before copying"
+assert_contains "$AGENT_MD" "write-prompt --worktree" "retry prompt updates also use the bundled safe helper"
+assert_contains "$AGENT_MD" 'credits "$RUN_DIR"/\*.log' "credit aggregation is confined to the current unique run directory"
 
 # --- round-13 fix: the spec <name> must be documented as a validated slug, not raw
 # user/repo text interpolated into shell commands (mkdir/cp/printf/kiro-cli prompt) with
@@ -1205,8 +1167,8 @@ assert_contains "$AGENT_MD" "double-quote every path built from them" "kiro-dele
 # .kiro/... would silently diverge from what preflight's verify-agents --root "$ROOT"
 # already checked, if this pipeline ever runs from a subdirectory. ---
 assert_contains "$AGENT_MD" '"$ROOT/.kiro/agents/kiro-implementer.json"' "kiro-delegate-agent.md's preflight check is anchored to \$ROOT, not a bare .kiro/ path"
-assert_contains "$AGENT_MD" 'cp "$ROOT/.kiro/agents/kiro-implementer.json"' "kiro-delegate-agent.md's cp SOURCE for the implementer agent is \$ROOT-anchored"
-assert_contains "$AGENT_MD" 'cp "$ROOT/.kiro/specs/<name>"' "kiro-delegate-agent.md's cp SOURCE for the spec files is \$ROOT-anchored"
+assert_contains "$AGENT_MD" 'prepare --root "$ROOT"' "kiro-delegate-agent.md anchors helper sources to the checkout root"
+assert_contains "$AGENT_MD" '"$ROOT/.kiro/specs/<name>/"' "kiro-delegate-agent.md documents the root-anchored spec source"
 DELEGATE_MD="$(cat plugins/kiro/commands/delegate.md)"
 assert_contains "$DELEGATE_MD" '"$ROOT/.kiro/specs/<name>' "delegate.md's spec-write path is \$ROOT-anchored, not cwd-relative"
 assert_contains "$DELEGATE_MD" 'git -C "$ROOT" --literal-pathspecs status' "delegate.md's clean-tree check is anchored to \$ROOT via -C"

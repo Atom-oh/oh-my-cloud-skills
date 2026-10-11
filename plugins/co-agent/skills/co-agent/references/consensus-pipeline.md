@@ -25,8 +25,10 @@ Detect with `scripts/consensus_state.py detect <root> <paths>` → `adr|spec|pla
 - **P2 (default-on; `--trust-plan` is the explicit escape hatch for an already-reviewed plan)**
   — plan consensus gate: fan out the plan to the multi-model panel
   (`co_agent_config.py matrix` to show cost; `pairs` for the (ai,model) set; fan-out per
-  `ai-cli-adapters.md`), collect findings, run `check_citations.py`, drop `unsupported`,
-  synthesize by agreement + evidence (NOT vote-count). Iterate up to `consensus.max_rounds`
+  `ai-cli-adapters.md`), collect findings, and have the chair verify quoted text/sections
+  and each claim against the actual plan. Plans are not diffs: do not use the diff-only
+  `check_citations.py` here. Retain unresolved CRITICAL/MAJOR findings until fixed or
+  refuted with evidence. Synthesize by agreement + evidence (NOT vote-count). Iterate up to `consensus.max_rounds`
   until no CRITICAL/MAJOR. Check the plan for: implementability, bounded scope, missing tasks,
   and **AWS security-mandate violations**. `--trust-plan` skips this (plan already reviewed).
 - **P3 (Stage B) — autonomous TDD implement loop**: reuse `subagent-driven-development` with
@@ -47,6 +49,12 @@ Detect with `scripts/consensus_state.py detect <root> <paths>` → `adr|spec|pla
 
 **Resume**: the pipeline is resumable — `consensus_state` persists `phase`/`task_index`/`tasks`,
 so a re-invocation continues from the last completed step rather than restarting.
+
+**Diff citation checks (P3/P4):** `check_citations.py` accepts unified/git diffs,
+including empty and deletion-only diffs. Its labels classify citations, not correctness
+or a gate verdict. The chair verifies `unsupported` and `needs-review` claims against
+the artifact before dismissing them. Invalid artifacts, malformed findings or helper
+errors require review and cannot erase active CRITICAL/MAJOR findings or produce PASS.
 
 ## Safety (applies fully in Stage B/C; relevant flags here)
 - Local only; clean-tree required; session_id-gated; consent + cost matrix before fan-out;

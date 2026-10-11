@@ -242,6 +242,30 @@ class PortabilityTests(unittest.TestCase):
                     for source in entry["sources"]:
                         self.assertTrue((plugin / source).is_file(), source)
 
+    def test_claude_only_migration_has_an_explicit_codex_target_guard(self):
+        plugin = self.generated / "plugins/project-init"
+        entry = (plugin / ".codex-plugin/skills/migrate-hooks/SKILL.md").read_text()
+        self.assertIn("Migrate legacy Claude Code project hooks", entry)
+        self.assertNotIn("Codex or Claude Code hook contract", entry)
+        self.assertIn("no Claude migration is applicable", entry)
+        self.assertIn("project trust and hook-trust sequence", entry)
+        # Native adaptation changes the exposed entry, leaving the upstream command intact.
+        self.assertEqual((ROOT / "plugins/project-init/commands/migrate-hooks.md").read_bytes(),
+                         (plugin / "commands/migrate-hooks.md").read_bytes())
+
+    def test_unknown_project_commands_keep_their_host_applicability(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(self.generated, root, dirs_exist_ok=True)
+            command = root / "plugins/project-init/commands/claude-only-fixture.md"
+            command.write_text('---\nname: claude-only-fixture\n'
+                               'description: "Inspect Claude Code-only project settings."\n---\nBody.\n')
+            subprocess.run([sys.executable, str(GENERATOR), "--root", str(root)],
+                           check=True, capture_output=True)
+            entry = root / "plugins/project-init/.codex-plugin/skills/claude-only-fixture/SKILL.md"
+            self.assertIn("Inspect Claude Code-only project settings.", entry.read_text())
+            self.assertNotIn("Codex or Claude Code", entry.read_text())
+
     def test_internal_workers_and_duplicate_delegate_alias_require_explicit_selection(self):
         kiro = self.generated / "plugins/kiro/.codex-plugin/skills"
         for name in ("kiro-delegate-agent", "delegate"):

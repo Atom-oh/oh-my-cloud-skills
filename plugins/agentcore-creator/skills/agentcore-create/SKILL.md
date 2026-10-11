@@ -187,8 +187,12 @@ python3 {skill-dir}/scripts/convert_plugin_to_agentcore.py \
   --output <output-path> \
   --region <region> \
   --framework strands \
-  [--disable-memory] [--disable-gateway] [--enable-lambda]   # Memory/Gateway on by default
+  [--disable-memory] [--disable-gateway]   # Memory/Gateway on by default
 ```
+
+Lambda handler generation is not implemented. `--enable-lambda` fails before
+source acquisition or output changes; Gateway target configuration is a scaffold
+and does not supply executable Lambda handlers.
 
 ### 4.4 Artifact Review
 
@@ -202,7 +206,7 @@ skill source list, tool config, limits. Review it as a single `create-harness` p
 and load its system prompt from `agents/system-prompts/<name>.md` — compare against the
 canonical templates in `references/agent-code-templates.md` (Single Agent pattern, or the
 Tools/Memory variants when Gateway/Memory is on). Alongside it: system prompts (merged
-agent body + SKILL.md workflows), `memory/memory-config.json` (STM/LTM strategies,
+agent body + SKILL.md workflows and supported prompt-hook advisory instructions), `memory/memory-config.json` (STM/LTM strategies,
 knowledge namespaces), `gateway/gateway-config.json` (Lambda / OpenAPI / MCP Server /
 Smithy targets), and `requirements.txt`:
 
@@ -212,6 +216,18 @@ strands-agents-tools>=0.1.0
 bedrock-agentcore>=0.1.0
 boto3>=1.34.0
 ```
+
+The selected conversion region is emitted as the model/client default in both
+framework paths. Runtime `context` is an SDK `RequestContext`, not a mapping of
+region settings. `--framework raw` creates a local boto3 test agent only; deploy
+the Strands path with `BedrockAgentCoreApp`. Run generated handlers with offline
+SDK-shaped stubs before a live invocation.
+
+Review `hooks-gap-analysis.md` per handler: **generated instruction** means
+advisory text is present in the system prompts, **manual follow-up** means no
+handler/enforcement was generated, and **not migrated** identifies an unsupported
+handler. Command hooks are not executed or converted into enforced checks.
+Required validators and review gates need explicit implementations before deployment.
 
 ### 4.5 Deployment
 

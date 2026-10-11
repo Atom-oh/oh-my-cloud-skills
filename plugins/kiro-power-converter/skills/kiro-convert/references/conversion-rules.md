@@ -2,6 +2,52 @@
 
 Detailed field-by-field conversion rules for transforming Claude Code plugins into Kiro Power format.
 
+## Output Safety and Recovery
+
+Conversion and installation refuse equal paths, either containment direction, and
+symlink aliases between a source and destination. Symlinks anywhere in the
+output path, filesystem roots and their top-level directories, the home/current/
+temporary directory itself, and Kiro configuration/power container roots are also
+refused. Select a distinct child directory or a standalone output file. Names in
+source metadata must be single path components.
+
+A full power output or installation target may be absent, empty, or an existing
+power export containing `POWER.md`. Nonempty unrelated directories are refused.
+Preserved-skill conversion replaces only that skill's output tree; standalone
+conversion replaces only its requested file. A repeated `--skill` request uses one
+output directory, rejects duplicate skill names, and retains unrelated existing
+files there. `--target` and `--preserve-skills` apply to full plugin conversion.
+
+Safe publication requires POSIX `dir_fd` operations, `O_NOFOLLOW`, and a
+kernel-backed `/proc/self/fd` or `/dev/fd` directory path. Missing filesystem
+capabilities fail before output mutation rather than falling back to path-only
+replacement. No additional Python package is needed.
+
+The converter securely opens each parent component without following symlinks,
+retains directory descriptors, and builds in private sibling temporary storage
+through a descriptor-backed path. Export and installation are staged together.
+Rename, rollback and recursive cleanup use those retained descriptors and check
+entry identities. Parent replacement during a run cannot redirect writes or
+cleanup into an outside directory; a changed parent path aborts publication. A conversion, copy,
+or publication failure returns nonzero and preserves the previous destinations
+and input. Publication errors roll back prior replacements. If an operating-system
+error also prevents rollback, retain the `.kiro-backup-*` directory for manual
+recovery rather than deleting the previous content. The procedure does not add an
+interactive confirmation or grant target hook trust. After successful publication,
+cleanup errors are reported as retained temporary-directory warnings; cleanup does
+not follow a replaced directory link or turn a committed valid output into a
+conversion failure.
+
+## Scalar Encoding
+
+Generated string metadata uses a shared JSON-quoted scalar serializer, which is
+valid YAML and preserves quotes, colons, backslashes, Unicode and line breaks.
+It applies to agent steering, skill steering, preserved skills, standalone files,
+reference metadata and `POWER.md`, including author/version and keyword fields.
+Trigger text is merged before serialization rather than pre-escaped. The source
+reader supports plain and quoted string scalars, literal/folded block descriptions,
+and simple lists without adding a third-party YAML dependency.
+
 ---
 
 ## Agent Frontmatter Conversion
@@ -236,7 +282,19 @@ inclusion: always
 ```
 
 **SessionStart → prompt (no direct equivalent):**
-SessionStart hooks with `type: prompt` become part of POWER.md onboarding section instead.
+SessionStart hooks with `type: prompt` become part of POWER.md onboarding section.
+They are static instructions, not session-start execution. SessionStart command
+handlers remain explicit manual gaps; no `promptSubmit` approximation is generated
+because its execution timing would change the handler's meaning.
+
+Every input handler has an indexed status in `conversion-report.json`, the CLI
+summary and POWER.md's Hook Conversion Coverage section: `generated`, `onboarding`,
+or `manual`. Unsupported events/actions remain visible. Malformed hook structures
+fail conversion instead of silently dropping handlers. Command/prompt actions must
+contain a nonempty string; an empty action is never reported as generated. Generated hook filenames
+include matcher/handler indices so tool-category aliases cannot overwrite another
+handler. A generated mapping still requires checking Kiro support, command paths,
+payload compatibility and target trust before activation.
 
 ### Hook Event Mapping
 
@@ -244,9 +302,9 @@ SessionStart hooks with `type: prompt` become part of POWER.md onboarding sectio
 |-------------------|-------------------|-------|
 | `PreToolUse` | `preToolUse` | `matcher` → `toolName` field |
 | `PostToolUse` | `postToolUse` | `matcher` → `toolName` field |
-| `SessionStart` | — | No direct equivalent; content goes into POWER.md onboarding |
-| `Stop` | — | No Kiro equivalent; hook is dropped during conversion (warning logged) |
-| `Notification` | — | No Kiro equivalent; hook is dropped during conversion (warning logged) |
+| `SessionStart` | — | Prompt becomes onboarding text only; command remains a manual gap |
+| `Stop` | — | Manual gap recorded; no executable target hook generated |
+| `Notification` | — | Manual gap recorded; no executable target hook generated |
 
 ### Hook Matcher Conversion
 
@@ -272,7 +330,15 @@ Each hook becomes a separate file: `.kiro/hooks/<name>.kiro.hook`
 
 ---
 
-## .mcp.json → mcp.json Conversion
+## Manifest / .mcp.json → mcp.json Conversion
+
+The converter reads inline manifest `mcpServers`, a plugin-relative manifest MCP
+configuration path, and standalone `.mcp.json`. It merges server names in a
+deterministic order. When the same name has different declarations, `.mcp.json`
+replaces the entire inline server declaration; the server name is warned and
+recorded in `conversion-report.json` as an `mcp_conflicts` entry. Identical duplicate
+declarations need no warning. An invalid declaration fails without replacing
+existing output. Inline AWS Content Playwright configuration is retained.
 
 ### Per-Server Rules
 
@@ -284,7 +350,7 @@ Each hook becomes a separate file: `.kiro/hooks/<name>.kiro.hook`
 | `args` | Keep | Unchanged |
 | `timeout` | Keep | Unchanged |
 | `env` | Keep/Convert | Unchanged; note `${VAR}` syntax for secrets |
-| `headers` | Keep | For URL-based servers (pass through if present) |
+| `headers` | Keep/Convert | Preserve placeholder references; replace detected literal credentials |
 | `autoApprove` | Add if missing | Default: `[]` (empty array) |
 | `disabled` | Add if missing | Default: `false` |
 | `disabledTools` | Add if missing | Default: `[]` (empty array) |
@@ -301,7 +367,13 @@ Claude Code uses bare values; Kiro supports `${VAR}` for system environment vari
 "env": { "API_KEY": "${API_KEY}" }
 ```
 
-**Detection heuristic:** If an env value matches `^(xoxb-|sk-|ghp_|AKIA)` or the key name contains `SECRET`, `TOKEN`, `KEY`, `PASSWORD`, convert to `${KEY_NAME}` syntax.
+**Detection heuristic:** Secret-shaped values and credential-bearing key names
+become `${KEY_NAME}`. Header placeholder names use uppercase underscores. Existing
+`${EXISTING_NAME}` and scheme-prefixed templates such as `Bearer ${EXISTING_NAME}`
+and `Basic ${EXISTING_NAME}` are retained, including
+references whose name differs from the configuration key. Required variable names
+are collected from the resulting server configuration, deduplicated and sorted;
+reports contain names without printing credential values.
 
 ---
 
@@ -419,7 +491,9 @@ The POWER.md body is generated with structured sections:
 
 **Problem:** Not all plugins have MCP server configurations.
 
-**Solution:** Skip `mcp.json` generation entirely. The POWER.md body notes that no MCP servers are required.
+**Solution:** Check the manifest's inline/path declarations as well. Skip `mcp.json`
+only when all supported sources contain no servers; an absent standalone file does
+not mean that the plugin has no MCP configuration.
 
 ### Multiple Plugins in One Repository
 
@@ -432,8 +506,8 @@ The POWER.md body is generated with structured sections:
 **Problem:** Claude Code `SessionStart` hooks have no direct Kiro equivalent.
 
 **Solution:**
-- `type: prompt` hooks → Migrate content to POWER.md onboarding section
-- `type: command` hooks → Create `promptSubmit` hook as closest approximation, with `enabled: false` and a comment noting the original trigger
+- `type: prompt` hooks → Include static content in POWER.md onboarding and report `onboarding`; no session execution is claimed.
+- `type: command` hooks → Report `manual` with the original indexed handler. Generate no approximation and do not claim migration or execution.
 
 ### Environment Secrets in MCP Config
 

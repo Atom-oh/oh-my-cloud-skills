@@ -154,6 +154,12 @@ fc-cache -f` so the preview uses real Pretendard instead of a substitute.
 
 ## Dependencies
 
+Verify the bundled module in the consumer's build environment before authoring:
+`NODE_PATH="$(npm root -g)" node -e 'require(process.argv[1])' "<resolved-plugin-root>/skills/aws-light-fcd/scripts/deck_kit.js"`.
+Also check `python3 -c 'import pptx'`. A missing dependency blocks that build;
+package discovery does not prove readiness. Follow the user's authorized setup
+scope rather than automatically changing global installations.
+
 - `npm install -g pptxgenjs react-icons react react-dom sharp` (sharp + react-icons
   only needed for `arch_kit.renderIcon` agenda tiles). Run builds with
   `NODE_PATH=$(npm root -g) node build.js`.

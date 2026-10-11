@@ -15,3 +15,8 @@ Playwright is bundled through the Codex MCP manifest. Use available browser tool
 or the documented local Playwright path for visual checks. The PPTX icon library
 is inside this same plugin's `skills/reactive-presentation/`; resolve it from the
 installed plugin, not from a marketplace sibling's cache.
+
+Apply the runtime's team mapping when shared references describe `TeamCreate` or
+task lifecycle calls. The host tracks block dependencies and actual reviewer
+evidence, using available agents or sequential inline procedures. Parallel
+production does not remove validation or the independent content-review pass.

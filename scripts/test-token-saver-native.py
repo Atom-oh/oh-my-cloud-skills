@@ -68,7 +68,7 @@ class Fixture(http.server.BaseHTTPRequestHandler):
                     "content": [{"type": "output_text", "text": "LOCAL_FIXTURE_DONE",
                                  "annotations": []}]}
             response = {"id": "resp_fixture", "object": "response", "created_at": 1,
-                        "model": "gpt-5.4", "status": "completed", "output": [item],
+                        "model": self.server.model, "status": "completed", "output": [item],
                         "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}}
             events = [
                 {"type": "response.created",
@@ -120,7 +120,7 @@ def stop(process):
     process.stdout.close()
 
 
-def codex_probe(root, tmp, server, report):
+def codex_probe(root, tmp, server, report, model="gpt-5.5"):
     state, workspace, market = tmp / "codex", tmp / "consumer", tmp / "market"
     for path in (state, workspace):
         path.mkdir()
@@ -138,7 +138,7 @@ def codex_probe(root, tmp, server, report):
     env.update(HOME=str(tmp / "home"), CODEX_HOME=str(state), TMPDIR=str(tmp))
     Path(env["HOME"]).mkdir(exist_ok=True)
     (state / "config.toml").write_text(
-        'model="gpt-5.4"\nmodel_provider="fixture"\n[model_providers.fixture]\n'
+        'model=' + json.dumps(model) + '\nmodel_provider="fixture"\n[model_providers.fixture]\n'
         f'name="Loopback fixture"\nbase_url="http://127.0.0.1:{server.server_port}/v1"\n'
         'wire_api="responses"\nrequires_openai_auth=false\n')
 
@@ -148,6 +148,7 @@ def codex_probe(root, tmp, server, report):
 
     subprocess.run(["git", "init", "-q", str(workspace)], env=env, check=True)
     report["codex_version"] = cli("--version").strip()
+    report["codex_model"] = model
     cli("plugin", "marketplace", "add", str(market))
     installed = Path(json.loads(cli("plugin", "add",
         "token-saver@token-saver-fixture", "--json"))["installedPath"])
@@ -171,7 +172,7 @@ def codex_probe(root, tmp, server, report):
             return RPC["request"](process, selector, counter, method, params, events.append)
 
         def thread():
-            return call("thread/start", {"cwd": str(workspace), "model": "gpt-5.4",
+            return call("thread/start", {"cwd": str(workspace), "model": model,
                 "modelProvider": "fixture", "ephemeral": True,
                 "approvalPolicy": "on-request", "sandbox": "workspace-write"})["thread"]["id"]
 
@@ -248,6 +249,8 @@ def main():
     parser.add_argument("--host", choices=("codex", "claude", "both"), default="both")
     parser.add_argument("--tmp-dir", default="/var/tmp")
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--model", default="gpt-5.5",
+                        help="Codex local fixture model profile; no external model is called")
     args = parser.parse_args()
     report = {"passed": False, "external_model_calls": 0}
     try:
@@ -257,11 +260,12 @@ def main():
                 server.policy = (args.root / "plugins/token-saver/skills/"
                                  "concise-responses/references/policy.md").read_text().strip()
                 server.requests, server.error = [], None
+                server.model = args.model
                 stack.callback(server.server_close)
                 threading.Thread(target=server.serve_forever, daemon=True).start()
                 stack.callback(server.shutdown)
                 if args.host in ("codex", "both"):
-                    codex_probe(args.root.resolve(), Path(tmp), server, report)
+                    codex_probe(args.root.resolve(), Path(tmp), server, report, args.model)
                 if args.host in ("claude", "both"):
                     claude_probe(args.root.resolve(), Path(tmp), server, report)
                 require(server.error is None, server.error)

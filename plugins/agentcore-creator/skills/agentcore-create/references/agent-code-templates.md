@@ -6,6 +6,11 @@ Python code templates for generating AgentCore agent implementations from Claude
 
 The default agent code template uses the Strands Agents SDK with `BedrockAgentCoreApp` wrapper for Amazon Bedrock AgentCore deployment.
 
+`context` is the Runtime SDK's `RequestContext` object; it is not a dict and does
+not provide region configuration. Emit the user's selected conversion region in
+`BedrockModel.region_name`, as shown below. Offline verification passes a context
+with SDK attributes (for example `session_id`) and stubs the model call.
+
 ### Single Agent
 
 ```python
@@ -154,7 +159,7 @@ from strands import Agent
 from strands.models.bedrock import BedrockModel
 
 
-def create_agent(region: str = "us-east-1") -> Agent:
+def create_agent(region: str = "{{region}}") -> Agent:
     """Create agent for local interactive testing."""
     prompt_path = Path(__file__).parent / "system-prompts" / "{{agent_name}}.md"
     system_prompt = prompt_path.read_text(encoding="utf-8")
@@ -208,7 +213,7 @@ import boto3
 class LocalTestAgent:
     """Minimal agent using boto3 Bedrock Runtime for local testing."""
 
-    def __init__(self, region: str = "us-east-1"):
+    def __init__(self, region: str = "{{region}}"):
         self.client = boto3.client("bedrock-runtime", region_name=region)
         self.model_id = "{{bedrock_model_id}}"
 
