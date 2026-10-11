@@ -1,6 +1,6 @@
 # Codex Compatibility Remediation Plan
 
-**Status:** Proposed on 2026-10-11; implementation has not started.
+**Status:** Implemented and locally validated; PR #250 tracks CI and review acceptance. Originally proposed on 2026-10-11.
 **Goal:** Resolve the seven confirmed Major findings, close the remaining host-adaptation gaps, and establish native hook execution evidence on the supported Codex CLI.
 
 ## Baseline and scope
@@ -11,7 +11,7 @@ The current marketplace has eight plugins, 23 source skills, 28 source agents an
 
 Both manifest validators, all-plugin generation freshness, and all 23 skill evaluations passed. The full TAP suite passed all 1,418 assertions after environment-related subprocess failures were resolved. These counts are baseline evidence, not fixed future assertion totals.
 
-The shipped native patch/project-hook fixture failed on the current checkout and HEAD baseline. Its pinned model did not expose the expected custom patch tool; changing the model alone also encountered a request shape without the expected tools field. Native patch denials and complete project-hook dispatch remain unverified.
+At the initial review baseline, the shipped native patch/project-hook fixture failed on the checkout and HEAD baseline. Its pinned model did not expose the expected custom patch tool; changing the model alone also encountered a request shape without the expected tools field. Native patch denials and complete project-hook dispatch were unverified at that point; later acceptance records below report their successful verification.
 
 The review evidence and complete component inventory were saved in `/tmp/codex-compat-review/`. The findings and completion criteria below remain usable without those temporary files.
 

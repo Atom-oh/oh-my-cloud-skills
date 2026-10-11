@@ -82,8 +82,8 @@ and stdin shown below when using that runner.
      stop and ask the user to commit/stash it or exclude it from the plan.
    - Allocate one private log directory for the entire delegation run:
      `RUN_DIR=$(python3 "$SK/prepare_worktree.py" new-run)`; check exit 0 before
-     continuing. The helper uses a unique directory outside worktrees with mode
-     `0700`, independent of a consumer's `TMPDIR`. Every task and retry writes a
+     continuing. The helper uses a unique directory under `/tmp`, outside worktrees,
+     with mode `0700`; it intentionally ignores a consumer's `TMPDIR`. Every task and retry writes a
      distinct `"$RUN_DIR/task-<task-id>-attempt-<attempt-number>.log"`. Generate task
      IDs as `[A-Za-z0-9_-]+` slugs, and start attempts at 0. Do not reuse an attempt
      filename or use a global `/tmp/kiro-delegate-*.log` glob.

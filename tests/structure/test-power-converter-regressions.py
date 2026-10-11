@@ -186,6 +186,65 @@ class PowerConverterTests(unittest.TestCase):
         self.assertEqual(snapshot(self.output), snapshot(self.root / '.kiro' / 'powers' / 'fixture'))
         self.assertEqual(before, snapshot(self.source))
 
+    def test_new_unrelated_destination_created_during_build_is_preserved(self):
+        before_source = snapshot(self.source)
+        original_build = converter._build_plugin
+        def build(*args, **kwargs):
+            result = original_build(*args, **kwargs)
+            self.output.mkdir()
+            (self.output / 'unrelated-sentinel').write_bytes(b'new unrelated destination')
+            return result
+        with mock.patch.object(converter, '_build_plugin', build):
+            with self.assertRaisesRegex(RuntimeError, 'Destination changed since preflight'):
+                converter.convert_plugin(str(self.source), str(self.output))
+        self.assertEqual({'unrelated-sentinel': b'new unrelated destination'}, snapshot(self.output))
+        self.assertEqual(before_source, snapshot(self.source))
+        self.assertFalse(list(self.root.glob('.kiro-*')))
+
+    def test_existing_destination_replaced_during_build_is_preserved(self):
+        before = self.existing_output()
+        previous = self.root / 'previous-output'
+        original_build = converter._build_plugin
+        def build(*args, **kwargs):
+            result = original_build(*args, **kwargs)
+            self.output.rename(previous)
+            self.output.mkdir()
+            (self.output / 'POWER.md').write_bytes(b'new recognized output')
+            (self.output / 'new-sentinel').write_bytes(b'new destination data')
+            return result
+        with mock.patch.object(converter, '_build_plugin', build):
+            with self.assertRaisesRegex(RuntimeError, 'Destination changed since preflight'):
+                converter.convert_plugin(str(self.source), str(self.output))
+        self.assertEqual(before, snapshot(previous))
+        self.assertEqual({'POWER.md': b'new recognized output', 'new-sentinel': b'new destination data'}, snapshot(self.output))
+
+    def test_new_standalone_file_after_copy_snapshot_is_preserved(self):
+        before = self.existing_output()
+        second = self.make_skill('second', 'second')
+        original_copytree = converter.shutil.copytree
+        def copytree(*args, **kwargs):
+            result = original_copytree(*args, **kwargs)
+            if Path(args[0]).name == self.output.name:
+                (self.output / 'added-during-build').write_bytes(b'new output file')
+            return result
+        with mock.patch.object(converter.shutil, 'copytree', copytree):
+            with self.assertRaisesRegex(RuntimeError, 'Destination changed since preflight'):
+                converter.convert_skills_standalone([str(self.skill), str(second)], str(self.output))
+        self.assertEqual({**before, 'added-during-build': b'new output file'}, snapshot(self.output))
+        self.assertFalse(list(self.root.glob('.kiro-*')))
+
+    def test_existing_destination_content_changed_during_build_is_preserved(self):
+        before = self.existing_output()
+        original_build = converter._build_plugin
+        def build(*args, **kwargs):
+            result = original_build(*args, **kwargs)
+            (self.output / 'sentinel').write_bytes(b'concurrent updated destination')
+            return result
+        with mock.patch.object(converter, '_build_plugin', build):
+            with self.assertRaisesRegex(RuntimeError, 'Destination changed since preflight'):
+                converter.convert_plugin(str(self.source), str(self.output))
+        self.assertEqual({**before, 'sentinel': b'concurrent updated destination'}, snapshot(self.output))
+
     def test_parent_swap_during_backup_cannot_redirect_any_publication_mode(self):
         before_source = snapshot(self.source)
         for mode in ('plugin', 'install', 'standalone', 'preserved', 'multiple', 'mcp'):

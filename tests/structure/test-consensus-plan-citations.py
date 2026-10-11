@@ -1,5 +1,7 @@
 """Offline regressions for plan/diff citation boundaries."""
+import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -18,6 +20,35 @@ DIFF = """diff --git a/service.py b/service.py
 
 
 class CitationTests(unittest.TestCase):
+    def git_diff(self, payload, old_name="service.py", new_name=None):
+        """Generate Git's actual LF-delimited output without newline conversion."""
+        with tempfile.TemporaryDirectory(prefix="consensus-git-diff-") as directory:
+            root = Path(directory)
+            env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1",
+                   "GIT_CONFIG_GLOBAL": os.devnull}
+
+            def git(*args):
+                return subprocess.run(
+                    ["git", "-C", str(root), "-c", "core.hooksPath=/dev/null",
+                     "-c", "user.name=Citation fixture",
+                     "-c", "user.email=citation@example.invalid", *args],
+                    env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    check=True,
+                ).stdout
+
+            git("init", "-q")
+            original = "".join(f"unchanged line {index}\n" for index in range(10)).encode()
+            (root / old_name).write_bytes(original)
+            git("add", "--", old_name)
+            git("commit", "-qm", "citation fixture")
+            if new_name is not None:
+                git("mv", "--", old_name, new_name)
+            else:
+                new_name = old_name
+            (root / new_name).write_bytes(original + payload.encode("utf-8") + b"\n")
+            git("add", "--", new_name)
+            return git("diff", "--cached", "--find-renames=50%").decode("utf-8")
+
     def run_check(self, artifact, findings):
         with tempfile.TemporaryDirectory(prefix="consensus-citations-") as directory:
             root = Path(directory)
@@ -136,6 +167,36 @@ deleted file mode 100644
                 result = self.run_check(artifact, [{"file": filename, "line": 2}])
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(json.loads(result.stdout)[0]["citation"], "supported")
+
+    def test_actual_git_line_payload_keeps_controls_and_trailing_cr(self):
+        payload = "literal\finside\u0085one\u2028Git\u2029line\rwithin\r"
+        artifact = self.git_diff(payload)
+        self.assertIn("+" + payload + "\n", artifact)
+        spec = importlib.util.spec_from_file_location("citation_payload_fixture", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual(module.parse_diff(artifact)["service.py"][11], payload)
+        result = self.run_check(
+            artifact, [{"severity": "MAJOR", "file": "service.py", "line": 11,
+                        "snippet": payload}],
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        classified = json.loads(result.stdout)[0]
+        self.assertEqual(classified["citation"], "supported")
+        self.assertEqual(classified["snippet"], payload)
+        self.assertEqual(classified["severity"], "MAJOR")
+
+    def test_actual_git_rename_with_different_apostrophe_counts(self):
+        old_name = "old 'name'.py"
+        new_name = "new 'name.py"
+        artifact = self.git_diff("added after rename", old_name, new_name)
+        self.assertIn(f"rename from {old_name}\n", artifact)
+        self.assertIn(f"rename to {new_name}\n", artifact)
+        result = self.run_check(
+            artifact, [{"file": new_name, "line": 11, "snippet": "added after rename"}],
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)[0]["citation"], "supported")
 
 
 if __name__ == "__main__":
