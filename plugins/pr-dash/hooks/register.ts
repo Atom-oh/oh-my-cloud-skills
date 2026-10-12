@@ -103,6 +103,10 @@ export function register(on) {
     if (/^\d+$/.test(a)) target = Number(a)
     watching = true
     await refresh($)
+    // Only the terminal and the Desktop app draw panes; -p runs and the VS Code
+    // chat panel get the summary as command text instead.
+    const surfaces = await $.session.surfaces()
+    if (!surfaces.some((x) => x === 'terminal' || x === 'desktop')) return { text: fallbackText() }
     try {
       const placed = await $.ui.open({ id: 'pr-dash', title: 'PR', focus: true, closeOnEscape: true })
       if (placed && typeof placed === 'object' && placed.isPlaced === false) return { text: fallbackText() }

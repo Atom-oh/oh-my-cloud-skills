@@ -25,7 +25,7 @@ const PASSED_LINE = 'PR #253 · checks 3/3 pass · review PASSED (current head) 
 const passedOpen = { ...passed, state: 'OPEN' }
 const blockedOpen = { ...blocked, state: 'OPEN' }
 
-type StubOpts = { fail?: boolean; unplaced?: boolean; deny?: boolean }
+type StubOpts = { fail?: boolean; unplaced?: boolean; deny?: boolean; surfaces?: string[] }
 
 /** Registers every stub the hooks module can reach. Call BEFORE the first `$` call. */
 function stubs(on, fixture, opts: StubOpts = {}) {
@@ -43,6 +43,7 @@ function stubs(on, fixture, opts: StubOpts = {}) {
     return { value: { exitCode: 0, stdout: JSON.stringify(fixture), stderr: '' } }
   })
   on('command.register', () => ({ value: undefined }))
+  on('session.surfaces', () => ({ value: opts.surfaces ?? ['terminal'] }))
   on('ui.status', ($, e) => {
     lines.push(e.text)
     return { value: undefined }
@@ -232,4 +233,22 @@ test('the refresh button refetches', async ($, on) => {
   expect(argvs).toHaveLength(2)
 
   await ui.unmount()
+})
+
+test('/pr-dash returns the summary as text where no surface draws a pane', async ($, on) => {
+  const { opens } = stubs(on, passedOpen, { surfaces: [] })
+
+  const r = await $.command.run({ command: 'pr-dash', args: '' })
+
+  expect(opens).toEqual([])
+  expect(r.text).toBe(PASSED_LINE)
+})
+
+test('/pr-dash also falls back to text on a VS Code-only session', async ($, on) => {
+  const { opens } = stubs(on, passedOpen, { surfaces: ['vscode'] })
+
+  const r = await $.command.run({ command: 'pr-dash', args: '' })
+
+  expect(opens).toEqual([])
+  expect(r.text).toBe(PASSED_LINE)
 })
