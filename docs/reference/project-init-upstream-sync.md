@@ -33,7 +33,8 @@ routing hints, GitHub-metrics badges, a code-review recall guide, writing-style-
 references, etc.), and an exclusion list had to be maintained at every sync. That cost
 outweighed the benefit, so **all divergence was cleaned up**:
 
-- Local-only features (`skills/pr-autofix/**`, `commands/pr-autofix.md`,
+- Local-only features (`skills/pr-autofix/**`, the former `commands/pr-autofix.md`
+  wrapper (since removed; the skill is invoked as `/co-agent:pr-autofix`),
   `agents/pr-autofix-{planner,implementer}.md`, `skills/decision-reconcile/**`) were
   **moved to the co-agent plugin** — all three use a multi-model/multi-AI panel, so
   co-agent was the natural home to begin with. pr-autofix's loop cap is no longer a

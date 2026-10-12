@@ -55,8 +55,7 @@
       "name": "pr-autofix",
       "path": ".codex-plugin/skills/pr-autofix/SKILL.md",
       "sources": [
-        "skills/pr-autofix/SKILL.md",
-        "commands/pr-autofix.md"
+        "skills/pr-autofix/SKILL.md"
       ]
     },
     {

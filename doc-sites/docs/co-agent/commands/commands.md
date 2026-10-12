@@ -52,6 +52,8 @@ Detect plugin and CLI access paths, probe actual usability, and write readiness 
 
 Poll review feedback, plan verified fixes, apply them in an isolated worktree, validate, commit, and push within the configured iteration limit. Recheck the new HEAD's reviews and CI; follow the repository's authorization and merge rules.
 
+This entry is the `pr-autofix` skill, not a separate command file, so Claude Code lists one `co-agent:pr-autofix` entry.
+
 Set up the consumer's review workflow and paired gate helper first. The loop never
 edits `.github/workflows/*`; see [PR autofix setup and boundaries](/docs/co-agent/skills/pr-autofix#limits-and-integration).
 
