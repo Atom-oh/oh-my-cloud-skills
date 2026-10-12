@@ -155,6 +155,9 @@ def run_search(root, query):
         print(f"❌ kiro-cli exited {r.returncode}: "
               f"{(err.strip() or out.strip())[:300]}", file=sys.stderr)
         return 1
+    if model and kc.model_not_applied(out, err):
+        print(f"❌ {kc.model_not_applied_error(model)}", file=sys.stderr)
+        return 1
     if not out.strip():
         print("❌ kiro websearch returned no output.", file=sys.stderr)
         return 1

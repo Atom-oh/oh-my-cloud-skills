@@ -156,6 +156,12 @@ and stdin shown below when using that runner.
      `tail -n 20` the log between polls to relay progress; kiro-cli has no stream-json
      mode, so this tail IS the progress stream. Outside `<wt>` so the log can never
      enter `capture-diff`'s scope.
+   - **When `--model` was passed, check the log before using the result**:
+     `python3 .../kiro_run.py model-check "$RUN_DIR/task-<task-id>-attempt-<n>.log"`.
+     Exit 1 means kiro-cli ignored the configured model and ran its default one (seen
+     on 2.24.0). Treat it as an infrastructure failure, like exit 3: do not apply that
+     attempt's diff or retry it on the substituted model; report the printed message
+     (`kiro-cli update`) and fall back per step 5.
    - **Record the session id right after the call returns**:
      `python3 .../kiro_run.py session-id <wt>` (exit 1 = none found). Step 4 resumes it;
      each task has its own worktree, so cwd identifies the session unambiguously.
@@ -218,7 +224,8 @@ Toggle: `/kiro:configure set default_delegate on|off` (also settable from `/kiro
 - `skills/kiro-delegate/scripts/` — `worktree.py`, `scope_guard.py`, `parse_plan.py`
   (copied from co-agent, unmodified), `kiro_config.py`, `kiro_review.py`, `kiro_setup.py`,
   `prepare_worktree.py` (support preparation, retry prompts and unique run directories),
-  `kiro_run.py` (per-run telemetry: `session-id` for `--resume-id`, `credits` for the report)
+  `kiro_run.py` (per-run telemetry: `session-id` for `--resume-id`, `credits` for the
+  report, `model-check` for a model kiro-cli did not apply)
 
 ## Agent Memory
 

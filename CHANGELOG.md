@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Make the kiro plugin fail when kiro-cli does not apply the configured model.
+  kiro-cli 2.24.0 printed `failed to set model '<id>'`, ignored `--model`, and ran the
+  call on its global `chat.defaultModel` with exit 0, so delegate, review and
+  websearch results came from a different model than configured. `kiro_setup.py
+  probe`, `kiro_review.py` and `kiro_websearch.py` now return an error naming
+  `kiro-cli update`, and the new `kiro_run.py model-check <log>` lets the delegate
+  agent reject such an attempt and fall back. kiro-cli 2.29.1 applies the flag.
 - Remove co-agent's `commands/pr-autofix.md` wrapper, which registered a second
   `co-agent:pr-autofix` entry beside the `pr-autofix` skill in Claude Code. The skill
   remains the single entry and is still invoked as `/co-agent:pr-autofix`.

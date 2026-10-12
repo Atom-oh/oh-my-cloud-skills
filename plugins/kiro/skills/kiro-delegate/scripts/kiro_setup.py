@@ -221,6 +221,10 @@ def probe(timeout=90, model=None, effort=None):
             return "TIMEOUT", "probe exceeded the timeout"
         except OSError as e:
             return "ERROR", str(e)[:200]
+        if r.returncode == 0 and model:
+            import kiro_config  # same directory; deferred like kiro_review's kiro_setup import
+            if kiro_config.model_not_applied(out, err):
+                return "ERROR", kiro_config.model_not_applied_error(model)
         if r.returncode == 0 and sentinel in out.strip().split():
             return "READY", ""
         if _AUTH_RE.search(f"{out}\n{err}"):
