@@ -333,3 +333,18 @@ describe('findReview: list markers and fences match the CI gate', () => {
     expect(findReview([botComment(body)])?.status).toBe('BLOCKED')
   })
 })
+
+describe('findReview: severity headings count only inside ## Issues', () => {
+  test('a ### MAJOR under Dismissed findings is not a finding, and the PR stays merge-ready', () => {
+    const body = '<!-- oh-my-cloud-skills-pr-review -->\n**Status: PASSED** — ok\n## Issues\n### CRITICAL\nNone.\n### MAJOR\nNone.\n### MINOR\nNone.\n## Dismissed findings\n### MAJOR\n1. dismissed claim\n'
+    const review = findReview([botComment(body)])
+    expect(review?.counts).toEqual({ CRITICAL: 0, MAJOR: 0, MINOR: 0 })
+  })
+
+  test('isMergeReady refuses a PASSED badge that carries parsed Major items', () => {
+    const s = parseSnapshot({ ...passed, state: 'OPEN' })
+    const tampered = { ...s, review: { ...s.review!, counts: { CRITICAL: 0, MAJOR: 1, MINOR: 0 } } }
+    expect(isMergeReady(s)).toBe(true)
+    expect(isMergeReady(tampered)).toBe(false)
+  })
+})

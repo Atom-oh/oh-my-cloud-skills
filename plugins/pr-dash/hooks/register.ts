@@ -13,7 +13,7 @@ let watching = false
 let snap: Snapshot | null = null
 let error: string | null = null
 let fetchedAt: number | null = null
-let inflight = false
+let running: Promise<void> | null = null
 let rerun = false
 let generation = 0
 let timer: any = null
@@ -54,22 +54,44 @@ function retarget(to: number | null) {
   generation += 1
 }
 
-/** Fetches the PR via `gh pr view` and updates module state, status line and toasts. */
+/**
+ * Runs one fetch at a time. A call during a fetch queues one more run (so a new
+ * target is not lost) and returns the running fetch for the caller to await.
+ */
 async function refresh($) {
-  if (inflight) {
-    // A refresh is running; run once more after it so a new target is not lost.
+  if (running) {
     rerun = true
-    return
+    return running
   }
-  inflight = true
+  running = fetchOnce($)
+  try {
+    await running
+  } finally {
+    running = null
+  }
+  if (rerun) {
+    rerun = false
+    await refresh($)
+  }
+}
+
+/** Waits until no fetch is running or queued, so a command answers with fresh data. */
+async function settle($) {
+  await refresh($)
+  while (running) await running
+}
+
+/** Fetches the PR via `gh pr view` and updates module state, status line and toasts. */
+async function fetchOnce($) {
   const gen = generation
   try {
     const argv = ['gh', 'pr', 'view', ...(target !== null ? [String(target)] : []), '--json', GH_FIELDS]
     let r
     try {
       r = await $.process.run(argv, { timeoutMs: 20_000 })
-    } catch {
-      if (gen === generation) fail($, 'gh is not available')
+    } catch (err) {
+      const text = String((err as { message?: unknown })?.message ?? err)
+      if (gen === generation) fail($, /time ?out|timed out/i.test(text) ? 'gh pr view timed out after 20s' : 'gh could not run: ' + text.split('\n')[0])
       return
     }
     // The target changed while gh ran; this response describes the old one.
@@ -99,12 +121,7 @@ async function refresh($) {
     $.ui.status(summaryLine(next))
     if (next.state === 'MERGED' || next.state === 'CLOSED') watching = false
   } finally {
-    inflight = false
     $.ui.invalidate('ui.render')
-    if (rerun) {
-      rerun = false
-      void refresh($)
-    }
   }
 }
 
@@ -129,13 +146,16 @@ export function register(on) {
     const a = String(e.args ?? '').trim()
     if (a === 'stop') {
       watching = false
+      // Drop any in-flight or queued fetch so it cannot restore the status line.
+      generation += 1
+      rerun = false
       $.ui.status(undefined)
       return { text: 'pr-dash stopped watching' }
     }
     // A number picks that PR; no argument means the current branch's PR.
     retarget(/^\d+$/.test(a) ? Number(a) : null)
     watching = true
-    await refresh($)
+    await settle($)
     // Only the terminal and the Desktop app draw panes; -p runs and the VS Code
     // chat panel get the summary as command text instead.
     const surfaces = await $.session.surfaces()

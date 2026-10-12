@@ -198,6 +198,7 @@ function parseReviewBody(body: string, url: string): Review {
   let cells: string | null = null
   const items: { severity: Severity; title: string }[] = []
   let section: Severity | null = null
+  let inIssues = false
 
   for (const line of lines) {
     if (status === null) {
@@ -213,9 +214,16 @@ function parseReviewBody(body: string, url: string): Review {
       if (rest.endsWith('_')) rest = rest.slice(0, -1)
       cells = rest.trim()
     }
+    // As the gate does, severity headings count only inside the level-two Issues section.
+    const h2 = /^##\s+(.*?)\s*$/.exec(line)
+    if (h2) {
+      inIssues = h2[1] === 'Issues'
+      section = null
+      continue
+    }
     const open = SECTION_OPEN_RE.exec(line)
     if (open) {
-      section = open[1] as Severity
+      section = inIssues ? (open[1] as Severity) : null
       continue
     }
     if (HEADING_RE.test(line)) {
@@ -324,6 +332,8 @@ export function isMergeReady(s: Snapshot): boolean {
   if (s.checks.length === 0) return false
   if (!s.checks.every((c) => c.state === 'pass' || c.state === 'skipped')) return false
   if (s.review === null || s.review.status !== 'PASSED') return false
+  // Consistency guard: a PASSED badge with parsed Critical/Major items is not ready.
+  if (s.review.counts.CRITICAL > 0 || s.review.counts.MAJOR > 0) return false
   const reviewed = s.review.reviewedSha
   if (reviewed === null) return false
   return s.headSha === reviewed || s.headSha.startsWith(reviewed)

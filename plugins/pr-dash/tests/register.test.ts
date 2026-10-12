@@ -316,3 +316,41 @@ test('only a command that starts with git push or gh pr create starts watching',
   await $.tool.call({ tool: 'Bash', command: 'cd repo && git -C . push -u origin x' })
   expect(argvs.length).toBe(1)
 })
+
+test('/pr-dash <n> during a running poll answers with the requested PR, not "no PR found"', async ($, on) => {
+  const clock = mock.clock(on)
+  const argvs: string[][] = []
+  on('process.run', async ($, e) => {
+    argvs.push([...e.argv])
+    await clock.sleep(1000)
+    return { value: { exitCode: 0, stdout: JSON.stringify(passedOpen), stderr: '' } }
+  })
+  on('command.register', () => ({ value: undefined }))
+  on('session.surfaces', () => ({ value: [] }))
+  on('ui.status', () => ({ value: undefined }))
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.invalidate', () => ({ value: undefined }))
+  on('session.start', () => ({ cwd: '/work' }))
+  on('tool.call', () => ({ result: 'ok' }))
+
+  await $.session.start(SESSION)
+  await $.tool.call({ tool: 'Bash', command: 'git push' })   // starts a fetch that sleeps 1s
+  const pending = $.command.run({ command: 'pr-dash', args: '253' })
+  await clock.advance(1000)
+  await clock.advance(1000)
+  const r = await pending
+
+  expect(argvs[argvs.length - 1]).toContain('253')
+  expect(r.text).toBe(PASSED_LINE)
+})
+
+test('a gh timeout is reported as a timeout, not as a missing gh', async ($, on) => {
+  on('process.run', () => ({ deny: 'process.run timed out after 20000ms' }))
+  on('command.register', () => ({ value: undefined }))
+  on('session.surfaces', () => ({ value: [] }))
+  on('ui.status', () => ({ value: undefined }))
+  on('ui.invalidate', () => ({ value: undefined }))
+
+  const r = await $.command.run({ command: 'pr-dash', args: '253' })
+  expect(r.text).toBe('gh pr view timed out after 20s')
+})

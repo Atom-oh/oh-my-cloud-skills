@@ -58,7 +58,7 @@ for plugin in aws-content-plugin aws-ops-plugin kiro-power-converter co-agent ag
         echo "    FIXED: copied source → cache"
       fi
     fi
-  done < <(find "$SRC_BASE/$plugin" \( -name "*.md" -o -name "*.py" -o -name "*.json" -o -name "*.js" -o -name "*.css" \) -not -path "*/node_modules/*" -print0)
+  done < <(find "$SRC_BASE/$plugin" \( -name "*.md" -o -name "*.py" -o -name "*.json" -o -name "*.js" -o -name "*.ts" -o -name "*.tsx" -o -name "*.css" \) -not -path "*/node_modules/*" -print0)
 done
 
 echo ""
