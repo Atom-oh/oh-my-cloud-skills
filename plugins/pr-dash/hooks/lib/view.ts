@@ -74,7 +74,7 @@ export function buildPane(els: any, snap: Snapshot | null, opts: {
     onPress: () => opts.onRefresh(),
   })
 
-  if (opts.error !== null) {
+  if (opts.error !== null && snap === null) {
     return els.Box({
       flexDirection: 'column',
       children: [
@@ -89,6 +89,8 @@ export function buildPane(els: any, snap: Snapshot | null, opts: {
   }
 
   const children: unknown[] = []
+  // A failed refresh keeps the last snapshot on screen with the error above it.
+  if (opts.error !== null) children.push(els.Text({ children: [opts.error], color: 'red', wrap: 'truncate-end' }))
 
   children.push(els.Text({ children: ['#' + snap.number + ' ' + snap.title], bold: true, wrap: 'truncate-end' }))
   children.push(els.Text({

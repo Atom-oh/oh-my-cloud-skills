@@ -252,3 +252,27 @@ test('/pr-dash also falls back to text on a VS Code-only session', async ($, on)
   expect(opens).toEqual([])
   expect(r.text).toBe(PASSED_LINE)
 })
+
+test('a failed refresh keeps the last snapshot and shows the error above it', async ($, on) => {
+  let fail = false
+  on('process.run', () => fail
+    ? { value: { exitCode: 1, stdout: '', stderr: 'HTTP 502' } }
+    : { value: { exitCode: 0, stdout: JSON.stringify(passedOpen), stderr: '' } })
+  on('command.register', () => ({ value: undefined }))
+  on('session.surfaces', () => ({ value: ['terminal'] }))
+  on('ui.status', () => ({ value: undefined }))
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.invalidate', () => ({ value: undefined }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+
+  await $.command.run({ command: 'pr-dash', args: '' })
+  fail = true
+  const ui = await $.ui.mount(PANE)
+  await ui.press({ key: 'refresh' })
+  await ui.unmount()
+  const again = await $.ui.mount(PANE)
+
+  expect(await again.find({ type: 'Text', text: 'HTTP 502' })).toBeDefined()
+  expect(await again.find({ type: 'Text', text: /^#253 / })).toBeDefined()
+  await again.unmount()
+})
