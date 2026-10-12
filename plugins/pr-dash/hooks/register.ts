@@ -14,10 +14,14 @@ let snap: Snapshot | null = null
 let error: string | null = null
 let fetchedAt: number | null = null
 let inflight = false
+let rerun = false
+let generation = 0
 let timer: any = null
 
 const GH_FIELDS = 'number,title,url,state,headRefOid,headRefName,baseRefName,mergeable,statusCheckRollup,comments'
-const PUSH_RE = /\bgh\s+pr\s+create\b|\bgit\s+push\b/
+// Matches git push / gh pr create at the start of a command or after ; & | ( or a newline,
+// so an echo or grep that mentions them does not start watching.
+const PUSH_RE = /(?:^|[;&|(\n])\s*(?:git(?:\s+-C\s+\S+)?\s+push|gh\s+pr\s+create)\b/
 
 // Pure helpers (take a Snapshot, never `$`)
 
@@ -30,49 +34,77 @@ function mergePrompt(s: Snapshot): string {
 }
 
 function fallbackText(): string {
+  if (snap && error) return summaryLine(snap) + ' · refresh failed: ' + error
   return snap ? summaryLine(snap) : (error ?? 'no PR found')
+}
+
+/** Records a failed refresh: the pane keeps the last snapshot, the status line says it is stale. */
+function fail($, message: string) {
+  error = message
+  $.ui.status(snap ? summaryLine(snap) + ' · refresh failed: ' + message : 'pr-dash: ' + message)
+}
+
+/** Points pr-dash at a new target (null = the current branch's PR), dropping the old snapshot. */
+function retarget(to: number | null) {
+  if (to === target) return
+  target = to
+  snap = null
+  error = null
+  fetchedAt = null
+  generation += 1
 }
 
 /** Fetches the PR via `gh pr view` and updates module state, status line and toasts. */
 async function refresh($) {
-  if (inflight) return
+  if (inflight) {
+    // A refresh is running; run once more after it so a new target is not lost.
+    rerun = true
+    return
+  }
   inflight = true
+  const gen = generation
   try {
     const argv = ['gh', 'pr', 'view', ...(target !== null ? [String(target)] : []), '--json', GH_FIELDS]
     let r
     try {
       r = await $.process.run(argv, { timeoutMs: 20_000 })
     } catch {
-      error = 'gh is not available'
+      if (gen === generation) fail($, 'gh is not available')
       return
     }
+    // The target changed while gh ran; this response describes the old one.
+    if (gen !== generation) return
     if (r.exitCode !== 0) {
       // Keep the previous snap; surface the first non-empty stderr line.
       const line = String(r.stderr ?? '')
         .split('\n')
         .map((l) => l.trim())
         .find((l) => l !== '')
-      error = line ?? ('gh exited ' + r.exitCode)
+      fail($, line ?? ('gh exited ' + r.exitCode))
       return
     }
     let next
     try {
       next = parseSnapshot(JSON.parse(r.stdout))
     } catch {
-      error = 'unexpected gh output'
+      fail($, 'unexpected gh output')
       return
     }
-    const notices = diffNotices(snap, next)
+    // In branch mode a branch switch returns a different PR: start its history fresh.
+    const notices = diffNotices(snap && snap.number === next.number ? snap : null, next)
     snap = next
     error = null
     fetchedAt = Date.now()
-    target = next.number
     for (const n of notices) $.ui.toast(n)
     $.ui.status(summaryLine(next))
     if (next.state === 'MERGED' || next.state === 'CLOSED') watching = false
   } finally {
     inflight = false
     $.ui.invalidate('ui.render')
+    if (rerun) {
+      rerun = false
+      void refresh($)
+    }
   }
 }
 
@@ -100,7 +132,8 @@ export function register(on) {
       $.ui.status(undefined)
       return { text: 'pr-dash stopped watching' }
     }
-    if (/^\d+$/.test(a)) target = Number(a)
+    // A number picks that PR; no argument means the current branch's PR.
+    retarget(/^\d+$/.test(a) ? Number(a) : null)
     watching = true
     await refresh($)
     // Only the terminal and the Desktop app draw panes; -p runs and the VS Code
@@ -122,7 +155,7 @@ export function register(on) {
     if (!result?.deny && !result?.isError && typeof e.command === 'string' && PUSH_RE.test(e.command)) {
       const was = watching
       watching = true
-      target = null
+      retarget(null)
       void refresh($)
       if (!was) $.ui.toast("pr-dash watching this branch's PR")
     }

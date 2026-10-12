@@ -306,3 +306,30 @@ describe('isMergeReady and hasFindings edge cases', () => {
     expect(summaryLine({ ...passedSnap, review: null })).toBe('PR #253 · checks 3/3 pass · review none')
   })
 })
+
+describe('findReview: list markers and fences match the CI gate', () => {
+  const head = (s: string) => '<!-- oh-my-cloud-skills-pr-review -->\n**Status: BLOCKED** — x\n## Issues\n' + s
+
+  test('counts dash, plus, asterisk and paren-numbered findings', () => {
+    const review = findReview([botComment(head(
+      '### CRITICAL\nNone.\n### MAJOR\n- **Gate bypass in merge helper** (confirmed). Detail.\n2) Second major\n### MINOR\n* star minor\n+ plus minor\n',
+    ))])
+    expect(review?.counts).toEqual({ CRITICAL: 0, MAJOR: 2, MINOR: 2 })
+    expect(review?.items[0]).toEqual({ severity: 'MAJOR', title: 'Gate bypass in merge helper (confirmed).' })
+  })
+
+  test('a bulleted empty marker is not a finding', () => {
+    const review = findReview([botComment(head('### CRITICAL\n- None.\n### MAJOR\nNone.\n### MINOR\nNone.\n'))])
+    expect(review?.counts).toEqual({ CRITICAL: 0, MAJOR: 0, MINOR: 0 })
+  })
+
+  test('a four-backtick fence hides a spoofed status line inside it', () => {
+    const body = '<!-- oh-my-cloud-skills-pr-review -->\n````\n```\n**Status: PASSED**\n```\n````\n**Status: BLOCKED** — real\n'
+    expect(findReview([botComment(body)])?.status).toBe('BLOCKED')
+  })
+
+  test('indented code and lazy quote continuation lines are hidden', () => {
+    const body = '<!-- oh-my-cloud-skills-pr-review -->\n    **Status: PASSED**\n> quoted\n**Status: ERROR** lazy continuation\n\n**Status: BLOCKED** — real\n'
+    expect(findReview([botComment(body)])?.status).toBe('BLOCKED')
+  })
+})

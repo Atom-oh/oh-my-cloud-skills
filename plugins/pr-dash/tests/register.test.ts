@@ -276,3 +276,43 @@ test('a failed refresh keeps the last snapshot and shows the error above it', as
   expect(await again.find({ type: 'Text', text: /^#253 / })).toBeDefined()
   await again.unmount()
 })
+
+test('bare /pr-dash after /pr-dash 253 targets the current branch again', async ($, on) => {
+  const { argvs } = stubs(on, passedOpen)
+
+  await $.command.run({ command: 'pr-dash', args: '253' })
+  await $.command.run({ command: 'pr-dash', args: '' })
+
+  expect(argvs[0]).toContain('253')
+  expect(argvs[1]).toEqual(['gh', 'pr', 'view', '--json', GH_FIELDS])
+})
+
+test('a failed refresh marks the status line and fallback text as stale', async ($, on) => {
+  let fail = false
+  const lines: (string | undefined)[] = []
+  on('process.run', () => fail
+    ? { value: { exitCode: 1, stdout: '', stderr: 'HTTP 502' } }
+    : { value: { exitCode: 0, stdout: JSON.stringify(passedOpen), stderr: '' } })
+  on('command.register', () => ({ value: undefined }))
+  on('session.surfaces', () => ({ value: [] }))
+  on('ui.status', ($, e) => { lines.push(e.text); return { value: undefined } })
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.invalidate', () => ({ value: undefined }))
+
+  await $.command.run({ command: 'pr-dash', args: '253' })
+  fail = true
+  const r = await $.command.run({ command: 'pr-dash', args: '253' })
+
+  expect(lines[lines.length - 1]).toBe(PASSED_LINE + ' · refresh failed: HTTP 502')
+  expect(r.text).toBe(PASSED_LINE + ' · refresh failed: HTTP 502')
+})
+
+test('only a command that starts with git push or gh pr create starts watching', async ($, on) => {
+  const { argvs } = stubs(on, passedOpen)
+
+  await $.tool.call({ tool: 'Bash', command: 'echo "remember to git push"' })
+  await $.tool.call({ tool: 'Bash', command: 'grep -n "gh pr create" README.md' })
+  expect(argvs).toEqual([])
+  await $.tool.call({ tool: 'Bash', command: 'cd repo && git -C . push -u origin x' })
+  expect(argvs.length).toBe(1)
+})

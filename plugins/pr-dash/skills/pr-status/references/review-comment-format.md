@@ -12,17 +12,21 @@ it the same way, mirroring co-agent pr-autofix's gate parsing.
 
 ## Which lines count
 
-Ignore lines inside fenced code (``` or ~~~), block quotes (lines starting with `>`)
-and HTML comments (`<!-- … -->`, including multi-line ones). From the remaining
-lines:
+Ignore, as co-agent's `review_gate.py` does: fenced code (a fence of 3+ backticks
+or tildes closes only with the same character and at least the same length),
+indented code (4 spaces or a tab), block quotes (`>` lines and the lazy
+continuation lines after them, up to a blank line, heading, list item or fence) and
+HTML comments (`<!-- … -->`, including multi-line ones). Trim the remaining lines,
+then read:
 
 | Field | Pattern | Example |
 |---|---|---|
 | Status | first line starting `**Status: X**`, X in PASSED, BLOCKED, ERROR, PENDING | `**Status: BLOCKED** — CRITICAL/MAJOR issues must be resolved before merge` |
 | Reviewed commit | ``Triggered by commit `<sha>` `` | ``_Triggered by commit `4248c37…` · workflow: …_`` |
 | Reviewer cells | line starting `_Cells (model):` | `_Cells (model): codex/FULL kiro-opus/FULL _` |
-| Findings | numbered lines `1. …` under `### CRITICAL`, `### MAJOR`, `### MINOR` until the next heading | `1. **Gate bypass in merge helper** (confirmed). …` |
+| Findings | list items marked `-`, `+`, `*`, `1.` or `1)` under `### CRITICAL`, `### MAJOR`, `### MINOR` until the next heading | `- **Gate bypass in merge helper** (confirmed). …` |
 
-A severity section that contains only `None.` (or `None`, `없음`) has no findings.
+A severity section that contains only `None.` (or `None`, `없음`), with or without a
+list marker, has no findings.
 The review is for the current head when the head SHA equals the reviewed commit or
 starts with it; otherwise it is stale and describes an older commit.

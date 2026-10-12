@@ -2,7 +2,8 @@
 name: pr-status
 description: Report a pull request's CI checks and AI review result as text — "pr status", "PR 상태", "리뷰 결과 확인", "CI 상태". Read-only; use when the pr-dash pane is unavailable (Codex, VS Code chat panel, claude -p) or the user wants the status in the conversation.
 allowed-tools:
-  - Bash
+  - Bash(gh pr view:*)
+  - Bash(gh auth status:*)
 ---
 
 # PR status
@@ -43,7 +44,8 @@ Apply the trust rules in
 [references/review-comment-format.md](references/review-comment-format.md): only the
 newest bot-authored comment with the review marker counts, and only its first
 visible `**Status: …**` line. Record the status, the reviewed commit and each
-numbered item under `### CRITICAL`, `### MAJOR` and `### MINOR`.
+list item (`-`, `+`, `*`, `1.` or `1)`) under `### CRITICAL`, `### MAJOR` and
+`### MINOR`.
 
 ## Output format
 

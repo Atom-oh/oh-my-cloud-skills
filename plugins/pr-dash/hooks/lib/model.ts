@@ -34,7 +34,11 @@ const STATUS_RE = /^\*\*Status: (PASSED|BLOCKED|ERROR|PENDING)\*\*/
 const SHA_RE = /Triggered by commit `([0-9a-f]{7,40})`/
 const SECTION_OPEN_RE = /^###\s+(CRITICAL|MAJOR|MINOR)\b/
 const HEADING_RE = /^#{1,3}\s/
-const ITEM_RE = /^\d+\.\s+(.*)/
+// The gate's list-marker set: -, +, * or a number followed by . or ).
+const ITEM_RE = /^(?:[-+*]|\d+[.)])\s+(\S.*)$/
+const EMPTY_MARKERS = new Set(['None', 'None.', '없음', '없음.'])
+const FENCE_RE = /^ {0,3}(`{3,}|~{3,})(.*)$/
+const QUOTE_END_RE = /^ {0,3}(?:#{1,6} |[-+*] |\d+[.)] |`{3}|~{3})/
 
 type Dict = Record<string, unknown>
 
@@ -125,33 +129,57 @@ export function parseSnapshot(raw: unknown): Snapshot {
   }
 }
 
-/** Returns the body lines that are outside code fences, HTML comments and block quotes. */
+/**
+ * Returns the visible body lines, trimmed, as co-agent's review_gate.py
+ * `visible_lines` does: fenced code (closed only by the same fence character with
+ * at least the opening length), indented code, block quotes with their lazy
+ * continuation lines, and HTML comments are skipped.
+ */
 function visibleLines(body: string): string[] {
   const out: string[] = []
-  let inFence = false
-  let inComment = false
+  let fence: string | null = null
+  let comment = false
+  let quote = false
   for (const rawLine of body.split('\n')) {
-    let line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine
-    if (inComment) {
-      const close = line.indexOf('-->')
-      if (close < 0) continue
-      line = line.slice(close + 3)
-      inComment = false
-    }
-    const trimmed = line.trimStart()
-    if (trimmed.startsWith('```') || trimmed.startsWith('~~~')) {
-      inFence = !inFence
+    let raw = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine
+    if (fence !== null) {
+      const m = FENCE_RE.exec(raw)
+      if (m && m[1][0] === fence[0] && m[1].length >= fence.length && m[2].trim() === '') fence = null
       continue
     }
-    if (inFence) continue
-    line = line.replace(/<!--[\s\S]*?-->/g, '')
-    const open = line.indexOf('<!--')
-    if (open >= 0) {
-      line = line.slice(0, open)
-      inComment = true
+    if (comment) {
+      const close = raw.indexOf('-->')
+      if (close < 0) continue
+      raw = raw.slice(close + 3)
+      comment = false
     }
-    if (/^\s*>/.test(line)) continue
-    out.push(line)
+    if (raw.trimStart().startsWith('>')) {
+      quote = true
+      continue
+    }
+    if (quote) {
+      if (raw.trim() === '' || QUOTE_END_RE.test(raw)) quote = false
+      else continue
+    }
+    const m = FENCE_RE.exec(raw)
+    if (m && (m[1][0] !== '`' || !m[2].includes('`'))) {
+      fence = m[1]
+      continue
+    }
+    if (raw.startsWith('    ') || raw.startsWith('\t')) continue
+    while (raw.includes('<!--')) {
+      const at = raw.indexOf('<!--')
+      const before = raw.slice(0, at)
+      const after = raw.slice(at + 4)
+      const close = after.indexOf('-->')
+      if (close < 0) {
+        raw = before
+        comment = true
+        break
+      }
+      raw = before + after.slice(close + 3)
+    }
+    out.push(raw.trim())
   }
   return out
 }
@@ -196,7 +224,7 @@ function parseReviewBody(body: string, url: string): Review {
     }
     if (section !== null) {
       const item = ITEM_RE.exec(line)
-      if (item) items.push({ severity: section, title: itemTitle(item[1]) })
+      if (item && !EMPTY_MARKERS.has(item[1].trim())) items.push({ severity: section, title: itemTitle(item[1]) })
     }
   }
 
