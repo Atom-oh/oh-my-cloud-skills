@@ -106,6 +106,7 @@ const config: Config = {
             {label: 'kiro-power-converter', to: '/docs/kiro-power-converter/overview'},
             {label: 'agentcore-creator', to: '/docs/agentcore-creator/overview'},
             {label: 'token-saver', to: '/docs/token-saver/overview'},
+            {label: 'pr-dash', to: '/docs/pr-dash/overview'},
           ],
         },
         {
@@ -144,6 +145,7 @@ const config: Config = {
             {label: 'kiro-power-converter', to: '/docs/kiro-power-converter/overview'},
             {label: 'agentcore-creator', to: '/docs/agentcore-creator/overview'},
             {label: 'token-saver', to: '/docs/token-saver/overview'},
+            {label: 'pr-dash', to: '/docs/pr-dash/overview'},
           ],
         },
         {

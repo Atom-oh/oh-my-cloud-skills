@@ -1,6 +1,6 @@
 # Architecture
 
-oh-my-cloud-skills is a Claude Code and Codex plugin marketplace with eight plugins.
+oh-my-cloud-skills is a Claude Code and Codex plugin marketplace with nine plugins.
 It ships Markdown procedures and Python/Bash/Node helpers, with no application server.
 Internal docs live in `docs/`; the public Docusaurus site lives in `doc-sites/`.
 
@@ -20,12 +20,14 @@ Claude manifest (2026-09-15). Project-init uses convention-based source discover
 | project-init | Project scaffolding and documentation management | 1 | 10 | 1 | 12 | 0 |
 | kiro | Host-planned implementation delegated to Kiro CLI | 1 | 4 | 1 | 6 | 5 |
 | token-saver | Concise response guidance with complete work and required formats | 1 | 0 | 0 | 1 | 1 |
-| **Total** | | **23** | **19** | **28** | **69** | **24** |
+| pr-dash | PR checks and AI review status: Claude Code mod pane plus a text skill | 1 | 0 | 0 | 1 | 0 |
+| **Total** | | **24** | **19** | **28** | **70** | **24** |
 
-The **70 source procedures** map to **69 Codex entry skills** because some entries
+The **71 source procedures** map to **70 Codex entry skills** because some entries
 combine sources. Specialist entries are procedures, not native Codex agent roles.
 The **24 plugin hook commands** exclude repository hooks and project-init's
-separately installed project templates. These counts do not measure CI review cells:
+separately installed project templates and pr-dash's Claude Code mod
+(`hooks/hooks.json` `modules`), which runs in-process and is not a command hook. These counts do not measure CI review cells:
 the default CI panel has one full-scope prompt and three enabled cells.
 
 ## Delivery and execution
@@ -53,6 +55,10 @@ flowchart LR
 - Kiro delegation confines the diff landing in the main tree through worktree and
   scope checks. It does not sandbox arbitrary `execute_bash` inside that worktree;
   see the trust decision in `plugins/kiro/CLAUDE.md`.
+- pr-dash is the only plugin with a Claude Code mod: in-process JavaScript/TypeScript
+  that draws a pane and status line. It is unsandboxed and Claude-only; the Codex
+  package carries just its read-only `pr-status` skill. Validate a mod with
+  `claude plugin validate` and `claude plugin test` from its plugin directory.
 
 ## Artifact and review boundaries
 

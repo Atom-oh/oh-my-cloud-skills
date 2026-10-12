@@ -19,7 +19,7 @@ title: "Getting started"
 
 # Getting started
 
-This marketplace contains eight plugins for Claude Code and Codex. Plugin definitions and helper scripts are the product; this site documents their workflows.
+This marketplace contains nine plugins for Claude Code and Codex. Plugin definitions and helper scripts are the product; this site documents their workflows.
 
 The current release is **v2.0.0**. Read the [release notes and migration guide](/docs/releases/v2.0.0)
 before updating an existing co-agent setup that selected Antigravity.
@@ -38,6 +38,7 @@ before updating an existing co-agent setup that selected Antigravity.
 | [kiro-power-converter](/docs/kiro-power-converter/overview) | Convert Claude plugin sources and individual skills into Kiro Powers, including steering, hooks, assets, and MCP configuration. |
 | [agentcore-creator](/docs/agentcore-creator/overview) | Design and test an agent locally, then prepare an AgentCore harness configuration or a generated Runtime application. |
 | [token-saver](/docs/token-saver/overview) | Add concise response guidance while preserving reasoning, verification, complete artifacts, and required report formats. |
+| [pr-dash](/docs/pr-dash/overview) | Watch a pull request's CI checks and AI review in a Claude Code pane, or as text in Codex. |
 
 <span id="quick-install" />
 

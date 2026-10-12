@@ -50,6 +50,11 @@ const plugins = [
     title: "token-saver",
     description: translate({id: "home.plugin.token-saver.description", message: "Guidance for concise replies, full reasoning, verification, and complete deliverables."}),
     link: "/docs/token-saver/overview",
+  },
+  {
+    title: "pr-dash",
+    description: translate({id: "home.plugin.pr-dash.description", message: "A Claude Code pane for pull request checks and AI review status."}),
+    link: "/docs/pr-dash/overview",
   }
 ];
 
