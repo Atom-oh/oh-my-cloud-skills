@@ -12,4 +12,3 @@ Read [Codex runtime guidance](../../runtime.md) first — unless already read ea
 Apply [this plugin's Codex workflow](../../workflow.md).
 
 - [skills/pr-autofix/SKILL.md](../../../skills/pr-autofix/SKILL.md)
-- [commands/pr-autofix.md](../../../commands/pr-autofix.md)

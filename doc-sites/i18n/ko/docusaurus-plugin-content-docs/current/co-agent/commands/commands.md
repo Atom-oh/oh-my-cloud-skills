@@ -52,6 +52,8 @@ READY 외부 AI가 격리된 작업 트리에서 구현합니다. 사용할 수 
 
 검토 피드백을 주기적으로 확인하고 검증된 수정 계획을 세웁니다. 설정된 반복 한도 안에서 격리된 작업 트리에 수정을 적용하고 검증·커밋·푸시합니다. 새 HEAD의 검토와 CI를 다시 확인하고 저장소의 승인 및 병합 규칙을 따릅니다.
 
+이 항목은 별도 명령 파일이 아니라 `pr-autofix` 스킬이므로 Claude Code에는 `co-agent:pr-autofix` 항목이 하나만 표시됩니다.
+
 먼저 사용 프로젝트의 검토 워크플로와 대응하는 게이트 도우미를 설정합니다. 이 반복 절차는
 `.github/workflows/*`를 수정하지 않습니다. [PR 자동 수정 설정과 경계](/docs/co-agent/skills/pr-autofix#limits-and-integration)를 참고합니다.
 

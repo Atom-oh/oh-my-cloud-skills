@@ -22,8 +22,7 @@
     "./commands/sync-context.md",
     "./commands/consensus.md",
     "./commands/harness.md",
-    "./commands/setup.md",
-    "./commands/pr-autofix.md"
+    "./commands/setup.md"
   ],
   "hooks": {
     "PreToolUse": [

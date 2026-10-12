@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Remove co-agent's `commands/pr-autofix.md` wrapper, which registered a second
+  `co-agent:pr-autofix` entry beside the `pr-autofix` skill in Claude Code. The skill
+  remains the single entry and is still invoked as `/co-agent:pr-autofix`.
+
 ## [3.0.0] - 2026-09-25
 
 This major release retires a plugin (breaking for consumers who had it installed)
