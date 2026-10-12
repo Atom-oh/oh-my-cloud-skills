@@ -16,6 +16,7 @@ Requirements: Python 3.8+, no external dependencies.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -201,6 +202,86 @@ class DirectoryAnchor:
         os.close(self.fd)
 
 
+def entry_signature(value) -> tuple:
+    """Exclude access time, which a read-only snapshot may legitimately update."""
+    return (value.st_dev, value.st_ino, value.st_mode, value.st_size,
+            value.st_mtime_ns, value.st_ctime_ns)
+
+
+def snapshot_entry(parent_fd: int, name: str):
+    """Capture an anchored subtree without following links or opening special files."""
+    try:
+        initial = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return None
+    signature = entry_signature(initial)
+    if stat.S_ISDIR(initial.st_mode):
+        descriptor = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                             dir_fd=parent_fd)
+        try:
+            if entry_signature(os.fstat(descriptor)) != signature:
+                raise RuntimeError('Destination changed while capturing its snapshot')
+            payload = tuple((child, snapshot_entry(descriptor, child))
+                            for child in sorted(os.listdir(descriptor)))
+            if entry_signature(os.fstat(descriptor)) != signature:
+                raise RuntimeError('Destination changed while capturing its snapshot')
+        finally:
+            os.close(descriptor)
+    elif stat.S_ISREG(initial.st_mode):
+        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                             dir_fd=parent_fd)
+        try:
+            if entry_signature(os.fstat(descriptor)) != signature:
+                raise RuntimeError('Destination changed while capturing its snapshot')
+            digest = hashlib.sha256()
+            while True:
+                block = os.read(descriptor, 1024 * 1024)
+                if not block:
+                    break
+                digest.update(block)
+            payload = digest.digest()
+            if entry_signature(os.fstat(descriptor)) != signature:
+                raise RuntimeError('Destination changed while capturing its snapshot')
+        finally:
+            os.close(descriptor)
+    elif stat.S_ISLNK(initial.st_mode):
+        payload = os.readlink(name, dir_fd=parent_fd)
+    else:
+        raise ValueError(f'Unsupported special file in destination: {name}')
+    if entry_signature(os.stat(name, dir_fd=parent_fd, follow_symlinks=False)) != signature:
+        raise RuntimeError('Destination changed while capturing its snapshot')
+    return signature, payload
+
+
+class DestinationSnapshot:
+    """Remember absence or the exact destination tree before build/copy starts."""
+    def __init__(self, anchor: DirectoryAnchor, destination: Path, power: bool = False):
+        self.anchor = anchor
+        self.destination = destination
+        anchor.verify()
+        self.tree = snapshot_entry(anchor.fd, destination.name)
+        self.previous = None
+        if self.tree is not None:
+            self.previous = os.stat(destination.name, dir_fd=anchor.fd, follow_symlinks=False)
+            if entry_signature(self.previous) != self.tree[0]:
+                raise RuntimeError(f'Destination changed during preflight: {destination}')
+            if stat.S_ISLNK(self.previous.st_mode):
+                raise ValueError(f'Symlink in output path: {destination}')
+            if power:
+                if not stat.S_ISDIR(self.previous.st_mode):
+                    raise ValueError(f'Power output must be a directory: {destination}')
+                children = dict(self.tree[1])
+                marker = children.get('POWER.md')
+                if children and (marker is None or not stat.S_ISREG(marker[0][2])):
+                    raise ValueError(f'Refusing to replace an unrelated directory without POWER.md: {destination}')
+        anchor.verify()
+
+    def verify(self):
+        self.anchor.verify()
+        if snapshot_entry(self.anchor.fd, self.destination.name) != self.tree:
+            raise RuntimeError(f'Destination changed since preflight: {self.destination}')
+
+
 class StagingArea:
     """Private sibling directory with descriptor-based publication and cleanup."""
     def __init__(self, anchor: DirectoryAnchor, prefix: str = '.kiro-stage-'):
@@ -241,32 +322,30 @@ class StagingArea:
 def publish_staged(publications: list, sources: list) -> None:
     """Publish via retained descriptors and roll back without following new paths.
 
-    Each publication is (staging_area, staged_name, destination). The area retains
-    the destination parent descriptor from before conversion started.
+    Each publication includes its destination's preflight snapshot. The area
+    retains the destination parent descriptor from before conversion started.
+    Snapshot checks detect changes during build/copy; they are not a lock against
+    every malicious writer changing an entry during the final rename window.
     """
     backups = []
     published = []
     completed = False
     try:
-        for area, staged_name, destination in publications:
+        for area, staged_name, destination, snapshot in publications:
             validate_destination(sources, destination)
             area.anchor.verify()
             area.verify()
             staged_identity = os.stat(staged_name, dir_fd=area.fd, follow_symlinks=False)
-            try:
-                previous = os.stat(destination.name, dir_fd=area.anchor.fd, follow_symlinks=False)
-            except FileNotFoundError:
-                previous = None
+            snapshot.verify()
+            previous = snapshot.previous
             if previous is not None and stat.S_ISDIR(previous.st_mode) != stat.S_ISDIR(staged_identity.st_mode):
                 raise ValueError(f'Output type differs from destination: {destination}')
             backup = StagingArea(area.anchor, prefix='.kiro-backup-')
             backups.append((area, destination, backup, previous))
             area.anchor.verify()
             backup.verify()
+            snapshot.verify()
             if previous is not None:
-                current = os.stat(destination.name, dir_fd=area.anchor.fd, follow_symlinks=False)
-                if not same_identity(current, previous):
-                    raise RuntimeError(f'Output identity changed: {destination}')
                 os.rename(destination.name, 'previous', src_dir_fd=area.anchor.fd, dst_dir_fd=backup.fd)
                 if not same_identity(os.stat('previous', dir_fd=backup.fd, follow_symlinks=False), previous):
                     raise RuntimeError(f'Output changed during backup: {destination}')
@@ -306,9 +385,10 @@ def publish_text(content: str, output: Path, sources: list) -> None:
     anchor = DirectoryAnchor(output.parent)
     area = None
     try:
+        snapshot = DestinationSnapshot(anchor, output)
         area = StagingArea(anchor)
         (area.path / 'document').write_text(content, encoding='utf-8')
-        publish_staged([(area, 'document', output)], sources)
+        publish_staged([(area, 'document', output, snapshot)], sources)
     finally:
         try:
             if area is not None:
@@ -618,9 +698,10 @@ def convert_skill_to_kiro_skill(skill_dir: str, out_dir: str,
     anchor = DirectoryAnchor(output.parent)
     area = None
     try:
+        snapshot = DestinationSnapshot(anchor, output)
         area = StagingArea(anchor)
         _build_kiro_skill(skill_dir, str(area.path), author, version)
-        publish_staged([(area, name, output)], [skill_dir])
+        publish_staged([(area, name, output, snapshot)], [skill_dir])
     finally:
         try:
             if area is not None:
@@ -685,16 +766,18 @@ def convert_skills_standalone(skill_paths: list, out_path: str) -> list:
     output = validate_destination(skill_paths, Path(out_path))
     if output.exists() and not output.is_dir():
         raise ValueError('Multiple skills require an output directory')
-    contents = [standalone_content(source) for source in skill_paths]
-    names = [name for name, _ in contents]
-    if len(set(names)) != len(names):
-        raise ValueError('Duplicate standalone skill name')
     anchor = DirectoryAnchor(output.parent)
     area = None
     try:
+        snapshot = DestinationSnapshot(anchor, output)
+        contents = [standalone_content(source) for source in skill_paths]
+        names = [name for name, _ in contents]
+        if len(set(names)) != len(names):
+            raise ValueError('Duplicate standalone skill name')
         area = StagingArea(anchor)
         staged = area.path / 'steering'
-        if output.exists():
+        snapshot.verify()
+        if snapshot.previous is not None:
             shutil.copytree(descriptor_path(anchor.fd) / output.name, staged, symlinks=True)
         else:
             staged.mkdir()
@@ -703,7 +786,7 @@ def convert_skills_standalone(skill_paths: list, out_path: str) -> list:
             if target.is_symlink():
                 raise ValueError(f'Symlink in standalone output: {name}.md')
             target.write_text(content, encoding='utf-8')
-        publish_staged([(area, 'steering', output)], skill_paths)
+        publish_staged([(area, 'steering', output, snapshot)], skill_paths)
     finally:
         try:
             if area is not None:
@@ -1199,9 +1282,10 @@ def install_power(source_dir: str, target_dir: str) -> None:
     anchor = DirectoryAnchor(target.parent)
     area = None
     try:
+        snapshot = DestinationSnapshot(anchor, target, power=True)
         area = StagingArea(anchor)
         shutil.copytree(source, area.path / 'power')
-        publish_staged([(area, 'power', target)], [source])
+        publish_staged([(area, 'power', target, snapshot)], [source])
     finally:
         try:
             if area is not None:
@@ -1346,18 +1430,21 @@ def convert_plugin(source_dir: str, output_dir: str,
         installation = validate_power_destination([source, output], base / '.kiro' / 'powers' / power_name)
         destinations.append(installation)
     anchors = []
+    snapshots = []
     areas = []
     try:
         for destination in destinations:
             anchor = DirectoryAnchor(destination.parent)
             anchors.append(anchor)
+            snapshots.append(DestinationSnapshot(anchor, destination, power=True))
+        for anchor in anchors:
             areas.append(StagingArea(anchor))
         staged_output = areas[0].path / 'power'
         converted = _build_plugin(str(source), str(staged_output), preserve_skills=preserve_skills)
-        publications = [(areas[0], 'power', output)]
+        publications = [(areas[0], 'power', output, snapshots[0])]
         if len(destinations) > 1:
             shutil.copytree(staged_output, areas[1].path / 'power')
-            publications.append((areas[1], 'power', destinations[1]))
+            publications.append((areas[1], 'power', destinations[1], snapshots[1]))
         publish_staged(publications, [source])
         if len(destinations) > 1:
             print(f'Installed to: {destinations[1]}')

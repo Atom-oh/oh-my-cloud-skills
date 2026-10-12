@@ -27,8 +27,15 @@ The converter securely opens each parent component without following symlinks,
 retains directory descriptors, and builds in private sibling temporary storage
 through a descriptor-backed path. Export and installation are staged together.
 Rename, rollback and recursive cleanup use those retained descriptors and check
-entry identities. Parent replacement during a run cannot redirect writes or
-cleanup into an outside directory; a changed parent path aborts publication. A conversion, copy,
+entry identities. Before build/copy, each destination's absence or identity and
+subtree content is captured without following links. Publication rechecks that
+snapshot and refuses a destination created, replaced or edited during the build,
+preserving the new content. Standalone folder copies use the same preflight
+snapshot so files added after copying cannot be silently discarded.
+These checks detect build-time changes; they do not lock out every malicious
+writer racing the final rename window. Parent replacement during a run cannot
+redirect descriptor-based writes or cleanup into an outside directory; a changed
+parent path aborts publication. A conversion, copy,
 or publication failure returns nonzero and preserves the previous destinations
 and input. Publication errors roll back prior replacements. If an operating-system
 error also prevents rollback, retain the `.kiro-backup-*` directory for manual

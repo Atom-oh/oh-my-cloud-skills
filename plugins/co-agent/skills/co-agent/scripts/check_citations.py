@@ -67,7 +67,12 @@ def parse_diff(text):
                 raise ValueError("invalid quoted diff path") from exc
         return re.sub(r"^[ab]/", "", value)
 
-    for line in text.splitlines():
+    # Git delimits diff records with LF. Other Unicode line separators and CR
+    # belong to the source payload, including a CR immediately before that LF.
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    for line in lines:
         if line == r"\ No newline at end of file":
             if remaining is None:
                 raise ValueError("newline marker outside a hunk")
@@ -95,7 +100,12 @@ def parse_diff(text):
         if line.startswith("diff --git "):
             if pending_hunk or (saw_diff and not section_has_payload):
                 raise ValueError("incomplete diff file section")
-            fields = shlex.split(line, posix=False)
+            try:
+                fields = shlex.split(line, posix=False)
+            except ValueError:
+                # Git paths are not shell words: an unquoted filename may have
+                # unmatched apostrophes. Use the same Git new-path marker fallback.
+                fields = []
             if len(fields) == 4:
                 new_path = fields[3]
             else:
@@ -197,7 +207,7 @@ def main():
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     try:
-        with open(args.diff_path, encoding="utf-8") as f:
+        with open(args.diff_path, encoding="utf-8", newline="") as f:
             diff = f.read()
         with open(args.findings_path, encoding="utf-8") as f:
             findings = json.load(f)

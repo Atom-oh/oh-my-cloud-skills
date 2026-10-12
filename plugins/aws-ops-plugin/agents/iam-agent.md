@@ -71,6 +71,13 @@ transcript. The fixed list also prevents multiline values from posing as extra
 variable names. Presence checks show which credential-provider inputs are configured;
 `sts get-caller-identity` supplies the nonsecret principal identity separately.
 
+These examples use the pod's default container. For a multi-container pod, add
+`-n "$NAMESPACE" -c "$CONTAINER"` before `--` in both probes to select the same
+application container explicitly. The presence filter requires a POSIX `sh` and
+`printenv` inside that container. A shell-less image makes `kubectl exec` fail,
+and a missing `printenv` returns the explicit error above; report either case as
+an unavailable diagnostic, not evidence that credentials are absent.
+
 ### Pod Identity
 ```bash
 # Check Pod Identity Agent
