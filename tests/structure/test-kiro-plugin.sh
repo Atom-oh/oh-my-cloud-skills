@@ -803,6 +803,45 @@ oks = [run('.kiro/specs/x/tasks.md') == 0, run('/etc/passwd') == 2, run('../x.md
 print('READ_GUARD_OK' if all(oks) else f'READ_GUARD_FAIL {oks}')
 " 2>&1)
 assert_contains "$READ_GUARD_OUT" "READ_GUARD_OK" "fs_read guard allows in-worktree reads, refuses absolute/dotdot escapes"
+# kiro-cli 2.29.1's V2 fs_read sends no top-level path: each read is an entry in
+# tool_input.operations[] (Image mode: image_paths). A guard that reads only
+# tool_input.path saw "" and allowed everything. Every path must be inside, and a
+# payload with no recognizable path is refused.
+OPS_GUARD_OUT=$(python3 -c "
+import json, os, subprocess, sys, tempfile
+impl = json.load(open('$IMPL'))
+cmd = impl['hooks']['preToolUse'][1]['command']
+wt = tempfile.mkdtemp(); out = tempfile.mkdtemp()
+os.symlink(out, os.path.join(wt, 'link_out'))
+def run(tool_input):
+    r = subprocess.run(cmd, shell=True, input=json.dumps({'tool_name': 'read', 'tool_input': tool_input}),
+                       capture_output=True, text=True, cwd=wt)
+    return r.returncode
+line = lambda p: {'mode': 'Line', 'path': p}
+cases = [({'operations': [line('a.md')]}, 0),
+         ({'operations': [line('/etc/passwd')]}, 2),
+         ({'operations': [line('a.md'), line('/etc/passwd')]}, 2),
+         ({'operations': [line('link_out/x')]}, 2),
+         ({'operations': [{'mode': 'Image', 'image_paths': ['a.png']}]}, 0),
+         ({'operations': [{'mode': 'Image', 'image_paths': ['a.png', '/etc/x.png']}]}, 2),
+         ({'operations': [{'mode': 'Image', 'image_paths': '/etc/x.png'}]}, 2),
+         ({'operations': [{'mode': 'Line'}]}, 2),
+         ({'operations': 'a.md'}, 2), ({'operations': [None]}, 2), ({'operations': []}, 2),
+         ({}, 2), ({'path': ''}, 2), ({'path': 5}, 2), ('a.md', 2),
+         ({'path': 'a.md', 'operations': [line('/etc/passwd')]}, 2),
+         # kiro-cli expands ~ and environment variables before opening the path
+         ({'path': '~/.aws/credentials'}, 2), ({'operations': [line('~/.ssh/id_rsa')]}, 2),
+         ({'operations': [line('\$HOME/.aws/credentials')]}, 2), ({'path': 'a\${X}/b'}, 2),
+         ({'operations': [{'mode': 'Image', 'image_paths': ['~/x.png']}]}, 2),
+         ({'path': 'docs/~notes.md'}, 0),
+         # a path-like key the guard does not read must not slip a path past it
+         ({'path': 'a.md', 'file_path': '/etc/passwd'}, 2),
+         ({'operations': [{'mode': 'Line', 'path': 'a.md', 'paths': ['/etc/passwd']}]}, 2),
+         ({'operations': [{'mode': 'Search', 'path': 'src', 'pattern': 'x'}]}, 0)]
+bad = [(c, e, run(c)) for c, e in cases if run(c) != e]
+print('OPS_GUARD_OK' if not bad else f'OPS_GUARD_FAIL {bad}')
+" 2>&1)
+assert_contains "$OPS_GUARD_OUT" "OPS_GUARD_OK" "fs_read guard checks every operations[] path (V2 engine payload), refuses ~/\$ paths and payloads with no path"
 # --- round-10 CRITICAL fix: the guard command must run isolated (`python3 -I`), not a
 # bare `python3 -c` — otherwise a malicious json.py/os.py PLANTED AT THE WORKTREE ROOT
 # (this guard's own cwd, a checkout of a repo this plugin's threat model treats as
