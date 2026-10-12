@@ -85,6 +85,11 @@ see it in an older note, treat the agent-file requirement above as authoritative
   implementing it directly rather than silently granting shell access.
 - **cwd MUST be the task's worktree** (`worktree.py add <wt> --base HEAD`), never the main
   checkout — this is the actual isolation boundary. See "Trust boundary" below.
+- **Verify that `--model` took effect.** kiro-cli 2.24.0 printed `[warn] failed to set
+  model '<id>': Method not found` for every id, then ran the turn on the global
+  `chat.defaultModel` with exit 0; 2.29.1 applies the flag. `kiro_run.py model-check
+  <log>` detects the warning for delegate runs, and `kiro_review.py`, `kiro_websearch.py`
+  and the `kiro_setup.py probe` turn it into an error. The fix is `kiro-cli update`.
 - **`--v3` narrows the model catalog** and can reject some model ids
   (`INVALID_MODEL_ID` — reproduced with pre-rename model names; see co-agent's ADR-012).
   Drop `--v3` whenever an explicit `--model` is set; only use `--v3`+no-model for the

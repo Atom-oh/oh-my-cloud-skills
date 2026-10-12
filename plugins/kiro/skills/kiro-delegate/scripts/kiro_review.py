@@ -483,6 +483,8 @@ def run_review(root, diff, model, timeout, allow_unguarded=False, lens=None, pro
             return None, f"kiro-cli review timed out after {timeout}s", truncated
         if rc != 0:
             return None, f"kiro-cli exited {rc}: {err.strip()[:300] or out.strip()[:300]}", truncated
+        if model and kc.model_not_applied(out, err):
+            return None, kc.model_not_applied_error(model), truncated
         findings = _extract_json_array(out)
         if findings is None:
             return None, "kiro-cli did not return a parseable JSON findings array", truncated

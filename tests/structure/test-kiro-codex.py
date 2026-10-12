@@ -17,6 +17,7 @@ SCRIPTS = ROOT / "plugins/kiro/skills/kiro-delegate/scripts"
 sys.path.insert(0, str(SCRIPTS))
 import kiro_codex
 import kiro_review
+import kiro_run
 import kiro_setup
 
 
@@ -201,6 +202,38 @@ class CodexReviewTests(unittest.TestCase):
         self.assertNotIn("--v3", argv)
         self.assertEqual("selected", argv[argv.index("--model") + 1])
         self.assertEqual("max", argv[argv.index("--effort") + 1])
+
+    def test_ignored_model_flag_is_an_error_not_a_review(self):
+        config = self.root / ".claude/kiro.local.json"
+        config.parent.mkdir()
+        config.write_text(json.dumps({"review": {"model": "selected-model"}}))
+        self.response = "[warn] failed to set model 'selected-model': Method not found\n[]"
+        status, result = self.invoke()
+        self.assertEqual((1, "ERROR"), (status, result["status"]))
+        self.assertIn("kiro-cli update", json.dumps(result))
+
+    def test_probe_refuses_a_model_kiro_did_not_apply(self):
+        def process(argv, **kwargs):
+            kwargs["stdout"].write("[warn] failed to set model 'selected': Method not found\n"
+                                   "KIRO_SETUP_PROBE\n")
+            return subprocess.CompletedProcess(argv, 0)
+        with mock.patch.object(kiro_setup.shutil, "which", return_value="/fake/kiro-cli"), \
+                mock.patch.object(kiro_setup.subprocess, "run", side_effect=process):
+            status, detail = kiro_setup.probe(model="selected")
+        self.assertEqual("ERROR", status)
+        self.assertIn("kiro-cli update", detail)
+
+    def test_model_check_reads_delegate_logs(self):
+        clean = self.root / "clean.log"
+        clean.write_text("done\n")
+        ignored = self.root / "ignored.log"
+        ignored.write_text("\x1b[33m[warn] failed to set model 'm1': Method not found\x1b[0m\n")
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(0, kiro_run.model_check([str(clean)]))
+            self.assertEqual(1, kiro_run.model_check([str(clean), str(ignored)]))
+            self.assertEqual(2, kiro_run.model_check([str(self.root / "missing.log")]))
+        self.assertIn("'m1'", output.getvalue())
 
     def test_generator_embeds_native_entries_from_maintained_templates(self):
         spec = importlib.util.spec_from_file_location("codex_generator", ROOT / "scripts/sync-codex-plugins.py")

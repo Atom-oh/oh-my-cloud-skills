@@ -322,6 +322,27 @@ def _effort(v):
     return ""
 
 
+# Some kiro-cli releases (measured: 2.24.0) print this warning, ignore `--model`, and run
+# the turn on the global `chat.defaultModel` with exit 0 — a silent substitution of a
+# different (possibly far costlier) model. 2.29.1 applies the flag. Callers that passed
+# `--model` treat the warning as a failed call rather than accept another model's output.
+_MODEL_NOT_APPLIED = re.compile(r"failed to set model '([^']*)'")
+
+
+def model_not_applied(*streams):
+    """Return the model id kiro-cli reported it could not apply, or None."""
+    for text in streams:
+        m = _MODEL_NOT_APPLIED.search(text or "")
+        if m:
+            return m.group(1)
+    return None
+
+
+def model_not_applied_error(model_id):
+    return (f"kiro-cli did not apply --model {model_id!r} (it would run the CLI's default "
+            "model instead) — run `kiro-cli update` and retry")
+
+
 def effective(root):
     cfg = load_defaults()
     lp = local_path(root)

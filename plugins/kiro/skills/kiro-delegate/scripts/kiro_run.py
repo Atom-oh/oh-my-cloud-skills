@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run-telemetry helpers for the `/kiro:delegate` pipeline — the two things the delegate
+"""Run-telemetry helpers for the `/kiro:delegate` pipeline — the things the delegate
 loop needs from a finished kiro-cli call that the CLI won't hand back structurally.
 
 kiro-cli headless has no `--output-format json` (upstream: kiro#5423) and no headless
@@ -19,6 +19,9 @@ Usage:
                                     # Best-effort telemetry for the delegation-rate
                                     # report — exit 1 with no output if the footer
                                     # format changed, never an error.
+  kiro_run.py model-check <log>...  # exit 1 (printing the model id) if kiro-cli logged
+                                    # that it could not apply `--model`; exit 0 otherwise.
+                                    # Run it after every call that passed `--model`.
 """
 import sys
 import os
@@ -106,12 +109,34 @@ def credits(paths):
     return 0
 
 
+def model_check(paths):
+    """Some kiro-cli releases (measured: 2.24.0) ignore `--model`, print `failed to set
+    model '<id>'` and finish the task on the CLI's default model with exit 0. Report that
+    substitution instead of letting another model's work pass as the configured one.
+    An unreadable log is exit 2: the check did not run, so it cannot vouch for the run."""
+    import kiro_config
+    for p in paths:
+        try:
+            with open(p, encoding="utf-8", errors="replace") as f:
+                text = _ANSI.sub("", f.read())
+        except OSError:
+            print(f"could not read {p}", file=sys.stderr)
+            return 2
+        model = kiro_config.model_not_applied(text)
+        if model is not None:
+            print(kiro_config.model_not_applied_error(model))
+            return 1
+    return 0
+
+
 def main():
     argv = sys.argv[1:]
     if len(argv) >= 2 and argv[0] == "session-id":
         return session_id(argv[1])
     if len(argv) >= 2 and argv[0] == "credits":
         return credits(argv[1:])
+    if len(argv) >= 2 and argv[0] == "model-check":
+        return model_check(argv[1:])
     print(__doc__)
     return 2
 
