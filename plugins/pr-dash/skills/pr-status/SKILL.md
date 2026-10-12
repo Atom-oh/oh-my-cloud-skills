@@ -1,7 +1,8 @@
 ---
 name: pr-status
 description: Report a pull request's CI checks and AI review result as text — "pr status", "PR 상태", "리뷰 결과 확인", "CI 상태". Read-only; use when the pr-dash pane is unavailable (Codex, VS Code chat panel, claude -p) or the user wants the status in the conversation.
-allowed-tools: Bash
+allowed-tools:
+  - Bash
 ---
 
 # PR status
