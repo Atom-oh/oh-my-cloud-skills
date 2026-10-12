@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `pr-dash` plugin, the marketplace's first Claude Code mod. `/pr-dash`
+  opens a pane with a pull request's CI checks and AI review result (status, whether
+  it covers the current head, Critical/Major/Minor findings), keeps a status line
+  under the prompt, and shows toasts when checks finish or the review changes. It
+  starts watching after a successful `gh pr create` or `git push`. It only reads
+  `gh pr view`; its buttons hand prompts to Claude (pr-autofix, a merge-readiness
+  re-check) and never merge or push. The read-only `pr-status` skill gives the same
+  report as text for Codex, the VS Code chat panel and `claude -p`.
+
 ### Fixed
 
 - Remove co-agent's `commands/pr-autofix.md` wrapper, which registered a second

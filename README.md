@@ -24,6 +24,7 @@ and concise response delivery.
 | [project-init](plugins/project-init/) | Initialize and maintain the current host's project instructions, skills, architecture docs, ADRs, runbooks, and reference guides |
 | [kiro](plugins/kiro/) | Delegate implementation to Kiro CLI, with host verification and optional commit/push review and web search |
 | [token-saver](plugins/token-saver/) | Concise response guidance with full reasoning, verification, complete artifacts, and required report formats |
+| [pr-dash](plugins/pr-dash/) | A Claude Code pane and status line for a pull request's CI checks and AI review, plus a read-only status skill for Codex |
 
 Both [Claude](.claude-plugin/marketplace.json) and
 [Codex](.agents/plugins/marketplace.json) marketplaces contain these plugins.

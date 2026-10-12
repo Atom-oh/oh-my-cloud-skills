@@ -6,6 +6,8 @@
     "name": "atomoh"
   },
   "agents": [],
-  "skills": [],
+  "skills": [
+    "./skills/pr-status"
+  ],
   "commands": []
 }

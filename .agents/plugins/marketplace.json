@@ -107,6 +107,19 @@
       },
       "category": "Productivity",
       "version": "3.0.0"
+    },
+    {
+      "name": "pr-dash",
+      "source": {
+        "source": "local",
+        "path": "./plugins/pr-dash"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity",
+      "version": "3.0.0"
     }
   ]
 }

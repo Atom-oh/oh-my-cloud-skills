@@ -54,6 +54,12 @@
       "version": "3.0.0",
       "source": "./plugins/token-saver",
       "description": "Concise responses with full reasoning, verification and complete deliverables."
+    },
+    {
+      "name": "pr-dash",
+      "version": "3.0.0",
+      "source": "./plugins/pr-dash",
+      "description": "Pull request CI and AI review status in a Claude Code pane, with a read-only text skill for Codex."
     }
   ]
 }

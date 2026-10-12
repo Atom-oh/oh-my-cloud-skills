@@ -385,5 +385,8 @@
   },
   "home.plugin.token-saver.description": {
     "message": "짧은 답변과 충분한 추론·검증·완성된 산출물을 위한 지침을 적용합니다."
+  },
+  "home.plugin.pr-dash.description": {
+    "message": "풀 리퀘스트 검사와 AI 리뷰 상태를 보여 주는 Claude Code 패널입니다."
   }
 }

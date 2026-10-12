@@ -17,6 +17,7 @@ a passing result.
 | kiro | Usable kiro-cli; verified consumer agents and POSIX no-follow/locking operations for delegation preparation | Authentication and separate process/tool trust; opt-in commit/push hooks require their own settings/trust | Structured manual-review evidence or guarded task results; an applied-diff scope guard is not process isolation |
 | kiro-power-converter | Standard-library Python; POSIX no-follow directory descriptors and /proc/self/fd or /dev/fd; Git for GitHub inputs | Target write permissions; Kiro activation is separate | Valid metadata/MCP output and an explicit per-hook report; conversion does not prove activation |
 | token-saver | Python | SessionStart hook trust for automatic loading | Exact shared policy supplied once per session; manual skill use does not prove a hook ran |
+| pr-dash | Claude Code 2.1.287+ for the mod; authenticated `gh` for both mod and skill | Mod hooks load with the plugin (no settings-hook trust prompt); `--safe-mode` or `disableAllHooks` stop them | A pane or status line in the terminal/Desktop app, or command text where nothing draws; Codex gets only the text skill |
 
 The marketplace's source agents become specialist procedures in Codex. Source
 model/effort, tool restrictions and persistent memory are not automatically supplied

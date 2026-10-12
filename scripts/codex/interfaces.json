@@ -127,5 +127,19 @@
     "defaultPrompt": [
       "Use concise responses while completing the full task."
     ]
+  },
+  "pr-dash": {
+    "displayName": "PR Dash",
+    "shortDescription": "PR checks and AI review status.",
+    "longDescription": "Reports a pull request's CI checks and AI review result as text with the read-only pr-status skill. The Claude Code pane, status line and toasts are a Claude-only mod and are not part of the Codex package.",
+    "developerName": "atomoh",
+    "category": "Productivity",
+    "capabilities": [
+      "Skills",
+      "Shell"
+    ],
+    "defaultPrompt": [
+      "Show this branch's PR checks and AI review status."
+    ]
   }
 }
