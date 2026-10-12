@@ -30,8 +30,8 @@ workflow; the six modes then route by the requested task.
 | consensus | Host implementation through the P0–P5 plan/implementation/review pipeline |
 | harness | Host design/tests; one configured peer implements in isolated worktrees; host commits |
 
-`setup` is a separate readiness command, not a seventh mode. The six source commands
-are `setup`, `configure`, `sync-context`, `consensus`, `harness` and `pr-autofix`.
+`setup` is a separate readiness command, not a seventh mode. The five source commands
+are `setup`, `configure`, `sync-context`, `consensus` and `harness`.
 The three source skills are `co-agent`, `decision-reconcile` and `pr-autofix`.
 Source modes, command files and generated Codex entry skills are different inventories.
 
