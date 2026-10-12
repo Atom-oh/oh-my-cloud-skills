@@ -453,11 +453,36 @@ Understanding the environment a `:::html` block renders into helps you avoid lay
 
 #### :::html Reactive Patterns (mandatory)
 
-`:::html` blocks **must not be static.** Apply at least one reactive pattern to every `:::html` block:
+Every `:::html` block needs a **deliberate** reveal. Choose it by how the talk uses the
+group (authoring-rules.md §4 rule 5), and vary it across the deck. One card per click
+with the same `fade-up` on every slide reads as monotone.
 
-**1. Sequential fragment reveal (the most basic pattern)**
+**0. Group reveal (`data-reveal`): a set shown as a whole**
 
-When there are two or more items, reveal them sequentially with `class="fragment fade-up"` + `data-fragment-index="N"`:
+```html
+:::html
+<!-- one click: the whole grid enters, cards cascade left to right -->
+<div class="card-grid fragment" data-reveal="stagger" data-fragment-index="1">
+  <div class="card">…</div><div class="card">…</div><div class="card">…</div>
+</div>
+
+<!-- no click: the badges cascade in as the slide opens -->
+<div class="flex-row" data-reveal="stagger" data-reveal-anim="zoom" data-reveal-pace="fast">
+  <span class="badge">…</span><span class="badge">…</span>
+</div>
+
+<!-- reference material: shown at once, no motion -->
+<div class="card-grid" data-reveal="static">…</div>
+:::
+```
+
+`data-reveal-anim`: `up` (default), `down`, `left`, `right`, `zoom`, `fade`. `data-reveal-pace`:
+`fast`, `slow`. Never put `.fragment` on the children of a reveal group.
+
+**1. Sequential fragment reveal: the talk builds point by point**
+
+When the speaker makes one point per item (an argument, a before/after, a walked-through
+process), reveal the items in sequence with `class="fragment fade-up"` + `data-fragment-index="N"`:
 
 ```html
 :::html
@@ -519,7 +544,7 @@ Group an arrow with the box that follows it under the same index to convey a sen
 </div>
 ```
 
-> **Rule**: if a `:::html` block has 3 or more sibling elements, you must apply fragment animation.
+> **Rule**: a `:::html` block with 3 or more sibling elements must declare its reveal: per-item fragments, a `data-reveal="stagger"` group, or `data-reveal="static"` (`STATIC_HTML` otherwise).
 > Also make active use of the advanced patterns in `interactive-patterns-guide.md` (sliders, canvas animations, click interactions).
 
 ### :::archify — Explorable Archify Diagram (ADR-020)
@@ -678,6 +703,10 @@ Some types are auto-detected from content:
 ## Column and Grid Layouts
 
 Use fenced div syntax (`:::`) for multi-column layouts.
+
+Content outside the column blocks renders below the columns. Plain captions,
+`:::click` groups, `:::html` and `:::archify` blocks retain their normal rendering
+and reveal behavior there.
 
 ### Two-Column Layout
 
@@ -918,9 +947,10 @@ Specify animation type with the animation name:
 | `.fade-in` | Fade in (default) |
 | `.fade-up` | Fade in from below |
 | `.fade-down` | Fade in from above |
-| `.fade-left` | Fade in from right |
-| `.fade-right` | Fade in from left |
+| `.fade-left` | Fade in from the right, moving left |
+| `.fade-right` | Fade in from the left, moving right |
 | `.grow` | Scale from 0 to 100% |
+| `.zoom-in` | Scale up from 85% (emphasis, conclusion) |
 | `.shrink` | Scale from 150% to 100% |
 | `.highlight` | Yellow background highlight |
 | `.highlight-red` | Red background highlight |

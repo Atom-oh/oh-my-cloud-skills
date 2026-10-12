@@ -75,13 +75,13 @@ Argument: `$ARGUMENTS`
    python3 "$H" set timeout 300                 # global per-CLI timeout (s)
    python3 "$H" set codex context_limit 400000  # raise/lower a model's context window
    python3 "$H" set autosync on                 # auto-sync AI context on CLAUDE.md change
-   python3 "$H" set codex model openai.gpt-5.6-sol --scope user   # write to ~/.claude (all your repos)
+   python3 "$H" set codex model openai.gpt-6.1-sol --scope user   # write to ~/.claude (all your repos)
    python3 "$H" set kiro-cli models claude-opus-5.5,minimax-m2.5  # multi-model list
    python3 "$H" set profile deep                # activate each AI's `models` list
    python3 "$H" set harness review_mode relay    # harness gate: hybrid (default) | relay | parallel
    python3 "$H" set harness parallel_tasks 3     # harness implement wave size (1 = sequential)
    python3 "$H" set harness max_fix_rounds 2     # harness per-task peer fix-loop bound
-   python3 "$H" set harness implementer_model gpt-5.3-codex-mini  # write-path model (stored per implementer — set implementer first)
+   python3 "$H" set harness implementer_model openai.gpt-6-luna  # write-path model (stored per implementer — set implementer first)
    python3 "$H" set harness implementer_effort low                # write-path effort (only when implementer is codex)
    python3 "$H" set pr_autofix max_iterations 5  # cap on the /co-agent:pr-autofix review-fix-push loop
    python3 "$H" set push_gate enabled on         # 3-lens pre-push gate (correctness/security/scope) — enabling = consent to external transmission

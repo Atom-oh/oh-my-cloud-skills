@@ -50,9 +50,11 @@ into the session's microVM).
 Minimal create + invoke:
 
 ```bash
+MODEL_ID="us.anthropic.claude-sonnet-5-5"  # approved model; verify source-Region availability
 aws bedrock-agentcore-control create-harness \
   --harness-name "MyHarness" \
-  --execution-role-arn "arn:aws:iam::<account>:role/MyHarnessRole"
+  --execution-role-arn "arn:aws:iam::<account>:role/MyHarnessRole" \
+  --model "{\"bedrockModelConfig\":{\"modelId\":\"$MODEL_ID\"}}"
 
 # create-harness returns harnessId (name + generated suffix) and arn — use those below
 # Poll until "status": "READY"
@@ -77,7 +79,12 @@ for event in response["stream"]:
 
 - `runtimeSessionId` must be **at least 33 characters** (use a UUID). Reuse the same ID to
   continue the conversation in the same environment; sessions are stateful by default.
-- If no model is specified, the harness defaults to **Claude Sonnet 4.6 on Bedrock**.
+- Select an explicit current model when creating a harness, normally
+  `us.anthropic.claude-sonnet-5-5`. The managed service's omitted-model default
+  does not track `MODEL_MAP`; do not rely on it to select the latest Claude.
+- Validate that exact profile from every intended source Region. A preserved
+  `us.`, `eu.`, `au.`, `jp.` or other geographic prefix is not an availability or
+  data-residency guarantee.
 
 ### InvokeHarness streaming events
 
@@ -163,8 +170,9 @@ leading `/` or `..`); a glob matching nothing fails the invocation with a descri
 ## Models and Instructions
 
 - Providers: Amazon Bedrock (default), OpenAI, Google Gemini, or any LiteLLM-compatible
-  provider. **Bedrock Mantle** unlocks non-Anthropic frontier models (e.g. GPT-5.5 / GPT-5.4)
-  on Bedrock through the same config.
+  provider. **Bedrock Mantle** unlocks non-Anthropic frontier models on Bedrock
+  through the same config. Select exact IDs from that provider's current catalog;
+  do not reuse a Codex CLI model ID without verifying it for the harness provider.
 - **Mid-session provider switching** without losing context — plan with one model, execute
   with another; harness preserves the conversation.
 - Instructions (system prompt) are a config field — for plugin conversion, merge the agent
@@ -211,7 +219,8 @@ The harness path uses the Node-based AgentCore CLI (distinct from the Python
 ```bash
 npm install -g @aws/agentcore        # Node.js 20+; pin @<version> in CI
 
-agentcore create --name myagent --model-provider bedrock   # or bare `agentcore create` for the TUI wizard
+MODEL_ID="us.anthropic.claude-sonnet-5-5"  # approved model; verify source-Region availability
+agentcore create --name myagent --model-provider bedrock --model-id "$MODEL_ID"
 agentcore add skill --harness myagent --git <url> --git-path <subdir>
 agentcore deploy
 
@@ -221,6 +230,10 @@ agentcore invoke --harness myagent --session-id "$SESSION_ID" "follow-up"   # SA
 agentcore dev                        # local dev server + browser Agent Inspector
 agentcore status
 ```
+
+The Node CLI supports `--model-id` for harness creation. If using the creation
+wizard instead, explicitly select `"$MODEL_ID"`; choosing only a provider must
+not silently use an older managed-service model default.
 
 - `agentcore invoke --skills <sources>` overrides skills for a single call (comma-separated
   paths, `s3://` URIs, or `https://` Git URLs; no Git auth on the override).

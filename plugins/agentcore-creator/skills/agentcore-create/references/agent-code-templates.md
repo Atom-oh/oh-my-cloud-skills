@@ -6,6 +6,10 @@ Python code templates for generating AgentCore agent implementations from Claude
 
 The default agent code template uses the Strands Agents SDK with `BedrockAgentCoreApp` wrapper for Amazon Bedrock AgentCore deployment.
 
+The current-model templates use `{{effort}}`: `medium` for Haiku 5.5, `high` for
+the other current aliases. For pinned models, use the generator's capability
+selection; Haiku 4.5 must omit the additional thinking/effort request fields.
+
 `context` is the Runtime SDK's `RequestContext` object; it is not a dict and does
 not provide region configuration. Emit the user's selected conversion region in
 `BedrockModel.region_name`, as shown below. Offline verification passes a context
@@ -38,8 +42,10 @@ async def invoke(payload, context):
         model_id="{{bedrock_model_id}}",
         region_name="{{region}}",
         max_tokens=16000,  # 64000 for streaming/long output; do NOT lowball — truncation forces retries
-        # For Opus 4.6/4.7 reasoning:
-        # additional_request_fields={"thinking": {"type": "adaptive"}},
+        additional_request_fields={
+            "thinking": {"type": "adaptive"},
+            "output_config": {"effort": "{{effort}}"},
+        },
     )
 
     agent = Agent(
@@ -48,7 +54,12 @@ async def invoke(payload, context):
     )
 
     result = agent(payload.get("prompt", ""))
-    return {"result": str(result)}
+    if getattr(result, "stop_reason", None) == "refusal":
+        return {"result": "", "refused": True}
+    text = str(result)
+    if not text.strip():
+        raise ValueError("Model returned no supported text content")
+    return {"result": text}
 
 
 if __name__ == "__main__":
@@ -81,6 +92,11 @@ async def invoke(payload, context):
     model = BedrockModel(
         model_id="{{bedrock_model_id}}",
         region_name="{{region}}",
+        max_tokens=16000,
+        additional_request_fields={
+            "thinking": {"type": "adaptive"},
+            "output_config": {"effort": "{{effort}}"},
+        },
     )
 
     agent = Agent(
@@ -90,7 +106,12 @@ async def invoke(payload, context):
     )
 
     result = agent(payload.get("prompt", ""))
-    return {"result": str(result)}
+    if getattr(result, "stop_reason", None) == "refusal":
+        return {"result": "", "refused": True}
+    text = str(result)
+    if not text.strip():
+        raise ValueError("Model returned no supported text content")
+    return {"result": text}
 
 
 if __name__ == "__main__":
@@ -122,6 +143,11 @@ async def invoke(payload, context):
     model = BedrockModel(
         model_id="{{bedrock_model_id}}",
         region_name="{{region}}",
+        max_tokens=16000,
+        additional_request_fields={
+            "thinking": {"type": "adaptive"},
+            "output_config": {"effort": "{{effort}}"},
+        },
     )
 
     # Memory (STM/LTM) is configured at the AgentCore Runtime level.
@@ -134,7 +160,12 @@ async def invoke(payload, context):
     )
 
     result = agent(payload.get("prompt", ""))
-    return {"result": str(result)}
+    if getattr(result, "stop_reason", None) == "refusal":
+        return {"result": "", "refused": True}
+    text = str(result)
+    if not text.strip():
+        raise ValueError("Model returned no supported text content")
+    return {"result": text}
 
 
 if __name__ == "__main__":
@@ -167,6 +198,11 @@ def create_agent(region: str = "{{region}}") -> Agent:
     model = BedrockModel(
         model_id="{{bedrock_model_id}}",
         region_name=region,
+        max_tokens=16000,
+        additional_request_fields={
+            "thinking": {"type": "adaptive"},
+            "output_config": {"effort": "{{effort}}"},
+        },
     )
 
     return Agent(
@@ -210,6 +246,10 @@ from pathlib import Path
 import boto3
 
 
+class ModelRefusalError(RuntimeError):
+    """The model refused the request instead of returning a usable answer."""
+
+
 class LocalTestAgent:
     """Minimal agent using boto3 Bedrock Runtime for local testing."""
 
@@ -229,10 +269,20 @@ class LocalTestAgent:
             modelId=self.model_id,
             system=[{"text": self.system_prompt}],
             messages=self.messages,
+            inferenceConfig={"maxTokens": 16000},
+            additionalModelRequestFields={
+                "thinking": {"type": "adaptive"},
+                "output_config": {"effort": "{{effort}}"},
+            },
         )
 
-        assistant_message = response["output"]["message"]["content"][0]["text"]
-        self.messages.append({"role": "assistant", "content": [{"text": assistant_message}]})
+        if response.get("stopReason") == "refusal":
+            raise ModelRefusalError("Model refused the request")
+        message = response["output"]["message"]
+        assistant_message = "".join(block["text"] for block in message["content"] if "text" in block)
+        if not assistant_message.strip():
+            raise ValueError("Model returned no supported text content")
+        self.messages.append(message)
 
         return assistant_message
 
@@ -260,7 +310,8 @@ if __name__ == "__main__":
 | `{{agent_name}}` | Agent frontmatter `name` | `eks-agent` |
 | `{{source_plugin}}` | plugin.json `name` | `aws-ops-plugin` |
 | `{{source_version}}` | plugin.json `version` | `1.3.1` |
-| `{{bedrock_model_id}}` | `MODEL_MAP` in the convert script | `us.anthropic.claude-sonnet-5` |
+| `{{bedrock_model_id}}` | `MODEL_MAP` in the convert script | `us.anthropic.claude-sonnet-5-5` |
+| `{{effort}}` | Generator policy for the selected model | `medium` for Haiku 5.5; `high` for the other current aliases |
 | `{{region}}` | User-specified region | `us-east-1` |
 | `{{tool_imports}}` | strands-agents-tools imports | `shell, file_read` |
 | `{{tool_list}}` | Tool function references | `shell, file_read` |
@@ -287,19 +338,27 @@ These defaults are applied by the conversion script and templates. Tune per use 
 | Parameter | Default | Tuning Notes |
 |-----------|---------|--------------|
 | `max_tokens` | 16000 | Use 64000 for long outputs (requires streaming). Truncation forces retries — don't lowball. |
-| `thinking` | `{"type": "adaptive"}` on effort-capable models, omitted otherwise | Emitted by the generator for Opus 5, Sonnet 5, Opus 4.7/4.8, Sonnet 4.6, and Fable 5 (see `EFFORT_CAPABLE_MODELS` in the script) |
-| `temperature` / `top_p` / `top_k` | NOT SET | Removed on Opus 4.7+, Sonnet 5, and Fable 5 (400 error). Use prompting for variance instead. |
-| `effort` (Opus 4.5+, Sonnet 4.6+, Fable 5) | `"high"` by default, tunable | `xhigh` for coding/agentic, `high` for intelligence-sensitive, `medium` for balanced. **Actually emitted by the generator** (`output_config.effort`), not just documented — see `generate_agent_code()`. |
+| `thinking` | `{"type": "adaptive"}` on effort-capable models, omitted otherwise | Current Opus/Sonnet/Haiku 5.5 and Fable 5.1, plus the explicit legacy IDs in `EFFORT_CAPABLE_MODELS` |
+| `temperature` / `top_p` / `top_k` | NOT SET | Avoid sampling parameters on the current aliases and supported legacy models |
+| `effort` | `"medium"` for Haiku 5.5; `"high"` for the other current aliases | This is generator policy. The vendor defaults are `medium` for Opus/Haiku 5.5 and `high` for Sonnet 5.5/Fable 5.1; tune using workload evaluations |
 
-### Opus 4.7+ / Opus 5 / Sonnet 5 / Fable 5 Specific Defaults
+### Current Claude Model Compatibility
 
-When `{{bedrock_model_id}}` resolves to `us.anthropic.claude-opus-5` (the `opus` alias default), `us.anthropic.claude-sonnet-5` (the `sonnet` default), `...-opus-4-8`/`...-opus-4-7`, or `us.anthropic.claude-fable-5`:
-- Do NOT set `temperature`, `top_p`, `top_k` → 400 error
+When `{{bedrock_model_id}}` resolves to Claude Opus/Sonnet/Haiku 5.5 or Fable 5.1, including their regional/global inference profiles:
+- Generated requests omit `temperature`, `top_p` and `top_k`. Check the selected model's restrictions before adding them: Fable 5.1 allows only fixed temperature `1.0` or top_p `0.99` (or omission), never both, and rejects top_k. Other models have their own restrictions.
 - Do NOT use `thinking: {"type": "enabled", "budget_tokens": N}` → 400 error
-- Use `thinking: {"type": "adaptive"}` for reasoning control — on Fable 5 this is the *only* mode; on Opus 5 thinking is on by default and `"disabled"` is accepted only at `effort` `high` or below
-- To surface thinking content: add `thinking: {"type": "adaptive", "display": "summarized"}` (default is `"omitted"`; Fable 5 never returns raw CoT regardless)
+- Use `thinking: {"type": "adaptive"}` and `output_config.effort` for reasoning control. Opus 5.5 does not accept disabled thinking. The converter uses `medium` effort for Haiku 5.5 and `high` for its other current aliases.
+- To surface thinking content, request the model's supported summarized display; do not promise raw chain-of-thought.
 - Re-baseline `max_tokens` with `count_tokens()` — do not reuse 4.6-calibrated estimates
-- **Fable 5 and Opus 5** (`REFUSAL_CHECK_MODELS`): check `stop_reason == "refusal"` after invocation — it comes back as HTTP 200, not an error, so a bare status check will treat a refusal as success. Also: Bedrock requires opting into 30-day data retention (`provider_data_sharing`) before Fable 5 can be invoked at all — flag this during design if the target org has a no-retention policy.
+- **Fable 5.1 and Opus 5.5** (`REFUSAL_CHECK_MODELS`): check `stop_reason == "refusal"` after invocation rather than treating every HTTP 200 as success. Confirm Fable 5.1's current Bedrock data-sharing and retention requirements during design; a conflicting organization policy blocks deployment.
+
+The generated Strands handler returns `refused: true` for a refusal. The raw local
+agent raises `ModelRefusalError`; neither path labels a refusal as a usable answer.
+Reasoning blocks can precede or accompany text blocks. The raw agent concatenates
+the text blocks and preserves the original assistant message for subsequent turns;
+no supported text produces an explicit error.
+
+Explicit pinned Opus 5 / Sonnet 5 / Fable 5 and Opus 4.7/4.8 IDs keep their existing compatibility handling. Haiku 4.5 remains a legacy model without effort support.
 
 See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes for full breaking-change details.
 

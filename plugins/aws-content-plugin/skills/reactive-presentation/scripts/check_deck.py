@@ -34,7 +34,13 @@ FRAMEWORK_SCRIPTS = ('animation-utils.js', 'slide-framework.js',
 RULE_IDS = ('NO_THEME_CSS', 'MISSING_SCRIPT', 'FRAMEWORK_COUNT', 'MISSING_NOTES',
             'SHORT_NOTES', 'PRESENTER_KEYS', 'QUIZ_NO_ANSWER', 'CANVAS_WIRING',
             'FRAGMENT_GAPS', 'RAW_HEX', 'RAW_RGBA', 'INLINE_STYLE', 'OFF_SCALE',
-            'PX_FONT', 'TITLE_LENGTH', 'BROKEN_REF', 'THEME_DUP', 'STALE_COMMON')
+            'PX_FONT', 'TITLE_LENGTH', 'BROKEN_REF', 'THEME_DUP', 'STALE_COMMON',
+            'REVEAL_PACE', 'REVEAL_MONOTONY')
+
+# Entrance animations theme.css defines for .fragment (emphasis classes such as
+# highlight/strike act on visible text and do not count as an entrance).
+FRAGMENT_ANIMS = ('fade-in', 'fade-up', 'fade-down', 'fade-left', 'fade-right',
+                  'grow', 'shrink', 'zoom-in')
 
 
 def discover(target: Path):
@@ -284,6 +290,34 @@ def check_file(deck_dir, name, skill_selectors, findings):
         if vals and sorted(vals) != list(range(min(vals), min(vals) + len(vals))):
             add('WARN', 'FRAGMENT_GAPS',
                 f'fragment indices not contiguous: {sorted(vals)}', slide=i + 1)
+
+    # --- Reveal rhythm (WARN): one card per click with one animation, slide after
+    # slide, reads as monotone. REVEAL_PACE flags a run of 3+ adjacent slides that
+    # each take 4+ clicks; REVEAL_MONOTONY flags a file whose fragments all share one
+    # animation and never use a data-reveal group.
+    steps = [len(set(re.findall(r'data-fragment-index="(\d+)"', text[s:e])))
+             for s, e in spans]
+    run_start = None
+    for i, n in enumerate(steps + [0]):
+        if n >= 4 and run_start is None:
+            run_start = i
+        elif n < 4 and run_start is not None:
+            if i - run_start >= 3:
+                add('WARN', 'REVEAL_PACE',
+                    f'slides {run_start + 1}-{i} each reveal 4+ steps one click at a time — '
+                    'group peers with data-reveal="stagger" or show them static',
+                    slide=run_start + 1)
+            run_start = None
+    anims = set()
+    for cls in re.findall(r'class="([^"]*\bfragment\b[^"]*)"', text):
+        anims.update(c for c in cls.split() if c != 'fragment' and
+                     c in FRAGMENT_ANIMS)
+    if (sum(1 for n in steps if n) >= 4 and len(anims) <= 1
+            and 'data-reveal=' not in text):
+        add('WARN', 'REVEAL_MONOTONY',
+            f'every fragment uses {next(iter(anims), "the default fade")} and no '
+            'data-reveal group — vary entrances by meaning (stagger for sets, '
+            'fade-right for flows, zoom-in for the conclusion)')
 
     # --- Design lint (WARN) over the deck's own text only, never common/.
     # RAW_HEX/RAW_RGBA/OFF_SCALE/PX_FONT aggregate ONE finding per file with a

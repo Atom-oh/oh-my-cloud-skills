@@ -146,7 +146,7 @@ const quizManager = new QuizManager();
       margin: 8px 0;
     }
     .quiz-question {
-      font-size: 1.05rem;
+      font-size: var(--fs-subtitle, 1.05rem);
       font-weight: 600;
       color: var(--text-primary);
       margin-bottom: 14px;
@@ -166,7 +166,7 @@ const quizManager = new QuizManager();
       background: var(--bg-tertiary);
       color: var(--text-secondary);
       font-family: var(--font-main);
-      font-size: .95rem;
+      font-size: var(--fs-card, .95rem);
       text-align: left;
       cursor: pointer;
       transition: all 200ms ease;
@@ -202,13 +202,13 @@ const quizManager = new QuizManager();
       transition: max-height 300ms ease;
     }
     .quiz-feedback.show {
-      max-height: 200px;
+      max-height: 320px;
       margin-top: 12px;
     }
     .quiz-result {
       padding: 12px 16px;
       border-radius: 10px;
-      font-size: .95rem;
+      font-size: var(--fs-card, .95rem);
       display: flex;
       flex-wrap: wrap;
       align-items: baseline;

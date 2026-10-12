@@ -72,13 +72,25 @@ the alternatives with trade-offs and recommend one.
 
 | Task profile | Recommended model | Notes |
 |---|---|---|
-| Coding, agentic loops, long-horizon work | `us.anthropic.claude-opus-5` | Current most-capable Opus (same price as Opus 4.8). Thinking is on by default — control depth with `effort` (`xhigh` for coding/agentic). Budget generously for output tokens. |
-| Most production workloads (balanced) | `us.anthropic.claude-sonnet-5` | Best speed/intelligence balance, and cheaper than Sonnet 4.6. Adaptive thinking + `effort`. |
-| High-volume simple tasks | `us.anthropic.claude-haiku-4-5` | Fastest, lowest cost. No `effort` parameter support. |
-| Complex reasoning with cost flexibility | `us.anthropic.claude-opus-5` | When correctness matters more than latency — raise `effort` to `max` |
-| Multi-day autonomous/large-migration work | `us.anthropic.claude-fable-5` | Only when Fable 5's edge over Opus 5 actually shows on that scale. Requires opting into 30-day Bedrock data retention first — ask about org data policy before recommending it. |
+| Coding, agentic loops, long-horizon work | `us.anthropic.claude-opus-5-5` | Opus 5.5 with adaptive thinking and explicit `effort`; use `high` or `xhigh` for demanding work and budget for thinking tokens. |
+| Most production workloads (balanced) | `us.anthropic.claude-sonnet-5-5` | Sonnet 5.5 is the converter's balanced default. Adaptive thinking + `effort`. |
+| High-volume simple tasks | `us.anthropic.claude-haiku-5-5` | Haiku 5.5 supports `effort`; start at `medium`, or evaluate `low` for simple, high-volume requests. |
+| Complex reasoning with cost flexibility | `us.anthropic.claude-opus-5-5` | When correctness matters more than latency, evaluate `xhigh` or `max`. |
+| Multi-day autonomous/large-migration work | `us.anthropic.claude-fable-5-1` | Use Fable 5.1 only when its capability gain is justified. AWS currently requires `aws_review` data-retention opt-in; confirm that requirement against the organization's data policy first. |
 
-> **Note on Opus 4.7+, Sonnet 5, and Fable 5 deployment**: Generated code must NOT include `temperature`, `top_p`, `top_k`, or `thinking.type: "enabled"` with `budget_tokens` — these return 400 errors on Opus 4.7/4.8/5, Sonnet 5, and Fable 5. Use `thinking.type: "adaptive"` + `effort` for reasoning depth control (on Fable 5 adaptive is the *only* mode; on Opus 5 thinking is on by default). Exact IDs live in `MODEL_MAP` (`scripts/convert_plugin_to_agentcore.py`); 4.6/4.7/4.8 remain valid for pinned deployments. See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
+> **Model compatibility**: Defaults are Claude Opus/Sonnet/Haiku 5.5 and Fable 5.1. Generated code uses `thinking.type: "adaptive"` + `output_config.effort`, with no sampling parameters or legacy `budget_tokens`. Opus 5.5 does not accept disabled thinking. Exact aliases live in `MODEL_MAP` (`scripts/convert_plugin_to_agentcore.py`); explicit older Bedrock IDs remain available for pinned deployments. See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Notes.
+
+Verify the selected model/inference-profile ID and source Region against its AWS
+model detail page or `GetInferenceProfile` before deployment. Preserving a
+geographic prefix does not establish availability or data residency.
+For these current models, the AWS cards list no in-Region `bedrock-runtime`
+invocation; use a supported inference profile for the generated Converse client.
+
+For Codex-hosted development, select an available model for the task: `gpt-6.1-sol`
+for implementation, `gpt-6-luna` for narrow work, `gpt-6-astra` for complex analysis,
+or `gpt-5.6-terra` for the retained Terra tier. Use the exact provider catalog ID
+(`openai.`-prefixed on the local Bedrock Codex catalog). These host models do not
+change the deployed Bedrock model selected above.
 
 **Deployment target decision (harness vs. Runtime)** — decide this here, before Phase 4,
 because it changes what Phase 4 produces:
@@ -246,13 +258,26 @@ named `agentcore` — if both are present, disambiguate with `npx @aws/agentcore
 `which agentcore` first) so harness commands don't hit the Runtime CLI:
 
 ```bash
-agentcore create --name <agent> --model-provider bedrock
+MODEL_ID="us.anthropic.claude-sonnet-5-5"  # replace with the approved Phase 2 ID
+agentcore create --name <agent> --model-provider bedrock --model-id "$MODEL_ID"
 agentcore add skill --harness <agent> --git <repo-url> --git-path <skill-subdir>   # per skill
 agentcore deploy
 ```
 
-Or without the CLI: `aws bedrock-agentcore-control create-harness --harness-name <agent>
---execution-role-arn <role-arn> --skills '<sources>'`, then poll `get-harness` until
+The Node CLI's `--model-id` sets the approved model explicitly. If using the
+interactive wizard instead, select that same ID; choosing only the provider
+does not select it.
+
+Or without the CLI:
+
+```bash
+MODEL_ID="us.anthropic.claude-sonnet-5-5"  # replace with the approved Phase 2 ID
+aws bedrock-agentcore-control create-harness --harness-name <agent> \
+  --execution-role-arn <role-arn> --skills '<sources>' \
+  --model "{\"bedrockModelConfig\":{\"modelId\":\"$MODEL_ID\"}}"
+```
+
+Then poll `get-harness` until
 `"status": "READY"`. Memory is built-in by default; Gateway/Policy attach via config when
 the plugin had MCP servers or tool restrictions.
 

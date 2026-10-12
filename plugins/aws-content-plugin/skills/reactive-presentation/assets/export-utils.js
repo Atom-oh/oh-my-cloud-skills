@@ -380,6 +380,18 @@ const ExportUtils = {
    * This puts every slide into its "finished" visual state.
    */
   _completeAllAnimations: function(doc) {
+    // Capture documents are disposable. Freeze CSS motion before revealing
+    // fragments so a stagger's delayed children cannot export as empty cards.
+    if (!doc.getElementById('reactive-export-final-state')) {
+      const style = doc.createElement('style');
+      style.id = 'reactive-export-final-state';
+      style.textContent = `
+        *, *::before, *::after { animation: none !important; transition: none !important; }
+        [data-reveal="stagger"] > * { opacity: 1 !important; transform: none !important; }
+      `;
+      doc.head.appendChild(style);
+    }
+
     // 1. Reveal all fragments
     doc.querySelectorAll('.fragment').forEach(function(el) {
       el.classList.add('visible');

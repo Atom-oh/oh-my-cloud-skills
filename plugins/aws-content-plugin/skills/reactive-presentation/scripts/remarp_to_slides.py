@@ -3067,7 +3067,7 @@ class RemarpHTMLGenerator:
             subtitle_html = f'<p style="position:absolute; left:5%; top:60%; font-size:1.3rem; color:rgba(255,255,255,0.7); width:60%; margin:0;">{subtitle}</p>' if subtitle else ''
 
             return f'''<div class="slide" style="{bg_style}; padding:0; overflow:hidden;">
-  <div style="position:absolute; top:-20%; right:-10%; width:60%; height:80%; background:radial-gradient(ellipse, rgba(255,153,0,0.10) 0%, transparent 70%); pointer-events:none;"></div>
+  <div style="position:absolute; top:0; right:0; width:50%; height:60%; background:radial-gradient(ellipse, rgba(255,153,0,0.10) 0%, transparent 70%); pointer-events:none;"></div>
   <div style="position:absolute; left:5%; top:42%; width:80px; height:3px; background:linear-gradient(90deg, var(--accent, #ff9900), rgba(255,153,0,0.25)); border-radius:2px;"></div>
   <h1 style="position:absolute; left:5%; top:45%; font-family:var(--font-display); letter-spacing:var(--tracking-tight, -0.02em); font-size:2.8rem; color:#fff; font-weight:300; line-height:1.2; width:60%; margin:0;">{title}</h1>
   {subtitle_html}
@@ -3122,6 +3122,17 @@ class RemarpHTMLGenerator:
         # Handle columns if present
         if slide.columns:
             body_html = self.gen_column_layout(slide.columns)
+            # Content written after (or before) the column blocks — a caption line,
+            # an :::html callout — must not be dropped: render it below the columns.
+            # Only column placeholders and ordinary author comments are dropped.
+            # Keep semantic fragment and renderer markers for their later passes.
+            rest = [l for l in body_lines
+                    if not re.match(
+                        r'^\s*<!--(?!\s*(?:__HTML_BLOCK_|__ARCHIFY_BLOCK_|FRAG:|/FRAG\s*-->)).*-->\s*$',
+                        l)]
+            if any(l.strip() for l in rest):
+                body_html += '\n' + self._parse_body_content(
+                    _restore_literals('\n'.join(rest), literals).split('\n'))
         else:
             body_html = self._parse_body_content(_restore_literals('\n'.join(body_lines), literals).split('\n'))
 
@@ -3531,9 +3542,11 @@ class RemarpHTMLGenerator:
             return m.group(1) + save_placeholder(m.group(2), 'key') + m.group(3)
         code = re.sub(r'^(\s*)([a-zA-Z_][\w-]*)(:)', replace_key, code, flags=re.MULTILINE)
 
-        # Restore placeholders
-        for idx, replacement in enumerate(placeholders):
-            code = code.replace(f'\x00{idx}\x00', replacement)
+        # Restore placeholders newest-first: a token saved later can sit inside an earlier
+        # one's text (a "..." string within a '...' string), and forward order would leave
+        # it as raw NUL bytes in the output.
+        for idx in range(len(placeholders) - 1, -1, -1):
+            code = code.replace(f'\x00{idx}\x00', placeholders[idx])
 
         # Apply line highlighting if specified
         if highlight:
@@ -4087,19 +4100,19 @@ class RemarpHTMLGenerator:
 
         buttons = []
         if is_final:
-            buttons.append(f'<a href="{toc_href}" class="btn btn-primary btn-sm" style="text-decoration:none;">← 목차로 돌아가기</a>')
+            buttons.append(f'<a href="{toc_href}" class="btn btn-primary" style="text-decoration:none;">← 목차로 돌아가기</a>')
         else:
-            buttons.append(f'<a href="{toc_href}" class="btn btn-sm" style="text-decoration:none;">← 목차로 돌아가기</a>')
-            buttons.append(f'<a href="{next_href}" class="btn btn-primary btn-sm" style="text-decoration:none;">{next_label} →</a>')
+            buttons.append(f'<a href="{toc_href}" class="btn" style="text-decoration:none;">← 목차로 돌아가기</a>')
+            buttons.append(f'<a href="{next_href}" class="btn btn-primary" style="text-decoration:none;">{next_label} →</a>')
         if more_href:
-            buttons.append(f'<a href="{more_href}" target="_blank" rel="noopener" class="btn btn-sm" style="text-decoration:none;">{more_label}</a>')
+            buttons.append(f'<a href="{more_href}" target="_blank" rel="noopener" class="btn" style="text-decoration:none;">{more_label}</a>')
 
-        congrats = '<p style="color:var(--text-muted); font-size:1rem; margin-top:0.5rem;">수고하셨습니다!</p>' if is_final else ''
+        congrats = '<p style="color:var(--text-muted); font-size:var(--fs-card); margin-top:0.5rem;">수고하셨습니다!</p>' if is_final else ''
 
         return f'''<div class="slide">
   <div class="center-content" style="height:100%; gap:1.5rem;">
-    <h1 style="font-family:var(--font-display); letter-spacing:var(--tracking-tight, -0.02em); font-size:3rem; color:var(--text-primary);">Thank You</h1>
-    <p style="color:var(--text-secondary); font-size:1.1rem;">{message}</p>
+    <h1 style="font-family:var(--font-display); letter-spacing:var(--tracking-tight, -0.02em); font-size:calc(var(--fs-title) * 1.5); color:var(--text-primary);">Thank You</h1>
+    <p style="color:var(--text-secondary); font-size:var(--fs-subtitle);">{message}</p>
     {congrats}
     <div style="display:flex; gap:1rem; margin-top:1.5rem;">
       {chr(10).join("      " + b for b in buttons)}
@@ -5423,12 +5436,14 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
         for idx, html_block in enumerate(slide.html_blocks):
             # Count direct child elements (rough estimate)
             child_elements = len(re.findall(r'<div[^>]*>', html_block))
-            has_fragments = 'fragment' in html_block
+            # data-reveal (stagger/static) is an explicit pacing choice, not an omission.
+            has_fragments = 'fragment' in html_block or 'data-reveal=' in html_block
             if child_elements >= 3 and not has_fragments:
                 add('WARNING', 'STATIC_HTML',
-                    f':::html block {idx + 1} has {child_elements}+ elements but no fragment animations — '
-                    'Interactive-First principle requires sequential reveal',
-                    'Add class="fragment fade-up" data-fragment-index="N" to child elements')
+                    f':::html block {idx + 1} has {child_elements}+ elements but no reveal choice — '
+                    'decide how the group enters the talk',
+                    'Use data-reveal="stagger" (one click or slide entry, children cascade), '
+                    'per-item fragments when the talk builds point by point, or data-reveal="static"')
 
     # --- Rule 8: Design-Token Lint (scan :::html / :::css block content) ---
     # Collect the raw text of every :::html and :::css block on the slide.

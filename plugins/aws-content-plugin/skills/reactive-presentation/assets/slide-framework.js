@@ -37,6 +37,12 @@ class SlideFramework {
       this.totalSlides = this.slides.length;
       if (this.totalSlides === 0) return;
 
+      // Reveal groups: number each child so theme.css can offset its cascade delay.
+      // Runs before createSidebar() clones slide markup, so thumbnails carry it too.
+      document.querySelectorAll('[data-reveal="stagger"]').forEach(group => {
+        Array.from(group.children).forEach((child, i) => child.style.setProperty('--rp-i', i));
+      });
+
       // Load custom key mappings from window.__remarpKeys
       if (window.__remarpKeys && typeof window.__remarpKeys === 'object') {
         this.keyMappings = window.__remarpKeys;
@@ -751,8 +757,12 @@ class SlideFramework {
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement('style');
     style.id = STYLE_ID;
-    // Forcing fragments visible for measurement must not leave transforms mid-transition.
-    style.textContent = '.fit-measuring *, .fit-measuring *::before, .fit-measuring *::after { transition: none !important; }';
+    // Measure final fragment geometry. Override stagger transforms instead of
+    // cancelling keyframes: later refits must keep the live entrance timeline.
+    style.textContent = `
+      .fit-measuring *, .fit-measuring *::before, .fit-measuring *::after { transition: none !important; }
+      .fit-measuring [data-reveal="stagger"] > * { transform: none !important; }
+    `;
     document.head.appendChild(style);
   }
 
@@ -842,11 +852,16 @@ class SlideFramework {
         //     itself against the body. A shrink-to-fit box (e.g. a body with centred
         //     row flex) never overflows internally, so only the second test catches it.
         const innerW = body.clientWidth - (parseFloat(bs.paddingLeft) || 0) - (parseFloat(bs.paddingRight) || 0);
+        //     A third level: a fixed-minimum grid track does not grow with its content, so
+        //     an unbreakable token (nowrap inline code) spills out of its card into the
+        //     next one without overflowing the box. Shrinking widens the tracks until it fits.
+        const cells = Array.from(box.querySelectorAll('.card, .metric-card, .callout'));
         const fits = (zoom) => {
           box.style.zoom = String(zoom);
           return box.offsetHeight * zoom <= avail &&
             box.offsetWidth * zoom <= innerW + 1 &&
-            box.scrollWidth <= box.clientWidth + 1;
+            box.scrollWidth <= box.clientWidth + 1 &&
+            cells.every(c => c.scrollWidth <= c.clientWidth + 1);
         };
 
         // 11. Upper bound by mode; shrinkOnly never regrows past the cached value.

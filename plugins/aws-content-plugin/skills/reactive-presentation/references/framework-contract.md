@@ -138,6 +138,9 @@ deck.goTo(i) / deck.next() / deck.prev()
   element in it) carries `data-hide-chrome` or `.full-bleed`, or one `<img>` covers at least 60% of
   the slide area. Inline images — service icons, a diagram or screenshot in a column — keep the
   chrome. `data-keep-chrome` on the `.slide` always keeps it (it wins over every hide rule).
+- While a logo or footer exists, every `.slide` reserves the bottom band for it
+  (`padding-bottom: var(--chrome-band, var(--space-8))`, 96px); a PPTX theme that lifts its logo
+  higher sets `--chrome-band`. The fit's available height shrinks with it.
 - `data-transition="fade|slide|zoom"` for per-slide transitions.
 - `data-fit="auto|shrink|off"` on a `.slide` (or on `.slide-deck` as the deck default) selects the
   ReactiveFit mode for that slide's `.slide-body` content — see §11.
@@ -146,7 +149,19 @@ deck.goTo(i) / deck.next() / deck.prev()
 
 **Fragments**: `class="fragment fade-up" data-fragment-index="N"` — revealed sequentially with
 Space/→. Elements sharing the same index reveal together. Animations: `fade-in/up/down/left/right, grow, shrink,
-highlight(-red/-green), strike, fade-out`.
+zoom-in, highlight(-red/-green), strike, fade-out`.
+
+**Reveal groups**: `data-reveal` on a container paces its direct children as one unit.
+- `data-reveal="stagger"` on a `.fragment` — one click reveals the group and the children cascade in.
+- `data-reveal="stagger"` on a plain element — the children cascade in when the slide is shown (no click).
+- `data-reveal="static"` — shown with the slide and no motion; records that this was a deliberate choice.
+- `data-reveal-anim="up|down|left|right|zoom|fade"` sets the direction the children move as they enter (default `up`; `right` moves left to right, like `.fade-right`).
+- `data-reveal-pace="fast|slow"` sets the cascade step (50ms / 160ms; default 90ms).
+
+The framework numbers each child as `--rp-i` at load. Do not also put `.fragment` on the children.
+Export and `measure_deck.py` freeze motion and reveal every fragment, so they capture the
+fully shown group. Browser PPTX export applies the same final-state freeze in its
+disposable capture document. `prefers-reduced-motion` removes the cascade.
 
 **Canvas step slides**: attach `slide.__canvasStep = (dir) => bool` to the slide element —
 ↑↓ then drives the step, and returning `false` at the boundary lets the slide advance instead.
@@ -232,7 +247,7 @@ utility (§6) for 5+ boxes or multi-tier diagrams. Use a static draw.io PNG/SVG 
 
 | Group | Classes | Notes |
 |------|--------|------|
-| Cards | `.card-grid` `.card` `.metric-card` `.card-desc` `.card-text` (left-aligned sentence card) `.card-note`/`.card-note-label` (divider + muted label for a card's secondary line) `.metric-value/.metric-label` `.kpi-row/.kpi-card/.kpi-value/.kpi-label/.kpi-delta` `.badge(-blue/-green/-red/-yellow/-up/-down)` | For 4+ items, use cards instead of bullets |
+| Cards | `.card-grid` `.card` `.metric-card` `.card-desc` `.card-text` (left-aligned sentence card) `.card-note`/`.card-note-label` (divider + muted label for a card's secondary line) `.metric-value/.metric-label` `.kpi-row/.kpi-card/.kpi-value/.kpi-label/.kpi-delta` `.badge(-blue/-green/-red/-yellow/-up/-down)` | For 4+ items, use cards instead of bullets. `.card-grid` balances rows: 5–6 cards → 3 columns, 7–8 → 4, exactly 9 → 3 (a deck's own `grid-template-columns` still wins) |
 | Callouts | `.callout` `.callout-info/-success/-warning/-danger` `.pain-quote` `.stat-highlight` | |
 | Layout | `.columns` `.col-2/.col-3` `.columns-1-2/-2-1/-3` `.grid-2x2/.grid-3x2` `.center-content` | |
 | Flow (HTML architecture) | `.flow-h/.flow-v` `.flow-group` `.flow-box` `.flow-arrow` `.flow-col` `.flow-step` `.flow-desc` `.icon-item` + `.bg-blue/-orange/-pink/-green/-purple/-red/-dark/-accent` | The default mechanism for 5+ box diagrams; stage height/width auto-normalize |
@@ -331,10 +346,14 @@ renders below the 18px `MIN_FONT` FAIL line.
 
 **`.fit-box` wrapping**: on first fit the engine moves every child node of `.slide-body` into a
 runtime `<div class="fit-box">` and applies `zoom` to that box. It picks the largest zoom whose
-visual height fits 94% (`TARGET`) of the body height with no horizontal overflow — try the upper
+visual height fits 94% (`TARGET`) of the body height with no horizontal overflow — of the box, of
+the box against the body, or of any `.card`/`.metric-card`/`.callout` inside it (a nowrap inline
+`code` token in a fixed-minimum grid track spills into the next card otherwise) — try the upper
 bound, then `MIN`, then a 6-step binary search between them, floored to 3 decimals. Fragments are
 forced `.visible` while measuring (transitions disabled via a `fit-measuring` class) so the fully
-revealed layout is what fits. Consequences for deck scripts and `:::script`/`:::css` blocks:
+revealed layout is what fits. Stagger child transforms are overridden during measurement;
+their live keyframe timelines continue rather than restarting on a later refit.
+Consequences for deck scripts and `:::script`/`:::css` blocks:
 
 - Do not rely on `.slide-body`'s direct children — after init they are children of `.fit-box`.
   Theme rules use `:is(.slide-body, .fit-box) > X` for this reason.

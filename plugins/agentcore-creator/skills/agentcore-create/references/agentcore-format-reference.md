@@ -10,7 +10,7 @@ Specification for Amazon Bedrock AgentCore deployment artifact formats generated
 {
   "agentName": "<agent-name>",
   "description": "<agent-description>",
-  "modelId": "us.anthropic.claude-sonnet-5",
+  "modelId": "us.anthropic.claude-sonnet-5-5",
   "instruction": "<path-to-system-prompt>",
   "tools": [
     {

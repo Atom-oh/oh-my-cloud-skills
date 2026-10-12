@@ -233,6 +233,90 @@ class PowerConverterTests(unittest.TestCase):
         self.assertEqual({**before, 'added-during-build': b'new output file'}, snapshot(self.output))
         self.assertFalse(list(self.root.glob('.kiro-*')))
 
+    def test_single_file_content_builders_cannot_overwrite_concurrent_target_changes(self):
+        mcp_source = self.source / 'input-mcp.json'
+        servers = {'fixture': {'command': 'fixture', 'env': {'API_KEY': '${FIXTURE_TOKEN}'}}}
+        mcp_source.write_text(json.dumps({'mcpServers': servers}))
+        before_source = snapshot(self.source)
+        modes = ('standalone', 'standalone-folder', 'single-skill-request',
+                 'inline-mcp', 'file-mcp', 'deferred-text')
+        for mode in modes:
+            for existing in (False, True):
+                with self.subTest(mode=mode, existing=existing):
+                    folder = self.root / f'{mode}-{existing}'
+                    folder.mkdir()
+                    destination = folder / ('sample.md' if mode == 'standalone-folder' else 'output')
+                    if existing:
+                        destination.write_bytes(b'prior destination')
+                    changed = b'target changed during content generation'
+
+                    def invoke():
+                        if mode == 'standalone':
+                            return converter.convert_skill_standalone(str(self.skill), str(destination))
+                        if mode == 'standalone-folder':
+                            return converter.convert_skill_standalone(str(self.skill), str(folder))
+                        if mode == 'single-skill-request':
+                            return converter.convert_skills_standalone([str(self.skill)], str(destination))
+                        if mode == 'inline-mcp':
+                            return converter.convert_mcp_servers(servers, str(destination))
+                        if mode == 'file-mcp':
+                            return converter.convert_mcp_json(str(mcp_source), str(destination))
+                        return converter.publish_text(content_builder, destination, [])
+
+                    def content_builder():
+                        destination.write_bytes(changed)
+                        return '# Converted document\n'
+
+                    if mode == 'deferred-text':
+                        with self.assertRaisesRegex(RuntimeError, 'Destination changed since preflight'):
+                            invoke()
+                    else:
+                        attribute = 'mcp_document' if mode.endswith('mcp') else 'standalone_content'
+                        original = getattr(converter, attribute)
+
+                        def build(*args, **kwargs):
+                            destination.write_bytes(changed)
+                            return original(*args, **kwargs)
+
+                        with mock.patch.object(converter, attribute, build):
+                            with self.assertRaisesRegex(RuntimeError, 'Destination changed since preflight'):
+                                invoke()
+                    self.assertEqual(changed, destination.read_bytes())
+                    self.assertEqual(before_source, snapshot(self.source))
+                    self.assertFalse(list(folder.glob('.kiro-*')))
+
+    def test_single_file_conversions_and_literal_text_allow_normal_repeated_publication(self):
+        mcp_source = self.source / 'input-mcp.json'
+        servers = {'fixture': {'command': 'fixture', 'env': {'API_KEY': '${FIXTURE_TOKEN}'}}}
+        mcp_source.write_text(json.dumps({'mcpServers': servers}))
+        before_source = snapshot(self.source)
+        for mode in ('standalone', 'standalone-folder', 'single-skill-request',
+                     'inline-mcp', 'file-mcp', 'literal-text'):
+            with self.subTest(mode=mode):
+                folder = self.root / f'repeat-{mode}'
+                folder.mkdir()
+                destination = folder / ('sample.md' if mode == 'standalone-folder' else 'output')
+                for _ in range(2):
+                    if mode == 'standalone':
+                        converter.convert_skill_standalone(str(self.skill), str(destination))
+                    elif mode == 'standalone-folder':
+                        converter.convert_skill_standalone(str(self.skill), str(folder))
+                    elif mode == 'single-skill-request':
+                        converter.convert_skills_standalone([str(self.skill)], str(destination))
+                    elif mode == 'inline-mcp':
+                        self.assertEqual(['FIXTURE_TOKEN'], converter.convert_mcp_servers(servers, str(destination)))
+                    elif mode == 'file-mcp':
+                        self.assertEqual(['FIXTURE_TOKEN'], converter.convert_mcp_json(str(mcp_source), str(destination)))
+                    else:
+                        converter.publish_text('# Literal content\n', destination, [])
+                    content = destination.read_bytes()
+                    if _ == 0:
+                        first = content
+                    else:
+                        self.assertEqual(first, content)
+                self.assertEqual(before_source, snapshot(self.source))
+                self.assertFalse(list(folder.glob('.kiro-*')))
+
     def test_existing_destination_content_changed_during_build_is_preserved(self):
         before = self.existing_output()
         original_build = converter._build_plugin
