@@ -1,8 +1,8 @@
 # Codex runtime verification
 
-## Current fixture profile — 2026-10-11
+## Current fixture profile — 2026-10-12
 
-The eight-plugin marketplace currently exposes 69 entry skills from 71 shared
+The eight-plugin marketplace currently exposes 69 entry skills from 70 shared
 procedures and 24 plugin hook handlers. Project-init has three additional
 consumer-project hook events. Verify current counts with the manifest/inventory
 validators and actual disposable installation rather than extrapolating from
