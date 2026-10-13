@@ -80,6 +80,7 @@ class DiffTests(unittest.TestCase):
     def test_shallow_large_diff_matches_three_dot_scope(self):
         self.assertEqual("true", git(self.repo, "rev-parse", "--is-shallow-repository"))
         self.capture(verify_base_checkout=True)
+        self.assertNotEqual(self.base, git(self.repo, "merge-base", self.base, self.head))
         self.assertEqual(self.expected, self.output.read_bytes())
         self.assertGreater(self.output.read_bytes().count(b"diff --git "), 300)
         self.assertNotIn(b"base-only.txt", self.output.read_bytes())

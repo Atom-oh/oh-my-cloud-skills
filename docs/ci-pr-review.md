@@ -24,8 +24,9 @@ GitHub configuration; do not infer its current state from this document.
    It derives source-procedure and Codex-entry counts from that checkout. The bounded
    context is included in every peer prompt and in chair stdin. Missing/stale/oversized
    context stops the review; it is never silently truncated or replaced with guesses.
-   The bundled co-agent `pr_diff.py` reads the three-dot diff for the event's full
-   base/head SHAs from Git, avoiding the GitHub diff API's 300-file limit. It fetches
+   The bundled co-agent `pr_diff.py` reads the three-dot diff for the trusted event
+   checkout SHA (`github.sha`) and review HEAD from Git, avoiding the GitHub diff
+   API's 300-file limit. A PR's `base.sha` can still name an older commit. It fetches
    full ancestry without checking out PR code or running hooks, external diff or
    textconv. Marketplace filters, prompt caps and coverage reporting still apply.
 4. With `ROLE_REVIEW=1`, the workflow creates one common FULL context and adds one

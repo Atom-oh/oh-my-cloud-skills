@@ -29,7 +29,7 @@ jobs:
       ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.ap-northeast-2.amazonaws.com
       AWS_REGION: ap-northeast-2
       REVIEW_HEAD: ${{ github.event.pull_request.head.sha }}
-      REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      REVIEW_BASE_SHA: ${{ github.sha }}
       REVIEW_BASE_REF: ${{ github.event.pull_request.base.ref }}
     steps:
       # Never execute PR-head code on this credentialed review runner.
