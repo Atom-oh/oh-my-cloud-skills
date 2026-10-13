@@ -4,12 +4,15 @@ import json
 from pathlib import Path
 import runpy
 import tempfile
+import subprocess
+import sys
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
 HOST = runpy.run_path(str(ROOT / "scripts/test-host-packages.py"))
 CLAUDE = runpy.run_path(str(ROOT / "scripts/test-plugins.py"))
+CODEX = runpy.run_path(str(ROOT / "scripts/test-codex-plugins.py"))
 
 
 class HostValidationTests(unittest.TestCase):
@@ -25,7 +28,11 @@ class HostValidationTests(unittest.TestCase):
         for host in ("claude", "codex"):
             package = self.root / "packages" / host / "sample"
             self.packages[host] = package
-            config = {"skills": "./.codex-plugin/skills/"} if host == "codex" else {
+            config = {"skills": "./.codex-plugin/skills/", "interface": {
+                "displayName": "Sample", "shortDescription": "Fixture",
+                "longDescription": "Fixture package", "developerName": "Fixture",
+                "category": "Testing", "capabilities": ["Skills"], "defaultPrompt": "Read data.",
+            }} if host == "codex" else {
                 "agents": ["./agents/reader.md"], "skills": [], "mcpServers": "./.mcp.json"}
             self.write(f"hosts/{host}/sample/plugin.json", config)
             self.write(f"hosts/{host}/sample/package.json", {"exclude": []})
@@ -46,6 +53,8 @@ class HostValidationTests(unittest.TestCase):
                            {"reasoning": {}, "explicit_skills": ["example"]})
                 entry = ".codex-plugin/skills/example/SKILL.md"
                 self.write("packages/codex/sample/" + entry,
+                           "---\nname: example\ndescription: Fixture\n---\nRead data.\n")
+                self.write("packages/codex/sample/skills/example/SKILL.md",
                            "---\nname: example\ndescription: Fixture\n---\nRead data.\n")
                 self.write("packages/codex/sample/.codex-plugin/inventory.json", {
                     "plugin": "sample", "skills": [{"name": "example", "path": entry,
@@ -89,6 +98,15 @@ class HostValidationTests(unittest.TestCase):
         suite.run_all()
         self.assertEqual([], suite.errors)
         self.assertEqual({"server"}, set(suite.manifest["mcpServers"]))
+
+    def test_packaged_codex_manifest_validates_its_interface_and_source_inventory(self):
+        validator = CODEX["CodexPluginValidator"](self.root)
+        validator.plugins_dir = self.root / "packages/codex"
+        validator.validate_manifest("sample")
+        self.assertEqual([], validator.errors)
+        (self.packages["codex"] / "skills/example/SKILL.md").unlink()
+        validator.validate_manifest("sample")
+        self.assertTrue(any("missing procedure" in error for error in validator.errors))
 
     def test_mcp_escaping_path_and_malformed_file_report_errors_without_crashing(self):
         manifest = self.packages["claude"] / ".claude-plugin/plugin.json"
@@ -155,6 +173,44 @@ class HostValidationTests(unittest.TestCase):
                    "mcpServers:\n  - unquoted-server\n---\nRead data.\n")
         self.refresh("claude")
         self.assertTrue(any("agent setting drift" in error for error in self.errors()))
+
+    def test_body_scalar_cannot_mask_active_agent_permissions(self):
+        agent = self.packages["claude"] / "agents/reader.md"
+        text = agent.read_text(encoding="utf-8").replace('tools: "Read"', 'tools: "Bash"')
+        agent.write_text(text + '\n```yaml\ntools: "Read"\n```\n', encoding="utf-8")
+        self.refresh("claude")
+        self.assertTrue(any("reader.md/tools" in error for error in self.errors()))
+
+    def test_body_list_cannot_supply_missing_frontmatter_setting(self):
+        agent = self.packages["claude"] / "agents/reader.md"
+        text = agent.read_text(encoding="utf-8").replace('mcpServers:\n  - "server"\n', "")
+        agent.write_text(text + '\n```yaml\nmcpServers:\n  - "server"\n```\n', encoding="utf-8")
+        self.refresh("claude")
+        self.assertTrue(any("reader.md/mcpServers" in error for error in self.errors()))
+
+    def test_malformed_catalog_identity_is_reported_once_without_crashing(self):
+        for identity in (None, [], "invalid"):
+            with self.subTest(identity=identity):
+                self.write("hosts/catalog.json", {"plugins": {"sample": identity}})
+                errors = self.errors()
+                self.assertEqual(1, sum("invalid identity" in error for error in errors))
+
+    def test_non_object_catalog_uses_cli_diagnostic_instead_of_traceback(self):
+        self.write("hosts/catalog.json", "[]")
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/test-plugins.py"), "--root", str(self.root)],
+            capture_output=True, text=True,
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Invalid host catalog", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_linked_host_configuration_is_rejected(self):
+        config = self.root / "hosts/claude/sample/plugin.json"
+        target = self.root / "actual-config.json"
+        config.rename(target)
+        config.symlink_to(target)
+        self.assertTrue(any("linked or escaping data file" in error for error in self.errors()))
 
 
 if __name__ == "__main__":
