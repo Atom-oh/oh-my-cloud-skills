@@ -1,0 +1,8 @@
+{
+  "reasoning": {
+    "kiro-converter-agent": "low"
+  },
+  "explicit_skills": [
+    "kiro-converter-agent"
+  ]
+}

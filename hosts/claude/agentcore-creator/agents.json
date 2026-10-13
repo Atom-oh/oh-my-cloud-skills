@@ -1,0 +1,10 @@
+{
+  "agentcore-creator-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, Edit, Agent, AskUserQuestion",
+    "model": "opus",
+    "effort": "xhigh",
+    "skills": [
+      "agentcore-create"
+    ]
+  }
+}

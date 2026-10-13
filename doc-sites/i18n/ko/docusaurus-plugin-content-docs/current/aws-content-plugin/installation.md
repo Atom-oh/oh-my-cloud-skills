@@ -26,7 +26,8 @@ title: "aws-content-plugin 설치"
 저장소 체크아웃에서 로컬 개발을 진행할 때는 다음 명령을 사용합니다.
 
 ```bash
-claude --plugin-dir ./plugins/aws-content-plugin
+python3 scripts/sync-codex-plugins.py
+claude --plugin-dir ./packages/claude/aws-content-plugin
 ```
 
 ## Codex {#codex}

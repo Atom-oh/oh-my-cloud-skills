@@ -1,0 +1,77 @@
+{
+  "animated-diagram-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash",
+    "model": "opus",
+    "effort": "high",
+    "skills": [
+      "animated-diagram"
+    ]
+  },
+  "architecture-diagram-agent.md": {
+    "tools": "Read, Write, Edit, Glob, Grep, Bash",
+    "model": "opus",
+    "effort": "high",
+    "skills": [
+      "architecture-diagram"
+    ]
+  },
+  "brochure-agent.md": {
+    "tools": "Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "high",
+    "skills": [
+      "brochure",
+      "architecture-diagram"
+    ],
+    "mcpServers": [
+      "playwright"
+    ]
+  },
+  "content-review-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "xhigh",
+    "memory": "project",
+    "maxTurns": 50,
+    "mcpServers": [
+      "playwright"
+    ]
+  },
+  "document-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "low"
+  },
+  "gitbook-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, Agent, AskUserQuestion",
+    "model": "opus",
+    "effort": "low",
+    "skills": [
+      "gitbook"
+    ]
+  },
+  "presentation-agent.md": {
+    "tools": "AskUserQuestion",
+    "model": "sonnet",
+    "effort": "low"
+  },
+  "reactive-presentation-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "high",
+    "skills": [
+      "reactive-presentation"
+    ],
+    "mcpServers": [
+      "playwright"
+    ]
+  },
+  "workshop-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "high",
+    "skills": [
+      "workshop-creator"
+    ]
+  }
+}

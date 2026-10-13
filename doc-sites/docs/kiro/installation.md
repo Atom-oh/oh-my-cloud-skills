@@ -24,7 +24,8 @@ title: "Install kiro"
 For local development from a repository checkout:
 
 ```bash
-claude --plugin-dir ./plugins/kiro
+python3 scripts/sync-codex-plugins.py
+claude --plugin-dir ./packages/claude/kiro
 ```
 
 ## Codex {#codex}

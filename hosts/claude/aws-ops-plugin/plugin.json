@@ -1,0 +1,69 @@
+{
+  "agents": [
+    "./agents/eks-agent.md",
+    "./agents/network-agent.md",
+    "./agents/iam-agent.md",
+    "./agents/observability-agent.md",
+    "./agents/storage-agent.md",
+    "./agents/database-agent.md",
+    "./agents/cost-agent.md",
+    "./agents/analytics-agent.md",
+    "./agents/ops-coordinator-agent.md",
+    "./agents/wellarchitected-agent.md"
+  ],
+  "skills": [
+    "./skills/ops-troubleshoot",
+    "./skills/ops-health-check",
+    "./skills/ops-network-diagnosis",
+    "./skills/ops-observability",
+    "./skills/ops-security-audit",
+    "./skills/ops-wellarchitected-review"
+  ],
+  "mcpServers": {
+    "awsdocs": {
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-documentation-mcp-server@latest"
+      ],
+      "type": "stdio",
+      "timeout": 60000,
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+    "awsapi": {
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-api-mcp-server@latest"
+      ],
+      "type": "stdio",
+      "timeout": 120000,
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'out=$(jq -r \"(.tool_response // .tool_output // empty) | tostring\" 2>/dev/null); if grep -qiE \"Access[ -]?Denied|Permission denied|not authorized to perform|Unauthorized|Forbidden|ThrottlingException|Throttled|TooManyRequests|SlowDown|LimitExceeded|AuthFailure|SignatureDoesNotMatch|ExpiredToken|Validation(Error|Exception)|NotFound|ServiceUnavailable|InternalServer|FailureReason|An error occurred\" <<<\"$out\"; then jq -n --arg m \"AWS error pattern detected in output. Consider capturing for incident context.\" \"{hookSpecificOutput:{hookEventName:\\\"PostToolUse\\\",additionalContext:\\$m}}\"; fi'"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'AWS Ops Plugin loaded. Domains: EKS, Network, IAM, Observability, Storage, Database, Analytics, Cost, Well-Architected.'"
+          }
+        ]
+      }
+    ]
+  }
+}

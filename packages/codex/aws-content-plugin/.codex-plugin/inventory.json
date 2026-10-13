@@ -1,0 +1,131 @@
+{
+  "plugin": "aws-content-plugin",
+  "skills": [
+    {
+      "name": "animated-diagram",
+      "path": ".codex-plugin/skills/animated-diagram/SKILL.md",
+      "sources": [
+        "skills/animated-diagram/SKILL.md"
+      ]
+    },
+    {
+      "name": "animated-diagram-agent",
+      "path": ".codex-plugin/skills/animated-diagram-agent/SKILL.md",
+      "sources": [
+        "agents/animated-diagram-agent.md"
+      ]
+    },
+    {
+      "name": "architecture-diagram",
+      "path": ".codex-plugin/skills/architecture-diagram/SKILL.md",
+      "sources": [
+        "skills/architecture-diagram/SKILL.md"
+      ]
+    },
+    {
+      "name": "architecture-diagram-agent",
+      "path": ".codex-plugin/skills/architecture-diagram-agent/SKILL.md",
+      "sources": [
+        "agents/architecture-diagram-agent.md"
+      ]
+    },
+    {
+      "name": "aws-light-fcd",
+      "path": ".codex-plugin/skills/aws-light-fcd/SKILL.md",
+      "sources": [
+        "skills/aws-light-fcd/SKILL.md"
+      ]
+    },
+    {
+      "name": "brochure",
+      "path": ".codex-plugin/skills/brochure/SKILL.md",
+      "sources": [
+        "skills/brochure/SKILL.md"
+      ]
+    },
+    {
+      "name": "brochure-agent",
+      "path": ".codex-plugin/skills/brochure-agent/SKILL.md",
+      "sources": [
+        "agents/brochure-agent.md"
+      ]
+    },
+    {
+      "name": "content-review-agent",
+      "path": ".codex-plugin/skills/content-review-agent/SKILL.md",
+      "sources": [
+        "agents/content-review-agent.md"
+      ]
+    },
+    {
+      "name": "document-agent",
+      "path": ".codex-plugin/skills/document-agent/SKILL.md",
+      "sources": [
+        "agents/document-agent.md"
+      ]
+    },
+    {
+      "name": "gh-home",
+      "path": ".codex-plugin/skills/gh-home/SKILL.md",
+      "sources": [
+        "skills/gh-home/SKILL.md"
+      ]
+    },
+    {
+      "name": "gitbook",
+      "path": ".codex-plugin/skills/gitbook/SKILL.md",
+      "sources": [
+        "skills/gitbook/SKILL.md"
+      ]
+    },
+    {
+      "name": "gitbook-agent",
+      "path": ".codex-plugin/skills/gitbook-agent/SKILL.md",
+      "sources": [
+        "agents/gitbook-agent.md"
+      ]
+    },
+    {
+      "name": "presentation-agent",
+      "path": ".codex-plugin/skills/presentation-agent/SKILL.md",
+      "sources": [
+        "agents/presentation-agent.md"
+      ]
+    },
+    {
+      "name": "reactive-presentation",
+      "path": ".codex-plugin/skills/reactive-presentation/SKILL.md",
+      "sources": [
+        "skills/reactive-presentation/SKILL.md"
+      ]
+    },
+    {
+      "name": "reactive-presentation-agent",
+      "path": ".codex-plugin/skills/reactive-presentation-agent/SKILL.md",
+      "sources": [
+        "agents/reactive-presentation-agent.md"
+      ]
+    },
+    {
+      "name": "slide-fix",
+      "path": ".codex-plugin/skills/slide-fix/SKILL.md",
+      "sources": [
+        "skills/slide-fix/SKILL.md"
+      ]
+    },
+    {
+      "name": "workshop-agent",
+      "path": ".codex-plugin/skills/workshop-agent/SKILL.md",
+      "sources": [
+        "agents/workshop-agent.md"
+      ]
+    },
+    {
+      "name": "workshop-creator",
+      "path": ".codex-plugin/skills/workshop-creator/SKILL.md",
+      "sources": [
+        "skills/workshop-creator/SKILL.md"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "plugin": "agentcore-creator",
+  "skills": [
+    {
+      "name": "agentcore-create",
+      "path": ".codex-plugin/skills/agentcore-create/SKILL.md",
+      "sources": [
+        "skills/agentcore-create/SKILL.md"
+      ]
+    },
+    {
+      "name": "agentcore-creator-agent",
+      "path": ".codex-plugin/skills/agentcore-creator-agent/SKILL.md",
+      "sources": [
+        "agents/agentcore-creator-agent.md"
+      ]
+    }
+  ]
+}

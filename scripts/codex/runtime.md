@@ -69,13 +69,11 @@ search a different installation, or assume the consumer has `plugins/` in its re
   Enforce a procedure's required read-only planning or host-state protection with
   an actual sandbox/tool boundary before delegating. If the available agent
   interface cannot enforce it, perform that phase inline in this host.
-- **Cost consequence of the point above**: a generated agent-sourced entry names its
-  source's `model`/`effort` intent in a prose line (never a manifest field — Codex's
-  plugin validator has no per-skill model/effort slot to put one in). It is advisory
-  only. Without it, delegating this procedure silently runs at the current session's
-  model/effort, at that spend, regardless of how strong or light the source intended
-  it — the gap is real cost, not just a naming mismatch. When it matters, either
-  raise/lower the session for the procedure or delegate explicitly
+- Codex reasoning intent and explicit-selection settings come from the Codex-owned
+  execution configuration. Intent appears as advisory prose, not a per-skill model
+  setting or permission grant. Claude agent model/effort edits do not change it.
+  A delegated procedure uses its actual session configuration. When that differs
+  from the task's needs, select the session configuration or delegate explicitly
   (`codex exec -m <model> -c model_reasoning_effort="<effort>"`).
 - Any procedure this host delegates onward — a subagent, a peer AI, a worktree
   implementer — should have its RETURNED output bounded the same way the source

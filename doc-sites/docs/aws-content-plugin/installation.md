@@ -26,7 +26,8 @@ title: "Install aws-content-plugin"
 For local development from a repository checkout:
 
 ```bash
-claude --plugin-dir ./plugins/aws-content-plugin
+python3 scripts/sync-codex-plugins.py
+claude --plugin-dir ./packages/claude/aws-content-plugin
 ```
 
 ## Codex {#codex}

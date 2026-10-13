@@ -1,0 +1,20 @@
+{
+  "agents": [
+    "./agents/kiro-converter-agent.md"
+  ],
+  "skills": [
+    "./skills/kiro-convert"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"Kiro Power Converter loaded. Use 'convert to kiro' to start.\""
+          }
+        ]
+      }
+    ]
+  }
+}

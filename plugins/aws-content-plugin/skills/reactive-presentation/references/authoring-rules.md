@@ -78,6 +78,7 @@ Each tell is enforced by a **lint rule id** (machine-detected) or by the review 
 
 | Anti-pattern (AI-slide tell) | Why it reads as AI-generated | Use instead | Enforcement (lint rule / gate) |
 |--------------------------|----------------|------|--------------------------|
+| Em dashes (U+2014) or middle dots (U+00B7/U+30FB) in authored text | Formulaic sentence breaks and decorative separators | Natural sentences, commas, colons, parentheses or separate lines | Copy style (review gate) |
 | Hardcoded hex (raw 6-digit color values) | Ignores theme tokens, locks the deck to a single theme | Semantic role tokens like `var(--accent)` | `RAW_HEX` (lint) |
 | Inline color/spacing style (color/padding written directly in `style=`) | Bypasses the token system, breaks consistency | Token classes (`.card-grid`, `.metric-card`) + `:::css` | `INLINE_STYLE` (lint) |
 | Raw rgba color functions | Cannot adapt to theme, hardcoded shadows/overlays | `var(--surface-*)`, `color-mix()` tokens | `RAW_RGBA` (lint) |
@@ -89,7 +90,15 @@ Each tell is enforced by a **lint rule id** (machine-detected) or by the review 
 | Encyclopedia-tone descriptive titles (e.g. "2026 Frontier AI Model Trends") | Flat label, no edge | Assertive/argumentative/question/twist headline (≤28 chars) | Slide Title Voice (gate) + `TITLE_LENGTH` (lint checks length only) |
 | Free-form or missing speaker notes | Cannot be presented from, no structure | `[요약]` ("Summary") five-tier structured notes (150+ chars) | `NOTE_STRUCTURE` / `MISSING_NOTES` (lint) |
 
-> Items with a rule id are mechanically caught by `validate` (§1) or `measure_deck.py` (§1 density gates); gate items (decoration, title voice) are deducted for by `content-review-agent`.
+> Items with a rule id are mechanically caught by `validate` (§1) or `measure_deck.py` (§1 density gates); gate items (copy style, decoration, title voice) are checked by `content-review-agent`.
+
+**Copy style applies to all authored presentation text**: titles, subtitles, body copy,
+HTML/Canvas labels, quiz questions and answers, footers and speaker notes. Do not use
+em dashes or middle dots, including HTML entities that render those characters
+(`&mdash;`, `&middot;` or numeric equivalents). Rewrite the sentence or separator
+according to its meaning. Adapt copied template text to this rule before building.
+Preserve literal code, URLs, identifiers and verbatim quotations when exact text is
+required; the rule governs authored prose and decorative separators.
 
 ---
 
@@ -135,8 +144,8 @@ Works without slide-framework.js. Colors are handled by theme.css's `.tab-set`/`
 </div>
 <div class="tc" hidden>
   <div class="card-grid">
-    <div class="callout callout-info"><strong class="text-info">item-1</strong> — Description</div>
-    <div class="callout callout-warning"><strong class="text-warning">item-2</strong> — Description</div>
+    <div class="callout callout-info"><strong class="text-info">item-1</strong>: Description</div>
+    <div class="callout callout-warning"><strong class="text-warning">item-2</strong>: Description</div>
   </div>
 </div>
 <div class="tc" hidden>

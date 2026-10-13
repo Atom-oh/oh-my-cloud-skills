@@ -1,0 +1,71 @@
+{
+  "host": "codex",
+  "plugin": "kiro-power-converter",
+  "version": "3.0.2",
+  "files": {
+    ".codex-plugin/plugin.json": {
+      "sha256": "ece51b3cd061bf20ac0dd1b3596944efdfa780cbd6e249983789da714e2a3570",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "deccffce933915acdf43564299a4c87a95150a77b1f389d472bcf74735581c08",
+      "executable": false
+    },
+    "agents/kiro-converter-agent.md": {
+      "sha256": "204c0a2ea7562b41eb9ad115072f1b20d1a333d62ece551cc84ec78d53d47859",
+      "executable": false
+    },
+    "skills/kiro-convert/SKILL.md": {
+      "sha256": "ee65171739222e607467511421c76845b641e68938897b4b9034697353224d66",
+      "executable": false
+    },
+    "skills/kiro-convert/references/conversion-rules.md": {
+      "sha256": "0f93a977a5880a47d16770adba9d5df18a606fb902c7bfb40b4bd6d064c0e699",
+      "executable": false
+    },
+    "skills/kiro-convert/references/kiro-power-format.md": {
+      "sha256": "979cdef9fe137afedcdb7a1741aa8efacfeb64eb6ffbc9f0b50cf0f8bf8a1785",
+      "executable": false
+    },
+    "skills/kiro-convert/scripts/convert_plugin_to_power.py": {
+      "sha256": "78a49a6c464db7ad0779938aba9083f2e1a3d4361fb85d80fedf825ce68ec3af",
+      "executable": true
+    },
+    ".codex-plugin/skills/kiro-convert/SKILL.md": {
+      "sha256": "22bdb2fa84e79fa2ba9dc7780ce0702e48625adf61042725f2cfed4b56c12437",
+      "executable": false
+    },
+    ".codex-plugin/skills/kiro-converter-agent/SKILL.md": {
+      "sha256": "83826de2f280d0bc65af7faa6a57bbcf6ecc85d9a2775d89425b3d0f749ca02a",
+      "executable": false
+    },
+    ".codex-plugin/skills/kiro-converter-agent/agents/openai.yaml": {
+      "sha256": "f8975a3e8c7962e1f16ad65e130b1979a7db1f6537a2739f8ea13164fba1ecbe",
+      "executable": false
+    },
+    ".codex-plugin/inventory.json": {
+      "sha256": "5f045f1f324be4739a7b8c2e5eb2587c62d219e4f920e0e6120b9f96efc0434d",
+      "executable": false
+    },
+    ".codex-plugin/runtime.md": {
+      "sha256": "abc2183e07ac4b1450796f9db45e9d434fd5dd42b65625c770feeab3055f9ba8",
+      "executable": false
+    },
+    ".codex-plugin/run.py": {
+      "sha256": "53d259a9e0bc0393586ed5fa709695e4c00d4d46403c3a4dc19454b4cc86faf2",
+      "executable": false
+    },
+    ".codex-plugin/hooks.json": {
+      "sha256": "05f07b2cb0f1b1dd476b7c9ec95452f09597c9064a319f4de8f2bb584ea5d777",
+      "executable": false
+    },
+    ".codex-plugin/hook-handlers.json": {
+      "sha256": "38edf0802fe6d4f548e1362ea6aff5956e86e8bbfb301f303088c5e295f7859c",
+      "executable": false
+    },
+    ".codex-plugin/hook.py": {
+      "sha256": "fd376bcfc694360586232b5cd427b75c8aefe4c1381bbeb5707ee2c77d17ca4c",
+      "executable": false
+    }
+  }
+}

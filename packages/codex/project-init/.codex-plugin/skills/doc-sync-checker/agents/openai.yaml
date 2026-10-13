@@ -1,0 +1,5 @@
+interface:
+  display_name: "Doc Sync Checker"
+  short_description: "Check documentation freshness, references and the selected host's project instructions."
+policy:
+  allow_implicit_invocation: false

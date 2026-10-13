@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EKS Auto Mode Deep Dive — 목차</title>
+  <link rel="stylesheet" href="./common/theme.css">
+  <style>
+    .toc-wrap { max-width: 720px; margin: 10vh auto; padding: var(--space-6); }
+    .toc-item { display: block; padding: var(--space-4); margin-bottom: var(--space-3);
+                background: var(--surface-1); border: 1px solid var(--border);
+                border-radius: var(--radius-md); color: var(--on-surface);
+                text-decoration: none; }
+    .toc-item:hover { border-color: var(--accent); }
+    .toc-meta { color: var(--on-surface-muted); font-size: var(--text-sm); }
+  </style>
+</head>
+<body style="display:block; overflow:auto;">
+  <div class="toc-wrap">
+    <h1>EKS Auto Mode — 운영이 사라진 클러스터</h1>
+    <p class="toc-meta">40분 · Level 300 · 데모 포함</p>
+    <a class="toc-item" href="./index.html"><strong>본편</strong>
+      <div class="toc-meta">11 슬라이드 · Auto Mode 관리 범위 → 스케일링 해부 → 남는 책임</div></a>
+    <div class="export-toolbar">
+      <button class="export-btn" onclick="ExportUtils.exportPDF({ title: 'EKS Auto Mode Deep Dive' })">Export PDF</button>
+      <button class="export-btn" onclick="ExportUtils.exportPPTX({ title: 'EKS Auto Mode Deep Dive' })">Export PPTX</button>
+      <button class="export-btn" onclick="ExportUtils.downloadZIP()">Download ZIP</button>
+    </div>
+  </div>
+  <script src="./common/export-utils.js"></script>
+</body>
+</html>

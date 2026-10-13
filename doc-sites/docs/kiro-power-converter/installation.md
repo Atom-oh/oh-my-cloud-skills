@@ -26,7 +26,8 @@ title: "Install kiro-power-converter"
 For local development from a repository checkout:
 
 ```bash
-claude --plugin-dir ./plugins/kiro-power-converter
+python3 scripts/sync-codex-plugins.py
+claude --plugin-dir ./packages/claude/kiro-power-converter
 ```
 
 ## Codex {#codex}

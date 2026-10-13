@@ -1,0 +1,47 @@
+{
+  "host": "codex",
+  "plugin": "pr-dash",
+  "version": "3.0.2",
+  "files": {
+    ".codex-plugin/plugin.json": {
+      "sha256": "1cd316b7b486658816eccb62870044e5eaaa8e79b91d66b86c5768ebe5b63f7b",
+      "executable": false
+    },
+    ".gitignore": {
+      "sha256": "3a83d802deb0fe3531da196e03f4c98abf1004d18f3de377747100cab9ad68d9",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "62bdef6369e121090e7203f8bed367a82226416386c9e697676c37e6c7189d7c",
+      "executable": false
+    },
+    "README.md": {
+      "sha256": "89bf0447a4dd80108cd45b0fc078832d70dbd06d2ecc7c1c54c9f9ad3a8fbce7",
+      "executable": false
+    },
+    "skills/pr-status/SKILL.md": {
+      "sha256": "6def63d51eaba142d37c95840a761dad2dd78ca395544dfcb979faf1afa608a8",
+      "executable": false
+    },
+    "skills/pr-status/references/review-comment-format.md": {
+      "sha256": "1b5292e5e5c2cf3b312bc6a5d85781c6e5321d24de51a37f324c57244249df03",
+      "executable": false
+    },
+    ".codex-plugin/skills/pr-status/SKILL.md": {
+      "sha256": "9096740feb65128a808ba227636c71868e237416e7c839ad63d0b10e088b6ff3",
+      "executable": false
+    },
+    ".codex-plugin/inventory.json": {
+      "sha256": "fdb434ecdb4167b888e7a3088d854168e5481943db1c320c353bc4b1e0e32088",
+      "executable": false
+    },
+    ".codex-plugin/runtime.md": {
+      "sha256": "abc2183e07ac4b1450796f9db45e9d434fd5dd42b65625c770feeab3055f9ba8",
+      "executable": false
+    },
+    ".codex-plugin/run.py": {
+      "sha256": "53d259a9e0bc0393586ed5fa709695e4c00d4d46403c3a4dc19454b4cc86faf2",
+      "executable": false
+    }
+  }
+}

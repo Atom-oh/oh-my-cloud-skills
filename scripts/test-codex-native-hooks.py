@@ -122,7 +122,7 @@ def stop(process):
 
 
 def probe(root, temp_dir, report, project_init=False, model="gpt-5.5"):
-    source = root / "plugins/kiro"
+    source = root / "packages/codex/kiro"
     require((source / ".codex-plugin/hook.py").read_bytes() ==
             (root / "scripts/codex/hook.py").read_bytes(), "Regenerate Kiro adapters before this test")
     with tempfile.TemporaryDirectory(prefix="codex native hooks ", dir=temp_dir) as tmp, ExitStack() as stack:
@@ -131,7 +131,7 @@ def probe(root, temp_dir, report, project_init=False, model="gpt-5.5"):
         state.mkdir()
         workspace.mkdir()
         if project_init:
-            shutil.copytree(root / "plugins/project-init/.codex-plugin/project-template/.codex",
+            shutil.copytree(root / "packages/codex/project-init/.codex-plugin/project-template/.codex",
                             workspace / ".codex")
         package = market / "plugins/kiro"
         shutil.copytree(source, package, ignore=shutil.ignore_patterns("__pycache__"))

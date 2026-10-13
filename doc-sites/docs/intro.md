@@ -61,6 +61,8 @@ The Claude manifests expose agents, skills, commands, and hooks. Codex manifests
 
 Those manifests and each plugin's source directories define the installed inventory. Generated Codex overlays may expose more skill entries because they wrap Claude commands. Model identifiers, reasoning settings, and context limits come from each plugin's configuration; this site does not maintain a second model catalog.
 
+Shared procedures and assets stay in `plugins/`. Claude and Codex execution settings are maintained independently under `hosts/claude/` and `hosts/codex/`. Their marketplaces install self-contained packages from `packages/claude/` and `packages/codex/`. Regenerate packages with `python3 scripts/sync-codex-plugins.py` after editing shared or host sources.
+
 ## Review and examples {#review-and-examples}
 
 Content output requires the content-review quality gate before publication. Local review hooks are opt-in controls; they do not replace CI checks or repository branch protection. Review findings must be checked against the actual changed files and current configuration.

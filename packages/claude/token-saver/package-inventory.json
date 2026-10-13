@@ -1,0 +1,35 @@
+{
+  "host": "claude",
+  "plugin": "token-saver",
+  "version": "3.0.2",
+  "files": {
+    ".claude-plugin/plugin.json": {
+      "sha256": "aa4c840d66be6894dd24bcf1497acc5b0240157a7abea7b26da2a80ec0d00cce",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "e466f03860ac52af6cd58fe5677a2632405f7d306f309b2a60e9ee446223b661",
+      "executable": false
+    },
+    "README.md": {
+      "sha256": "3173b7c9d2cf7ccc73fb1fcfbba4c99712a16540f253852b804a2074907e71d0",
+      "executable": false
+    },
+    "hooks/session-start.py": {
+      "sha256": "297f890cdb8463b40c43116256e83635dd700b6eaf68d5a73468c1899715c9e4",
+      "executable": false
+    },
+    "skills/concise-responses/SKILL.md": {
+      "sha256": "0bb75e5f5d0fb4a257b023c3816ba3627d8d38fc8328b8977e976fc87bc9b188",
+      "executable": false
+    },
+    "skills/concise-responses/references/agent-output-budget.md": {
+      "sha256": "bfea89977e4147d1b7871472c4c38aa9e8335bf499db89621766fbc40343647e",
+      "executable": false
+    },
+    "skills/concise-responses/references/policy.md": {
+      "sha256": "3317ee43b42d8265b2d7899680beba0589d70367ce5bb61a8ba64b83cbf6cc53",
+      "executable": false
+    }
+  }
+}

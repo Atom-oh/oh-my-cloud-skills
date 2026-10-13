@@ -32,25 +32,29 @@ architecture, decisions and working records live in `docs/`.
 
 | Subject | Authoritative source |
 |---|---|
-| Plugin membership and versions | Both marketplaces and each plugin manifest |
-| Claude procedures | `plugins/*/skills`, `commands`, `agents` and scoped guidance |
-| Codex projections | `scripts/sync-codex-plugins.py`, `scripts/codex/`, generated inventories |
+| Plugin membership, identity and versions | `hosts/catalog.json`, reflected in both marketplaces and manifests |
+| Shared procedures | `plugins/*/skills`, `commands`, `agents` and scoped guidance |
+| Claude execution settings | `hosts/claude/*/plugin.json`, `agents.json` |
+| Codex execution settings | `hosts/codex/*`, `scripts/codex/` |
+| Installed packages | Generated `packages/claude/*`, `packages/codex/*` |
 | CI review roster | `scripts/pr-review/pr-review.defaults.json`, `panel_config.py` |
 | CI verdict/coverage | `review_gate.py` in co-agent/pr-autofix, `pr-review.yml` |
 | Local co-agent modes/gates | co-agent SKILL/references, defaults and `consensus_hooks.py` |
 | Diagram geometry/colors | architecture-diagram `references/design-tokens.md` |
 
-Every plugin ships both host manifests and marketplace entries. Codex entry skills
-link to maintained source procedures. Source skills, commands and agents are
+Every plugin ships separate host packages and marketplace entries. Codex entry skills
+link to procedure copies inside their package. Source skills, commands and agents are
 separate populations; their sum is not the number of generated Codex entries.
 Same-name aliases can share one entry. Agent Markdown supplies procedures, not
 registration of native Codex agent types, model aliases or permission grants.
 
-Edit generator/templates or maintained procedures, then regenerate affected
-`.codex-plugin/` outputs. Never hand-fix generated copies alone. Project-init's
+Edit shared procedures, explicit host sources or generator/templates, then regenerate
+both packages and source compatibility overlays. Do not derive Codex hooks, MCP or
+execution settings from Claude configuration. Never hand-fix generated copies alone. Project-init's
 upstream-owned sources remain mirrored, except the shared version field; its
 repository-owned Codex overlay is separate. See
-`docs/reference/project-init-upstream-sync.md` for sync mechanics.
+`docs/reference/project-init-upstream-sync.md` for sync mechanics and
+`docs/reference/host-packaging.md` for host ownership and assembly.
 
 Version fields agree across both host manifests and marketplaces. Tags identify
 releases; an ordinary development PR need not bump the version or create a tag.
@@ -140,9 +144,10 @@ Codex roles. Preserve the repository's role-based model/effort policy:
 | `opus` + `low` | Narrow writers and analysts |
 | `sonnet` + `low` | The presentation format dispatcher |
 
-Source frontmatter owns each agent's assignment; do not infer a vendor model ID
+`hosts/claude/*/agents.json` owns installed agent assignments; do not infer a vendor model ID
 from these host aliases. Project-init's mirrored `doc-sync-checker` keeps its
-upstream `model: opus` without a local effort override. The policy separates
+upstream `model: opus` without a local effort override. Its host configuration remains
+outside the upstream mirror. Codex reasoning intent belongs to its own execution source. The policy separates
 judgment from mechanical application; its dated cost-efficiency rationale remains
 in [the prior instruction record](https://github.com/Atom-oh/oh-my-cloud-skills/blob/0e5aee83c9718e31b6cd86c321ed59cce5148686/CLAUDE.md#agent-file-format).
 

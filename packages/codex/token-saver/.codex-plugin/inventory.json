@@ -1,0 +1,12 @@
+{
+  "plugin": "token-saver",
+  "skills": [
+    {
+      "name": "concise-responses",
+      "path": ".codex-plugin/skills/concise-responses/SKILL.md",
+      "sources": [
+        "skills/concise-responses/SKILL.md"
+      ]
+    }
+  ]
+}

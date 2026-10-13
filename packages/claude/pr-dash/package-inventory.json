@@ -1,0 +1,63 @@
+{
+  "host": "claude",
+  "plugin": "pr-dash",
+  "version": "3.0.2",
+  "files": {
+    ".claude-plugin/plugin.json": {
+      "sha256": "763fee75682523732ebcb311e8739ad75d476aa294e8f5c2441f9b70f9408fa6",
+      "executable": false
+    },
+    ".gitignore": {
+      "sha256": "3a83d802deb0fe3531da196e03f4c98abf1004d18f3de377747100cab9ad68d9",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "62bdef6369e121090e7203f8bed367a82226416386c9e697676c37e6c7189d7c",
+      "executable": false
+    },
+    "README.md": {
+      "sha256": "89bf0447a4dd80108cd45b0fc078832d70dbd06d2ecc7c1c54c9f9ad3a8fbce7",
+      "executable": false
+    },
+    "hooks/hooks.json": {
+      "sha256": "8eaa4bcc63d3a28ee6657056b562f7614e4d82060263274630c6a57fac7a9e8e",
+      "executable": false
+    },
+    "hooks/lib/model.ts": {
+      "sha256": "0a419e3deb52485c3a5321ab2263e89bd0128c7ebcfeb72f9a8e4b7bd0643a1d",
+      "executable": false
+    },
+    "hooks/lib/view.ts": {
+      "sha256": "c3b9f30b3e4c23f7cae6107fb52de7ff0cda5fe199e7850ccba75519e3296fb1",
+      "executable": false
+    },
+    "hooks/register.ts": {
+      "sha256": "58132830885e535079d8fcb3d1340b19392c96045818feef67f61e21eb0a120d",
+      "executable": false
+    },
+    "skills/pr-status/SKILL.md": {
+      "sha256": "6def63d51eaba142d37c95840a761dad2dd78ca395544dfcb979faf1afa608a8",
+      "executable": false
+    },
+    "skills/pr-status/references/review-comment-format.md": {
+      "sha256": "1b5292e5e5c2cf3b312bc6a5d85781c6e5321d24de51a37f324c57244249df03",
+      "executable": false
+    },
+    "tests/fixtures/pr-blocked.ts": {
+      "sha256": "da24b4c317f2be0111ce1e69e6ffa5f137dc022316ebcc0641eaba9d238d3381",
+      "executable": false
+    },
+    "tests/fixtures/pr-passed.ts": {
+      "sha256": "da7b3d4031e2bbec943ed9e8281005851ecb5498f316472ecd57f4f66f709525",
+      "executable": false
+    },
+    "tests/model.test.ts": {
+      "sha256": "a7d4ca4c1cbcced12d87331c0934ad20615673b9524e162b02ddba046f9782d3",
+      "executable": false
+    },
+    "tests/register.test.ts": {
+      "sha256": "9ddffe86862d3527ba39958b167c09e05fc530efed07ccf2d7ca9bd160b1bee9",
+      "executable": false
+    }
+  }
+}

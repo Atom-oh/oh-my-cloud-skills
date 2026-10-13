@@ -8,118 +8,118 @@
       "name": "aws-content-plugin",
       "source": {
         "source": "local",
-        "path": "./plugins/aws-content-plugin"
+        "path": "./packages/codex/aws-content-plugin"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Content Creation",
-      "version": "3.0.0"
+      "version": "3.0.2"
     },
     {
       "name": "aws-ops-plugin",
       "source": {
         "source": "local",
-        "path": "./plugins/aws-ops-plugin"
+        "path": "./packages/codex/aws-ops-plugin"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Cloud Operations",
-      "version": "3.0.0"
+      "version": "3.0.2"
     },
     {
       "name": "kiro-power-converter",
       "source": {
         "source": "local",
-        "path": "./plugins/kiro-power-converter"
+        "path": "./packages/codex/kiro-power-converter"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Conversion",
-      "version": "3.0.0"
+      "version": "3.0.2"
     },
     {
       "name": "co-agent",
       "source": {
         "source": "local",
-        "path": "./plugins/co-agent"
+        "path": "./packages/codex/co-agent"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Collaboration",
-      "version": "3.0.0"
+      "version": "3.0.2"
     },
     {
       "name": "agentcore-creator",
       "source": {
         "source": "local",
-        "path": "./plugins/agentcore-creator"
+        "path": "./packages/codex/agentcore-creator"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Conversion",
-      "version": "3.0.0"
+      "version": "3.0.2"
     },
     {
       "name": "kiro",
       "source": {
         "source": "local",
-        "path": "./plugins/kiro"
+        "path": "./packages/codex/kiro"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Collaboration",
-      "version": "3.0.0"
+      "version": "3.0.2"
     },
     {
       "name": "project-init",
       "source": {
         "source": "local",
-        "path": "./plugins/project-init"
+        "path": "./packages/codex/project-init"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Development",
-      "version": "3.0.0"
+      "version": "3.0.2"
     },
     {
       "name": "token-saver",
       "source": {
         "source": "local",
-        "path": "./plugins/token-saver"
+        "path": "./packages/codex/token-saver"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity",
-      "version": "3.0.0"
+      "version": "3.0.2"
     },
     {
       "name": "pr-dash",
       "source": {
         "source": "local",
-        "path": "./plugins/pr-dash"
+        "path": "./packages/codex/pr-dash"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity",
-      "version": "3.0.0"
+      "version": "3.0.2"
     }
   ]
 }

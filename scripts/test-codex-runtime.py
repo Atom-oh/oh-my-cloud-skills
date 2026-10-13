@@ -106,7 +106,7 @@ def main():
             parser.error("Unknown plugins: " + ", ".join(sorted(unknown)))
         entries = [entry for entry in entries if entry["name"] in names]
     missing = [entry["name"] for entry in entries
-               if not (root / "plugins" / entry["name"] / ".codex-plugin/inventory.json").is_file()]
+               if not (root / entry["source"]["path"] / ".codex-plugin/inventory.json").is_file()]
     if missing:
         parser.error("Generate adapters first with scripts/sync-codex-plugins.py; "
                      "missing: " + ", ".join(missing))
@@ -133,7 +133,7 @@ def main():
             name = entry["name"]
             installed = json.loads(run("plugin", "add", f"{name}@{marketplace['name']}", "--json"))
             installed_roots[name] = Path(installed["installedPath"])
-            inventory = json.loads((root / "plugins" / name / ".codex-plugin/inventory.json").read_text())
+            inventory = json.loads((root / entry["source"]["path"] / ".codex-plugin/inventory.json").read_text())
             for skill in inventory["skills"]:
                 expected[f"{name}:{skill['name']}"] = Path(installed["installedPath"]) / skill["path"]
             print(f"installed {name}: {len(inventory['skills'])} skills")

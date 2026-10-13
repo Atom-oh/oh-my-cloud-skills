@@ -1,0 +1,8 @@
+{
+  "reasoning": {
+    "doc-sync-checker": "high"
+  },
+  "explicit_skills": [
+    "doc-sync-checker"
+  ]
+}

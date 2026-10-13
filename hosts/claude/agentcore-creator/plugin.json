@@ -1,0 +1,20 @@
+{
+  "agents": [
+    "./agents/agentcore-creator-agent.md"
+  ],
+  "skills": [
+    "./skills/agentcore-create"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'AgentCore Creator loaded. Use /agentcore-create or say \"convert to agentcore\" to start.'"
+          }
+        ]
+      }
+    ]
+  }
+}

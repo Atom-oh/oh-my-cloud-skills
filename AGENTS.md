@@ -1,4 +1,4 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 3fbcb5503d9b · generated-at: 2026-09-25 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 3f133208b370 · generated-at: 2026-10-13 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 > You are an external reviewer for this repo — project context below, distilled from
 > CLAUDE.md. This file is shared verbatim by the external review panel (not a per-AI copy).
 
@@ -38,11 +38,15 @@ separates source skills, commands, agents, generated entries and review cells.
 - Codex entries are procedures, not native roles or permission grants. Hooks need
   trust; project-init templates additionally need consumer installation and project
   trust. Kiro guards the applied diff, not its process.
+- Shared procedures stay in `plugins/`; `hosts/catalog.json` owns identity/version.
+  Claude and Codex execution sources are independent under `hosts/<host>/`.
+  Marketplaces select generated self-contained `packages/<host>/`; do not infer
+  Codex hooks, MCP or execution settings from Claude configuration.
 
 ## Checks and calibration
 
 - Run TAP, both manifest validators, all-plugin freshness and skill evaluation.
-  Runtime probes require local Codex. Edit maintained source and regenerate overlays;
+  Runtime probes require local Codex. Edit maintained source and regenerate both packages and overlays;
   no skipped packages. Project-init source is mirrored; its overlay is local.
 - Versions agree across manifests/registries; release tags need not change per PR.
   Follow `docs/reference/review-routing.md`: content rubric PASS under its applicable

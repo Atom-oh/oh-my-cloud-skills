@@ -1,0 +1,19 @@
+{
+  "plugin": "kiro-power-converter",
+  "skills": [
+    {
+      "name": "kiro-convert",
+      "path": ".codex-plugin/skills/kiro-convert/SKILL.md",
+      "sources": [
+        "skills/kiro-convert/SKILL.md"
+      ]
+    },
+    {
+      "name": "kiro-converter-agent",
+      "path": ".codex-plugin/skills/kiro-converter-agent/SKILL.md",
+      "sources": [
+        "agents/kiro-converter-agent.md"
+      ]
+    }
+  ]
+}

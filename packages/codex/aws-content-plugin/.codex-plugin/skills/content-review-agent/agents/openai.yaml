@@ -1,0 +1,5 @@
+interface:
+  display_name: "Content Review Agent"
+  short_description: "Cross-cutting content quality review agent for presentations, diagrams, documents, GitBook, brochures, and workshop content — checks layout, terminology, hallucination, PII, accessibility...."
+policy:
+  allow_implicit_invocation: false

@@ -37,6 +37,8 @@ node_modules/
 !plugins/aws-content-plugin/skills/aws-light-fcd/assets/logo/*.png
 # ...and the brochure skill's golden-example product screenshots
 !plugins/aws-content-plugin/skills/brochure/assets/example-brochure/screenshots/*.png
+# Self-contained host packages include the same maintained bitmap assets.
+!packages/**/*.png
 
 # Test fixtures with fake secrets (triggers GitHub Push Protection)
 tests/fixtures/secret-samples.txt

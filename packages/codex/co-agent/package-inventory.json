@@ -1,0 +1,315 @@
+{
+  "host": "codex",
+  "plugin": "co-agent",
+  "version": "3.0.2",
+  "files": {
+    ".codex-plugin/plugin.json": {
+      "sha256": "bdf02500dc4511f4dccc981930d61128bfcac761ba4c5c2059955aada29ae0c5",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "5221df5cafededd3cfe884a3b110ad7116b0fafa2e4703248d3e0a42786f146f",
+      "executable": false
+    },
+    "agents/co-agent.md": {
+      "sha256": "45806a954fcaf3ab65948dfbb2c0f956e4529c75e0a0523859c4fae6a21073b7",
+      "executable": false
+    },
+    "agents/gate-chair.md": {
+      "sha256": "bf73bc15488d219c10b2b9077a1edfd08f92983a3e7ad1d11b24eb28780d259f",
+      "executable": false
+    },
+    "agents/harness-analyst.md": {
+      "sha256": "3ca5618f20696f904fba6137bc20c97498cf73ad72061e70a1daa5c915ecee52",
+      "executable": false
+    },
+    "agents/pr-autofix-implementer.md": {
+      "sha256": "11c6a23d3aa5eb2dce94a33265469882dc39c058240d43d1a3af431f85878b96",
+      "executable": false
+    },
+    "agents/pr-autofix-planner.md": {
+      "sha256": "ddc04dbaa62e2cccc082f2f2edbbc1d4deeca02fa6a66f493f82bdb395c5dcf8",
+      "executable": false
+    },
+    "commands/configure.md": {
+      "sha256": "b92d81412627e06b0be245f20c3282ab6d1e607d5f69fd28def3d23e884b51b1",
+      "executable": false
+    },
+    "commands/consensus.md": {
+      "sha256": "71b95d22d92c4f447c43d80b4812e13080472e6dac524c0660572b1f38d25c01",
+      "executable": false
+    },
+    "commands/harness.md": {
+      "sha256": "fc13e1ac3f3a8f257c8b77a076399ed96edbde514f41f0eaa5d175a9a951ee18",
+      "executable": false
+    },
+    "commands/setup.md": {
+      "sha256": "d6c021070086780f4e8bea9aa9f808ce20dfb0c371c3fdd9336c2f3be79cf890",
+      "executable": false
+    },
+    "commands/sync-context.md": {
+      "sha256": "dc33d6df44bd9295a32f4dfc37d601e3505d2a3cd18f0ae729be7932b8713302",
+      "executable": false
+    },
+    "skills/co-agent/SKILL.md": {
+      "sha256": "2a1228e2a3222d9ed95bcc0d1ff617c1f4f60243af43d1b2dc16aa7e277989cb",
+      "executable": false
+    },
+    "skills/co-agent/co-agent.defaults.json": {
+      "sha256": "78a435cf0b6150a701a3c300c4a7bc3b1af57ec85ef1d1a60dcbc935ed836b73",
+      "executable": false
+    },
+    "skills/co-agent/references/ai-cli-adapters.md": {
+      "sha256": "b798c9488f1ced40620ab6d3b3349b745ee7c51dfe160f3199ccc58e5020b61f",
+      "executable": false
+    },
+    "skills/co-agent/references/architecture-review-framework.md": {
+      "sha256": "fac63fbcbdce50451d929b0e20ed56786917c5080100b0b774d1c5265f47ced0",
+      "executable": false
+    },
+    "skills/co-agent/references/aws-well-architected.md": {
+      "sha256": "d67675cb944ae3acdbf2d912b779f2dfcd5ef9982ee2cd8eb57d710c9c62a065",
+      "executable": false
+    },
+    "skills/co-agent/references/consensus-mode.md": {
+      "sha256": "51b0a6a415a199ed34b21c26f57a8ee568d6e5a64caca93973282a88faf12573",
+      "executable": false
+    },
+    "skills/co-agent/references/consensus-pipeline.md": {
+      "sha256": "ed99f876971cf49de1e2ea91986ea6cd39f6c161ac15860a3ba4cf17ea8a0ca3",
+      "executable": false
+    },
+    "skills/co-agent/references/delegated-implement.md": {
+      "sha256": "0f432db9c5ceb0e78765b7559982891a1d1daa307f509ae7e8273699e2a7ad5a",
+      "executable": false
+    },
+    "skills/co-agent/references/hybrid-gate.md": {
+      "sha256": "aff3ce2f3cc1fc4cd98c868eeeae86c63ae24b3e4881cd25d47e1aee63e0a9d2",
+      "executable": false
+    },
+    "skills/co-agent/references/relay-chain-gate.md": {
+      "sha256": "6ae92b40440fb429b66593b353ccce75e3ad4579a2b08d5e0a25caafab90ddb4",
+      "executable": false
+    },
+    "skills/co-agent/scripts/bound_output.py": {
+      "sha256": "c706c2f84e47945ba87200d929e53bd6ba5c038b2e6bdc7a1189aab3c3c7e99e",
+      "executable": true
+    },
+    "skills/co-agent/scripts/check_ai_context.py": {
+      "sha256": "edd3763a095a33a61de89d2141b0c2cd0fd968e6fed0a45d37c2270b6f34f666",
+      "executable": true
+    },
+    "skills/co-agent/scripts/check_citations.py": {
+      "sha256": "1d351b3bde4f9fe9b55988a2e14d1c317f38ff96457845ddbfe722436e360e3c",
+      "executable": true
+    },
+    "skills/co-agent/scripts/check_panel.py": {
+      "sha256": "1936d0d330193416586925f82a79954b27ff61d11763141037f0f6067ad46bc6",
+      "executable": true
+    },
+    "skills/co-agent/scripts/co_agent_config.py": {
+      "sha256": "a557fc6b7c3b947a69e36f691fd20b6dae142cec2f5860bd4e1e42b52d79d0db",
+      "executable": true
+    },
+    "skills/co-agent/scripts/co_agent_env.py": {
+      "sha256": "be3423fd8ded6bc1c54d0c4773bf0b5684ea7bc24c353d7aceba7c2ea84e2024",
+      "executable": false
+    },
+    "skills/co-agent/scripts/co_agent_host.py": {
+      "sha256": "f9f45aea9b0216bc36372f8914efb1a73db146e3f6b91c33c23a705dc564bdf1",
+      "executable": false
+    },
+    "skills/co-agent/scripts/consensus_hooks.py": {
+      "sha256": "2a33ba62ffc525e15c2d73026dfa4f3ba8c44fdac74a871d8150041cdd28df85",
+      "executable": true
+    },
+    "skills/co-agent/scripts/consensus_state.py": {
+      "sha256": "2564dd1b8f734aeb09c4d7d5fd741f08c897587f6b9a755c4551372369e0a0f3",
+      "executable": true
+    },
+    "skills/co-agent/scripts/parse_plan.py": {
+      "sha256": "873b32097d36ddac5d0f097b70385c9cc3b272428e5e37d2936d1b1879b22ab4",
+      "executable": true
+    },
+    "skills/co-agent/scripts/reap_kiro_orphans.sh": {
+      "sha256": "057221069c613c29c846bc8e2a6fc161285155b92155ef9802c4399eed30a4c7",
+      "executable": true
+    },
+    "skills/co-agent/scripts/scope_guard.py": {
+      "sha256": "9c719debf73bd63c928ccb1c14e34ccf4bfc2e83e41eec47b4afd8a9aa6bbf74",
+      "executable": true
+    },
+    "skills/co-agent/scripts/worktree.py": {
+      "sha256": "6f0d555ef53122ae0fd677ec4122207cc8990bccb3932c7fac38057b5107cc1e",
+      "executable": true
+    },
+    "skills/decision-reconcile/SKILL.md": {
+      "sha256": "d6798d38699a0867fca582b5f1ecc7f0e11687ac7263ceabdca7fb292ae971c8",
+      "executable": false
+    },
+    "skills/decision-reconcile/references/contradiction-taxonomy.md": {
+      "sha256": "e958d15c69af9576e13380b5faa560552cb33bee5edeafcd79941a3beb2e599d",
+      "executable": false
+    },
+    "skills/decision-reconcile/scripts/collect_adrs.py": {
+      "sha256": "2fdff7a43b57173aa058e93d7ca65eddc074e87b89e57369f7a2b480b6633047",
+      "executable": true
+    },
+    "skills/pr-autofix/SKILL.md": {
+      "sha256": "725ae9348cc0be57f64d10d2689557f687a493f5c73bd58e0d00a7378c333d79",
+      "executable": false
+    },
+    "skills/pr-autofix/references/ci-workflow-setup.md": {
+      "sha256": "a4f4ab0d8e0fae1d3a52d84e99852d58f107fb6f117d8a26af082b744f98107d",
+      "executable": false
+    },
+    "skills/pr-autofix/references/land-delta-pipeline.md": {
+      "sha256": "e52f503f95cf6728ff443eddc995a52f70b88b275faed94c69768fdb162a99d0",
+      "executable": false
+    },
+    "skills/pr-autofix/references/model-escalation.md": {
+      "sha256": "0dd62ad1296bc6d67c59440a187de0be584771a30b2406478285520806e8b4ac",
+      "executable": false
+    },
+    "skills/pr-autofix/references/pr-review-workflow.yml": {
+      "sha256": "9a8062b3215c51d6381d0ea9d213699438914d7cb3029d9d6eded0219b7040f2",
+      "executable": false
+    },
+    "skills/pr-autofix/references/review-evidence.md": {
+      "sha256": "70efd548322b635520f05833b7b50db819db24a21fce8aaee60eaf65e94cddb5",
+      "executable": false
+    },
+    "skills/pr-autofix/references/review-memory-maintenance.md": {
+      "sha256": "ad55f8c0c9c7c6372eb17683478b10c34895121848dbc9299624636fe190809b",
+      "executable": false
+    },
+    "skills/pr-autofix/references/review-state.md": {
+      "sha256": "5d56146d7d616c1edebcae6e3fcf102ff7dac594c223670accac0c99f5d46cd5",
+      "executable": false
+    },
+    "skills/pr-autofix/scripts/check_pr_target.py": {
+      "sha256": "4bc895882b01cc3a409c1ea5662cc49b1262000cac31836723be06242c5804b4",
+      "executable": false
+    },
+    "skills/pr-autofix/scripts/land_delta.sh": {
+      "sha256": "80467ac0722bb8c2a109f1b131dbafbec93a50e4c5c131de77113739e2919ff4",
+      "executable": true
+    },
+    "skills/pr-autofix/scripts/poll_probe.py": {
+      "sha256": "043a667798ccb1ff68b174b2a88084bb4bde3d865ece0a74034637fc809d7944",
+      "executable": false
+    },
+    "skills/pr-autofix/scripts/resolve_pr_state.py": {
+      "sha256": "18e7421ea10880bb2d72f960724a92336f83c9e2b307d601dfb9a1b7f0f26a20",
+      "executable": false
+    },
+    "skills/pr-autofix/scripts/review_format.py": {
+      "sha256": "f1d38434d6728a5f28c04c5678dbd23badcee1effd2347181acb9ad0a668236c",
+      "executable": false
+    },
+    "skills/pr-autofix/scripts/review_gate.py": {
+      "sha256": "c4b7b0c85784549c5dcf7ccda8e02d45073a57dcd87a936f8ee195ddbb925e03",
+      "executable": false
+    },
+    "skills/pr-autofix/scripts/review_state.jq": {
+      "sha256": "f80904f3a22eb02aa629a61a16e1e98ec2bc34231b4711e3b06165b5f7d600da",
+      "executable": false
+    },
+    "skills/pr-autofix/scripts/review_verdict.py": {
+      "sha256": "7689b9f9419f05df3526ee765e7863e168e43b651c889e9964dfd50c2c51c79a",
+      "executable": false
+    },
+    ".codex-plugin/skills/co-agent/SKILL.md": {
+      "sha256": "b5b18165a4dc64f2044425758a5cf4e8268067d925683d1e5dbdcad297d4313a",
+      "executable": false
+    },
+    ".codex-plugin/skills/configure/SKILL.md": {
+      "sha256": "d06db7a1133dfe9c89873219816a357444756303cf17bf11d0d726334e22f025",
+      "executable": false
+    },
+    ".codex-plugin/skills/consensus/SKILL.md": {
+      "sha256": "8b55bf870590ddda3e66aa6f42d60a8d6c9f12d184d3b2792915deb2adbce1fb",
+      "executable": false
+    },
+    ".codex-plugin/skills/decision-reconcile/SKILL.md": {
+      "sha256": "999d5a67610c19d14fc81330fc49263bc6cb40d8ddad016d7ff2a7f546a864d0",
+      "executable": false
+    },
+    ".codex-plugin/skills/gate-chair/SKILL.md": {
+      "sha256": "f1869453d0e9fed81c40e5ec05820a870a19030f1818e71d242f7b8fb714a985",
+      "executable": false
+    },
+    ".codex-plugin/skills/gate-chair/agents/openai.yaml": {
+      "sha256": "4ac8ec14598620514950c418dc468c08881cb3af25b82376adfa98e6d0dbf31a",
+      "executable": false
+    },
+    ".codex-plugin/skills/harness/SKILL.md": {
+      "sha256": "0d118376a1c16ebe54cc1dfff2caddd3486a9d3af1ae01672afb2f32ebffc28f",
+      "executable": false
+    },
+    ".codex-plugin/skills/harness-analyst/SKILL.md": {
+      "sha256": "29a289f2d5e286d798885c6caa27c14e170471625cfd6daab140c159cb9db64c",
+      "executable": false
+    },
+    ".codex-plugin/skills/harness-analyst/agents/openai.yaml": {
+      "sha256": "4d26c56a22ecdbb30cc824eed8e212adb42c3251b7436736f44d846c3caa64c8",
+      "executable": false
+    },
+    ".codex-plugin/skills/pr-autofix/SKILL.md": {
+      "sha256": "91bd6b1141799fa4c9eddf2f364732cd11bd2d40bfc190b7b74002b1325c9c58",
+      "executable": false
+    },
+    ".codex-plugin/skills/pr-autofix-implementer/SKILL.md": {
+      "sha256": "b4b97d16ac6a63025f35eee294345c2cb972d353940b537d981484043029f48c",
+      "executable": false
+    },
+    ".codex-plugin/skills/pr-autofix-implementer/agents/openai.yaml": {
+      "sha256": "c118d19552f712ddc164cd48cca5cde02ddc4a5cf0ea14c5387994ca23fe05a0",
+      "executable": false
+    },
+    ".codex-plugin/skills/pr-autofix-planner/SKILL.md": {
+      "sha256": "4eef23f8b2dc72ae93885782fe0a847e2c60f7680d36bac6fa6ff0b374b996b8",
+      "executable": false
+    },
+    ".codex-plugin/skills/pr-autofix-planner/agents/openai.yaml": {
+      "sha256": "638067fb171f123759706ccb24a2d788579ea60883b7e8cc9f7af7037e371cd2",
+      "executable": false
+    },
+    ".codex-plugin/skills/setup/SKILL.md": {
+      "sha256": "dd52cef2184a1cc779294f5b413e98cb8824508c3dc118958a3bd1bee23779dd",
+      "executable": false
+    },
+    ".codex-plugin/skills/sync-context/SKILL.md": {
+      "sha256": "744e5ced331347b3fa6a23f42d3f6bd63ed2dd63f00f4550271eee70fb1e4aef",
+      "executable": false
+    },
+    ".codex-plugin/inventory.json": {
+      "sha256": "f371c9c0a7974d1c822bc34d5d81ddd8d93d036122436ec5d098ce6692ff8284",
+      "executable": false
+    },
+    ".codex-plugin/runtime.md": {
+      "sha256": "abc2183e07ac4b1450796f9db45e9d434fd5dd42b65625c770feeab3055f9ba8",
+      "executable": false
+    },
+    ".codex-plugin/run.py": {
+      "sha256": "53d259a9e0bc0393586ed5fa709695e4c00d4d46403c3a4dc19454b4cc86faf2",
+      "executable": false
+    },
+    ".codex-plugin/workflow.md": {
+      "sha256": "4eb9f5e04442b53366b8672d5b57499bcfed71d4d70e5e2abeeebd8420d51c3b",
+      "executable": false
+    },
+    ".codex-plugin/hooks.json": {
+      "sha256": "f4b7fd5a59c85e7b7a9530591f81a865395ee8bcda4d31555c041528b66ad511",
+      "executable": false
+    },
+    ".codex-plugin/hook-handlers.json": {
+      "sha256": "e447aff79667c62c88b4e16b246ad8fd03d289a12ae70eba4ffb18c3b02e7d69",
+      "executable": false
+    },
+    ".codex-plugin/hook.py": {
+      "sha256": "fd376bcfc694360586232b5cd427b75c8aefe4c1381bbeb5707ee2c77d17ca4c",
+      "executable": false
+    }
+  }
+}

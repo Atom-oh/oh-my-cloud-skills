@@ -125,7 +125,7 @@ def codex_probe(root, tmp, server, report, model="gpt-5.5"):
     for path in (state, workspace):
         path.mkdir()
     package = market / "plugins/token-saver"
-    shutil.copytree(root / "plugins/token-saver", package,
+    shutil.copytree(root / "packages/codex/token-saver", package,
                     ignore=shutil.ignore_patterns("__pycache__"))
     registry = market / ".agents/plugins/marketplace.json"
     registry.parent.mkdir(parents=True)
@@ -234,7 +234,7 @@ def claude_probe(root, tmp, server, report):
     result = subprocess.run(["claude", "-p", "Reply with the fixture marker.",
         "--model", "claude-sonnet-4-5", "--tools", "", "--no-session-persistence",
         "--output-format", "json", "--setting-sources", "",
-        "--plugin-dir", str(root / "plugins/token-saver")],
+        "--plugin-dir", str(root / "packages/claude/token-saver")],
         cwd=workspace, env=env, capture_output=True, text=True, timeout=60)
     require(result.returncode == 0, "Claude fixture failed: " + result.stderr[-1000:])
     require("LOCAL_FIXTURE_DONE" in result.stdout, "Claude did not complete the fixture turn")

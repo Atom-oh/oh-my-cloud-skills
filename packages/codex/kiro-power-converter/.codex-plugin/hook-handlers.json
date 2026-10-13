@@ -1,0 +1,10 @@
+{
+  "plugin": "kiro-power-converter",
+  "handlers": [
+    {
+      "event": "SessionStart",
+      "matcher": "",
+      "command": "echo \"Kiro Power Converter loaded. Use 'convert to kiro' to start.\""
+    }
+  ]
+}

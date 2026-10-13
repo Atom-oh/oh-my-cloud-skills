@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EKS Hybrid Node Bursting — Interactive Animation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #232F3E;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Amazon Ember', 'Segoe UI', system-ui, sans-serif;
+      color: #FFFFFF;
+    }
+    h1 {
+      color: #FF9900;
+      font-size: 1.4rem;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .diagram-wrapper {
+      position: relative;
+      width: 94vw;
+      max-width: 1400px;
+    }
+    svg.main {
+      width: 100%;
+      height: auto;
+      display: block;
+      border: 1px solid #3d4f5f;
+      border-radius: 8px;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .controls button {
+      padding: 10px 28px;
+      border: 2px solid #FF9900;
+      border-radius: 6px;
+      background: transparent;
+      color: #FF9900;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, opacity 0.2s;
+    }
+    .controls button:hover:not(:disabled) {
+      background: #FF9900;
+      color: #232F3E;
+    }
+    .controls button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .controls button.danger {
+      border-color: #DD344C;
+      color: #DD344C;
+    }
+    .controls button.danger:hover:not(:disabled) {
+      background: #DD344C;
+      color: #fff;
+    }
+    .status {
+      font-size: 0.85rem;
+      color: #aab7c4;
+      min-width: 240px;
+      text-align: center;
+    }
+    .status strong { color: #FF9900; }
+    .log {
+      margin-top: 10px;
+      font-size: 0.78rem;
+      color: #6c8a9e;
+      text-align: center;
+      min-height: 1.2em;
+      transition: color 0.3s;
+    }
+
+    /* SVG styles embedded via class */
+    .zone-rect { rx: 12; }
+    .node-rect { rx: 6; }
+    .pod-rect  { rx: 3; }
+  </style>
+</head>
+<body>
+
+<h1>EKS Hybrid Node Bursting — Karpenter Auto-Scaling</h1>
+
+<div class="diagram-wrapper">
+  <svg class="main" viewBox="0 0 1200 520" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="3" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+
+    <!-- Background -->
+    <rect width="1200" height="520" fill="#232F3E" rx="8"/>
+
+    <!-- On-Prem Zone -->
+    <rect id="zone-onprem" x="30" y="40" width="520" height="420" fill="rgba(55,70,90,0.5)" stroke="#5A6B7F" stroke-width="2" class="zone-rect"/>
+    <text x="50" y="72" fill="#aab7c4" font-size="14" font-weight="bold">On-Premises — Hybrid Nodes</text>
+    <text x="50" y="92" fill="#6c8a9e" font-size="11">EKS Hybrid Nodes (SSM Agent)</text>
+
+    <!-- Cloud Zone -->
+    <rect id="zone-cloud" x="600" y="40" width="570" height="420" fill="rgba(50,60,80,0.4)" stroke="#FF9900" stroke-width="2" stroke-dasharray="8 4" class="zone-rect"/>
+    <text x="620" y="72" fill="#FF9900" font-size="14" font-weight="bold">AWS Cloud — EKS</text>
+    <text x="620" y="92" fill="#6c8a9e" font-size="11">Karpenter Provisioned Nodes</text>
+
+    <!-- Karpenter icon -->
+    <g transform="translate(1080,60)">
+      <rect x="-32" y="-14" width="64" height="28" rx="4" fill="rgba(255,153,0,0.15)" stroke="#FF9900" stroke-width="1"/>
+      <text x="0" y="5" text-anchor="middle" fill="#FF9900" font-size="10" font-weight="bold">Karpenter</text>
+    </g>
+
+    <!-- EKS Control Plane -->
+    <g transform="translate(885, 72)">
+      <rect x="-55" y="-16" width="110" height="32" rx="6" fill="#1B660F" stroke="#2DA44E" stroke-width="1.5"/>
+      <text x="0" y="5" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">EKS Control Plane</text>
+    </g>
+
+    <!-- On-prem nodes group -->
+    <g id="onprem-nodes"></g>
+
+    <!-- Cloud nodes group -->
+    <g id="cloud-nodes"></g>
+
+    <!-- Connection line -->
+    <line x1="550" y1="260" x2="600" y2="260" stroke="#5A6B7F" stroke-width="2" stroke-dasharray="6 3">
+      <animate attributeName="stroke-dashoffset" values="0;-18" dur="1.5s" repeatCount="indefinite"/>
+    </line>
+    <text x="575" y="250" text-anchor="middle" fill="#6c8a9e" font-size="9">VPN/DX</text>
+  </svg>
+</div>
+
+<div class="controls">
+  <button id="btn-out" onclick="scaleOut()">Scale Out</button>
+  <button id="btn-in" class="danger" onclick="scaleIn()">Scale In</button>
+  <button id="btn-reset" onclick="resetState()" style="border-color:#5A6B7F;color:#5A6B7F;">Reset</button>
+  <div class="status">
+    On-Prem Pods: <strong id="onprem-pod-count">16</strong> &nbsp;|&nbsp;
+    Cloud Pods: <strong id="cloud-pod-count">0</strong> &nbsp;|&nbsp;
+    Cloud Nodes: <strong id="cloud-node-count">0</strong>
+  </div>
+</div>
+<div class="log" id="log">Ready — Click "Scale Out" to simulate pod bursting to AWS</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const ONPREM_NODE_COUNT = 4;
+  const PODS_PER_NODE = 4;
+  const NODE_W = 110, NODE_H = 160, NODE_GAP = 14;
+  const POD_SIZE = 24, POD_GAP = 4, POD_COLS = 2;
+
+  // Layout
+  const ONPREM_X = 55, ONPREM_Y = 110;
+  const CLOUD_X = 625, CLOUD_Y = 110;
+
+  // Colors
+  const COL = {
+    node: '#3d4f5f', nodeStroke: '#5A6B7F',
+    cloudNode: '#1a3a2a', cloudNodeStroke: '#2DA44E',
+    pod: '#326CE5', podStroke: '#5B8DEF',
+    pendingPod: '#F2C94C', deletingPod: '#DD344C',
+    karpenter: '#FF9900'
+  };
+
+  // State
+  let state = {
+    onpremNodes: [],   // [{id, pods: [{id, el}]}]
+    cloudNodes: [],    // [{id, pods: [{id, el}], el, labelEl}]
+    phase: 'steady',   // steady | scaling-out | scaling-in
+    nextPodId: 0,
+    nextNodeId: 0,
+    cloudPodOverflow: 0  // pods that triggered cloud burst
+  };
+
+  const svg = document.querySelector('svg.main');
+  const gOnprem = document.getElementById('onprem-nodes');
+  const gCloud = document.getElementById('cloud-nodes');
+
+  // -- Helpers --
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function setLog(msg) { document.getElementById('log').textContent = msg; }
+
+  function updateStatus() {
+    const onpremPods = state.onpremNodes.reduce((s, n) => s + n.pods.length, 0);
+    const cloudPods = state.cloudNodes.reduce((s, n) => s + n.pods.length, 0);
+    document.getElementById('onprem-pod-count').textContent = onpremPods;
+    document.getElementById('cloud-pod-count').textContent = cloudPods;
+    document.getElementById('cloud-node-count').textContent = state.cloudNodes.length;
+  }
+
+  function setButtons(enabled) {
+    document.getElementById('btn-out').disabled = !enabled;
+    document.getElementById('btn-in').disabled = !enabled;
+    document.getElementById('btn-reset').disabled = !enabled;
+  }
+
+  function createRect(parent, attrs) {
+    const el = document.createElementNS(NS, 'rect');
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    parent.appendChild(el);
+    return el;
+  }
+
+  function createText(parent, attrs, content) {
+    const el = document.createElementNS(NS, 'text');
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    el.textContent = content;
+    parent.appendChild(el);
+    return el;
+  }
+
+  function createGroup(parent, id) {
+    const el = document.createElementNS(NS, 'g');
+    if (id) el.setAttribute('id', id);
+    parent.appendChild(el);
+    return el;
+  }
+
+  // -- Render on-prem nodes (static layout, pods are dynamic) --
+  function initOnprem() {
+    gOnprem.innerHTML = '';
+    state.onpremNodes = [];
+    for (let i = 0; i < ONPREM_NODE_COUNT; i++) {
+      const nx = ONPREM_X + i * (NODE_W + NODE_GAP);
+      const ny = ONPREM_Y;
+      const g = createGroup(gOnprem, `onprem-node-${i}`);
+      createRect(g, { x: nx, y: ny, width: NODE_W, height: NODE_H, fill: COL.node, stroke: COL.nodeStroke, 'stroke-width': 1.5, rx: 6 });
+      createText(g, { x: nx + NODE_W/2, y: ny + 16, 'text-anchor': 'middle', fill: '#aab7c4', 'font-size': 10, 'font-weight': 'bold' }, `hybrid-node-${i+1}`);
+
+      const node = { id: i, pods: [], g, nx, ny };
+      // Create initial pods
+      for (let p = 0; p < PODS_PER_NODE; p++) {
+        const pod = createPod(g, nx, ny, p, COL.pod, COL.podStroke, false);
+        node.pods.push(pod);
+      }
+      state.onpremNodes.push(node);
+    }
+  }
+
+  function createPod(parentG, nodeX, nodeY, index, fill, stroke, animate) {
+    const col = index % POD_COLS;
+    const row = Math.floor(index / POD_COLS);
+    const px = nodeX + 10 + col * (POD_SIZE + POD_GAP);
+    const py = nodeY + 28 + row * (POD_SIZE + POD_GAP);
+    const el = createRect(parentG, {
+      x: px, y: py, width: POD_SIZE, height: POD_SIZE,
+      fill, stroke, 'stroke-width': 1, rx: 3
+    });
+    if (animate) {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 0.4s ease-in';
+      requestAnimationFrame(() => { el.style.opacity = '1'; });
+    }
+    const id = state.nextPodId++;
+    // Pod label
+    const label = createText(parentG, {
+      x: px + POD_SIZE/2, y: py + POD_SIZE/2 + 3,
+      'text-anchor': 'middle', fill: '#fff', 'font-size': 7
+    }, `p${id}`);
+    if (animate) {
+      label.style.opacity = '0';
+      label.style.transition = 'opacity 0.4s ease-in';
+      requestAnimationFrame(() => { label.style.opacity = '1'; });
+    }
+    return { id, el, label };
+  }
+
+  function removePodEl(pod) {
+    return new Promise(resolve => {
+      pod.el.style.transition = 'opacity 0.3s ease-out, fill 0.2s';
+      pod.el.setAttribute('fill', COL.deletingPod);
+      pod.label.style.transition = 'opacity 0.3s ease-out';
+      setTimeout(() => {
+        pod.el.style.opacity = '0';
+        pod.label.style.opacity = '0';
+        setTimeout(() => {
+          pod.el.remove();
+          pod.label.remove();
+          resolve();
+        }, 300);
+      }, 200);
+    });
+  }
+
+  // -- Cloud node creation/deletion --
+  function createCloudNode(index) {
+    const nx = CLOUD_X + index * (NODE_W + NODE_GAP);
+    const ny = CLOUD_Y;
+    const g = createGroup(gCloud, `cloud-node-${index}`);
+
+    const rect = createRect(g, {
+      x: nx, y: ny, width: NODE_W, height: NODE_H,
+      fill: COL.cloudNode, stroke: COL.karpenter, 'stroke-width': 2, rx: 6,
+      'stroke-dasharray': '6 3'
+    });
+    rect.style.opacity = '0';
+    rect.style.transition = 'opacity 0.6s ease-in, stroke-dasharray 0.5s';
+    requestAnimationFrame(() => { rect.style.opacity = '1'; });
+
+    const label = createText(g, {
+      x: nx + NODE_W/2, y: ny + 16,
+      'text-anchor': 'middle', fill: COL.karpenter, 'font-size': 10, 'font-weight': 'bold'
+    }, `cloud-node-${index+1}`);
+    label.style.opacity = '0';
+    label.style.transition = 'opacity 0.6s ease-in';
+    requestAnimationFrame(() => { label.style.opacity = '1'; });
+
+    // Provisioning glow
+    const glow = createRect(g, {
+      x: nx - 3, y: ny - 3, width: NODE_W + 6, height: NODE_H + 6,
+      fill: 'none', stroke: COL.karpenter, 'stroke-width': 2, rx: 8, opacity: 0.6, filter: 'url(#glow)'
+    });
+    // Pulse then fade
+    setTimeout(() => {
+      glow.style.transition = 'opacity 1s ease-out';
+      glow.style.opacity = '0';
+      setTimeout(() => glow.remove(), 1000);
+    }, 1200);
+
+    // Solidify border after provisioning
+    setTimeout(() => {
+      rect.setAttribute('stroke-dasharray', 'none');
+      rect.setAttribute('stroke', COL.cloudNodeStroke);
+    }, 1500);
+
+    return { id: state.nextNodeId++, pods: [], g, rect, label, nx, ny };
+  }
+
+  function removeCloudNode(node) {
+    return new Promise(resolve => {
+      node.rect.style.transition = 'opacity 0.5s ease-out';
+      node.label.style.transition = 'opacity 0.3s ease-out';
+      node.rect.style.opacity = '0';
+      node.label.style.opacity = '0';
+      setTimeout(() => {
+        node.g.remove();
+        resolve();
+      }, 500);
+    });
+  }
+
+  // -- Scale Out sequence --
+  window.scaleOut = async function() {
+    if (state.phase !== 'steady') return;
+    state.phase = 'scaling-out';
+    setButtons(false);
+
+    // Step 1: Add 2 extra pods to on-prem nodes (filling them up)
+    setLog('Demand increasing... scheduling new pods on hybrid nodes');
+    for (let i = 0; i < 2 && i < ONPREM_NODE_COUNT; i++) {
+      const node = state.onpremNodes[i];
+      if (node.pods.length < 6) {
+        const pod = createPod(node.g, node.nx, node.ny, node.pods.length, COL.pendingPod, '#d4a017', true);
+        node.pods.push(pod);
+        await delay(300);
+      }
+    }
+    updateStatus();
+    await delay(600);
+
+    // Step 2: Pods pending — no capacity
+    setLog('Pods pending... hybrid nodes at capacity. Karpenter triggered.');
+    await delay(1000);
+
+    // Step 3: Karpenter provisions cloud node
+    setLog('Karpenter provisioning cloud node...');
+    const cloudNode = createCloudNode(state.cloudNodes.length);
+    state.cloudNodes.push(cloudNode);
+    updateStatus();
+    await delay(1500);
+
+    // Step 4: Move pending pods to cloud node (create new pods there, remove pending from on-prem)
+    setLog('Scheduling pods on cloud node...');
+    for (let i = 0; i < 2 && i < ONPREM_NODE_COUNT; i++) {
+      const node = state.onpremNodes[i];
+      // Find and remove the pending (yellow) pod
+      const pendingIdx = node.pods.findIndex(p => p.el.getAttribute('fill') === COL.pendingPod);
+      if (pendingIdx >= 0) {
+        const pending = node.pods.splice(pendingIdx, 1)[0];
+        await removePodEl(pending);
+        // Create pod on cloud node
+        const newPod = createPod(cloudNode.g, cloudNode.nx, cloudNode.ny, cloudNode.pods.length, COL.pod, COL.podStroke, true);
+        cloudNode.pods.push(newPod);
+        await delay(400);
+      }
+    }
+
+    // Step 5: Add more cloud pods
+    setLog('Scheduling additional pods on cloud node...');
+    for (let i = cloudNode.pods.length; i < PODS_PER_NODE; i++) {
+      const newPod = createPod(cloudNode.g, cloudNode.nx, cloudNode.ny, i, COL.pod, COL.podStroke, true);
+      cloudNode.pods.push(newPod);
+      await delay(300);
+    }
+
+    updateStatus();
+    setLog('Scale Out complete — pods distributed across hybrid + cloud nodes');
+    state.phase = 'steady';
+    setButtons(true);
+  };
+
+  // -- Scale In sequence --
+  window.scaleIn = async function() {
+    if (state.phase !== 'steady') return;
+    if (state.cloudNodes.length === 0) {
+      setLog('No cloud nodes to scale in.');
+      return;
+    }
+    state.phase = 'scaling-in';
+    setButtons(false);
+
+    // Step 1: Remove cloud pods first (pod-deletion-cost annotation)
+    const cloudNode = state.cloudNodes[state.cloudNodes.length - 1];
+    setLog('Scaling in... removing cloud pods first (pod-deletion-cost priority)');
+
+    while (cloudNode.pods.length > 0) {
+      const pod = cloudNode.pods.pop();
+      await removePodEl(pod);
+      updateStatus();
+      await delay(300);
+    }
+    await delay(500);
+
+    // Step 2: Consolidate — node is empty
+    setLog('Cloud node empty — Karpenter consolidating...');
+    await delay(800);
+
+    // Step 3: Terminate cloud node
+    setLog('Terminating empty cloud node...');
+    state.cloudNodes.pop();
+    await removeCloudNode(cloudNode);
+    updateStatus();
+    await delay(500);
+
+    // Step 4: Remove extra pods from on-prem (back to 4 per node)
+    setLog('Rebalancing on-prem pods...');
+    for (const node of state.onpremNodes) {
+      while (node.pods.length > PODS_PER_NODE) {
+        const pod = node.pods.pop();
+        await removePodEl(pod);
+        await delay(200);
+      }
+    }
+
+    updateStatus();
+    setLog('Scale In complete — back to on-prem steady state');
+    state.phase = 'steady';
+    setButtons(true);
+  };
+
+  // -- Reset --
+  window.resetState = function() {
+    state.nextPodId = 0;
+    state.nextNodeId = 0;
+    state.cloudNodes = [];
+    gCloud.innerHTML = '';
+    initOnprem();
+    updateStatus();
+    setLog('Ready — Click "Scale Out" to simulate pod bursting to AWS');
+    state.phase = 'steady';
+    setButtons(true);
+  };
+
+  // -- Init --
+  initOnprem();
+  updateStatus();
+})();
+</script>
+
+</body>
+</html>

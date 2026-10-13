@@ -1,0 +1,18 @@
+{
+  "skills": "./.codex-plugin/skills/",
+  "interface": {
+    "displayName": "Kiro Delegate",
+    "shortDescription": "Delegate implementation to Kiro CLI to save tokens.",
+    "longDescription": "Use Codex to plan, configure and verify Kiro worktree delegation or read-only review. Shared commit/push hooks preserve opt-in review behavior. Check captured changes and tests before landing them.",
+    "developerName": "atomoh",
+    "category": "Collaboration",
+    "capabilities": [
+      "Skills",
+      "Shell"
+    ],
+    "defaultPrompt": [
+      "Delegate this implementation to Kiro."
+    ]
+  },
+  "hooks": "./.codex-plugin/hooks.json"
+}

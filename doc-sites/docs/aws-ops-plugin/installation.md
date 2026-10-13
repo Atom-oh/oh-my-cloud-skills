@@ -37,7 +37,8 @@ title: "Install aws-ops-plugin"
 For local development from a repository checkout:
 
 ```bash
-claude --plugin-dir ./plugins/aws-ops-plugin
+python3 scripts/sync-codex-plugins.py
+claude --plugin-dir ./packages/claude/aws-ops-plugin
 ```
 
 ## Codex {#codex}

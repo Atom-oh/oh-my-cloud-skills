@@ -1,0 +1,15 @@
+{
+  "reasoning": {
+    "co-agent": "xhigh",
+    "gate-chair": "xhigh",
+    "harness-analyst": "low",
+    "pr-autofix-implementer": "medium",
+    "pr-autofix-planner": "xhigh"
+  },
+  "explicit_skills": [
+    "gate-chair",
+    "harness-analyst",
+    "pr-autofix-implementer",
+    "pr-autofix-planner"
+  ]
+}

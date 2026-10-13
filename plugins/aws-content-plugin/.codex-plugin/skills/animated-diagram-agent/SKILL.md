@@ -13,4 +13,4 @@ Apply [this plugin's Codex workflow](../../workflow.md).
 
 - [agents/animated-diagram-agent.md](../../../agents/animated-diagram-agent.md)
 
-This is a **strong-tier** procedure in its source (model opus, effort high). Codex has no per-skill model boundary — it runs on the CURRENT SESSION's model and reasoning effort, at that session's spend, not the source's. If the session is on a lighter model, raise it for this procedure, or delegate explicitly with `codex exec -m <model> -c model_reasoning_effort="<effort>"` rather than assuming the source tier is already in effect.
+Codex reasoning intent: high. This is advisory; the skill runs with the current session's model and reasoning effort. Select a model or delegate explicitly when the task requires a different configuration.

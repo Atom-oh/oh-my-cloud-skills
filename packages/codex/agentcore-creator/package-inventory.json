@@ -1,0 +1,87 @@
+{
+  "host": "codex",
+  "plugin": "agentcore-creator",
+  "version": "3.0.2",
+  "files": {
+    ".codex-plugin/plugin.json": {
+      "sha256": "8dd1fc8b6e7db6792c781e10a1f92324be929bf7481b3d2a478025b08b0f7311",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "25a1a08d6682235f1accf39b268bbd2b59dae9510406701b40ee556af2b4e7f6",
+      "executable": false
+    },
+    "agents/agentcore-creator-agent.md": {
+      "sha256": "d5f1286f19d1576a9a28aa5a2be96c97929c0127e0c8bf3469aec80f33b29e5c",
+      "executable": false
+    },
+    "skills/agentcore-create/SKILL.md": {
+      "sha256": "9ca7985f719b5b945e95dabd0b8966ca7353d9259339335d3f1c235807dc6208",
+      "executable": false
+    },
+    "skills/agentcore-create/references/agent-code-templates.md": {
+      "sha256": "96f4991130d174bc99d782b092f98e472a925289abebeeaac2dbe704a5cf89b9",
+      "executable": false
+    },
+    "skills/agentcore-create/references/agentcore-format-reference.md": {
+      "sha256": "101d49665394bdcea33e0c2fc45a5a741b60b9207daa72395e3e710831c320a1",
+      "executable": false
+    },
+    "skills/agentcore-create/references/agentcore-harness.md": {
+      "sha256": "aabaaf663d9d108b6e5b98d99786ec07f8253e31315659b1a350abbc64fc5379",
+      "executable": false
+    },
+    "skills/agentcore-create/references/agentcore-mapping-rules.md": {
+      "sha256": "724744799502a18adeb6f8d94b25680e101bfe53e29f0818c58efd8259cf407a",
+      "executable": false
+    },
+    "skills/agentcore-create/references/discovery-interview.md": {
+      "sha256": "57c4c50dbd3b49d50cf267da176386a9c603350f17d5d936fb4596d6d04c68bb",
+      "executable": false
+    },
+    "skills/agentcore-create/references/memory-chunking-strategy.md": {
+      "sha256": "426d5231769bbc1872e2657823dce2f50a0e9595204b02d5c66862c04e388d1f",
+      "executable": false
+    },
+    "skills/agentcore-create/scripts/convert_plugin_to_agentcore.py": {
+      "sha256": "0a661838e08289bb16c6f51f8627701b6be9ab637472b13eeac38c4262c60fe9",
+      "executable": true
+    },
+    ".codex-plugin/skills/agentcore-create/SKILL.md": {
+      "sha256": "cfef753f5c6210d6a5e8dea1e47b1f14c7badcf08196e2c400994a068e2a87fa",
+      "executable": false
+    },
+    ".codex-plugin/skills/agentcore-creator-agent/SKILL.md": {
+      "sha256": "a03d6fd142a4fb02bc7e18de2c05e42017ee3ccc71c177f5a834601f114078fa",
+      "executable": false
+    },
+    ".codex-plugin/skills/agentcore-creator-agent/agents/openai.yaml": {
+      "sha256": "cb9c34d685db64f081ce1cd24ab31ef8a8f494669eacd8e04cbc2fee0a1b4dcb",
+      "executable": false
+    },
+    ".codex-plugin/inventory.json": {
+      "sha256": "a9965e59ee732e8f7a88c850848f02e7e01fe27eb5b32623d921ef63ba522b5b",
+      "executable": false
+    },
+    ".codex-plugin/runtime.md": {
+      "sha256": "abc2183e07ac4b1450796f9db45e9d434fd5dd42b65625c770feeab3055f9ba8",
+      "executable": false
+    },
+    ".codex-plugin/run.py": {
+      "sha256": "53d259a9e0bc0393586ed5fa709695e4c00d4d46403c3a4dc19454b4cc86faf2",
+      "executable": false
+    },
+    ".codex-plugin/hooks.json": {
+      "sha256": "05f07b2cb0f1b1dd476b7c9ec95452f09597c9064a319f4de8f2bb584ea5d777",
+      "executable": false
+    },
+    ".codex-plugin/hook-handlers.json": {
+      "sha256": "fdf8d6ac5b34cdbaafaa700983463dac9d635371ae3aef2fc24ef3472ea3eabe",
+      "executable": false
+    },
+    ".codex-plugin/hook.py": {
+      "sha256": "fd376bcfc694360586232b5cd427b75c8aefe4c1381bbeb5707ee2c77d17ca4c",
+      "executable": false
+    }
+  }
+}

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Generate Codex entry points from shared skills, commands and agent procedures."""
+"""Assemble host-specific plugins from shared procedures and explicit host sources."""
 from __future__ import annotations
 
 import argparse
 from collections import defaultdict
 import json
+import hashlib
+import stat
 from pathlib import Path
 import re
 import sys
@@ -17,8 +19,151 @@ OPTIONAL_ARTIFACTS = ("hook.py", "hooks.json", "hook-handlers.json", "mcp.json",
 COMMAND_ALIASES = {
     ("project-init", "health-check"): "source-command-health-check",
 }
-# Keep the public command alias, but let its canonical skill own automatic routing.
-EXPLICIT_COMMANDS = {("kiro", "delegate")}
+IDENTITY_FIELDS = ("name", "version", "description", "author", "homepage",
+                   "repository", "license", "keywords")
+CLAUDE_AGENT_FIELDS = {"tools", "model", "effort", "memory", "maxTurns", "skills",
+                       "mcpServers", "color", "permissionMode", "background", "isolation"}
+
+
+def host_json(root, host, name, filename):
+    path = root / "hosts" / host / name / filename
+    if root.resolve() not in path.resolve().parents or any(
+        ancestor.is_symlink() for ancestor in (path, *path.parents) if ancestor != root
+    ):
+        raise ValueError(f"{path}: host sources must not contain symlinks")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"{path}: expected a JSON object")
+    return value
+
+
+def package_sources(plugin):
+    """Materialize assets inside each package; never ship links to the source tree."""
+    ignored = {".git", ".omc", "__pycache__", "node_modules", ".pytest_cache"}
+    for path in sorted(plugin.rglob("*")):
+        relative = path.relative_to(plugin)
+        if relative.parts[0] in {".codex-plugin", ".claude-plugin"}:
+            continue
+        if any(part in ignored or part.endswith("-workspace") for part in relative.parts):
+            continue
+        if path.is_symlink():
+            raise ValueError(f"{path}: package sources must not contain symlinks")
+        if path.is_file() and path.name != ".DS_Store" and relative != Path(".mcp.json"):
+            yield path, relative
+
+
+def package_mode(root, path):
+    relative = path.relative_to(root)
+    if len(relative.parts) < 4 or relative.parts[0] != "packages":
+        return None
+    source = root / "plugins" / relative.parts[2] / Path(*relative.parts[3:])
+    return stat.S_IMODE(source.stat().st_mode) if source.is_file() else 0o644
+
+
+def package_exclusions(root, host, name):
+    policy = host_json(root, host, name, "package.json")
+    values = policy.get("exclude")
+    if not isinstance(values, list):
+        raise ValueError(f"{host}/{name}: package.exclude must be an array")
+    paths = []
+    for value in values:
+        if not isinstance(value, str) or not value or Path(value).is_absolute() or ".." in Path(value).parts:
+            raise ValueError(f"{host}/{name}: invalid package exclusion")
+        path = Path(value)
+        if path == Path("."):
+            raise ValueError(f"{host}/{name}: cannot exclude the entire package")
+        paths.append(path)
+    return paths
+
+
+def agent_settings(content, settings):
+    """Apply Claude-owned frontmatter without modifying shared/upstream procedures."""
+    match = re.match(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n|$)", content, re.S)
+    if not match:
+        raise ValueError("Claude agent override requires frontmatter")
+    frontmatter = match[1]
+    # Strip host execution fields from the shared reference before applying the
+    # host source. A missing optional setting means absent, rather than inherited.
+    for key in CLAUDE_AGENT_FIELDS:
+        frontmatter = re.sub(
+            rf"(?m)^{key}:[^\n]*(?:\n[ \t]+[^\n]*)*(?:\n|$)", "", frontmatter)
+    for key, value in settings.items():
+        if key not in CLAUDE_AGENT_FIELDS:
+            raise ValueError(f"Invalid Claude agent setting: {key}")
+        if isinstance(value, list) and all(isinstance(item, str) and "\n" not in item for item in value):
+            line = f"{key}:\n" + "\n".join(
+                "  - " + json.dumps(item, ensure_ascii=False) for item in value)
+        elif isinstance(value, (str, int, bool)) and "\n" not in str(value):
+            line = f"{key}: " + json.dumps(value, ensure_ascii=False)
+        else:
+            raise ValueError(f"Invalid Claude agent setting value: {key}")
+        frontmatter = frontmatter.rstrip("\n") + "\n" + line
+    return "---\n" + frontmatter + "\n---\n" + content[match.end():]
+
+
+def package_files(root, selected, outputs, catalog, full):
+    """Each marketplace selects a self-contained package with one host's manifest."""
+    claude_market = json.loads((root / ".claude-plugin/marketplace.json").read_text())
+    if full:
+        claude_market["plugins"] = [
+            entry for entry in claude_market["plugins"] if entry["name"] in catalog]
+    for name in sorted(selected):
+        plugin = root / "plugins" / name
+        for host in ("claude", "codex"):
+            package = root / "packages" / host / name
+            config = host_json(root, host, name, "plugin.json")
+            manifest = {**catalog[name], **config}
+            if set(config) & set(IDENTITY_FIELDS):
+                raise ValueError(f"{host}/{name}: identity belongs in hosts/catalog.json")
+            package_manifest = package / f".{host}-plugin/plugin.json"
+            outputs[package_manifest] = dump(manifest)
+            if host == "claude" and name != "project-init":
+                outputs[plugin / ".claude-plugin/plugin.json"] = dump(manifest)
+            agents = host_json(root, "claude", name, "agents.json") if host == "claude" else {}
+            exclusions = package_exclusions(root, host, name)
+            for source, relative in package_sources(plugin):
+                if any(relative == path or path in relative.parents for path in exclusions):
+                    continue
+                content = source.read_bytes()
+                if host == "claude" and relative.parts[0] == "agents" and source.name in agents:
+                    content = agent_settings(content.decode("utf-8"), agents[source.name]).encode("utf-8")
+                outputs[package / relative] = content
+            if host == "codex":
+                for path, content in list(outputs.items()):
+                    if (plugin / ".codex-plugin") in path.parents:
+                        outputs[package / path.relative_to(plugin)] = content
+            elif isinstance(manifest.get("mcpServers"), str):
+                host_root = root / "hosts/claude" / name
+                source = host_root / manifest["mcpServers"]
+                if host_root.resolve() not in source.resolve().parents or source.is_symlink():
+                    raise ValueError(f"{name}: Claude MCP path escapes the plugin")
+                outputs[package / manifest["mcpServers"]] = source.read_bytes()
+                if name != "project-init":
+                    outputs[plugin / manifest["mcpServers"]] = source.read_bytes()
+            provenance = {
+                str(path.relative_to(package)): {
+                    "sha256": hashlib.sha256(
+                        content.encode("utf-8") if isinstance(content, str) else content
+                    ).hexdigest(),
+                    "executable": bool(package_mode(root, path) & 0o111),
+                }
+                for path, content in outputs.items() if package in path.parents
+            }
+            outputs[package / "package-inventory.json"] = dump({
+                "host": host, "plugin": name, "version": catalog[name]["version"],
+                "files": provenance,
+            })
+        if not any(entry["name"] == name for entry in claude_market["plugins"]):
+            claude_market["plugins"].append({
+                "name": name, "version": catalog[name]["version"],
+                "source": f"./packages/claude/{name}",
+                "description": catalog[name]["description"],
+            })
+        for entry in claude_market["plugins"]:
+            if entry["name"] == name:
+                entry["source"] = f"./packages/claude/{name}"
+                entry["version"] = catalog[name]["version"]
+    outputs[root / ".claude-plugin/marketplace.json"] = dump(claude_market)
 
 # Explicit applicability avoids advertising Claude-only operations as Codex migration.
 PROJECT_INIT_DESCRIPTIONS = {
@@ -47,7 +192,7 @@ def frontmatter(path):
     if not match:
         raise ValueError(f"{path}: missing frontmatter")
     result = {}
-    for key in ("name", "description", "disable-model-invocation", "model", "effort"):
+    for key in ("name", "description"):
         field = re.search(rf"^{key}:\s*(.+)$", match[1], re.M)
         if field:
             value = field[1].strip()
@@ -63,56 +208,16 @@ def frontmatter(path):
     return result
 
 
-# Tiers that mean "spend more" vs "a lighter session model is fine" — advisory
-# classification only; Codex has no per-skill model/effort field to actually set (see
-# runtime.md and https://github.com/openai/codex/... — verified against codex-cli
-# 0.154.0's plugin validator: agents/openai.yaml accepts only interface/policy/
-# dependencies, so this can never become a new YAML key).
-STRONG_MODELS = {"opus", "fable"}
-STRONG_EFFORTS = {"high", "xhigh", "max"}
-LIGHT_MODELS = {"haiku"}
-LIGHT_EFFORTS = {"low", "minimal"}
-
-
-def tier_note(meta):
-    """One prose line carrying the source frontmatter's model/effort INTENT into the
-    generated Codex entry — never a new manifest key (Codex's plugin validator has no
-    slot for one; see the module docstring above). Returns None when the source has
-    neither field (true for every skill/command source; only agents/*.md carries them)."""
-    model, effort = meta.get("model"), meta.get("effort")
-    if not model and not effort:
-        return None
-    tier = ", ".join(f"{k} {v}" for k, v in (("model", model), ("effort", effort)) if v)
-    strong = model in STRONG_MODELS or effort in STRONG_EFFORTS
-    light = model in LIGHT_MODELS or effort in LIGHT_EFFORTS
-    if strong:
-        cost = (
-            "This is a **strong-tier** procedure in its source ({tier}). Codex has no "
-            "per-skill model boundary — it runs on the CURRENT SESSION's model and "
-            "reasoning effort, at that session's spend, not the source's. If the "
-            "session is on a lighter model, raise it for this procedure, or delegate "
-            "explicitly with `codex exec -m <model> -c model_reasoning_effort=\"<effort>\"` "
-            "rather than assuming the source tier is already in effect."
-        ).format(tier=tier)
-    elif light:
-        cost = (
-            "This is a **light-tier** procedure in its source ({tier}) — the current "
-            "session's model is very likely sufficient; there is no cost reason to "
-            "raise it for this one."
-        ).format(tier=tier)
-    else:
-        cost = f"Source frontmatter: {tier}. Codex runs it on the current session's model."
-    return cost
-
-
 def generated_files(root, plugins=None):
     # Template content is data. --root never imports or executes code from that
     # tree, so trusted validation can inspect a different checkout safely.
     templates = root / "scripts/codex"
-    interfaces = json.loads((templates / "interfaces.json").read_text(encoding="utf-8"))
+    catalog = json.loads((root / "hosts/catalog.json").read_text(encoding="utf-8"))["plugins"]
     outputs = {}
     manifests = sorted((root / "plugins").glob("*/.claude-plugin/plugin.json"))
     known = {path.parents[1].name for path in manifests}
+    if known != set(catalog):
+        raise ValueError("hosts/catalog.json must cover every source plugin exactly once")
     if plugins and plugins - known:
         raise ValueError(f"Unknown plugins: {', '.join(sorted(plugins - known))}")
     selected = known if plugins is None else plugins
@@ -121,7 +226,9 @@ def generated_files(root, plugins=None):
         name = plugin.name
         if name not in selected:
             continue
-        source_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        host_manifest = host_json(root, "codex", name, "plugin.json")
+        execution = host_json(root, "codex", name, "execution.json")
+        source_manifest = catalog[name]
         adapter = plugin / ".codex-plugin"
         groups = defaultdict(list)
         for pattern in ("skills/*/SKILL.md", "commands/*.md", "agents/*.md"):
@@ -136,6 +243,8 @@ def generated_files(root, plugins=None):
                     raise ValueError(f"{source}: invalid skill name {skill_name!r}")
                 groups[skill_name].append((source, meta))
         inventory = {"plugin": name, "skills": []}
+        if not set(execution["explicit_skills"]) <= set(groups) or not set(execution["reasoning"]) <= set(groups):
+            raise ValueError(f"codex/{name}: execution settings refer to unknown skills")
         for skill_name, sources in sorted(groups.items()):
             # Skills are visited before commands: a command that is just an alias
             # augments the existing skill instead of becoming a duplicate.
@@ -169,13 +278,17 @@ def generated_files(root, plugins=None):
                 body += "Shared reference (the Codex procedure above owns invocation):\n\n"
             for source_path in source_paths:
                 body += f"- [{source_path}](../../../{source_path})\n"
-            tier = next((tier_note(m) for _, m in sources if tier_note(m)), None)
-            if tier:
-                body += f"\n{tier}\n"
+            reasoning = execution["reasoning"].get(skill_name)
+            if reasoning:
+                if reasoning not in {"minimal", "low", "medium", "high", "xhigh", "max"}:
+                    raise ValueError(f"{name}/{skill_name}: invalid Codex reasoning intent")
+                body += (
+                    f"\nCodex reasoning intent: {reasoning}. This is advisory; the skill runs "
+                    "with the current session's model and reasoning effort. Select a model "
+                    "or delegate explicitly when the task requires a different configuration.\n"
+                )
             outputs[path] = body
-            worker_only = all(source.parent.name == "agents" for source, _ in sources)
-            if (worker_only or (name, skill_name) in EXPLICIT_COMMANDS
-                    or any(meta.get("disable-model-invocation") == "true" for _, meta in sources)):
+            if skill_name in execution["explicit_skills"]:
                 # codex-cli's own plugin validator REQUIRES `interface` on any skill
                 # that ships agents/openai.yaml at all (verified against 0.154.0's
                 # validate_skill_agent_manifest: it runs whenever the file exists, and
@@ -210,75 +323,41 @@ def generated_files(root, plugins=None):
                     outputs[adapter / "project-template" / source.relative_to(project_template)] = (
                         source.read_text(encoding="utf-8")
                     )
-        manifest = {
-            key: source_manifest[key]
-            for key in ("name", "version", "description", "author", "homepage", "repository", "license", "keywords")
-            if key in source_manifest
-        }
-        manifest["skills"] = "./.codex-plugin/skills/"
-        manifest["interface"] = interfaces[name]
-        mcp = source_manifest.get("mcpServers")
-        if mcp:
-            if isinstance(mcp, str):
-                mcp = json.loads((plugin / mcp).read_text(encoding="utf-8"))
-            elif isinstance(mcp, dict) and "mcpServers" not in mcp:
-                mcp = {"mcpServers": mcp}
-            outputs[adapter / "mcp.json"] = dump(mcp)
-            manifest["mcpServers"] = "./.codex-plugin/mcp.json"
-        hooks = source_manifest.get("hooks")
-        if hooks:
-            if isinstance(hooks, str):
-                hooks = json.loads((plugin / hooks).read_text(encoding="utf-8"))["hooks"]
-            handlers = []
-            codex_hooks = {}
-            for event, groups_for_event in hooks.items():
-                codex_groups = []
-                for group in groups_for_event:
-                    adapted = []
-                    for handler in group["hooks"]:
-                        if handler.get("type") != "command":
-                            raise ValueError(f"{name}: {event} hook needs an explicit Codex adaptation")
-                        index = len(handlers)
-                        handlers.append({
-                            "event": event, "matcher": group.get("matcher", ""),
-                            "command": handler["command"],
-                        })
-                        adapted.append({
-                            **handler,
-                            "command": f'python3 "${{PLUGIN_ROOT}}/.codex-plugin/hook.py" {index}',
-                        })
-                    adapted_group = {**group, "hooks": adapted}
-                    matcher = group.get("matcher", "")
-                    if event in {"PreToolUse", "PostToolUse"} and matcher not in ("", "*") and any(
-                        re.search(matcher, alias) for alias in ("Edit", "Write")
-                    ):
-                        # Codex aliases Edit/Write today; name apply_patch
-                        # explicitly as well. The bridge retains the original
-                        # matcher and filters by Add/Update/Delete operation.
-                        adapted_group["matcher"] = f"(?:{matcher})|^apply_patch$"
-                    codex_groups.append(adapted_group)
-                codex_hooks[event] = codex_groups
-            outputs[adapter / "hooks.json"] = dump({"hooks": codex_hooks})
-            outputs[adapter / "hook-handlers.json"] = dump({"plugin": name, "handlers": handlers})
+        manifest = {**source_manifest, **host_manifest}
+        if set(host_manifest) & set(IDENTITY_FIELDS):
+            raise ValueError(f"codex/{name}: identity belongs in hosts/catalog.json")
+        for field, filename in (("mcpServers", "mcp.json"), ("hooks", "hooks.json")):
+            if field in host_manifest:
+                expected = f"./.codex-plugin/{filename}"
+                if host_manifest[field] != expected:
+                    raise ValueError(f"codex/{name}: {field} must be {expected}")
+                outputs[adapter / filename] = dump(host_json(root, "codex", name, filename))
+        if "hooks" in host_manifest:
+            outputs[adapter / "hook-handlers.json"] = dump(
+                host_json(root, "codex", name, "hook-handlers.json"))
             outputs[adapter / "hook.py"] = (templates / "hook.py").read_text(encoding="utf-8")
-            manifest["hooks"] = "./.codex-plugin/hooks.json"
         outputs[adapter / "plugin.json"] = dump(manifest)
     marketplace_path = root / ".agents/plugins/marketplace.json"
     marketplace = json.loads(marketplace_path.read_text(encoding="utf-8"))
+    if plugins is None:
+        marketplace["plugins"] = [
+            entry for entry in marketplace["plugins"] if entry["name"] in catalog]
     existing = {entry["name"]: entry for entry in marketplace["plugins"]}
     for plugin in sorted(selected):
-        source = root / "plugins" / plugin / ".claude-plugin/plugin.json"
-        version = json.loads(source.read_text(encoding="utf-8"))["version"]
+        version = catalog[plugin]["version"]
         if plugin not in existing:
             marketplace["plugins"].append({
                 "name": plugin,
-                "source": {"source": "local", "path": f"./plugins/{plugin}"},
+                "source": {"source": "local", "path": f"./packages/codex/{plugin}"},
                 "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
-                "category": interfaces[plugin]["category"], "version": version,
+                "category": host_json(root, "codex", plugin, "plugin.json")["interface"]["category"],
+                "version": version,
             })
         else:
             existing[plugin]["version"] = version
+            existing[plugin]["source"] = {"source": "local", "path": f"./packages/codex/{plugin}"}
     outputs[marketplace_path] = dump(marketplace)
+    package_files(root, selected, outputs, catalog, plugins is None)
     return outputs
 
 
@@ -296,12 +375,42 @@ def main():
         print(str(exc), file=sys.stderr)
         return 1
     stale = []
+    for path in outputs:
+        if args.root not in path.parents or any(
+            ancestor.is_symlink() for ancestor in path.parents if ancestor != args.root
+        ):
+            print(f"Refusing linked or escaping generated path: {path}", file=sys.stderr)
+            return 1
     for path, content in outputs.items():
-        if not path.is_file() or path.read_text(encoding="utf-8") != content:
+        data = content.encode("utf-8") if isinstance(content, str) else content
+        mode = package_mode(args.root, path)
+        mode_drift = path.is_file() and mode is not None and (
+            bool(path.stat().st_mode & 0o111) != bool(mode & 0o111))
+        if path.is_symlink() or not path.is_file() or path.read_bytes() != data or mode_drift:
             stale.append(path)
             if not args.check:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(content, encoding="utf-8")
+                if path.is_symlink():
+                    path.unlink()
+                path.write_bytes(data)
+                if mode is not None:
+                    path.chmod(mode)
+    # packages/ is entirely generated. Stale files can expose the wrong host or
+    # retain removed executable hooks, so freshness includes unexpected files.
+    for host in ("claude", "codex"):
+        package_root = args.root / "packages" / host
+        if not package_root.exists():
+            continue
+        for path in sorted(package_root.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+            relative = path.relative_to(package_root)
+            if selected is not None and relative.parts[0] not in selected:
+                continue
+            if path.is_symlink() or (path.is_file() and path not in outputs):
+                stale.append(path)
+                if not args.check:
+                    path.unlink()
+            elif path.is_dir() and not any(path.iterdir()) and not args.check:
+                path.rmdir()
     # Prune only reserved generated paths; preserve arbitrary operator/source files.
     for plugin in (args.root / "plugins").iterdir():
         if not (plugin / ".claude-plugin/plugin.json").is_file():
@@ -332,7 +441,9 @@ def main():
         return 1
     scope = ", ".join(sorted(selected)) if selected is not None else "all plugins"
     print(f"Codex artifacts {'checked' if args.check else 'generated'}: {len(outputs)} files ({scope})")
-    desc_paths = [p for p in outputs if p.name == "SKILL.md" and p.parent.parent.name == "skills"]
+    desc_paths = [p for p in outputs if p.name == "SKILL.md"
+                  and (args.root / "plugins") in p.parents
+                  and p.parent.parent.name == "skills"]
     desc_bytes = sum(len(json.loads(re.search(r'^description:\s*(.+)$', outputs[p], re.M)[1]))
                       for p in desc_paths)
     print(f"Codex session-start description weight: {len(desc_paths)} skills, "

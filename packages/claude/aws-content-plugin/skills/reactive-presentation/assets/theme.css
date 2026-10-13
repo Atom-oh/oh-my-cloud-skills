@@ -1,0 +1,2184 @@
+@import url('design-tokens.css');
+/* Font loading — @import is only valid before any style rule (CSS spec);
+   imports placed later in this file are ignored by browsers. */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap');
+
+/* ============================================================
+   Reactive Presentation - Dual Theme (light default, 16:9)
+   ============================================================ */
+
+/* ============================================================
+   Theme Scopes — semantic color-role values per theme.
+   Light is the no-class default at ZERO specificity (:where),
+   so .theme-dark overrides cleanly. Dark reproduces the
+   historical look so existing decks don't regress.
+   ============================================================ */
+/* Light is the no-class default. We use `:root, .theme-light` — specificity
+   (0,1,0) — so it WINS the cascade against design-tokens.css's own `:root`
+   placeholders (also (0,1,0)) by virtue of LATER source order (theme.css
+   @imports design-tokens.css at the top). A zero-specificity :where(html)
+   here would LOSE to those :root placeholders and the deck would not be light.
+   The legacy base vars (--bg-primary/--text-primary/etc.) are mapped onto the
+   semantic roles below so the base chrome follows the active theme.
+
+   Palette identity — grounded in AWS's own design language (Cloudscape /
+   Squid Ink #232F3E / Smile Orange), NOT a generic template look: cool
+   console-grey canvas with white cards, deep squid-ink text, Smile-orange
+   accent reserved for emphasis, Cloudscape blue for interactive/heading
+   accents. An extracted PPTX brand (--pptx-*) always takes precedence. */
+:root, .theme-light {
+  --surface-1:var(--pptx-lt1, #ffffff); --surface-2:#f2f3f3; --surface-3:#e3e7ea;
+  --on-surface:var(--pptx-dk2, #0f141a); --on-surface-muted:#5f6b7a;
+  /* --accent routes through the brand token --pptx-accent1; AWS console
+     orange is the fallback so non-branded decks read unmistakably "AWS". */
+  --accent:var(--pptx-accent1, #ec7211); --accent-subtle:rgba(236,114,17,.10); --accent-on:#ffffff;
+  --info:#0972d3; --info-subtle:rgba(9,114,211,.10); --info-on:#fff;
+  --success:#037f0c; --success-subtle:rgba(3,127,12,.10); --success-on:#fff;
+  --warning:#8a5b00; --warning-subtle:rgba(180,120,9,.12); --warning-on:#fff;
+  --danger:#d91515; --danger-subtle:rgba(217,21,21,.10); --danger-on:#fff;
+
+  /* Legacy base vars mapped onto the LIGHT roles. Page = cool console-grey
+     canvas (#eaedee — a FIXED value, clearly not white, so white cards
+     elevate above it). Borders/muted text are squid-ink greys. */
+  --bg-primary:   #eaedee;
+  --bg-secondary: var(--surface-2);
+  --bg-tertiary:  var(--surface-3);
+  --bg-card:      var(--surface-1);
+  --surface:      var(--surface-2);
+  --border:       #d0d7dc;
+  --text-primary:   var(--on-surface);
+  --text-secondary: #414d5c;
+  --text-muted:     #5f6b7a;  /* >=4.5:1 on #eaedee (footer, slide number) */
+  --text-accent:  #0972d3;
+  --border-focus: #0972d3;
+  --cyan: #0891b2;
+  --pink: #d13d73;
+}
+/* Dark = "squid-ink night": Cloudscape dark surfaces with Smile-orange accent. */
+.theme-dark { --surface-1:var(--pptx-dk2, #0f1b2a); --surface-2:#16212f; --surface-3:#1e2c3c;
+  --on-surface:var(--pptx-lt1, #e9ebed); --on-surface-muted:#8d99a8;
+  --accent:var(--pptx-accent1, #ff9900); --accent-subtle:rgba(255,153,0,.14); --accent-on:#16191f;
+  --info:#539fe5; --info-subtle:rgba(83,159,229,.15); --info-on:#0f1b2a;
+  --success:#44b556; --success-subtle:rgba(68,181,86,.15); --success-on:#0f1b2a;
+  --warning:#ffcf40; --warning-subtle:rgba(255,207,64,.14); --warning-on:#231b00;
+  --danger:#ff6161; --danger-subtle:rgba(255,97,97,.14); --danger-on:#2a0606;
+
+  /* Legacy base vars — squid-ink dark values. */
+  --bg-primary:   #0f1b2a;
+  --bg-secondary: #16212f;
+  --bg-tertiary:  #1e2c3c;
+  --bg-card:      #182534;
+  --surface:      #22344a;
+  --border:       #2e425a;
+  --text-primary:   #e9ebed;
+  --text-secondary: #9fb0c1;
+  --text-muted:     #8d99a8;
+  --text-accent:  #539fe5;
+  --border-focus: #539fe5;
+  --cyan: #00cec9;
+  --pink: #fd79a8;
+}
+
+/* Opt-in preset: the previous warm "paper + ink" look, kept for decks that
+   deliberately choose it (frontmatter `theme.preset: paper`). */
+.preset-paper, .preset-paper .theme-light {
+  --surface-1:var(--pptx-lt1, #ffffff); --surface-2:#f3f1eb; --surface-3:#edebe4;
+  --on-surface:var(--pptx-dk2, #1f1e1d); --on-surface-muted:#5f5a4d;
+  --accent:var(--pptx-accent1, #d97757); --accent-subtle:rgba(217,119,87,.12); --accent-on:#ffffff;
+  --info:#2563eb; --info-subtle:rgba(37,99,235,.12); --info-on:#fff;
+  --success:#10b981; --success-subtle:rgba(16,185,129,.12); --success-on:#fff;
+  --warning:#b45309; --warning-subtle:rgba(180,83,9,.12); --warning-on:#fff;
+  --danger:#f43f5e; --danger-subtle:rgba(244,63,94,.12); --danger-on:#fff;
+  --bg-primary:   #ece9e0;
+  --bg-secondary: var(--surface-2);
+  --bg-tertiary:  var(--surface-3);
+  --bg-card:      var(--surface-1);
+  --surface:      var(--surface-2);
+  --border:       #d7d3c7;
+  --text-primary:   var(--on-surface);
+  --text-secondary: var(--on-surface-muted);
+  --text-muted:     #6b6557;
+  --text-accent:  #b8560b;
+  --border-focus: #b8560b;
+}
+
+/* --- Reset & Base --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Legacy palette aliases — routed through the role tokens so canvas drawings
+   and old markup adapt to the active theme. IMPORTANT: var() substitution in
+   a custom property is resolved at computed-value time ON THE DECLARING
+   ELEMENT and the RESOLVED value inherits — declaring these only on :root
+   would freeze them to the light values for the whole document. Every theme
+   scope must therefore re-declare the aliases so `.theme-dark`/`.preset-paper`
+   re-substitute them against their own role tokens. cyan/pink stay distinct
+   per-scope hues (canvas diagrams rely on them differing from blue/red). */
+:root, .theme-light, .theme-dark, .preset-paper, .preset-paper .theme-light {
+  --accent-light:  var(--accent);
+  --accent-glow:   var(--accent-subtle);
+  --shadow-glow:   0 0 20px var(--accent-subtle);
+  --green:  var(--success);
+  --green-bg: var(--success-subtle);
+  --yellow: var(--warning);
+  --yellow-bg: var(--warning-subtle);
+  --red:    var(--danger);
+  --red-bg: var(--danger-subtle);
+  --blue:   var(--info);
+  --blue-bg: var(--info-subtle);
+  --orange: var(--accent);
+}
+
+:root {
+  /* Palette — base chrome vars (bg, surface, border, text, --text-accent,
+     --border-focus) are theme-scoped in `:root, .theme-light` and
+     `.theme-dark` above so they follow the active theme; legacy aliases are
+     re-declared per theme scope (see block above). Only theme-agnostic
+     helpers remain here. */
+
+  /* Typography — display face carries the deck's personality on Latin
+     headings; Korean glyphs fall back to Pretendard, which tolerates the
+     tightened tracking. */
+  --font-display: 'Space Grotesk', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-main: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* Sizing (overridden by PPTX theme extraction or frontmatter ratio:) */
+  --slide-width:  960px;
+  --slide-height: 540px;
+  --slide-ratio-w: 16;
+  --slide-ratio-h: 9;
+
+  /* Transitions */
+  --transition-fast:   150ms ease;
+  --transition-normal: 300ms ease;
+  --transition-slow:   500ms ease;
+
+  /* PPTX / brand tokens — the INPUT layer for extracted theming.
+     Intentionally left UNDEFINED here: the role tokens above consume them
+     as `var(--pptx-*, <theme-default>)`, so when no PPTX theme is extracted
+     the theme default applies. An extracted theme-override.css (generated by
+     extract_pptx_theme.py) sets --pptx-accent1/dk1/lt1/dk2/lt2/... which then
+     propagate through --accent and the surface roles to the whole token system. */
+}
+
+/* --- Font Loading: see @import block at the top of this file --- */
+
+html {
+  height: 100%;
+  /* Fixed design-canvas root font. The deck is a fixed 1920x1080 canvas
+     scaled as a whole via transform (see .slide-deck) — type must NOT
+     track the viewport independently, or a width-constrained window
+     shrinks the deck box while the text stays big (the old vh-clamp bug:
+     "폭에 의해 비율이 조정되지만 컨텐츠가 줄어들지 않음"). */
+  font-size: 24px;
+}
+body {
+  width: 100%; height: 100%;
+  margin: 0;
+  font-family: var(--font-main);
+  background: #000;
+  color: var(--text-primary);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Slide Container: fixed design canvas, scaled as one unit ---
+   1080px tall, width from the ratio vars (16:9 → 1920px). slide-framework.js
+   computes --deck-scale = min(availW/deckW, availH/deckH) on resize /
+   fullscreen / sidebar toggle, so ALL content (type, px coordinates,
+   canvases) shrinks proportionally with the box. Absolute px inside slides
+   is safe — the canvas scales as a whole. */
+.slide-deck {
+  height: 1080px;
+  width: calc(1080px * var(--slide-ratio-w) / var(--slide-ratio-h));
+  flex: none;
+  /* margin 0, not auto: on a viewport shorter (or narrower) than the 1080px layout box the
+     flex free space is negative, auto margins resolve to 0 AND disable body's centering, so
+     the box pinned to the top and the centre-origin scale pushed the bottom
+     (1080 - vh) / 2 px off-screen (180px at 1280x720). With margin 0 body's
+     align-items/justify-content centre the overflowing box on both axes. */
+  margin: 0;
+  transform: scale(var(--deck-scale, 1));
+  transform-origin: center center;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-primary);
+  /* Re-apply text color INSIDE the deck's theme scope: body's color computes
+     in the light scope and inherits down, so a .slide-deck.theme-dark deck
+     would otherwise show near-black text on its dark background. */
+  color: var(--text-primary);
+}
+/* Korean: break between words (spaces), never inside a word; still break a token that
+   cannot fit at all, so nothing overflows. `text-wrap: pretty` (inherited by p/li/card/
+   callout text) avoids one-word last lines; headings balance their lines instead. The
+   heading rule uses the longhand so it never resets a heading's own white-space. */
+.slide-deck:lang(ko) { word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; }
+.slide-deck:lang(ko) :is(h1, h2, h3, h4) { text-wrap-style: balance; }
+/* Oversized flex item still centers visually: body is flex with centered
+   axes; equal overflow is clipped on both sides until the transform shrinks
+   the box into view. */
+body {
+  justify-content: center;
+  align-items: center;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  /* Side margin approximates the PPTX PAD at a reduced value. */
+  padding: var(--space-6) 64px;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+/* Per-slide dark scope: a slide carrying .theme-dark re-binds its tokens to the dark
+   palette (see .theme-dark above) and gets a dark surface + light text, so a mostly
+   light deck can intersperse dark cover/section/emphasis slides (light:dark mix). */
+.slide.theme-dark {
+  background: var(--surface-1);
+  color: var(--on-surface);
+}
+.slide.active {
+  display: flex;
+  opacity: 1;
+}
+.slide.entering { display: flex; animation: fadeSlideIn .4s ease forwards; }
+.slide.leaving  { display: flex; animation: fadeSlideOut .3s ease forwards; }
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes fadeSlideOut {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-30px); }
+}
+
+/* --- Typography --- */
+.slide h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl); font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  margin-top: 0; margin-bottom: var(--space-1);
+  line-height: var(--leading-tight);
+}
+.slide h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-title); font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  margin-top: var(--space-3); margin-bottom: var(--space-2);
+  line-height: var(--leading-tight);
+}
+/* Header title: tight block — margins + header padding total about 42px (was about 90px). */
+.slide-header h1,
+.slide-header h2 {
+  font-size: var(--fs-title);
+  line-height: var(--leading-tight);
+  margin-top: 0;
+  margin-bottom: var(--space-1);
+}
+.slide h3 {
+  font-size: var(--fs-subtitle); font-weight: var(--weight-semibold);
+  color: var(--text-accent);
+  margin-top: var(--space-3); margin-bottom: var(--space-1);
+}
+/* Eyebrow — small structural label above a heading (mono, spread, accent).
+   Use for section numbers/module labels ONLY where order/category carries
+   real information; it encodes structure, it does not decorate. */
+.eyebrow {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: var(--space-1);
+}
+/* First heading in a container should not have extra top margin */
+:is(.slide-body, .fit-box) > h1:first-child,
+:is(.slide-body, .fit-box) > h2:first-child,
+:is(.slide-body, .fit-box) > h3:first-child { margin-top: 0; }
+.slide p, .slide li {
+  font-size: var(--fs-body);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+.slide .subtitle {
+  font-size: var(--fs-subtitle);
+  color: var(--text-muted);
+  margin-bottom: 0;
+}
+
+/* --- Layout Helpers --- */
+/* Signature element: the "beam rule" — a short accent gradient hairline under
+   every slide header. One consistent, quiet mark that brands the whole deck;
+   everything else stays disciplined. */
+.slide-header {
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  position: relative;
+}
+.slide-header::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: 0;
+  width: var(--space-8);
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--accent), var(--accent-subtle));
+}
+.slide-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+}
+/* Fit box — created at runtime by ReactiveFit (slide-framework.js) around the
+   .slide-body children. Auto height so its size is measurable; CSS `zoom` is applied
+   to it; auto block margins center it vertically in the body. */
+.fit-box {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block: auto;
+}
+/* Fill by default: grid/column children take the leftover body height and center
+   their rows; cards in a row stretch to equal height (grid default). */
+:is(.slide-body, .fit-box) > :is(.card-grid, .col-2, .col-3, .columns) {
+  flex: 1;
+  align-content: center;
+}
+.columns { display: flex; gap: var(--space-5); flex: 1; }
+.columns > * { flex: 1; }
+.col-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.col-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-3); }
+/* Vertically center a sparse grid in the remaining slide height. Auto
+   margins collapse to 0 when the grid overflows, so dense decks still
+   scroll from the top instead of clipping. */
+:is(.slide-body, .fit-box) > .grid-vcenter { margin-top: auto; margin-bottom: auto; }
+.center-content {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; flex: 1;
+}
+
+/* --- Cards --- */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.card:hover {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-2);
+}
+.card.highlight {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow);
+}
+.card-title {
+  font-size: var(--fs-subtitle); font-weight: 600;
+  color: var(--text-accent);
+  margin-bottom: var(--space-1);
+}
+.card-desc {
+  font-size: var(--fs-card);
+  line-height: var(--leading-body);
+  color: var(--on-surface-muted);
+  margin-top: var(--space-1);
+}
+/* Sentence card: a .metric-card that carries sentences (not a number tile) reads
+   left-aligned — centered multi-line text is hard to scan. */
+.metric-card.card-text { text-align: left; }
+/* Secondary line of a card ("what you no longer do", "alternative"): hairline divider
+   plus an optional muted label on its own line. */
+.card-note {
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+}
+.card-note-label {
+  display: block;
+  font-size: var(--fs-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--on-surface-muted);
+  margin-bottom: var(--space-1);
+}
+/* Text inside a card reads at card size, not body size. */
+.slide :is(.card, .metric-card, .callout, .comparison) :is(p, li) { font-size: var(--fs-card); }
+
+/* --- Badges / Tags --- */
+.badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.badge-green  { background: var(--green-bg);  color: var(--green); }
+.badge-yellow { background: var(--yellow-bg); color: var(--yellow); }
+.badge-red    { background: var(--red-bg);    color: var(--red); }
+.badge-blue   { background: var(--blue-bg);   color: var(--blue); }
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: var(--fs-caption);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.btn:hover { border-color: var(--accent); background: var(--surface); }
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
+}
+.btn-primary:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-light);
+}
+.btn-sm { padding: var(--space-1) var(--space-2); font-size: var(--fs-caption); }
+.btn-group { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+
+/* --- Tabs --- */
+.tab-bar {
+  display: flex; gap: var(--space-1);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--space-1);
+  margin-bottom: var(--space-3);
+  width: fit-content;
+}
+.tab-btn {
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  /* --text-secondary, not muted: inactive tab labels are still navigation —
+     muted fails WCAG on both themes (measured 3.2 light / 3.9 dark) */
+  color: var(--text-secondary);
+  font-family: var(--font-main);
+  font-size: var(--fs-card);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.tab-btn.active {
+  background: var(--accent);
+  color: var(--accent-on);
+  /* white-on-Smile-orange measures ~3.0 — compliant only as WCAG large
+     text, which bold >= 14pt qualifies for (also anchors the active tab) */
+  font-weight: var(--weight-bold);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+/* Panel stack: initTabs() groups a tab bar's sibling panels into .tab-panels (authors may
+   write it directly). Every panel shares one grid cell, so the stack is as tall as the
+   tallest panel: switching tabs never moves the tab bar or the content below it, and
+   ReactiveFit sizes the slide once, for the tallest panel. Inactive panels stay laid out
+   but invisible (and out of the accessibility tree and the tab order). */
+.tab-panels { display: grid; grid-template-columns: minmax(0, 1fr); }
+.tab-panels > .tab-content { display: block; grid-area: 1 / 1; visibility: hidden; }
+.tab-panels > .tab-content.active { visibility: visible; }
+/* Self-contained .tab-set panels toggle the hidden attribute: keep them laid out in the
+   stack (author CSS beats the UA [hidden] display:none) and only invisible. */
+.tab-panels > .tc { display: block; grid-area: 1 / 1; }
+.tab-panels > .tc[hidden] { visibility: hidden; }
+
+/* --- Code Blocks --- */
+.code-block {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  line-height: 1.65;
+  color: #c9d1d9;
+  overflow-x: auto;
+  white-space: pre;
+  position: relative;
+}
+.code-block .comment { color: #8b949e; }
+.code-block .keyword { color: #ff7b72; }
+.code-block .string  { color: #a5d6ff; }
+.code-block .key     { color: #79c0ff; }
+.code-block .value   { color: #7ee787; }
+.code-block .number  { color: #fdcb6e; }
+.code-label {
+  position: absolute; top: 8px; right: 12px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+/* Inside the fit box a code block takes part in fit (framework-contract §11): no inner
+   scroll container — a scroller hides its overflow from the fit measurement — and a long
+   line widens the block itself, so ReactiveFit shrinks the slide instead of the code
+   being clipped or scrolled. (Percent max-heights do not resolve reliably in the
+   auto-height box anyway.) A slide that needs a scrolling listing sets data-fit="off". */
+.fit-box .code-block {
+  max-height: none;
+  overflow: visible;
+  width: max-content;
+  min-width: 100%;
+}
+
+/* --- Canvas Container --- */
+.canvas-container {
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  min-height: 200px;
+}
+.canvas-container canvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 960 / 400;
+}
+
+/* Mermaid diagram integration */
+.canvas-container .mermaid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 1rem;
+}
+
+.canvas-container .mermaid svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.canvas-controls {
+  position: absolute;
+  bottom: .5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: var(--space-1);
+  z-index: 10;
+}
+
+/* --- Progress Bar --- */
+.progress-bar {
+  position: absolute;
+  bottom: 0; left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  transition: width var(--transition-normal);
+  z-index: 1000;
+}
+
+/* --- Slide Counter --- */
+.slide-counter {
+  position: absolute;
+  bottom: var(--space-2); right: var(--space-3);
+  font-size: .8rem;
+  color: var(--text-muted);
+  z-index: 1000;
+  font-family: var(--font-mono);
+}
+
+/* Slide number display (PPTX pagination) */
+.slide-number {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 1rem;
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* Slide reference links */
+.slide-ref {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 1rem;
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  z-index: 999;
+  max-width: 50%;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slide-ref a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.slide-ref a:hover {
+  color: var(--accent-light);
+  text-decoration: underline;
+}
+
+/* When both slide-number and slide-ref are present, shift refs up */
+.slide-number ~ .slide-ref,
+.slide-number + .slide-ref {
+  bottom: 1.5rem;
+}
+
+/* --- Navigation --- */
+.nav-hint {
+  position: absolute;
+  bottom: var(--space-2); left: var(--space-3);
+  font-size: .75rem;
+  color: var(--text-muted);
+  z-index: 1000;
+  opacity: .6;
+}
+
+/* --- Lists --- */
+.slide ul, .slide ol {
+  padding-left: 1rem;
+  margin-bottom: .5rem;
+}
+.slide ul li, .slide ol li {
+  margin-bottom: .25rem;
+}
+.slide ul li::marker { color: var(--accent); }
+
+/* Checklist */
+.checklist { list-style: none; padding-left: 0; }
+.checklist li {
+  display: flex; align-items: flex-start; gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  flex-wrap: wrap;
+}
+.checklist li:hover { background: var(--bg-tertiary); }
+/* The box is an interactive control: sized in em so it tracks the item text (and the fit
+   zoom), centered on the first line ((1.45 - .75) / 2 = .35em with --leading-body), and
+   bordered in --on-surface-muted so it meets the 3:1 non-text contrast minimum
+   (--border measured about 1.2:1 against the page). */
+.checklist li .check {
+  width: .75em; height: .75em;
+  border: 2px solid var(--on-surface-muted);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  margin-top: .35em;
+}
+.checklist li.checked .check {
+  background: var(--green);
+  border-color: var(--green);
+}
+.checklist li.checked .check::after {
+  content: '\2713';
+  color: #fff;
+  font-size: var(--fs-caption);
+}
+/* The text beside the checkbox takes the remaining width (basis 0), so a long item wraps
+   next to its box instead of dropping below it on the wrapping flex line. */
+.checklist-text { flex: 1 1 0; min-width: 0; }
+
+/* Checklist expandable detail */
+.checklist-detail {
+  display: none;
+  width: 100%;
+  margin-top: var(--space-1);
+  padding-left: 1.25rem;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--transition-normal);
+}
+.slide .checklist-detail, .slide .checklist-detail :is(p, li) { font-size: var(--fs-card); }
+.checklist li.checked .checklist-detail {
+  display: block;
+}
+.checklist li.has-detail .checklist-text::after {
+  content: ' ▸';
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+}
+.checklist li.has-detail.checked .checklist-text::after {
+  content: ' ▾';
+}
+
+/* --- Tables --- */
+.slide table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-card);
+}
+.slide th, .slide td {
+  padding: var(--space-2) var(--space-2);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: inherit;
+}
+.slide th {
+  color: var(--text-accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.slide tr:hover td { background: var(--bg-tertiary); }
+
+/* --- Callout Boxes --- */
+.callout {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border-left: 4px solid;
+  font-size: var(--fs-card);
+}
+/* .callout-* role variants are defined AFTER the .callout primitive block
+   (token-backed primitives section) so they win source order; see below. */
+
+/* --- Timeline --- */
+.timeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: .5rem 0;
+}
+.timeline-step {
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center;
+  flex: 1;
+  position: relative;
+}
+.timeline-dot {
+  width: var(--space-5); height: var(--space-5);
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-caption); font-weight: 700;
+  color: var(--text-muted);
+  z-index: 1;
+  transition: all var(--transition-normal);
+}
+.timeline-step.active .timeline-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+/* done = subdued accent (same single-hue progress language as .agenda-step.done)
+   — green made "done" the dominant color on a finished timeline */
+.timeline-step.done .timeline-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-on);
+  opacity: .55;
+}
+.timeline-label {
+  margin-top: var(--space-1);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  max-width: 6rem;
+}
+.timeline-connector {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  margin: 0 -4px;
+  position: relative;
+  top: -16px;
+}
+.timeline-connector.done { background: var(--accent); opacity: .5; }
+.timeline-desc {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+  max-width: 7rem;
+  line-height: 1.3;
+}
+
+/* --- Agenda timeline --- */
+.agenda-timeline {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 1rem 0;
+  margin-top: 1rem;
+}
+.agenda-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+.agenda-dot {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--bg-tertiary, #1e2235);
+  border: 3px solid var(--border, #2d3250);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+.agenda-step.active .agenda-dot {
+  background: var(--accent, #ec7211);
+  border-color: var(--accent, #ec7211);
+  color: var(--accent-on, #fff);
+  box-shadow: 0 0 20px var(--accent-glow, rgba(236, 114, 17, 0.3));
+}
+.agenda-step.done .agenda-dot {
+  background: var(--accent, #ec7211);
+  border-color: var(--accent, #ec7211);
+  color: var(--accent-on, #fff);
+  opacity: 0.5;
+}
+.agenda-connector.done {
+  background: var(--accent, #ec7211);
+  opacity: 0.5;
+}
+.agenda-step.break .agenda-dot {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: #000;
+}
+.agenda-label {
+  margin-top: var(--space-3);
+  text-align: center;
+  max-width: 12rem;
+}
+.agenda-label strong {
+  display: block;
+  font-size: var(--fs-subtitle);
+  color: var(--text-primary, #e8eaf0);
+  margin-bottom: 0.2rem;
+}
+.agenda-label span {
+  font-size: var(--fs-card);
+  color: var(--text-muted);
+}
+.agenda-connector {
+  position: absolute;
+  top: 1.25rem;
+  left: calc(50% + 1.25rem);
+  width: calc(100% - 2.5rem);
+  height: 3px;
+  background: var(--border, #2d3250);
+  z-index: 1;
+}
+.agenda-step:last-child .agenda-connector { display: none; }
+
+/* --- Steps (agenda/process) --- */
+.steps-container {
+  --step-color: var(--accent, #ec7211);
+  --step-size: 3rem;
+  --step-font-size: 1.1rem;
+  --step-connector-color: var(--border);
+  display: flex; align-items: flex-start; justify-content: center;
+  gap: 0; width: 100%; padding: 2rem 1rem;
+}
+.steps--horizontal { flex-direction: row; }
+.steps--vertical { flex-direction: column; align-items: stretch; }
+
+.step-marker {
+  width: var(--step-size); height: var(--step-size);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--step-color); color: #fff; font-weight: 700;
+  font-size: var(--step-font-size); flex-shrink: 0;
+}
+.steps--circle .step-marker { border-radius: 50%; }
+.steps--rect .step-marker { border-radius: 8px; }
+.steps--icon .step-marker { background: none; }
+.steps--icon .step-marker img { width: 100%; height: 100%; object-fit: contain; }
+
+.steps--horizontal .step-connector {
+  flex: 1; height: 2px; background: var(--step-connector-color);
+  align-self: center; min-width: 1rem; margin-top: calc(var(--step-size) / 2);
+}
+.steps--vertical .step-connector {
+  width: 2px; height: 2rem; background: var(--step-connector-color);
+  margin-left: calc(var(--step-size) / 2);
+}
+
+.steps--horizontal .step-item { text-align: center; flex: 1; }
+.steps--vertical .step-item { display: flex; gap: 1rem; align-items: flex-start; }
+.step-label { font-weight: 600; margin-top: 0.5rem; font-size: var(--fs-subtitle); }
+.step-desc { font-size: var(--fs-card); opacity: 0.8; margin-top: 0.25rem; }
+
+.step-item.done .step-marker { background: var(--step-color); opacity: 0.6; }
+.step-item.active .step-marker { box-shadow: 0 0 0 4px var(--accent-subtle); transform: scale(1.1); }
+
+/* --- Slider --- */
+.slider-container {
+  display: flex; align-items: center; gap: .5rem;
+}
+input[type="range"] {
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  outline: none;
+  flex: 1;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+.slider-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--accent-light);
+  min-width: 60px;
+  text-align: right;
+}
+
+/* --- Metric Cards --- */
+.metric-card {
+  text-align: center;
+  padding: var(--space-3);
+  font-size: var(--fs-card);
+}
+/* Card heading pattern: <strong>Title</strong><div class="card-desc">…</div> */
+.metric-card > strong:first-child {
+  display: block;
+  font-size: var(--fs-subtitle);
+  margin-bottom: var(--space-1);
+}
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--accent-light);
+}
+.metric-label {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* --- Event Log --- */
+.event-log {
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  line-height: 1.6;
+  max-height: 10rem;
+  overflow-y: auto;
+  color: var(--text-secondary);
+}
+.event-log .timestamp { color: var(--text-muted); }
+.event-log .event-info   { color: var(--blue); }
+.event-log .event-warn   { color: var(--yellow); }
+.event-log .event-error  { color: var(--red); }
+.event-log .event-ok     { color: var(--green); }
+
+/* --- Title Slide --- */
+.title-slide {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.title-slide h1 {
+  font-size: 3rem;
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  margin-bottom: var(--space-3);
+}
+.title-slide .subtitle {
+  font-size: 1.3rem;
+  color: var(--text-secondary);
+}
+.title-slide .meta {
+  margin-top: var(--space-5);
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* --- Pain Point Slide --- */
+.pain-quote {
+  font-size: 1.2rem;
+  font-style: italic;
+  color: var(--yellow);
+  border-left: 3px solid var(--yellow);
+  padding: var(--space-2) var(--space-3);
+  background: var(--yellow-bg);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  margin: var(--space-2) 0;
+}
+
+/* --- Comparison Toggle --- */
+.compare-toggle {
+  display: flex; gap: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin-bottom: var(--space-3);
+  width: fit-content;
+}
+.compare-btn {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-family: var(--font-main);
+  font-size: var(--fs-card);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.compare-btn.active {
+  background: var(--accent);
+  color: var(--accent-on);
+  /* white-on-Smile-orange measures ~3.0 — compliant only as WCAG large
+     text, which bold >= 14pt qualifies for (also anchors the active tab) */
+  font-weight: var(--weight-bold);
+}
+
+.compare-content {
+  display: none;
+}
+.compare-content.active {
+  display: block;
+}
+
+/* --- Node Grid (for dashboard sim) --- */
+.node-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2rem, 1fr));
+  gap: .25rem;
+}
+.node-cell {
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-caption); font-weight: 700;
+  transition: all var(--transition-normal);
+  cursor: default;
+}
+.node-ready       { background: var(--green-bg); border: 1px solid var(--green); color: var(--green); }
+.node-cordoned    { background: var(--yellow-bg); border: 1px solid var(--yellow); color: var(--yellow); }
+.node-terminating { background: var(--red-bg); border: 1px solid var(--red); color: var(--red); animation: pulse 1.5s infinite; }
+.node-empty       { background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-muted); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .5; }
+}
+
+/* --- Fullscreen ---
+   slide-framework.js fullscreens the document ROOT, not .slide-deck: the UA's
+   !important :fullscreen rules (width/height:100%, transform:none) cannot be
+   overridden by author CSS and would defeat the fixed-canvas + --deck-scale
+   model (the old 100vw/100vh rules here date from the vh-clamp era). With the
+   root fullscreen the deck stays a centered child of body and updateDeckScale()
+   fits it to the screen. The sidebar is hidden in fullscreen (see below), so
+   its 110px shift must not apply either. */
+:root:fullscreen body.sidebar-visible .slide-deck,
+:root:-webkit-full-screen body.sidebar-visible .slide-deck {
+  transform: scale(var(--deck-scale, 1));
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* --- Logo --- */
+.slide-logo {
+  position: absolute;
+  bottom: 16px;
+  left: 20px;
+  height: 32px;
+  width: auto;
+  z-index: 999;
+  opacity: 0.8;
+  pointer-events: none;
+  /* No blanket invert — each deck supplies a logo matching its own theme
+     (dark-ink logo for light decks, light/white logo for dark decks) via
+     `theme.logo` in _presentation.md. */
+}
+
+/* --- Footer --- */
+.slide-footer {
+  position: absolute;
+  bottom: 14px;
+  left: 70px;
+  font-size: .75rem;
+  color: var(--text-muted);
+  z-index: 999;
+  pointer-events: none;
+}
+
+/* --- Slide Reference Links --- */
+.slide-ref {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 2rem;
+  right: 2rem;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+  border-top: 1px solid var(--border);
+  padding-top: 0.3rem;
+}
+.slide-ref a { color: var(--text-muted); text-decoration: underline; }
+.slide-ref a:hover { color: var(--accent); }
+
+/* --- Presenter Layout (in presenter window) --- */
+.presenter-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+.presenter-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.presenter-timer {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  color: var(--accent);
+}
+.presenter-counter {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+}
+.presenter-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+.presenter-current {
+  flex: 3;
+  border-right: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.presenter-next {
+  flex: 2;
+  position: relative;
+  overflow: hidden;
+  opacity: 0.75;
+}
+.presenter-notes {
+  height: 200px;
+  padding: 16px 20px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  overflow-y: auto;
+}
+.presenter-notes h3 {
+  font-size: .85rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.presenter-notes .notes-content {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+/* --- Images --- */
+.slide-img {
+  max-width: 90%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  margin: 0 auto;
+  display: block;
+}
+/* Inside a fit box the parent height is auto (percent caps resolve to none), so cap
+   images in rem: rem lengths scale with the fit zoom, percent widths do not. */
+.fit-box .slide-img { max-height: 28rem; }
+
+/* --- Compare Highlight (side-by-side mode) --- */
+.compare-highlight {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 12px var(--accent-glow) !important;
+}
+
+/* --- Print --- */
+@media print {
+  .slide { page-break-after: always; position: relative; display: flex !important; opacity: 1 !important; }
+  .progress-bar, .slide-counter, .nav-hint, .slide-logo, .slide-footer, .slide-number, .slide-ref { display: none; }
+  /* Print flows pages, not a scaled canvas */
+  .slide-deck { transform: none !important; width: 100% !important; height: auto !important; }
+}
+
+/* === Export Toolbar === */
+.export-toolbar {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 20px;
+}
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: .9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.export-btn:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 2px 12px var(--accent-glow);
+}
+.export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.export-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Export progress overlay */
+.export-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .85);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.export-progress-content {
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+.export-progress-text {
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+.export-progress-track {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.export-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  border-radius: 2px;
+  transition: width 200ms ease;
+  width: 0%;
+}
+
+/* ============================================================
+   Fragment Animations
+   ============================================================ */
+
+/* Base fragment state - hidden by default */
+.fragment {
+  opacity: 0;
+  transition: all 0.4s ease;
+  pointer-events: none;
+}
+.fragment.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* fade-in (default) */
+.fragment.fade-in {
+  opacity: 0;
+}
+.fragment.fade-in.visible {
+  opacity: 1;
+}
+
+/* fade-up */
+.fragment.fade-up {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.fragment.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* fade-down */
+.fragment.fade-down {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+.fragment.fade-down.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* fade-left */
+.fragment.fade-left {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+.fragment.fade-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* fade-right */
+.fragment.fade-right {
+  opacity: 0;
+  transform: translateX(20px);
+}
+.fragment.fade-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* grow */
+.fragment.grow {
+  opacity: 0;
+  transform: scale(0.8);
+}
+.fragment.grow.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* shrink */
+.fragment.shrink {
+  opacity: 0;
+  transform: scale(1.1);
+}
+.fragment.shrink.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* highlight (purple) */
+.fragment.highlight {
+  background-color: transparent;
+  transition: background-color 0.4s ease, opacity 0.4s ease;
+}
+.fragment.highlight.visible {
+  opacity: 1;
+  background-color: var(--accent-subtle);
+}
+
+/* highlight-red */
+.fragment.highlight-red {
+  background-color: transparent;
+  transition: background-color 0.4s ease, opacity 0.4s ease;
+}
+.fragment.highlight-red.visible {
+  opacity: 1;
+  background-color: rgba(225, 112, 85, 0.3);
+}
+
+/* highlight-green */
+.fragment.highlight-green {
+  background-color: transparent;
+  transition: background-color 0.4s ease, opacity 0.4s ease;
+}
+.fragment.highlight-green.visible {
+  opacity: 1;
+  background-color: rgba(0, 184, 148, 0.3);
+}
+
+/* strike */
+.fragment.strike {
+  text-decoration: none;
+}
+.fragment.strike.visible {
+  opacity: 1;
+  text-decoration: line-through;
+}
+
+/* fade-out (reverse - visible initially, hidden when activated) */
+.fragment.fade-out {
+  opacity: 1;
+  pointer-events: auto;
+}
+.fragment.fade-out.visible {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Heading-group spacing: consecutive heading+content fragment sections */
+.heading-group + .heading-group {
+  margin-top: 1em;
+}
+
+/* ============================================================
+   Slide Transitions
+   ============================================================ */
+
+/* Fade transition (default) */
+.slide[data-transition="fade"].entering,
+.slide.transition-fade-in {
+  animation: transitionFadeIn 0.35s ease forwards;
+}
+.slide[data-transition="fade"].leaving,
+.slide.transition-fade-out {
+  animation: transitionFadeOut 0.35s ease forwards;
+}
+
+@keyframes transitionFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes transitionFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Slide transition */
+.slide[data-transition="slide"].entering,
+.slide.transition-slide-in {
+  animation: transitionSlideIn 0.35s ease forwards;
+}
+.slide[data-transition="slide"].leaving,
+.slide.transition-slide-out {
+  animation: transitionSlideOut 0.35s ease forwards;
+}
+
+@keyframes transitionSlideIn {
+  from { opacity: 0; transform: translateX(100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes transitionSlideOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-100px); }
+}
+
+/* Slide-left transition */
+.slide[data-transition="slide-left"].entering,
+.slide.transition-slide-left-in {
+  animation: transitionSlideLeftIn 0.35s ease forwards;
+}
+.slide[data-transition="slide-left"].leaving,
+.slide.transition-slide-left-out {
+  animation: transitionSlideLeftOut 0.35s ease forwards;
+}
+
+@keyframes transitionSlideLeftIn {
+  from { opacity: 0; transform: translateX(-100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes transitionSlideLeftOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(100px); }
+}
+
+/* Slide-right transition */
+.slide[data-transition="slide-right"].entering,
+.slide.transition-slide-right-in {
+  animation: transitionSlideRightIn 0.35s ease forwards;
+}
+.slide[data-transition="slide-right"].leaving,
+.slide.transition-slide-right-out {
+  animation: transitionSlideRightOut 0.35s ease forwards;
+}
+
+@keyframes transitionSlideRightIn {
+  from { opacity: 0; transform: translateX(100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes transitionSlideRightOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-100px); }
+}
+
+/* Zoom transition */
+.slide[data-transition="zoom"].entering,
+.slide.transition-zoom-in {
+  animation: transitionZoomIn 0.35s ease forwards;
+}
+.slide[data-transition="zoom"].leaving,
+.slide.transition-zoom-out {
+  animation: transitionZoomOut 0.35s ease forwards;
+}
+
+@keyframes transitionZoomIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes transitionZoomOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.1); }
+}
+
+/* None transition (instant) */
+.slide[data-transition="none"].entering,
+.slide.transition-none-in {
+  animation: none;
+  opacity: 1;
+}
+.slide[data-transition="none"].leaving,
+.slide.transition-none-out {
+  animation: none;
+  opacity: 0;
+}
+
+/* ============================================================
+   Column Layouts (Extended)
+   ============================================================ */
+
+/* Two columns (already exists, but ensure consistency) */
+.columns {
+  display: flex;
+  gap: 2rem;
+  flex: 1;
+}
+.columns .col,
+.columns > * {
+  flex: 1;
+}
+
+/* Three columns */
+.columns-3 {
+  display: flex;
+  gap: 1.5rem;
+  flex: 1;
+}
+.columns-3 .col,
+.columns-3 > * {
+  flex: 1;
+}
+
+/* 2x2 Grid */
+.grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  flex: 1;
+}
+
+/* 3x2 Grid */
+.grid-3x2 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 1rem;
+  flex: 1;
+}
+
+/* Asymmetric columns */
+.columns-2-1 {
+  display: flex;
+  gap: 2rem;
+}
+.columns-2-1 > *:first-child { flex: 2; }
+.columns-2-1 > *:last-child { flex: 1; }
+
+.columns-1-2 {
+  display: flex;
+  gap: 2rem;
+}
+.columns-1-2 > *:first-child { flex: 1; }
+.columns-1-2 > *:last-child { flex: 2; }
+
+/* ============================================================
+   Flow Diagram Utilities
+   ============================================================ */
+
+/* --- Flow Containers --- */
+.flow-h {
+  display: flex;
+  align-items: stretch;   /* all flow-groups share the tallest one's height */
+  justify-content: center;
+  gap: 1.25rem;
+  margin: auto 0;         /* size to the tallest group, centered vertically in the slide */
+}
+.flow-v {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* --- Flow Column (vertical stack of items) --- */
+.flow-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* --- Flow Arrow --- */
+.flow-arrow {
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;  /* stay vertically centered between equal-height groups */
+  flex-shrink: 0;
+}
+.flow-arrow .arrow-label {
+  font-size: var(--fs-caption);
+  margin-top: 0.25rem;
+}
+
+/* --- Flow Box (styled content block) --- */
+.flow-box {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: var(--fs-card);
+  text-align: center;
+  min-width: 120px;
+  width: 100%;             /* fill the group → uniform box width across stages */
+  box-sizing: border-box;
+}
+
+/* --- Icon + Label component --- */
+.icon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+.icon-item img {
+  width: 48px;
+  height: 48px;
+}
+.icon-item span {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.icon-item.sm img { width: 32px; height: 32px; }
+.icon-item.lg img { width: 64px; height: 64px; }
+
+/* --- Color Utilities (background + border) --- */
+.bg-blue    { background: rgba(59, 130, 246, 0.1); border: 1px solid var(--blue); }
+.bg-orange  { background: rgba(251, 191, 36, 0.1); border: 1px solid var(--orange); }
+.bg-green   { background: rgba(34, 197, 94, 0.1); border: 1px solid var(--green); }
+.bg-red     { background: rgba(225, 112, 85, 0.1); border: 1px solid var(--red); }
+.bg-purple  { background: rgba(129, 140, 248, 0.15); border: 1px solid #818cf8; }
+.bg-pink    { background: rgba(244, 114, 182, 0.15); border: 1px solid #f472b6; }
+.bg-accent  { background: var(--bg-card); border: 2px solid var(--accent); }
+.bg-dark    { background: #232F3E; color: #fff; border: none; }
+
+/* Color text helpers */
+.text-blue   { color: var(--blue); }
+.text-orange { color: var(--orange); }
+.text-green  { color: var(--green); }
+.text-red    { color: var(--red); }
+/* Purple/pink lack role tokens; theme-scoped literals so both themes pass
+   WCAG (light needs the darker shade — #818cf8 on white measures 2.98). */
+.text-purple { color: #6366f1; }
+.text-pink   { color: var(--pink); }
+.theme-dark .text-purple { color: #818cf8; }
+/* Utility colors must beat the heading defaults: `.slide h3` (0,1,1) out-ranks a bare
+   `.text-orange` (0,1,0), so a colored heading silently fell back to --text-accent. */
+.slide :is(h1, h2, h3, h4).text-blue   { color: var(--blue); }
+.slide :is(h1, h2, h3, h4).text-orange { color: var(--orange); }
+.slide :is(h1, h2, h3, h4).text-green  { color: var(--green); }
+.slide :is(h1, h2, h3, h4).text-red    { color: var(--red); }
+.slide :is(h1, h2, h3, h4).text-purple { color: #6366f1; }
+.slide :is(h1, h2, h3, h4).text-pink   { color: var(--pink); }
+.theme-dark :is(h1, h2, h3, h4).text-purple { color: #818cf8; }
+/* Smile orange on the light page measures 2.6:1 (< 3:1 even for large text): light-theme
+   orange headings take the darker amber the paper preset already uses (4.3:1). */
+.slide-deck:not(.theme-dark) .slide:not(.theme-dark) :is(h1, h2, h3, h4).text-orange { color: #b45309; }
+
+/* Keep a token together — e.g. a Korean particle after ")" (keep-all still breaks there). */
+.nowrap { white-space: nowrap; }
+/* Inline code in slide text: mono at the surrounding size (the UA `monospace` default
+   would shrink it) and never broken mid-identifier; a too-long token widens its box and
+   ReactiveFit shrinks the slide. Code blocks use <pre> and are styled separately. */
+.slide :not(pre) > code { font-family: var(--font-mono); font-size: 1em; white-space: nowrap; }
+
+/* --- Text Icon (for services without icon files) --- */
+.text-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+/* --- Flow Group (bordered region containing items) --- */
+.flow-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 8px;
+  flex: 1 1 0;            /* equal width, spread evenly across the row */
+}
+.flow-group .flow-group-label {
+  font-size: var(--fs-card);
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+/* --- Flow Description (bottom summary) --- */
+.flow-desc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: var(--fs-card);
+  color: var(--text-secondary);
+  margin-top: 1rem;
+}
+.flow-desc .step-label {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-weight: 500;
+  font-size: inherit;
+}
+
+/* ============================================================
+   Slide Sidebar (PowerPoint-style thumbnail navigation)
+   ============================================================ */
+
+.slide-sidebar {
+  position: fixed;
+  left: 0; top: 0;
+  width: 220px;
+  height: 100vh;
+  background: #08090d;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 100;
+  padding: 10px;
+  display: none;
+  scrollbar-width: thin;
+}
+
+body.sidebar-visible .slide-sidebar {
+  display: block;
+}
+
+body.sidebar-visible {
+  justify-content: center;
+}
+
+/* Sidebar shifts the usable area right by 220px: keep the fixed canvas,
+   move its visual center by half the sidebar width. slide-framework.js
+   subtracts the 220px from availW when computing --deck-scale. */
+body.sidebar-visible .slide-deck {
+  transform: translateX(110px) scale(var(--deck-scale, 1));
+}
+
+/* Sidebar thumbnails */
+.sidebar-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 8px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg-primary);
+  transition: border-color var(--transition-fast);
+}
+
+.sidebar-thumb:hover { border-color: var(--accent-light); }
+.sidebar-thumb.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.sidebar-thumb-number {
+  position: absolute;
+  bottom: 2px; left: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #ccc);
+  background: rgba(0, 0, 0, .75);
+  padding: 2px 6px;
+  border-radius: 3px;
+  z-index: 2;
+}
+
+.sidebar-thumb-content {
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  pointer-events: none;
+  /* scale is calculated in JS and applied as inline style */
+}
+/* createSidebar() copies the slide's theme-dark/-light class onto the clone; paint it
+   like .slide.theme-dark so a dark cover stays dark in its thumbnail. */
+.sidebar-thumb-content.theme-dark {
+  background: var(--surface-1);
+  color: var(--on-surface);
+}
+
+/* Hide sidebar in fullscreen (the root is the fullscreen element) */
+:root:fullscreen .slide-sidebar,
+:root:-webkit-full-screen .slide-sidebar { display: none !important; }
+
+/* Hide sidebar in overview mode */
+.overview-mode ~ .slide-sidebar { display: none !important; }
+
+/* Hide sidebar in print */
+@media print {
+  .slide-sidebar { display: none !important; }
+}
+
+/* ============================================================
+   Overview Mode
+   ============================================================ */
+
+.overview-mode {
+  overflow: auto !important;
+}
+
+/* Overview is a scrolling grid, not a scaled canvas. The overview class
+   lands ON the deck itself (see SlideFramework.toggleOverview), so match
+   both forms. */
+.slide-deck.overview-mode,
+.overview-mode .slide-deck {
+  transform: none !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+  max-width: none !important;
+  max-height: none !important;
+  width: 100vw !important;
+  /* Viewport-tall and self-scrolling: body centres its child, so a taller
+     auto-height grid would push the first rows above the viewport. */
+  height: 100vh !important;
+  align-self: flex-start;
+  align-content: start;
+  overflow: auto !important;
+  background: #000;
+}
+
+.overview-mode .slide {
+  position: relative !important;
+  display: flex !important;
+  opacity: 1 !important;
+  cursor: pointer;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  transform: scale(1) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  animation: none !important;
+}
+
+.overview-mode .slide:hover {
+  border-color: var(--accent-light);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.overview-mode .slide.current {
+  border-color: var(--accent);
+  box-shadow: 0 0 30px var(--accent-glow);
+}
+
+.overview-mode .slide.overview-visible {
+  display: flex !important;
+}
+
+/* Hide UI elements in overview mode */
+.overview-mode .progress-bar,
+.overview-mode .slide-counter,
+.overview-mode .nav-hint,
+.overview-mode .slide-footer,
+.overview-mode .slide-logo,
+.overview-mode .slide-number,
+.overview-mode .slide-ref {
+  display: none !important;
+}
+
+/* Scale down slide content in overview */
+.overview-mode .slide > * {
+  transform-origin: top left;
+  transform: scale(0.25);
+  width: 400%;
+  height: 400%;
+}
+
+/* ============================================================
+   Presenter View Cue Markers (fallback if not in presenter window)
+   ============================================================ */
+
+.cue-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+}
+
+.cue-marker.demo {
+  background: var(--blue-bg);
+  color: var(--blue);
+  border: 1px solid rgba(116, 185, 255, 0.3);
+}
+
+.cue-marker.pause {
+  background: var(--yellow-bg);
+  color: var(--yellow);
+  border: 1px solid rgba(253, 203, 110, 0.3);
+}
+
+.cue-marker.question {
+  background: var(--green-bg);
+  color: var(--green);
+  border: 1px solid rgba(0, 184, 148, 0.3);
+}
+
+.cue-marker.transition {
+  background: rgba(162, 155, 254, 0.15);
+  color: var(--accent-light);
+  border: 1px solid rgba(162, 155, 254, 0.3);
+}
+
+/* ============================================================
+   Data Visualization
+   ============================================================ */
+
+/* KPI Cards */
+.kpi-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.kpi-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1.2rem; text-align: center; flex: 1; min-width: 120px; transition: box-shadow 0.2s ease; }
+.kpi-card:hover { box-shadow: 0 0 0 1px var(--border), 0 8px 16px rgba(0,0,0,0.08); }
+.kpi-value { font-size: 2rem; font-weight: 700; color: var(--accent); letter-spacing: -0.03em; }
+.kpi-label { font-size: var(--fs-caption); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.3rem; }
+.kpi-delta { font-size: var(--fs-caption); margin-top: 0.3rem; }
+.kpi-delta.positive { color: var(--green); }
+.kpi-delta.negative { color: var(--red); }
+
+/* Dashboard Grid */
+.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+
+/* Chart Container */
+.chart-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1.5rem; min-height: 300px; }
+.chart-container:hover { box-shadow: 0 0 0 1px var(--border), 0 8px 16px rgba(0,0,0,0.08); }
+
+/* Data Table */
+.data-table { width: 100%; border-collapse: collapse; font-size: var(--fs-card); }
+.data-table th { padding: 0.6rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--text-muted); font-weight: 600; font-size: var(--fs-caption); text-transform: uppercase; letter-spacing: 0.05em; }
+.data-table td { padding: 0.6rem; border-bottom: 1px solid var(--border); }
+.data-table tr:hover td { background: rgba(108,92,231,0.05); }
+
+/* Stat Highlight */
+.stat-highlight { font-size: 3rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+
+/* Badge for tables */
+.badge-up { font-size: var(--fs-caption); font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(0,184,148,0.12); color: var(--green); }
+.badge-down { font-size: var(--fs-caption); font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(225,112,85,0.12); color: var(--red); }
+
+/* ===== Interactive Pattern Classes ===== */
+
+/* Mode Selector */
+.mode-selector { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.mode-btn { padding: 10px 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-tertiary); color: var(--text-secondary); font-family: var(--font-main); font-size: var(--fs-caption); cursor: pointer; transition: all var(--transition-fast); }
+.mode-btn:hover { border-color: var(--accent); }
+.mode-btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
+.mode-content { display: none; }
+.mode-content.active { display: block; }
+
+/* Slider Controls */
+.slider-group { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.slider-row label { width: 100px; font-size: var(--fs-caption); color: var(--text-secondary); }
+.slider-row input[type="range"] { flex: 1; }
+.slider-row .value { font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--accent-light); min-width: 60px; text-align: right; }
+
+/* YAML Output */
+.yaml-output { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-family: var(--font-mono); font-size: var(--fs-caption); color: #c9d1d9; white-space: pre; overflow-x: auto; line-height: 1.6; }
+
+/* QoS Indicators */
+.qos-display { display: flex; gap: 16px; }
+.qos-card { flex: 1; padding: 16px; border-radius: 10px; text-align: center; border: 2px solid var(--border); opacity: 0.4; transition: all var(--transition-fast); }
+.qos-card.active { opacity: 1; }
+.qos-card.guaranteed { border-color: var(--green); background: var(--green-bg); }
+.qos-card.burstable { border-color: var(--yellow); background: var(--yellow-bg); }
+.qos-card.besteffort { border-color: var(--red); background: var(--red-bg); }
+
+/* Alert Toggle */
+.alert-toggle { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all var(--transition-fast); }
+.alert-toggle:hover { border-color: var(--accent); }
+.alert-toggle.active { border-color: var(--green); background: var(--green-bg); }
+
+/* Simulator Layout */
+.simulator-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: 100%; }
+.simulator-results { display: flex; flex-direction: column; gap: 12px; }
+
+/* Flow Timeline */
+.flow-step { display: flex; align-items: center; gap: 16px; padding: 14px 20px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; opacity: 0.4; transform: translateX(-20px); transition: all var(--transition-normal); }
+.flow-step.active { opacity: 1; transform: translateX(0); border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
+.flow-step.done { opacity: 1; transform: translateX(0); border-color: var(--green); }
+
+/* Command Card */
+.command-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; cursor: pointer; transition: all var(--transition-fast); }
+.command-card:hover { border-color: var(--accent); }
+.command-header { padding: 12px 16px; font-family: var(--font-mono); font-size: var(--fs-caption); color: var(--accent-light); background: var(--bg-tertiary); }
+.command-output { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+.command-card.expanded .command-output { max-height: 300px; }
+
+/* Entrance Animations */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideInLeft { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+.animate-in { animation: fadeInUp 0.5s ease-out both; }
+.animate-slide { animation: slideInLeft 0.5s ease-out both; }
+.animate-scale { animation: scaleIn 0.4s ease-out both; }
+
+/* Stagger delays */
+.kpi-card:nth-child(1) { animation-delay: 0s; }
+.kpi-card:nth-child(2) { animation-delay: 0.1s; }
+.kpi-card:nth-child(3) { animation-delay: 0.2s; }
+.kpi-card:nth-child(4) { animation-delay: 0.3s; }
+.kpi-card:nth-child(5) { animation-delay: 0.4s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in, .animate-slide, .animate-scale, .kpi-card { animation: none !important; }
+}
+
+/* ============================================================
+   Token-backed Component Primitives (theme-agnostic)
+   Consume semantic color roles + spacing/radius/shadow scales
+   so they adapt automatically to .theme-light / .theme-dark.
+   ============================================================ */
+
+/* Responsive card grid */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+/* Surface-based content primitives */
+.metric-card,
+.callout,
+.comparison {
+  background: var(--surface-2);
+  color: var(--on-surface);
+  border: 1px solid var(--surface-3);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-1);
+}
+
+/* Light theme only: lift cards off the warm paper canvas. The primitive above paints
+   cards in paper-muted (--surface-2), which sits only a hair above the page and reads
+   flat. In LIGHT we promote them to a white surface with a soft layered shadow so they
+   read as distinct, floating cards. Scoped to a non-dark deck AND non-dark slide, so the
+   dark theme (deck-level or per-slide @theme:dark) keeps the surface-2 look untouched. */
+.slide-deck:not(.theme-dark) .slide:not(.theme-dark) :is(.metric-card, .comparison, .flow-box) {
+  background: var(--surface-1);
+  border: 1px solid var(--surface-3);
+  box-shadow: var(--shadow-2);
+}
+.slide-deck:not(.theme-dark) .slide:not(.theme-dark) :is(.card, .callout) {
+  box-shadow: var(--shadow-2);
+}
+
+/* Callout role variants — bound to semantic role tokens and placed AFTER the
+   .callout primitive so they override its generic background/border by source
+   order. Specificity raised to (0,2,0) via .callout.callout-* for safety. */
+.callout.callout-info    { border-color: var(--info);    background: var(--info-subtle); }
+.callout.callout-success { border-color: var(--success); background: var(--success-subtle); }
+.callout.callout-warning { border-color: var(--warning); background: var(--warning-subtle); }
+.callout.callout-danger  { border-color: var(--danger);  background: var(--danger-subtle); }
+
+/* Tab set */
+.tab-set {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-2);
+}
+.tab-set .tab-btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 0;
+  background: var(--surface-2);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+.tab-set .tab-btn.active {
+  background: var(--accent);
+  color: var(--accent-on);
+  /* white-on-Smile-orange measures ~3.0 — compliant only as WCAG large
+     text, which bold >= 14pt qualifies for (also anchors the active tab) */
+  font-weight: var(--weight-bold);
+}
+
+/* Flow group — tokenized */
+.flow-group {
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
