@@ -864,8 +864,11 @@ print('OPS_GUARD_OK' if not bad else f'OPS_GUARD_FAIL {bad}')
 assert_contains "$OPS_GUARD_OUT" "OPS_GUARD_OK" "fs_read guard checks every operations[] path (V2 engine payload), refuses ~/\$ paths and payloads with no path"
 # The V3 engine's grep_search/file_search payloads carry no path, only glob patterns.
 # The guard lets exactly those two tools through without a path (defense in depth over
-# V3's own workspace confinement), provided every includePattern/excludePattern is
-# null or a relative, non-expanding string; every other path-less payload stays refused.
+# V3's own workspace confinement) under two allowlists: every tool_input key must be in
+# the measured set for that tool, and every includePattern/excludePattern must be null
+# or a relative string over [A-Za-z0-9_.*?/!-] without '..'. The glob engine interprets
+# patterns, so brace expansion, escapes and character classes must not get through (an
+# earlier literal denylist let all three, and an unknown 'directory' key, pass).
 SEARCH_GUARD_OUT=$(python3 -c "
 import json, os, subprocess, tempfile
 impl = json.load(open('$IMPL'))
@@ -879,15 +882,22 @@ grep = lambda **k: ('grep_search', dict({'query': 'needle', 'caseSensitive': Fal
 find = lambda **k: ('file_search', dict({'query': 'needle', 'includeIgnoredFiles': False}, **k))
 cases = [(grep(includePattern=None, excludePattern=None), 0), (grep(), 0),
          (grep(includePattern='src/**'), 0), (find(excludePattern='src/**'), 0), (find(), 0),
+         (grep(includePattern=chr(33) + '**/*.min.js', explanation='x'), 0),
+         (find(excludePattern='node_modules/**', explanation='x'), 0),
+         # glob syntax the engine interprets, and keys outside the measured sets
+         (grep(includePattern='{/etc,src}/*'), 2), (grep(includePattern='.' + chr(92) + './x'), 2),
+         (grep(includePattern='[.][.]/x'), 2), (('grep_search', {'query': 'x', 'directory': '/etc'}), 2),
+         (grep(includePattern='a,b'), 2), (grep(includePattern='a b'), 2), (grep(includePattern='C:x'), 2),
+         (find(includePattern='src/**'), 2),
          (grep(includePattern='/etc/*'), 2), (grep(includePattern='../*'), 2),
          (grep(includePattern='~/x'), 2), (grep(includePattern='\$HOME/x'), 2),
          (grep(includePattern='a/../b'), 2), (grep(includePattern='C:' + chr(92) + 'x'), 2),
          (grep(includePattern=chr(92) * 2 + 'server'), 2), (grep(includePattern='a' + chr(0)), 2),
          (find(excludePattern='/etc/*'), 2), (grep(excludePattern='../*'), 2),
          (grep(includePattern=['src/**']), 2), (grep(includePattern=5), 2), (find(excludePattern={}), 2),
-         # a path-like key, operations or image_paths means the ordinary path rule applies
+         # a path-like key, operations or image_paths is outside the allowed keys too
          (grep(file_path='/etc/passwd'), 2), (grep(operations=[]), 2), (grep(image_paths=[]), 2),
-         (grep(path='src', includePattern='../*'), 2), (grep(path='/etc'), 2), (grep(path='src'), 0),
+         (grep(path='src', includePattern='../*'), 2), (grep(path='/etc'), 2), (grep(path='src'), 2),
          (('grep_search', 'needle'), 2),
          # every other path-less payload stays refused
          (('introspect', {}), 2), (('introspect', {'query': 'x'}), 2), (('tool_search', {'query': 'x'}), 2),
@@ -906,7 +916,7 @@ for cmd in (impl['hooks'][1]['action']['command'], rev['hooks'][0]['action']['co
             bad.append((tool, tool_input, want, rc, err))
 print('SEARCH_GUARD_OK' if not bad else f'SEARCH_GUARD_FAIL {bad}')
 " 2>&1)
-assert_contains "$SEARCH_GUARD_OUT" "SEARCH_GUARD_OK" "read guard allows V3 grep_search/file_search with null or relative patterns, refuses escaping patterns and other path-less payloads"
+assert_contains "$SEARCH_GUARD_OUT" "SEARCH_GUARD_OK" "read guard allows V3 grep_search/file_search only with allowlisted keys and patterns; refuses brace/escape/class globs, unknown keys and other path-less payloads"
 # --- round-10 CRITICAL fix: the guard command must run isolated (`python3 -I`), not a
 # bare `python3 -c` — otherwise a malicious json.py/os.py PLANTED AT THE WORKTREE ROOT
 # (this guard's own cwd, a checkout of a repo this plugin's threat model treats as

@@ -31,8 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   upgraded in place without `--force`, keeping its `execute_bash` choice; other
   existing files still need `--force`. `verify-agents` and the reviewer check accept
   only the universal shapes. The path guard also allows V3's path-less `grep_search`
-  and `file_search` when every include/exclude pattern is null or a relative string
-  without `~`, `$`, `..` or a drive prefix; other path-less calls stay refused, on
+  and `file_search`, but only through allowlists: every input key must be in the
+  measured set for that tool, and every include/exclude pattern must be null or a
+  relative string over `[A-Za-z0-9_.*?/!-]` without `..`, so brace expansion,
+  escapes and character classes are refused. Other path-less calls stay refused, on
   top of V3's own workspace confinement. The setup probe, all three review modes
   (including Codex's tool-free review) and the documented implementer argv pass
   `--agent-engine v3`. On V3 an invalid `--model` fails rather than being replaced,

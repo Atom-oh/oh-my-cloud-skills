@@ -88,25 +88,32 @@ _AUTH_RE = re.compile(
 # {query, excludePattern, ...}. V3 itself already confines both to the workspace (an
 # outside includePattern finds nothing, and symlinks are not followed), so allowing
 # them here is defense in depth on top of that confinement, not a replacement for it.
-# Only those two tool names may pass without a path, and only when the payload has no
-# path-like key at all. Their glob patterns (checked whether or not a path is present)
-# must be None or a relative string: no leading `/`, `\` or `~`, no `$`, NUL or `..`,
-# no drive prefix such as `C:`, and nothing os.path.isabs accepts. A pattern of any
-# other type is refused. Every other path-less payload (`introspect`, `tool_search`,
-# ...) is still refused. The backslash is written as chr(92) so the one-liner needs no
-# shell or JSON escaping.
+# Only those two tool names may pass without a path, and both of their checks are
+# allowlists: the glob engine interprets the patterns, so an earlier literal denylist
+# let brace expansion (`{/etc,src}/*`), escapes (`.\./x`) and character classes
+# (`[.][.]/x`) through, as well as unknown keys such as `directory`.
+# (1) Keys: every tool_input key must be in the measured set for that tool —
+# grep_search {query, caseSensitive, excludePattern, explanation, includePattern},
+# file_search {query, explanation, excludePattern, includeIgnoredFiles}. Any other key
+# (`path`, `directory`, a field a later kiro-cli adds) is refused, not guessed at.
+# (2) Patterns: includePattern/excludePattern must be None or a string that fully
+# matches [A-Za-z0-9_.*?/!-]* (no braces, brackets, backslash, comma, `$`, `~`, colon,
+# whitespace or NUL), does not start with `/`, is not os.path.isabs, and contains no
+# `..`. Anything else is refused. Every other path-less payload (`introspect`,
+# `tool_search`, ...) is still refused. The `!` is written as chr(33) so no shell can
+# history-expand it inside the double-quoted one-liner.
 #
 # `python3 -I` (isolated mode), NOT bare `python3 -c`: this guard RUNS with cwd = the
 # worktree — a checkout of HEAD in a repo this plugin's own threat model treats as
 # untrusted (that's the whole reason capture-diff/scope_guard/these guards exist).
 # Bare `python3 -c` puts cwd at sys.path[0], so a malicious `json.py` or `os.py`
 # committed at the worktree root would be imported INSTEAD OF the real stdlib module by
-# this guard's own `import json,sys,os` — arbitrary code execution as the host user,
+# this guard's own `import json,sys,os,re` — arbitrary code execution as the host user,
 # from the very mechanism meant to confine what Kiro can touch. `-I` drops cwd/the
 # script's directory from sys.path (and ignores PYTHONPATH/PYTHONSTARTUP), closing that
 # import-hijack path entirely; it changes nothing else about this one-liner's behavior.
 _GUARD_CMD = (
-    "python3 -I -c \"import json,sys,os; d=json.load(sys.stdin); "
+    "python3 -I -c \"import json,sys,os,re; d=json.load(sys.stdin); "
     "i=d.get('tool_input'); i=i if isinstance(i,dict) else {}; "
     "o=i.get('operations',[]); o=o if isinstance(o,list) else [None]; "
     "g=lambda v: v if isinstance(v,list) else [None]; "
@@ -116,16 +123,17 @@ _GUARD_CMD = (
     "for k in e) else []; "
     "ps=f(i) + z(i) "
     "+ [p for e in o for p in ((f(e) + (z(e) if isinstance(e,dict) else [])) or [None])]; "
-    "t=isinstance(d.get('tool_input'),dict) and d.get('tool_name') in ('grep_search','file_search'); "
-    "s=t and not ps and not any(k in i for k in ('path','image_paths','operations')); "
-    "q=lambda v: v is None or (isinstance(v,str) and not os.path.isabs(v) "
-    "and v[:1] not in ('/',chr(92),'~') and '$' not in v and chr(0) not in v "
-    "and '..' not in v and not (v[1:2]==':' and v[:1].isalpha())); "
+    "a={'grep_search':('query','caseSensitive','excludePattern','explanation','includePattern'), "
+    "'file_search':('query','explanation','excludePattern','includeIgnoredFiles')}; "
+    "n=d.get('tool_name'); t=isinstance(d.get('tool_input'),dict) and n in tuple(a); "
+    "q=lambda v: v is None or (isinstance(v,str) "
+    "and re.fullmatch('[A-Za-z0-9_.*?/'+chr(33)+'-]*',v) is not None "
+    "and v[:1]!='/' and not os.path.isabs(v) and '..' not in v); "
     "wt=os.path.realpath(os.getcwd()); "
     "r=lambda p: os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); "
-    "ok=(s or (bool(ps) and all(isinstance(p,str) and p and p[0]!='~' and '$' not in p "
-    "and chr(0) not in p and (r(p)==wt or r(p).startswith(wt+os.sep)) for p in ps))) "
-    "and (not t or all(q(i.get(k)) for k in ('includePattern','excludePattern'))); "
+    "ok=(all(k in a[n] for k in i) and all(q(i.get(k)) for k in ('includePattern','excludePattern'))) "
+    "if t else (bool(ps) and all(isinstance(p,str) and p and p[0]!='~' and '$' not in p "
+    "and chr(0) not in p and (r(p)==wt or r(p).startswith(wt+os.sep)) for p in ps)); "
     "ok or sys.stderr.write('kiro guard: refused a path outside the working directory, "
     "or a payload without a checkable path'+chr(10)); "
     "sys.exit(0 if ok else 2)\""

@@ -171,11 +171,17 @@ flag and runs on the default V2 engine: its agent file stays in the V2 format, b
   {`query`, `explanation`, `excludePattern`, `includeIgnoredFiles`}. The last two carry no
   path.
 - **Search-tool guard rule.** The guard lets `grep_search` and `file_search` through
-  without a path only when the payload has no path-like key at all. Every present
-  `includePattern`/`excludePattern` (checked whether or not a path is present) must be
-  `null` or a relative string: not `os.path.isabs`, no leading `/`, `\` or `~`, no `$`,
-  NUL or `..`, and no drive prefix such as `C:`. Any other pattern type is refused, and
-  every other path-less payload (`introspect`, `tool_search`, ...) is still refused. This
+  without a path under two allowlists, because the glob engine interprets patterns: a
+  literal denylist let brace expansion (`{/etc,src}/*`), escapes (`.\./x`), character
+  classes (`[.][.]/x`) and an unknown `directory` key through. Keys: every `tool_input`
+  key must be in the measured set for that tool (`grep_search`: `query`,
+  `caseSensitive`, `excludePattern`, `explanation`, `includePattern`; `file_search`:
+  `query`, `explanation`, `excludePattern`, `includeIgnoredFiles`), so a `path`,
+  `directory` or newly added field is refused. Patterns: `includePattern` and
+  `excludePattern` must be `null` or a string that fully matches `[A-Za-z0-9_.*?/!-]*`
+  (no braces, brackets, backslash, comma, `$`, `~`, colon, whitespace or NUL), does not
+  start with `/`, is not `os.path.isabs` and contains no `..`. Everything else is
+  refused, as is every other path-less payload (`introspect`, `tool_search`, ...). This
   is defense in depth over V3's own confinement below. V2's `operations[]` handling is
   unchanged.
 - **V3's own workspace limit.** Independently of the hook, V3 confines `grep_search` and
@@ -295,7 +301,8 @@ the **worktree isolation + capture + scope_guard** path load-bearing for that on
 
    On the V3 engine, `read_file`, `list_directory`, `fs_write` and `str_replace` send a
    top-level `path`, which the same check covers. `grep_search` and `file_search` send no
-   path; the guard allows them only under the pattern rule in "Engine selection".
+   path; the guard allows them only under the key and pattern allowlists in "Engine
+   selection".
 
 **What 1-6 do NOT cover: `execute_bash`.** All of the above governs `fs_write`/`fs_read`
 and the main tree only. `execute_bash` is **off by default** in
