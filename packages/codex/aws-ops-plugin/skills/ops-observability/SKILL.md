@@ -1,0 +1,146 @@
+---
+name: ops-observability
+description: "AWS/EKS observability setup and analysis: CloudWatch, Logs Insights, Prometheus, the open-source stack (OpenTelemetry/OTel, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics), distributed tracing, and AWS DevOps Agent incident escalation. Use when the user asks about monitoring, observability, log analysis, alarms, or incident investigation — '모니터링', '로그 분석', '알람', '오픈소스 모니터링', '데브옵스 에이전트'."
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
+---
+
+# Ops Observability Skill
+
+Delivers an observability assessment — what is collected, what is missing, what it costs —
+plus the queries and alarms worth adding. The consumer is a team standing up or repairing
+monitoring for an EKS environment, so establish which stack the environment actually runs
+(AWS-managed or open-source) before recommending anything. Excellent work here escalates an
+unclear multi-signal incident to agentic RCA instead of guessing, and attaches a threshold
+and an action to every alarm it recommends.
+
+## Workflow
+
+### Step 1: Assess Current State
+```bash
+# What's collecting metrics?
+kubectl get pods -n amazon-cloudwatch
+kubectl get pods -n monitoring
+kubectl get pods -n prometheus
+
+# What log groups exist?
+aws logs describe-log-groups --log-group-name-prefix /aws/containerinsights/$CLUSTER_NAME --query 'logGroups[].{name:logGroupName,retention:retentionInDays,size:storedBytes}'
+
+# What alarms exist?
+aws cloudwatch describe-alarms --state-value ALARM --query 'MetricAlarms[].{name:AlarmName,state:StateValue,metric:MetricName}'
+```
+
+### Step 2: Agentic RCA — investigations first, DevOps Agent for cross-signal incidents
+When an alarm/anomaly has no single obvious cause, use agentic RCA instead of guessing:
+
+1. **First-line — native CloudWatch investigations** (GA 2025-06): trigger an AI
+   investigation from the metric widget or as an alarm action; it surfaces related
+   signals, root-cause hypotheses, and remediation (incl. SSM Automation runbooks).
+   The **Five Whys** incident-report workflow (Amazon Q, no extra cost) deepens the RCA.
+   See `references/cloudwatch-setup.md` → *Native CloudWatch agentic AIOps*.
+2. **Escalate — AWS DevOps Agent** (GA 2026-03, built on Bedrock AgentCore) when the
+   incident spans **multiple resources / services / clouds** beyond CloudWatch. It
+   correlates telemetry + code + deployment data and returns a root cause + Kiro-compatible
+   mitigation plan — **human-approved, not auto-applied**. See `references/aws-devops-agent.md`.
+
+## Monitoring Stack Decision Tree
+
+```mermaid
+graph TD
+    A[Observability Need] --> B{AWS managed preferred?}
+    B -->|Yes| C{Metrics or Logs?}
+    C -->|Metrics| D[Container Insights + CloudWatch]
+    C -->|Logs| E[CloudWatch Logs + Logs Insights]
+    C -->|Both| F[CloudWatch Observability addon]
+    B -->|No| G{Scale?}
+    G -->|Small < 50 nodes| H[Prometheus + Grafana self-managed]
+    G -->|Large 50+ nodes| I[AMP + AMG managed]
+    A --> J{Tracing needed?}
+    J -->|Yes, AWS| K[ADOT + X-Ray]
+    J -->|Yes, OSS| L[OpenTelemetry → Tempo/Jaeger/ClickHouse]
+    B -->|Prefer OSS unified| M[OTel Collector → Prometheus/Loki/ClickHouse + Grafana]
+    A --> N{Unclear multi-resource incident?}
+    N -->|Yes| O[Escalate to AWS DevOps Agent]
+```
+
+OSS stack setup (OpenTelemetry, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics,
+Thanos/Mimir): see `references/opensource-observability.md`.
+
+## Common Issues
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| No metrics in CloudWatch | Addon not installed | Install amazon-cloudwatch-observability addon |
+| High CloudWatch costs | Log group retention too long | Set retention to 7-30 days |
+| Prometheus OOM | Too many cardinality labels | Add metric_relabel_configs to drop high-cardinality |
+| Missing container metrics | IRSA not configured | Attach CloudWatchAgentServerPolicy to node role |
+| Grafana dashboard empty | Wrong data source URL | Verify AMP workspace endpoint URL |
+| Log group not created | Insufficient IAM permissions | Add logs:CreateLogGroup to node role |
+
+## Essential PromQL Alerts
+
+```yaml
+# High CPU per pod
+avg(rate(container_cpu_usage_seconds_total{namespace!="kube-system"}[5m])) by (pod) > 0.8
+
+# OOMKilled detection
+increase(kube_pod_container_status_restarts_total[1h]) > 3
+
+# Persistent volume usage > 85%
+kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85
+```
+
+## Output Format
+
+```markdown
+## Observability Assessment: [Cluster Name]
+
+### Current State
+- **Metrics**: [CloudWatch/Prometheus/AMP] — [status]
+- **Logs**: [CloudWatch Logs/Fluentd/Fluent Bit] — [status]
+- **Tracing**: [X-Ray/ADOT] — [status]
+
+### Issues Found
+1. [Issue] — [Severity: High/Medium/Low]
+   - Cause: [root cause]
+   - Fix: [command or action]
+
+### Recommendations
+- [ ] [Action item with priority]
+
+### Commands Executed
+| Command | Result |
+|---------|--------|
+| `kubectl get pods -n monitoring` | [output summary] |
+```
+
+## Quick Reference
+
+### Enable Container Insights
+```bash
+aws eks create-addon --cluster-name $CLUSTER_NAME --addon-name amazon-cloudwatch-observability --addon-version v1.5.0-eksbuild.1
+```
+
+### Essential Logs Insights Query
+```sql
+fields @timestamp, @message
+| filter @message like /error/i
+| sort @timestamp desc
+| limit 50
+```
+
+### Essential Alarm
+```bash
+aws cloudwatch put-metric-alarm --alarm-name "$CLUSTER_NAME-high-cpu" --namespace ContainerInsights --metric-name cluster_cpu_utilization --dimensions Name=ClusterName,Value=$CLUSTER_NAME --statistic Average --period 300 --evaluation-periods 2 --threshold 80 --comparison-operator GreaterThanThreshold --alarm-actions <sns-topic-arn>
+```
+
+## References
+
+- `references/cloudwatch-setup.md` — Container Insights, log groups, dashboards
+- `references/prometheus-queries.md` — PromQL alert rules for EKS
+- `references/log-analysis-queries.md` — CloudWatch Logs Insights query templates
+- `references/opensource-observability.md` — OpenTelemetry, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics, Thanos/Mimir on EKS
+- `references/aws-devops-agent.md` — AWS DevOps Agent incident escalation (Agent Spaces, CloudWatch→webhook wiring, `aws devopsagent` CLI, mitigation plans)
+- `references/aws-analytics-launches.md` — OpenSearch/Athena/QuickSight/Kinesis/ClickHouse-as-OLAP launch notes. **`analytics-agent`-owned content, colocated here for now — not observability material**; read it only when a question crosses into the data-analytics side

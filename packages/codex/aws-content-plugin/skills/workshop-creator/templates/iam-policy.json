@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "WorkshopBasePermissions",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Describe*",
+        "eks:Describe*",
+        "eks:List*",
+        "s3:GetObject",
+        "s3:ListBucket",
+        "cloudformation:Describe*",
+        "cloudformation:List*",
+        "logs:Describe*",
+        "logs:Get*",
+        "logs:FilterLogEvents"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

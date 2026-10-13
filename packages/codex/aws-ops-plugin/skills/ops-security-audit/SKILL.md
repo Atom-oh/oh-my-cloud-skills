@@ -1,0 +1,141 @@
+---
+name: ops-security-audit
+description: "AWS/EKS security audit: IAM, network security, compliance checks, plus AWS Security Agent (design/code review, on-demand penetration testing). The mandatory security leg of superpowers:requesting-code-review for IaC/AWS changes — enforces the repo's global AWS security mandates (no 0.0.0.0/0 ingress; no IAM Principal:\"*\" or Resource:\"*\" without Condition; no Lambda AuthType:NONE; no secrets in env; S3 Block Public Access on; no ALB bypassing CloudFront) — and a shift-left security pre-check during superpowers:writing-plans. Triggers: security audit, security review, code security review, compliance check, penetration testing/pentest, AWS Security Agent, '보안 점검', '보안 감사', '취약점 점검', '시큐리티 에이전트'."
+allowed-tools:
+  - Bash
+  - Read
+  - Grep
+---
+
+# Ops Security Audit Skill
+
+Produces a severity-ranked list of posture findings for cluster, IAM, and network, measured
+against the global AWS security mandates below. The consumer is a reviewer gating an IaC or
+AWS change, or an operator auditing a running cluster, so each finding names the specific
+resource and the mandate or benchmark it violates. Excellent work here hands application-layer
+concerns to AWS Security Agent rather than guessing at them, and gives every CRITICAL a
+remediation concrete enough to apply.
+
+## Global AWS Security Mandates
+
+Nine hard constraints apply to every AWS/IaC change in this repository. They are not
+recommendations and not scored — a change that violates one fails this audit regardless of
+its other merits. Report each violation as CRITICAL, naming the resource and the mandate.
+
+`AGENTS.md` → *Banned patterns* is the authoritative source this table mirrors; diff any
+future edit against it.
+
+| # | Mandate | Why it is non-negotiable |
+|---|---------|--------------------------|
+| 1 | No `0.0.0.0/0` inbound on any security group | An open port is the most-exploited misconfiguration there is; public ingress belongs to the CloudFront → ALB path, not to a security-group CIDR |
+| 2 | Security groups changed via CDK/Terraform only — never the CLI (`authorize-security-group-ingress`) | A CLI-opened port exists in no template, so review never sees it and the next deploy silently reverts or preserves it at random |
+| 3 | Public ALB reachable only via the CloudFront prefix list | Bypassing CloudFront removes WAF, the TLS policy, and the origin's only access control in one step |
+| 4 | No Route53 record pointing directly at an ALB or EC2 instance | A direct DNS name is a public entry point that skips CloudFront entirely, whatever the ALB's own rules say |
+| 5 | No IAM `Principal: "*"` — unconditionally, with or without a `Condition` | A wildcard principal opens the resource to every AWS account on earth; no `Condition` can make an unconditioned `Principal: "*"` acceptable |
+| 6 | Minimize IAM `Resource: "*"` — a `Condition` is required if it is used at all | An unconditioned resource wildcard is an account-wide grant in practice, whatever the intent was |
+| 7 | No Lambda function URL with `AuthType: NONE` | An unauthenticated endpoint is a public API with no identity, no rate limit, and no attribution in the audit trail |
+| 8 | No secrets in environment variables — use Secrets Manager or SSM Parameter Store | Env vars are readable by anyone holding `describe`-class permissions and they leak into logs, task definitions, and CI output |
+| 9 | PII in DynamoDB needs KMS + TTL; S3 Block Public Access always on; never delete CloudTrail logs | Data-layer defaults: encryption and expiry bound the blast radius of a leak, Block Public Access is the only setting that still holds when a bucket policy is wrong, and a deleted audit trail destroys the evidence of every other violation |
+
+## Audit Workflow
+
+### Step 1: Scope — route by what is being audited
+
+```mermaid
+graph TD
+    A[Security review request] --> B{Subject?}
+    B -->|IaC / PR diff| C[Scan the diff against the nine mandates]
+    B -->|Live cluster| D[Cluster posture audit: IAM + network + compliance]
+    B -->|App design / code / pentest| E[Delegate to AWS Security Agent]
+    B -->|Per-diff adversarial review| F[co-agent plugin]
+    C --> G[Report: each violation CRITICAL, resource + mandate named]
+    D --> G
+```
+
+### Step 2: Collect evidence
+
+Work through the audit domains below, gathering evidence with the Quick Audit Commands and the per-domain procedures in `references/`. A finding without the resource name and the command that surfaced it is not evidence.
+
+### Step 3: Report
+
+Rank findings by severity in the Output Format. A mandate violation is always CRITICAL; everything else is judged by exploitability and blast radius.
+
+## Audit Domains
+
+### 1. IAM & Authentication
+- IRSA/Pod Identity configuration audit
+- RBAC role and binding review
+- aws-auth ConfigMap analysis
+- Least privilege assessment
+
+### 2. Network Security
+- Security group rule review
+- Network policy coverage
+- VPC endpoint configuration
+- Public endpoint exposure
+
+### 3. Compliance
+- CIS Kubernetes Benchmark checks
+- AWS security best practices
+- Pod security standards
+- Secret management
+
+### 4. Application Security — AWS Security Agent
+For application-layer security (beyond cluster/IAM posture), delegate to **AWS
+Security Agent** (frontier agent): design review, full-repo/PR code security
+review, and on-demand penetration testing validated with proof-based exploit
+paths + fix PRs. This skill covers cloud/cluster posture; Security Agent covers
+the app; the `co-agent` plugin covers per-diff adversarial review (the routing
+tree above). See `references/aws-security-agent.md`.
+
+## Quick Audit Commands
+
+```bash
+# Privileged containers
+kubectl get pods -A -o json | jq '[.items[] | select(.spec.containers[].securityContext.privileged==true) | {name:.metadata.name,ns:.metadata.namespace}]'
+
+# Pods running as root
+kubectl get pods -A -o json | jq '[.items[] | select(.spec.securityContext.runAsUser==0 or .spec.containers[].securityContext.runAsUser==0) | {name:.metadata.name,ns:.metadata.namespace}]'
+
+# Network policy coverage
+kubectl get networkpolicies -A
+kubectl get namespaces -o json | jq '.items[].metadata.name' | while read ns; do echo "$ns: $(kubectl get networkpolicies -n $(echo $ns | tr -d '"') 2>/dev/null | wc -l) policies"; done
+
+# Public services
+kubectl get svc -A -o json | jq '[.items[] | select(.spec.type=="LoadBalancer") | {name:.metadata.name,ns:.metadata.namespace,type:.spec.type}]'
+```
+
+## Output Format
+
+```
+# Security Audit Report
+
+## Summary
+- Audit Date: [timestamp]
+- Cluster: [name]
+- Overall Risk: LOW / MEDIUM / HIGH / CRITICAL
+
+## Findings
+
+| # | Severity | Domain | Finding | Recommendation |
+|---|----------|--------|---------|----------------|
+| 1 | CRITICAL | IAM | [Finding] | [Fix] |
+| 2 | HIGH | Network | [Finding] | [Fix] |
+
+## Compliance Checklist
+- [ ] No privileged containers in workloads
+- [ ] All pods run as non-root
+- [ ] Network policies in all namespaces
+- [ ] IRSA/Pod Identity for all AWS access
+- [ ] Secrets encrypted with KMS
+- [ ] Control plane audit logging enabled
+- [ ] VPC endpoints for AWS services
+- [ ] Cluster endpoint private access
+```
+
+## References
+
+- `references/iam-audit.md` — IAM, IRSA, Pod Identity, RBAC audit
+- `references/network-security.md` — Security groups, network policies, VPC endpoints
+- `references/compliance-checklist.md` — CIS benchmark, best practices checklist
+- `references/aws-security-agent.md` — AWS Security Agent: design/code review, on-demand penetration testing, org requirements, CI/CD API

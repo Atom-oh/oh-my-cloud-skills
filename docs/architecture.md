@@ -8,7 +8,7 @@ Internal docs live in `docs/`; the public Docusaurus site lives in `doc-sites/`.
 
 Counts below are derived from shared `skills/*/SKILL.md`, `commands/*.md`,
 `agents/*.md`, generated `.codex-plugin/inventory.json`, and command hooks in each
-Claude manifest (2026-09-15). Project-init uses convention-based source discovery.
+Claude manifest (2026-10-13). Project-init uses convention-based source discovery.
 
 | Plugin | Purpose | Source skills | Commands | Agents | Codex entries | Plugin hooks |
 |---|---|---:|---:|---:|---:|---:|
@@ -34,17 +34,23 @@ the default CI panel has one full-scope prompt and three enabled cells.
 
 ```mermaid
 flowchart LR
-    Source[Shared procedures] --> Claude[Claude package] --> Host[Selected host]
-    Source --> Generator[Codex generator] --> Codex[Codex package] --> Host
+    Source[Shared procedures] --> Generator[Package assembler]
+    ClaudeSettings[Claude settings] --> Generator
+    CodexSettings[Codex settings] --> Generator
+    Generator --> Claude[Claude package] --> Host[Selected host]
+    Generator --> Codex[Codex package] --> Host
     Host --> Checks[Validation and review] --> Output[Artifact or diagnosis]
 ```
 
-- Each plugin has Claude and Codex `plugin.json` manifests. Registries are
+- `hosts/catalog.json` owns shared identity and versions; `hosts/claude/` and
+  `hosts/codex/` independently own execution configuration. Each plugin has
+  self-contained packages under `packages/<host>/`. Registries are
   `.claude-plugin/marketplace.json` and `.agents/plugins/marketplace.json`.
   All share the release version and `v{version}` tag.
-- `scripts/codex/` owns host adaptations. Generated entries link back to shared
-  procedures; edit the source or adapter and regenerate instead of editing overlays.
-  Project-init's upstream source and generated Codex overlay have separate ownership.
+- `scripts/codex/` owns Codex adaptations. Generated entries link to procedure
+  copies inside their installed package; edit the source or adapter and regenerate.
+  Project-init's upstream source and repository-owned host configuration have separate
+  ownership. See [host packaging](reference/host-packaging.md).
 - Codex translates source tool/path conventions through its adapters. Hook execution
   requires supported events and actual trust; a manifest or installed file alone
   does not prove execution. Project-init templates need separate installation.

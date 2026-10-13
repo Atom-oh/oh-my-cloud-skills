@@ -1,0 +1,35 @@
+{
+  "host": "claude",
+  "plugin": "kiro-power-converter",
+  "version": "3.0.2",
+  "files": {
+    ".claude-plugin/plugin.json": {
+      "sha256": "ffec8ca76b5dfeb3bd841d9e3b8b08272d88471fed29a18221ce12f391dff414",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "deccffce933915acdf43564299a4c87a95150a77b1f389d472bcf74735581c08",
+      "executable": false
+    },
+    "agents/kiro-converter-agent.md": {
+      "sha256": "cc47e9a63ba0fea9a08df4747953bdb7816630b384debf4207fb1533544bca3e",
+      "executable": false
+    },
+    "skills/kiro-convert/SKILL.md": {
+      "sha256": "ee65171739222e607467511421c76845b641e68938897b4b9034697353224d66",
+      "executable": false
+    },
+    "skills/kiro-convert/references/conversion-rules.md": {
+      "sha256": "0f93a977a5880a47d16770adba9d5df18a606fb902c7bfb40b4bd6d064c0e699",
+      "executable": false
+    },
+    "skills/kiro-convert/references/kiro-power-format.md": {
+      "sha256": "979cdef9fe137afedcdb7a1741aa8efacfeb64eb6ffbc9f0b50cf0f8bf8a1785",
+      "executable": false
+    },
+    "skills/kiro-convert/scripts/convert_plugin_to_power.py": {
+      "sha256": "78a49a6c464db7ad0779938aba9083f2e1a3d4361fb85d80fedf825ce68ec3af",
+      "executable": true
+    }
+  }
+}

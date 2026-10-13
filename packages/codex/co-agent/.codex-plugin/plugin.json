@@ -1,0 +1,27 @@
+{
+  "name": "co-agent",
+  "version": "3.0.2",
+  "description": "Collaborate with other AI agents (Kiro CLI and the opposite host CLI) — multi-AI code/architecture review, decision support when you're unsure, ADR co-authoring, and autonomous consensus/harness implementation pipelines. Claude chairs in Claude Code; Codex chairs in Codex.",
+  "author": {
+    "name": "atomoh"
+  },
+  "skills": "./.codex-plugin/skills/",
+  "interface": {
+    "displayName": "Co Agent",
+    "shortDescription": "Coordinate multi-AI review and decision workflows.",
+    "longDescription": "Use Codex with co-agent workflows for multi-agent code review, architecture review, decision support, ADR co-authoring, AI context synchronization, and autonomous consensus/harness implementation pipelines. In Codex, Codex chairs while Claude CLI and Kiro CLI provide advisory opinions.",
+    "developerName": "atomoh",
+    "category": "Collaboration",
+    "capabilities": [
+      "Skills",
+      "Shell",
+      "Review"
+    ],
+    "defaultPrompt": [
+      "Run a multi-AI review.",
+      "Help me decide with co-agent.",
+      "Sync AI context files."
+    ]
+  },
+  "hooks": "./.codex-plugin/hooks.json"
+}

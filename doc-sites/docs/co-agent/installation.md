@@ -23,7 +23,8 @@ title: "Install co-agent"
 For local development from a repository checkout:
 
 ```bash
-claude --plugin-dir ./plugins/co-agent
+python3 scripts/sync-codex-plugins.py
+claude --plugin-dir ./packages/claude/co-agent
 ```
 
 ## Codex {#codex}

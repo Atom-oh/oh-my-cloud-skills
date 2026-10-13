@@ -1,0 +1,51 @@
+{
+  "host": "claude",
+  "plugin": "agentcore-creator",
+  "version": "3.0.2",
+  "files": {
+    ".claude-plugin/plugin.json": {
+      "sha256": "aea6ba5230c03537d8d72cb3771a7c14b8e90a40f4f282b842715caa4254520a",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "25a1a08d6682235f1accf39b268bbd2b59dae9510406701b40ee556af2b4e7f6",
+      "executable": false
+    },
+    "agents/agentcore-creator-agent.md": {
+      "sha256": "f84100d655e703bf68c9968c9eb1a05b60b6d80214a61485c40b5f765075c6aa",
+      "executable": false
+    },
+    "skills/agentcore-create/SKILL.md": {
+      "sha256": "9ca7985f719b5b945e95dabd0b8966ca7353d9259339335d3f1c235807dc6208",
+      "executable": false
+    },
+    "skills/agentcore-create/references/agent-code-templates.md": {
+      "sha256": "96f4991130d174bc99d782b092f98e472a925289abebeeaac2dbe704a5cf89b9",
+      "executable": false
+    },
+    "skills/agentcore-create/references/agentcore-format-reference.md": {
+      "sha256": "101d49665394bdcea33e0c2fc45a5a741b60b9207daa72395e3e710831c320a1",
+      "executable": false
+    },
+    "skills/agentcore-create/references/agentcore-harness.md": {
+      "sha256": "aabaaf663d9d108b6e5b98d99786ec07f8253e31315659b1a350abbc64fc5379",
+      "executable": false
+    },
+    "skills/agentcore-create/references/agentcore-mapping-rules.md": {
+      "sha256": "724744799502a18adeb6f8d94b25680e101bfe53e29f0818c58efd8259cf407a",
+      "executable": false
+    },
+    "skills/agentcore-create/references/discovery-interview.md": {
+      "sha256": "57c4c50dbd3b49d50cf267da176386a9c603350f17d5d936fb4596d6d04c68bb",
+      "executable": false
+    },
+    "skills/agentcore-create/references/memory-chunking-strategy.md": {
+      "sha256": "426d5231769bbc1872e2657823dce2f50a0e9595204b02d5c66862c04e388d1f",
+      "executable": false
+    },
+    "skills/agentcore-create/scripts/convert_plugin_to_agentcore.py": {
+      "sha256": "0a661838e08289bb16c6f51f8627701b6be9ab637472b13eeac38c4262c60fe9",
+      "executable": true
+    }
+  }
+}

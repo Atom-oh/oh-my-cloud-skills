@@ -70,6 +70,11 @@ After theme extraction, read `{repo}/common/pptx-theme/theme-manifest.json` and 
 
 ### Phase 3: Content Authoring
 
+Follow the copy style rule in `references/authoring-rules.md` §2: no em dashes or
+middle dots in authored presentation text, including labels and speaker notes.
+Adapt template text to the same rule and verify the source and built deck before
+completion.
+
 Multi-file project structure:
 ```
 {slug}/

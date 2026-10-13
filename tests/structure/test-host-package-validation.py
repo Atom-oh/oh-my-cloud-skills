@@ -35,6 +35,7 @@ class HostValidationTests(unittest.TestCase):
             }} if host == "codex" else {
                 "agents": ["./agents/reader.md"], "skills": [], "mcpServers": "./.mcp.json"}
             self.write(f"hosts/{host}/sample/plugin.json", config)
+            self.write(f"hosts/{host}/sample/package.json", {"exclude": []})
             self.write(f"packages/{host}/sample/.{host}-plugin/plugin.json",
                        {**self.identity, **config})
             if host == "claude":

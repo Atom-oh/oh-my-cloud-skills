@@ -1,0 +1,167 @@
+{
+  "host": "codex",
+  "plugin": "kiro",
+  "version": "3.0.2",
+  "files": {
+    ".codex-plugin/plugin.json": {
+      "sha256": "fa139c2a5254dd97286e0b63de14ce69f2d8744bb06b0908c13166dcac55c00f",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "bbf1de0e66b1e53e216c239186d961c1bc7c09a3409e05e85523b9bd923c5977",
+      "executable": false
+    },
+    "agents/kiro-delegate-agent.md": {
+      "sha256": "268735616ab3d69d00025efeb95299684fd8fec4c94fdcc32e7538908ca5ac88",
+      "executable": false
+    },
+    "commands/configure.md": {
+      "sha256": "d459d4cf56f3c1691942bf6d8cdcaf0f126841641297281479c6b2be8040d502",
+      "executable": false
+    },
+    "commands/delegate.md": {
+      "sha256": "66ccf40d4d795f48b19ff92975b002614f5f8a922da59b95c12f6a406a327ad0",
+      "executable": false
+    },
+    "commands/review.md": {
+      "sha256": "05fad0b039dbc2169633fe59db95e8d221e789f75048b0066d7707e6c616f78b",
+      "executable": false
+    },
+    "commands/setup.md": {
+      "sha256": "48cd15c6841da268530e8eec5ab8f4e964851b33ed59b28e5f8507aab74727cf",
+      "executable": false
+    },
+    "hooks/pre-commit-review.sh": {
+      "sha256": "07ca318aa079b48042ac994f00e2bc01ebdda12222dddd92256738e6c8c3263f",
+      "executable": true
+    },
+    "hooks/pre-push-review.sh": {
+      "sha256": "b0d4261711cf2e46a0b959f94191f12b966dee46597755c241d99431dc811b6d",
+      "executable": true
+    },
+    "hooks/session-routing.sh": {
+      "sha256": "401a470cddb75b40e075fd7d37367038e6d0e854df8fe48e3a197a47a477a873",
+      "executable": true
+    },
+    "skills/kiro-delegate/SKILL.md": {
+      "sha256": "ade8a668fd4e0a88de2de6d23024b8da71231ae218886f2d76dcea5982498dd7",
+      "executable": false
+    },
+    "skills/kiro-delegate/kiro.defaults.json": {
+      "sha256": "ba64a91fa41b0acab1d1ca25145c67bd98842c887a39d79e2869663bd2d18e7a",
+      "executable": false
+    },
+    "skills/kiro-delegate/references/kiro-headless.md": {
+      "sha256": "a5eea00b2e1e1a06fb552af6b36f8b7bda2b1cf8584152fafe4abd257b3d384d",
+      "executable": false
+    },
+    "skills/kiro-delegate/references/spec-format.md": {
+      "sha256": "c3bb53a8d2852c322bf9e2169db644e2dd7e4c969c86bafae80c7e2a60e5c0b2",
+      "executable": false
+    },
+    "skills/kiro-delegate/scripts/hook_match.py": {
+      "sha256": "f1bf3b18b510440726f6ba38194eec6dcbcddf725bbe2b5521f69d55ec532f4e",
+      "executable": true
+    },
+    "skills/kiro-delegate/scripts/kiro_codex.py": {
+      "sha256": "8e506599b8fe529eae45024925e324dc881b740a231484943504d06f40d03d3d",
+      "executable": false
+    },
+    "skills/kiro-delegate/scripts/kiro_config.py": {
+      "sha256": "66fd88b7fe1d030b0b380c4d696af1bf5d81f5858a6b36a83c89d6e5f82a5015",
+      "executable": true
+    },
+    "skills/kiro-delegate/scripts/kiro_review.py": {
+      "sha256": "e47590d19ee6059aaf6852336ab309def729f74cec5ad98c17b04f1ebb24edf5",
+      "executable": true
+    },
+    "skills/kiro-delegate/scripts/kiro_run.py": {
+      "sha256": "09627f3ea508bb79e691c96ea41343dfb3955ed76b62a664d5a9e208f18dcb38",
+      "executable": true
+    },
+    "skills/kiro-delegate/scripts/kiro_setup.py": {
+      "sha256": "1c93e216521706b5af5f5cb5ebf8581a3a1e15e96f99a1ecc413beec0c802da7",
+      "executable": true
+    },
+    "skills/kiro-delegate/scripts/kiro_websearch.py": {
+      "sha256": "664819e4b6e55e0ad5c0f671f0a93d05cf88cade15caaf0216d4576851bb7155",
+      "executable": true
+    },
+    "skills/kiro-delegate/scripts/parse_plan.py": {
+      "sha256": "873b32097d36ddac5d0f097b70385c9cc3b272428e5e37d2936d1b1879b22ab4",
+      "executable": true
+    },
+    "skills/kiro-delegate/scripts/prepare_worktree.py": {
+      "sha256": "6c8ff2b33feefa34fde35f813b70a8f6d5b1acfa4af8edd5635cfc8f4bc85e1c",
+      "executable": false
+    },
+    "skills/kiro-delegate/scripts/scope_guard.py": {
+      "sha256": "9c719debf73bd63c928ccb1c14e34ccf4bfc2e83e41eec47b4afd8a9aa6bbf74",
+      "executable": true
+    },
+    "skills/kiro-delegate/scripts/worktree.py": {
+      "sha256": "6f0d555ef53122ae0fd677ec4122207cc8990bccb3932c7fac38057b5107cc1e",
+      "executable": true
+    },
+    ".codex-plugin/skills/configure/SKILL.md": {
+      "sha256": "8c54574026033836d22a9202879858b92f6a2d7b8a9a829d654c66eebf073185",
+      "executable": false
+    },
+    ".codex-plugin/skills/delegate/SKILL.md": {
+      "sha256": "ffc2fdbff0cd1f55817802a719a0fdb635d892ae55e9eb5967c64fd3fc033335",
+      "executable": false
+    },
+    ".codex-plugin/skills/delegate/agents/openai.yaml": {
+      "sha256": "5e5c0e7d90c5769a6a51e30613a743606d2ac9354a02fb9ff11caac793ffded0",
+      "executable": false
+    },
+    ".codex-plugin/skills/kiro-delegate/SKILL.md": {
+      "sha256": "4b878df87d05b4c288e02b29f14d76d63b509a97acdc16ff3190a194e8dcfc65",
+      "executable": false
+    },
+    ".codex-plugin/skills/kiro-delegate-agent/SKILL.md": {
+      "sha256": "3d2198e8e383e16ab5028384f8af8714e3adcb5551d229569238210191b83b1c",
+      "executable": false
+    },
+    ".codex-plugin/skills/kiro-delegate-agent/agents/openai.yaml": {
+      "sha256": "c9d35e9f3a56c99bbf183d72f6efe339655c8e416f43e1fc6e9bc4c866c227f5",
+      "executable": false
+    },
+    ".codex-plugin/skills/review/SKILL.md": {
+      "sha256": "9f663bd21cecc126d4a25e0c39a46c8ddf5e14f42a8baa8fa2d387a126198f45",
+      "executable": false
+    },
+    ".codex-plugin/skills/setup/SKILL.md": {
+      "sha256": "1adbfb1a5bf3bbeb4cc091fb2114be74f9f91e0876caada5878671caed4f29e2",
+      "executable": false
+    },
+    ".codex-plugin/inventory.json": {
+      "sha256": "6d9d7e91914ec125e038a53064bf881f834c459ceb73f146af461b60f24b1c01",
+      "executable": false
+    },
+    ".codex-plugin/runtime.md": {
+      "sha256": "abc2183e07ac4b1450796f9db45e9d434fd5dd42b65625c770feeab3055f9ba8",
+      "executable": false
+    },
+    ".codex-plugin/run.py": {
+      "sha256": "53d259a9e0bc0393586ed5fa709695e4c00d4d46403c3a4dc19454b4cc86faf2",
+      "executable": false
+    },
+    ".codex-plugin/workflow.md": {
+      "sha256": "98e3e5e0e0cd222262f6c742c137a325d34c297a27a14b46e6c77fc8ac89f111",
+      "executable": false
+    },
+    ".codex-plugin/hooks.json": {
+      "sha256": "e6a652552f865277e291cdd5f9ab7cd53c0695b5208ad0a592f53f74501fcf6e",
+      "executable": false
+    },
+    ".codex-plugin/hook-handlers.json": {
+      "sha256": "6ad920932635a70e08b91d8d51a20f8db6c9c2e7edd40092f2754e9c02dd8866",
+      "executable": false
+    },
+    ".codex-plugin/hook.py": {
+      "sha256": "fd376bcfc694360586232b5cd427b75c8aefe4c1381bbeb5707ee2c77d17ca4c",
+      "executable": false
+    }
+  }
+}

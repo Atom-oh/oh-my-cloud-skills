@@ -1,0 +1,26 @@
+{
+  "reasoning": {
+    "analytics-agent": "high",
+    "cost-agent": "low",
+    "database-agent": "high",
+    "eks-agent": "high",
+    "iam-agent": "xhigh",
+    "network-agent": "high",
+    "observability-agent": "high",
+    "ops-coordinator-agent": "xhigh",
+    "storage-agent": "high",
+    "wellarchitected-agent": "xhigh"
+  },
+  "explicit_skills": [
+    "analytics-agent",
+    "cost-agent",
+    "database-agent",
+    "eks-agent",
+    "iam-agent",
+    "network-agent",
+    "observability-agent",
+    "ops-coordinator-agent",
+    "storage-agent",
+    "wellarchitected-agent"
+  ]
+}

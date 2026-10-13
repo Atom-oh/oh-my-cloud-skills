@@ -25,7 +25,8 @@ title: "Install agentcore-creator"
 For local development from a repository checkout:
 
 ```bash
-claude --plugin-dir ./plugins/agentcore-creator
+python3 scripts/sync-codex-plugins.py
+claude --plugin-dir ./packages/claude/agentcore-creator
 ```
 
 ## Codex {#codex}

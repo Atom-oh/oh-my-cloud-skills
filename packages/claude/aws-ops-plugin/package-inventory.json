@@ -1,0 +1,175 @@
+{
+  "host": "claude",
+  "plugin": "aws-ops-plugin",
+  "version": "3.0.2",
+  "files": {
+    ".claude-plugin/plugin.json": {
+      "sha256": "d813faa21068d01a7475d62b50c27d0a0756003531c2227e96baad7590269271",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "f458d0a82862b796b19b2338b6aad40b2086a67d3f9f797ce603d0f1ae132e49",
+      "executable": false
+    },
+    "agents/analytics-agent.md": {
+      "sha256": "6d896ebdcd6a352fde5e57944c7f898ee6971fc8b59f7b4b08cd534c9b4a136a",
+      "executable": false
+    },
+    "agents/cost-agent.md": {
+      "sha256": "14b27cbe3ee9f48284737d4e05ef134d9827989acab86cc901c97061304886ff",
+      "executable": false
+    },
+    "agents/database-agent.md": {
+      "sha256": "fb4369308b45cb9b091ec5b16677f92789559080be8da2fcad58bd7c1aeec399",
+      "executable": false
+    },
+    "agents/eks-agent.md": {
+      "sha256": "c55b6d9f56a873b91c00791846729df0892b81f43b46461664854a67b4aec5b3",
+      "executable": false
+    },
+    "agents/iam-agent.md": {
+      "sha256": "403e9c4ee7300ebb57cbf61990f33bbfd2d143e2e41403b32decc6e6aaf920b2",
+      "executable": false
+    },
+    "agents/network-agent.md": {
+      "sha256": "374e457161ca870026498f44005137046e8feee3a926c86e328a8e073d9ecb48",
+      "executable": false
+    },
+    "agents/observability-agent.md": {
+      "sha256": "5104350e93032514a3e98103f4fee31d934b7bab13da14326d633e60061e5ddc",
+      "executable": false
+    },
+    "agents/ops-coordinator-agent.md": {
+      "sha256": "cb639312d1b5e939f51ece3f784f0407feb1ea1bc2bf7ebf9e5147e3456e703b",
+      "executable": false
+    },
+    "agents/storage-agent.md": {
+      "sha256": "b1e19da9fe921ae2cff4cf0e3bf56c0f50c89b3b592bc6347ebf6e7a1159da0e",
+      "executable": false
+    },
+    "agents/wellarchitected-agent.md": {
+      "sha256": "dd69800a1e133f70a1be66ab579f9e93ad692e721957f7430ac6a8607ae6a786",
+      "executable": false
+    },
+    "references/team-workflows.md": {
+      "sha256": "d1b1bae06ea9fd7def49dd828eb448659d95dbac1a0b035990c9f22bd4ac90ad",
+      "executable": false
+    },
+    "skills/ops-health-check/SKILL.md": {
+      "sha256": "7fa5edae4693a3e5bd8e324638578123e0b2a30badcb509677dfcaee0367369d",
+      "executable": false
+    },
+    "skills/ops-health-check/references/health-check-procedures.md": {
+      "sha256": "aaf73890bcdd4d082b071a59c1d6559dd7eb066536ee83c8efd153f38267d799",
+      "executable": false
+    },
+    "skills/ops-health-check/references/metrics-thresholds.md": {
+      "sha256": "9c85985c2cb86818f7c7aab12d3199e96d47a9d209de57f26f70d47e368f3f5b",
+      "executable": false
+    },
+    "skills/ops-network-diagnosis/SKILL.md": {
+      "sha256": "5f5eb843dc32c1f73e7284fc3e86b88d1f86f1c132c56900b07d6b57648e2528",
+      "executable": false
+    },
+    "skills/ops-network-diagnosis/references/dns-troubleshooting.md": {
+      "sha256": "7b7f4593f88bc65af65b16d0e0861260a90408faf13eda260aa538b46148fab4",
+      "executable": false
+    },
+    "skills/ops-network-diagnosis/references/load-balancer-troubleshooting.md": {
+      "sha256": "15ec935a4da78afe3510111db8e6071240fa7351f0a72bb247755b2cb77f84e3",
+      "executable": false
+    },
+    "skills/ops-network-diagnosis/references/vpc-cni-troubleshooting.md": {
+      "sha256": "e6617c0b45ebfd598722db8fd2822d773328e18aa85076feebc3ea8e08aff402",
+      "executable": false
+    },
+    "skills/ops-observability/SKILL.md": {
+      "sha256": "d39b9973cfa70dcfdb6729b7ba71cec4f80d965621bdc2265ae5dbc3679e0037",
+      "executable": false
+    },
+    "skills/ops-observability/references/aws-analytics-launches.md": {
+      "sha256": "c8c92947239b0c39ceb50cc9a1caef2c6b01582dab2acab6a99a718a1ccff8bf",
+      "executable": false
+    },
+    "skills/ops-observability/references/aws-devops-agent.md": {
+      "sha256": "d56b536749e45c450e79b1ed717affc438f0e8effd0e5a68737e0424f50278d3",
+      "executable": false
+    },
+    "skills/ops-observability/references/cloudwatch-setup.md": {
+      "sha256": "4f78522e8c64ac6c16b1c78b3e469ed8af5ee40d65bf4b9c8cef29e530f85fa6",
+      "executable": false
+    },
+    "skills/ops-observability/references/log-analysis-queries.md": {
+      "sha256": "00429951f67b1653286dc10619edcead87cb5eb0227a0a9d1ce0a66f4e21b270",
+      "executable": false
+    },
+    "skills/ops-observability/references/opensource-observability.md": {
+      "sha256": "b0bacd7ae3250e9fca0410b65ce0eb08f4ec00cbc153903026ce9c0188d21fff",
+      "executable": false
+    },
+    "skills/ops-observability/references/prometheus-queries.md": {
+      "sha256": "ec80adfbb91b40a32c869ffc1fbf615f097a755bf869bb880d065afebd634c2a",
+      "executable": false
+    },
+    "skills/ops-security-audit/SKILL.md": {
+      "sha256": "480bf248d6233d45362a3ebf650b96d9cbd7cf648f747b2f4f08c9ac6d0c5bb2",
+      "executable": false
+    },
+    "skills/ops-security-audit/references/aws-security-agent.md": {
+      "sha256": "d632df4288d4fb9eb2cbe4cdf5b5ca9f663910d1acd424ae5b82ac7d624df49e",
+      "executable": false
+    },
+    "skills/ops-security-audit/references/compliance-checklist.md": {
+      "sha256": "47a760f8ccc39834b339401710c3154750369ab92a92d119b023429e0f9df5ea",
+      "executable": false
+    },
+    "skills/ops-security-audit/references/iam-audit.md": {
+      "sha256": "3f21b99b19f5f31577ed8eca11b020bc9cb286430ffd6dc161f8cfe8bc7b3656",
+      "executable": false
+    },
+    "skills/ops-security-audit/references/network-security.md": {
+      "sha256": "dd67ff847facc73605e7e83bd99c1760b0282ba2ed881fdcdb0518407ff24d41",
+      "executable": false
+    },
+    "skills/ops-troubleshoot/SKILL.md": {
+      "sha256": "fee9332f6e16c5151ac957c8e6d0a663fbd9a5768c292f629d08c6c4562a84fc",
+      "executable": false
+    },
+    "skills/ops-troubleshoot/references/common-errors.md": {
+      "sha256": "789598e4ea0a707b52fede640232552c8c4f8baa32962d9dcc4729965cd219d9",
+      "executable": false
+    },
+    "skills/ops-troubleshoot/references/decision-trees.md": {
+      "sha256": "5cd923df54666cb976bc6a5829038dd28c6021219314f2a7127c5ba416133d7d",
+      "executable": false
+    },
+    "skills/ops-troubleshoot/references/incident-response.md": {
+      "sha256": "e3450442d238465bce4af54d6343b2e787b94865a468f087647577f1a577748c",
+      "executable": false
+    },
+    "skills/ops-troubleshoot/references/troubleshooting-framework.md": {
+      "sha256": "f09524f71ff8bcb6f849192e479086e8b6926d3bb9a92bbec2aa1c6d79702b17",
+      "executable": false
+    },
+    "skills/ops-wellarchitected-review/SKILL.md": {
+      "sha256": "9491757e7bfc4949c9c65b0c8b8490f90b01754f28b25e76ba2a236a45055da4",
+      "executable": false
+    },
+    "skills/ops-wellarchitected-review/references/pillar-cost-optimization.md": {
+      "sha256": "208f7a60342853414547c594cc3028c70cb7d7b2115f331452ff7f5ad1a31ef3",
+      "executable": false
+    },
+    "skills/ops-wellarchitected-review/references/pillar-performance-opex-sustainability.md": {
+      "sha256": "7859537ce1c2afc4f2d69f10ef4ec0929c63102fe00d2b8b0996f3fcbb6f60be",
+      "executable": false
+    },
+    "skills/ops-wellarchitected-review/references/pillar-security-reliability.md": {
+      "sha256": "9b150cb07bcb69b256a9020d1374ed87dc681e7e9bb1b34a6a005a85b93e75bb",
+      "executable": false
+    },
+    "skills/ops-wellarchitected-review/references/waf-scoring-framework.md": {
+      "sha256": "509f3ae694ef9845d982cf39a8b7c2860d122316e6a7e3ec5656815594e6a487",
+      "executable": false
+    }
+  }
+}

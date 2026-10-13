@@ -30,6 +30,9 @@ Both [Claude](.claude-plugin/marketplace.json) and
 [Codex](.agents/plugins/marketplace.json) marketplaces contain these plugins.
 Manifests and generated inventories define their current entry points; source
 skills, commands, agents, and generated Codex entries are different populations.
+Shared procedures have one maintained source. Host settings are independent under
+`hosts/claude/` and `hosts/codex/`; each marketplace selects its own self-contained
+`packages/<host>/` output. See [host packaging](docs/reference/host-packaging.md).
 
 ## Installation
 
@@ -46,7 +49,8 @@ Run these commands inside Claude Code, installing only the plugins you need:
 Use another name from the plugin table to install that package. From a local checkout:
 
 ```bash
-claude --plugin-dir ./plugins/aws-content-plugin
+python3 scripts/sync-codex-plugins.py
+claude --plugin-dir ./packages/claude/aws-content-plugin
 ```
 
 Remove a package with `/plugin uninstall aws-content-plugin@oh-my-cloud-skills`;
@@ -62,7 +66,8 @@ codex
 ```
 
 Open `/plugins`, select **Oh My Cloud Skills**, and install the desired packages.
-For local development, run `codex plugin marketplace add ./` from this repository.
+For local development, regenerate packages with `python3 scripts/sync-codex-plugins.py`,
+then run `codex plugin marketplace add ./` from this repository.
 Manage the registered source with:
 
 ```bash
@@ -321,10 +326,13 @@ provider secrets.
 
 | Path | Maintained purpose |
 |---|---|
-| `plugins/` | Shared plugin procedures, references, scripts, and both host manifests |
+| `plugins/` | Shared procedures, references, scripts, assets and source compatibility fixtures |
+| `hosts/catalog.json` | Shared plugin identity and version |
+| `hosts/claude/`, `hosts/codex/` | Independent host execution settings |
+| `packages/claude/`, `packages/codex/` | Generated self-contained installation packages |
 | `.claude-plugin/marketplace.json` | Claude marketplace |
 | `.agents/plugins/marketplace.json` | Codex marketplace |
-| `scripts/sync-codex-plugins.py`, `scripts/codex/` | Codex projection generator and templates |
+| `scripts/sync-codex-plugins.py`, `scripts/codex/` | Host package assembler and Codex runtime templates |
 | `scripts/pr-review/` | Repository CI review tooling and configuration |
 | `doc-sites/` | Public documentation and frozen demo artifacts |
 | `docs/` | Architecture, ADRs, runbooks, and internal references |
@@ -340,8 +348,8 @@ Release notes describe historical behavior, not current runtime guarantees.
 
 ## Development
 
-Edit maintained sources or generator/templates, then regenerate affected Codex
-outputs. Do not repair generated copies alone. Run the repository checks from its root:
+Edit maintained shared or host sources, then regenerate both host packages.
+Do not repair generated copies alone. Run the repository checks from its root:
 
 ```bash
 bash tests/run-all.sh

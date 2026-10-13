@@ -1,0 +1,7 @@
+{
+  "agents": [],
+  "skills": [
+    "./skills/pr-status"
+  ],
+  "commands": []
+}

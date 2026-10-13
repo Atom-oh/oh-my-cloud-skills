@@ -1,0 +1,1173 @@
+#!/usr/bin/env python3
+"""Session-gated decision logic for the consensus P3 hooks. The bash hooks in
+plugin.json delegate here so their inline logic stays trivial. EVERY event is a
+NO-OP (exit 0, no output) unless there is an ACTIVE autonomous consensus session
+(consensus_state: status==running, phase==P3, autonomous==True) — so unrelated work
+is never affected.
+
+Events:
+  stop                 — while an autonomous P3 session has tasks left, emit a JSON
+                         block decision so the agent keeps going instead of stopping.
+  post-tooluse         — record the last test result (pass/fail) into the state when a
+                         test command ran. Also drives stuck-detection: a test PASS resets
+                         the consecutive-failure counter; a test FAIL increments it and, if
+                         it crosses STUCK_LIMIT, emits a 'stuck — abort' notice.
+  pre-pr-gate          — PreToolUse(Bash) gate: when the command is `gh pr create`, fan the PR
+                         diff out to the installed panel and BLOCK (exit 2) when a QUORUM of
+                         peers (default majority) flags CRITICAL/MAJOR. Runs synchronously (2-3 min).
+                         Fails OPEN (exit 0) on any internal error or when no peer is usable —
+                         a gate bug or offline panel must never permanently wedge PR creation.
+                         Bypass: env CO_AGENT_PR_GATE=off, or config `pr_gate.enabled=false`.
+  pre-push-gate        — PreToolUse(Bash) gate: when the command is `git push`, fan the diff
+                         of the range about to be pushed out across THREE LENSES
+                         (correctness/security/scope — see _PUSH_LENSES), round-robined
+                         across gate-eligible peers. 2+ lenses flagging an issue is a hard
+                         BLOCK (exit 2); exactly 1 is "CHAIR JUDGMENT REQUIRED" (exit 2 with
+                         a different message — a hook can't call Claude directly, so this is
+                         how the verdict reaches the chair for a human-in-the-loop call).
+                         Fails OPEN on any internal error, unresolvable push range, or no
+                         usable peer. Bypass, in the order checked: an exported
+                         `CO_AGENT_PUSH_GATE=off` in the hook's OWN environment disables
+                         the gate for the whole session (same convention as the PR gate);
+                         an inline `CO_AGENT_PUSH_GATE=off git push ...` prefix bypasses
+                         just that invocation and is recognized in the payload TEXT, since
+                         an inline assignment never reaches this process's environment
+                         (`_PUSH_BYPASS_ENV_RE`); or config `push_gate.enabled=false`
+                         turns it off persistently.
+
+Usage (bash hook pipes the hook JSON on stdin):
+  consensus_hooks.py stop --root .
+  consensus_hooks.py post-tooluse --root .
+  consensus_hooks.py pre-pr-gate --root .
+  consensus_hooks.py pre-push-gate --root .
+`stop`/`post-tooluse` always exit 0. `pre-pr-gate`/`pre-push-gate` exit 2 to BLOCK, else 0.
+"""
+import sys
+import os
+import json
+import re
+import shutil
+import subprocess
+import tempfile
+import threading
+import time
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+import consensus_state as cs
+from co_agent_host import HOSTS, detect_host, peer_roster, retired_peer_message
+from co_agent_env import sanitized_env as _sanitized_env, _SENSITIVE_ENV_RE, CLAUDE_GATE_ISOLATION
+try:
+    import co_agent_config as cac
+except Exception as _e:   # missing OR a SyntaxError/etc. in the module — degrade, but don't hide it
+    cac = None
+    sys.stderr.write(f"[co-agent] could not import co_agent_config (panel config disabled): {_e!r}\n")
+
+STUCK_LIMIT = 3
+
+# --- PR consensus gate ---------------------------------------------------------
+# Fire only on `gh pr create` (the PR-raise event) at a COMMAND boundary — start of line, or
+# right after a shell separator (`;` `&` `|` `&&` `||` newline), allowing an optional `env ` and
+# `VAR=val ` prefixes AND flags between `gh` and `pr` (e.g. `gh -R owner/repo pr create`). Catches
+# `cd x && gh pr create` (compound) but NOT a quoted string like `echo "gh pr create"` /
+# `git commit -m "gh pr create"`. `gh pr edit` is intentionally NOT gated. KNOWN regex limits
+# (documented in CLAUDE.md): heredoc / `$(gh pr create)` / subshell are skipped (fail-open), and a
+# `; gh pr create` literally INSIDE a quoted string can over-match (harmless — reviews the user's
+# own branch diff). Not a security boundary; the data-boundary is secret-scan + read-only peers.
+_PR_CMD_RE = re.compile(
+    r"(?:^|[\n;&|])\s*(?:env\s+)?(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*gh\s+(?:\S+\s+)*?pr\s+create\b")
+# A state-changing git command before `gh pr create` in a COMPOUND means PreToolUse reviews the
+# PRE-command HEAD (the gate runs before the command), so the PR's real diff may differ.
+_PRECEDING_GIT_MUT = re.compile(r"\bgit\s+(?:commit|add|merge|rebase|cherry-pick|reset|stash\s+pop|am)\b")
+# A `cd`/`pushd` (at a command boundary) before `gh pr create` changes the cwd the real `gh` runs
+# in, but this hook always diffs at its OWN root — so the gated diff would be the WRONG
+# repo/subtree. Skip+advisory rather than review a mismatched scope. Matches `cd <arg>`, bare `cd`
+# (→ home), and a quoted arg like `cd "my dir"` (the quoted span is blanked in cmd_detect, leaving
+# `cd ` + spaces) by requiring only whitespace-or-end after the command word.
+_PRECEDING_CD = re.compile(r"(?:^|[\n;&|])\s*(?:pushd|cd)(?:\s|$)")
+# Two more skip classes, ported from kiro's hook_match.is_push_scope_mismatch so both
+# hooks intercepting `git push` agree on what they cannot review. Without them this gate
+# reviewed ITS OWN root's diff for a push redirected at another repo, and blocked a ref
+# DELETION on the unrelated diff of unpushed local commits. Two hooks on one event with
+# different skip rules is a bug surface by itself.
+_PUSH_REDIRECT_RE = re.compile(
+    r"(?:^|\s)-C\s+\S|(?:^|\s)--(?:git-dir|work-tree)(?:\s+\S|=\S)|\bGIT_(?:DIR|WORK_TREE)=\S")
+# `-[A-Za-z]*d[A-Za-z]*\b`, not bare `-d\b`: git's parse-options lets value-less
+# short flags bundle (`-fd`, `-vd`) — a bare `-d\b` alone missed those clusters,
+# silently reviewing a ref-deletion push as if it were ordinary content.
+# `(?:(?!o)[A-Za-z])*` on both sides of the target letter excludes `-o<value>`
+# (push's `--push-option` short form, e.g. `-odeploy` == `-o deploy`): `-o` is
+# VALUE-TAKING, so everything after it is that option's value, not more bundled
+# flags. A lookahead only right after the leading `-` stops `-odeploy` but not
+# `-vodeploy` (= `-v -o deploy`) — git allows `-o` at any position in a cluster,
+# not just first — so the exclusion is repeated at EVERY position: once an `o`
+# appears anywhere in the candidate span, the run of "plain letters" stops there
+# and can never reach the target letter, failing toward NOT matching (review
+# anyway) rather than a wrong skip.
+_PUSH_DELETE_RE = re.compile(
+    r"(?:^|\s)(?:--delete\b|-(?:(?!o)[A-Za-z])*d(?:(?!o)[A-Za-z])*\b)")
+# A third class ported the same way, for the same reason: kiro's hook_match.py
+# treats `--dry-run`/`-n` as a scope mismatch — nothing is actually pushed, so a
+# side-effecting response to "this push is happening" (a real 3-lens review call
+# here) would be reacting to content that never leaves the machine. Missing this
+# class would mean the SAME `git push --dry-run` is skipped by kiro's hook but
+# still reviewed (and its diff egressed to the peer panel) by this gate — exactly
+# the "different skip rules is a bug surface" problem the comment above already
+# names for the other class.
+# Same bundled-short-flag reasoning as `_PUSH_DELETE_RE` above applies here too —
+# `-[A-Za-z]*n[A-Za-z]*\b`, not bare `-n\b`, so `-vn`/`-qn` clusters are caught,
+# and the same all-positions `(?!o)` exclusion applies for the same reason
+# (`-vonotify` = `-v -o notify` must not match on "notify"'s embedded `n`).
+_PUSH_DRY_RUN_RE = re.compile(
+    r"(?:^|\s)(?:--dry-run\b|-(?:(?!o)[A-Za-z])*n(?:(?!o)[A-Za-z])*\b)")
+# A push whose CONTENT is not "the current branch vs its upstream" cannot be judged by
+# the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
+# positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have
+# no relation to HEAD. A lone remote (`git push origin`) is fine — that pushes the current
+# branch per push.default — and so is naming HEAD or the current branch explicitly, but
+# the hook cannot know the branch name from the payload text alone, so any second
+# positional is treated as out of scope. SKIP + advisory, never a guess.
+_PUSH_MULTIREF_RE = re.compile(r"(?:^|\s)--(?:all|tags|mirror)\b")
+
+def _push_has_explicit_refspec(rest):
+    """True iff `rest` (the argv text after `push`, this invocation only) names a SECOND
+    positional — i.e. a refspec beyond the remote. Flags and their values are skipped;
+    `HEAD` alone is accepted since it always means the current branch."""
+    toks = rest.split()
+    positionals = []
+    skip_next = False
+    for t in toks:
+        if skip_next:
+            skip_next = False
+            continue
+        if t.startswith("-"):
+            # `--repo <name>`, `-o <opt>`, `--receive-pack <p>` take a separate value;
+            # `--flag=value` does not. Treat any non-`=` long/short flag as possibly
+            # value-taking: over-skipping one token can only lose a positional, which
+            # fails toward reviewing (the safe direction) rather than skipping.
+            if "=" not in t and t not in ("--all", "--tags", "--mirror", "--force", "-f",
+                                          "--dry-run", "-n", "--verbose", "-v", "--quiet",
+                                          "-q", "--atomic", "--porcelain", "--progress",
+                                          "--set-upstream", "-u", "--no-verify", "--tags",
+                                          "--follow-tags", "--thin", "--no-thin", "--prune",
+                                          "--delete", "-d", "--ipv4", "-4", "--ipv6", "-6"):
+                skip_next = True
+            continue
+        positionals.append(t)
+    return len(positionals) >= 2 and positionals[1] not in ("HEAD",)
+
+
+# `git push` — the pre-push gate's own boundary matcher. Same tolerance/limits as
+# `_PR_CMD_RE` (env/VAR= prefix, global git flags between `git` and `push`, quote-
+# blanked before matching, not a security boundary — heredoc/`$(...)`/subshell skip).
+_GIT_PUSH_CMD_RE = re.compile(
+    r"(?:^|[\n;&|])\s*(?:env\s+)?(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(?:command\s+)?"
+    r"(?:\S*/)?git\b"
+    r"(?:\s+(?:-C\s+\S+|-c\s+\S+|--[A-Za-z-]+=\S+|--[A-Za-z-]+(?:\s+(?!push(?:$|[\s;&|]))\S+)?))*"
+    r"\s+push(?=$|[\s;&|\n])")
+# Same rationale as `is_bypassed` in kiro's hook_match.py: this hook runs as a SEPARATE
+# process from whatever `git push` eventually executes, so an INLINE `CO_AGENT_PUSH_
+# GATE=off git push ...` prefix never becomes real environment for THIS process — only
+# for the push subprocess IF the hook lets it run. Recognize it in the payload TEXT
+# instead (`_GIT_PUSH_CMD_RE`'s own env-prefix grammar already captures any `VAR=val`
+# sequence immediately before `git`, same as `_GIT_PUSH_CMD_RE`'s match text).
+_PUSH_BYPASS_ENV_RE = re.compile(r"(?:^|[\s;&|])CO_AGENT_PUSH_GATE=off\b")
+_DIFF_CAP = 30 * 1024            # cap the diff sent to each peer (context-window / cost bound)
+# Verdict is read from the FIRST non-empty line ONLY (a machine-readable token), never a
+# free-text body scan — a banner/preamble or an incidental "MAJOR" in prose must not flip it.
+# Accepts the PASSED/BLOCKED past-tense variants too: the instructed token is exactly
+# "PASS"/"BLOCK:", but a peer LLM naturally drifting to "BLOCKED: ..." must still count as
+# a real block — treating it as unparseable (fail-open) would silently drop a veto. Callers
+# canonicalize the captured group (BLOCKED -> BLOCK, PASSED -> PASS) via str.startswith.
+_VERDICT_RE = re.compile(r"^\s*(PASS(?:ED)?|BLOCK(?:ED)?)\b", re.I)
+
+# Review adapters, mirroring references/ai-cli-adapters.md. Delivery is per the channel each
+# CLI actually consumes (untrusted content is NEVER put in argv → no `ps` exposure):
+#   channel "stdin" — prompt+diff piped on stdin (claude/codex).
+#   channel "file"  — written to a temp file; argv tells the CLI to fs_read it. Kiro `chat`
+#                     IGNORES stdin (see ai-cli-adapters.md), so it MUST read the file.
+# Each reviewer runs read-only / sandboxed / non-acting so a diff prompt-injection can't drive
+# tool execution: codex -s read-only · kiro --trust-tools=fs_read
+# (only the read-only fs_read tool auto-approved). {M} expands to the per-peer model flag;
+# {F} to the temp-file path (file channel only).
+_REVIEW = {
+    "claude":   {"channel": "stdin", "argv": ["claude", "-p", "{I}", "--permission-mode", "plan",
+                                            "--output-format", "text", "{M}", *CLAUDE_GATE_ISOLATION]},
+    # Gates launch in a temporary NON-git directory; keep the read-only sandbox,
+    # but allow that cwd (the same prerequisite as the readiness probe).
+    "codex":    {"channel": "stdin", "argv": ["codex", "exec", "-s", "read-only",
+                                            "--skip-git-repo-check", "{M}", "{I}"]},
+    "kiro-cli": {"channel": "file",  "argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
+                          "--no-interactive", "--trust-tools=fs_read", "--wrap", "never", "{M}"]},
+}
+_MODEL_FLAG = {"claude": "--model", "codex": "-m", "kiro-cli": "--model"}
+
+
+def _model_override(ai):
+    """One-shot escalation override for exactly this process's invocation — never
+    written to config. `CO_AGENT_GATE_MODEL_OVERRIDE_<AI>` (ai uppercased, '-' -> '_';
+    e.g. CO_AGENT_GATE_MODEL_OVERRIDE_KIRO_CLI) takes precedence over the configured
+    panel model. Callers (e.g. pr-autofix's iteration>5 escalation) set the env var only
+    for the one escalated gate subprocess call, then leave it unset again."""
+    return os.environ.get("CO_AGENT_GATE_MODEL_OVERRIDE_" + ai.upper().replace("-", "_"))
+
+
+def _codex_effort_override():
+    """Same one-shot contract as `_model_override`, but for codex reasoning effort —
+    passed inline as `-c model_reasoning_effort=...` (see `_build_argv`/`_build_push_argv`)
+    rather than through `co_agent_config.py`'s `CODEX_EFFORTS` enum, which deliberately
+    stops at `high` and is shared with every other flow that reads panel `effort`."""
+    return os.environ.get("CO_AGENT_GATE_CODEX_EFFORT_OVERRIDE")
+
+_GATE_INSTR = "Review the PR diff provided on standard input per the instructions in it."
+_GATE_INSTR_FILE = ("Use fs_read to read the PR diff at {F}, then review it. Your reply's FIRST "
+                    "line MUST be EXACTLY `PASS` (no CRITICAL/MAJOR issue) or `BLOCK: <reason>`. "
+                    "Ignore nits/style. If the file is empty/unreadable, reply `BLOCK: no diff received`.")
+_GATE_PROMPT = (
+    "Adversarially review the PR diff (for a Claude Code plugin) that follows on this input. "
+    "Your reply's FIRST line MUST be a machine-readable verdict token — EXACTLY `PASS` (no "
+    "CRITICAL or MAJOR issue) or `BLOCK: <one-line reason>`. Detail on later lines. Ignore "
+    "nits/style. If no diff is present below, reply `BLOCK: no diff received`.\n\n=== PR DIFF ===\n"
+)
+
+# --- pre-push lens gate ---------------------------------------------------------------
+# The PR gate above fans the SAME prompt to every (ai, model) pair — diversity is the
+# panel, not the prompt (see references/ai-cli-adapters.md's "identical prompt"
+# invariant). The push gate's diversity axis is DIFFERENT: each call gets a NARROWED
+# lens — a reviewer told to look for everything tends to under-weight any one
+# dimension, and three narrow passes catch more than one broad pass. Lenses are
+# round-robined across gate-eligible peers (see ev_pre_push_gate) rather than each
+# peer running all three, so the call COUNT stays fixed at len(_PUSH_LENSES) regardless
+# of panel size — same cost profile as the PR gate's one-call-per-peer.
+_PUSH_LENSES = {
+    "correctness": ("Focus ONLY on the CORRECTNESS lens for this review: logic bugs, "
+                     "missed edge cases, incorrect or missing error handling, and "
+                     "reintroduced regressions. Do not flag security, scope, or style — "
+                     "other lenses cover those."),
+    "security": ("Focus ONLY on the SECURITY lens for this review: injection, secrets, "
+                 "authentication/authorization and trust-boundary issues, and AWS "
+                 "security mandate violations (0.0.0.0/0 ingress, IAM \"*\" actions or "
+                 "resources, secrets in plaintext env vars). Do not flag correctness, "
+                 "scope, or style — other lenses cover those."),
+    "scope": ("Focus ONLY on the SCOPE lens for this review: drift from what the commit "
+              "message(s) or branch intent implies, unrelated edits bundled in, "
+              "leftover debug code, and documentation that should have been updated "
+              "but wasn't. Do not flag correctness, security, or style — other lenses "
+              "cover those."),
+}
+_PUSH_GATE_INSTR_FILE = (
+    "Use fs_read to read the diff at {F}, then review it. {LENS} Your reply's FIRST "
+    "line MUST be EXACTLY `PASS` (no issue for this lens) or `BLOCK: <reason>`. If the "
+    "file is empty/unreadable, reply `BLOCK: no diff received`.")
+_PUSH_GATE_PROMPT = (
+    "Adversarially review the diff (for a Claude Code plugin) about to be pushed, that "
+    "follows on this input. {LENS} Your reply's FIRST line MUST be a machine-readable "
+    "verdict token — EXACTLY `PASS` (no issue for this lens) or `BLOCK: <one-line "
+    "reason>`. Detail on later lines. If no diff is present below, reply `BLOCK: no "
+    "diff received`.\n\n=== PUSH DIFF ===\n"
+)
+
+
+def _active(root):
+    """Return the state dict iff an autonomous P3 session is running, else None."""
+    s = cs.read_state(root)
+    if not s:
+        return None
+    if s.get("status") == "running" and s.get("phase") == "P3" and s.get("autonomous"):
+        return s
+    return None
+
+
+def _stdin_json():
+    try:
+        data = sys.stdin.read()
+        return json.loads(data) if data.strip() else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _tasks_remaining(s):
+    tasks = s.get("tasks", {})
+    if not isinstance(tasks, dict):
+        return []
+    return [i for i, t in tasks.items() if t.get("status") not in ("done", "aborted")]
+
+
+def ev_stop(root):
+    s = _active(root)
+    if not s:
+        return 0  # no-op
+    remaining = _tasks_remaining(s)
+    if not remaining:
+        return 0  # all done → allow stop
+    # Block the stop so the autonomous loop continues to the next task.
+    print(json.dumps({
+        "decision": "block",
+        "reason": f"co-agent consensus P3 active: {len(remaining)} task(s) not yet done/aborted "
+                  f"(task_index {s.get('task_index')}). Continue the implement loop, or run "
+                  f"`consensus_state.py set . status aborted` to stop."
+    }))
+    return 0
+
+
+def ev_post_tooluse(root):
+    s = _active(root)
+    if not s:
+        return 0
+    payload = _stdin_json()
+    cmd = (payload.get("tool_input", {}) or {}).get("command", "")
+    if "run-all.sh" in cmd or "test-plugins.py" in cmd or "pytest" in cmd:
+        # record a coarse pass/fail signal from the tool result if present
+        out = json.dumps(payload.get("tool_response", payload.get("tool_result", "")))
+        passed = ("ALL TESTS PASSED" in out) or ("passed" in out and not re.search(r"[1-9]\d* failed", out))
+        s["last_test_pass"] = passed
+        if passed:
+            # a green test run clears the stuck counter
+            s["consec_failures"] = 0
+            cs.write_state(root, s)
+        else:
+            n = int(s.get("consec_failures", 0)) + 1
+            s["consec_failures"] = n
+            cs.write_state(root, s)
+            if n >= STUCK_LIMIT:
+                # Plain stdout on a PostToolUse exit 0 is transcript-only under the hook
+                # contract — the model never sees it. The stuck notice is the whole point of
+                # this detection, so it rides in a JSON envelope's additionalContext (the
+                # channel the model DOES see). Posture unchanged: still advisory, still exit 0.
+                print(json.dumps({"hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": (
+                        f"[co-agent consensus] {n} consecutive failing test runs — the P3 loop "
+                        f"looks STUCK. Revert to the last checkpoint and abort this task "
+                        f"(`consensus_state.py task-abort . {s.get('task_index')}`)."
+                    ),
+                }}))
+    return 0
+
+
+def _git(root, *args):
+    # Symmetric with _git_diff: a malicious repo runs `git` here too (rev-parse), so neutralize the
+    # same system/global/repo-local exec surfaces (fsmonitor/hooksPath/pager) rather than leaving an
+    # asymmetric hole.
+    env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+           "GIT_ATTR_NOSYSTEM": "1", "GIT_PAGER": "cat"}
+    try:
+        r = subprocess.run(
+            ["git", "-C", root, "-c", f"core.attributesFile={os.devnull}",
+             "-c", "core.fsmonitor=", "-c", f"core.hooksPath={os.devnull}", "-c", "core.pager=cat",
+             *args],
+            capture_output=True, text=True, timeout=15, env=env)
+        return r.stdout.strip() if r.returncode == 0 else ""   # non-zero = expected (ref absent)
+    except Exception as e:   # a real failure (git missing / timeout) — log, don't hide (fail-open)
+        sys.stderr.write(f"[co-agent PR gate] git {' '.join(args[:2])} failed (fail-open): {e}\n")
+        return ""
+
+
+_NOTICES = []
+
+
+def _notify(msg):
+    """Queue an exit-0 advisory/skip notice. Under the hook contract, PLAIN stdout/stderr on
+    exit 0 is transcript-only — it never reaches the model; only exit-2 stderr or a JSON
+    envelope (systemMessage / hookSpecificOutput.additionalContext) does. So: write the
+    human-readable copy to stderr immediately (transcript/debug), and buffer the message for
+    `_flush_notices`, which main() calls just before an exit-0 return to emit exactly ONE
+    JSON envelope on stdout (per-call envelopes would concatenate into unparseable stdout —
+    _notify can fire more than once per run, e.g. lens-assignment then PASS). Blocking paths
+    (exit 2) never call _notify — they write stderr and return 2, which the contract already
+    surfaces on its own."""
+    sys.stderr.write(msg)
+    _NOTICES.append(msg)
+
+
+def _flush_notices():
+    """Emit every buffered _notify message as ONE `{"systemMessage": ...}` envelope on stdout
+    (event-agnostic per the hook contract, so the same helper serves every event this script
+    handles). No-op when nothing was buffered, so no-op events stay output-free."""
+    if _NOTICES:
+        sys.stdout.write(json.dumps({"systemMessage": "".join(_NOTICES).rstrip("\n")}) + "\n")
+        del _NOTICES[:]
+
+
+def _git_diff(root, spec):
+    """Compute `git diff <spec>` with all external diff/textconv drivers neutralized (a repo
+    git config must not run code during this hook). Returns (ok, stdout, stderr): ok=False on a
+    git error so the caller can DISTINGUISH a failure (bad ref / merge-base error) from a
+    genuinely empty diff (which both otherwise look like "")."""
+    env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+           "GIT_ATTR_NOSYSTEM": "1", "GIT_PAGER": "cat"}
+    try:
+        # Neutralize repo-LOCAL .git/config exec surfaces too (system/global are dropped by env,
+        # but a malicious repo-local core.fsmonitor/hooksPath/pager could still run code here).
+        r = subprocess.run(
+            ["git", "-C", root, "-c", f"core.attributesFile={os.devnull}",
+             "-c", "core.fsmonitor=", "-c", f"core.hooksPath={os.devnull}", "-c", "core.pager=cat",
+             "diff", "--no-color", "--no-ext-diff", "--no-textconv", spec],
+            capture_output=True, text=True, timeout=30, env=env)
+        return (r.returncode == 0, r.stdout, r.stderr)
+    except Exception as e:
+        return (False, "", str(e))
+
+
+def _base_ref(root):
+    """Best-effort PR base (trunk) to diff against. Prefers the repo trunk — NOT `@{upstream}`,
+    which on a feature branch tracks origin/<feature> and would make the diff empty (silent
+    skip). Returns "" if none resolve (shallow clone / no remote) → caller warns + skips."""
+    for ref in ("origin/HEAD", "origin/main", "main", "origin/master", "master"):
+        if _git(root, "rev-parse", "--verify", "--quiet", ref):
+            if ref == "origin/HEAD":
+                return _git(root, "rev-parse", "--abbrev-ref", "origin/HEAD") or "origin/main"
+            return ref
+    return ""
+
+
+def _gate_config(root, section="pr_gate"):
+    """`section` is `"pr_gate"` (default, quorum-based) or `"push_gate"` (lens-count-based
+    — no quorum key; ev_pre_push_gate decides BLOCKED vs CHAIR JUDGMENT REQUIRED from the
+    number of lenses that flagged an issue, not a peer quorum)."""
+    cfg = {}
+    if cac is not None:
+        try:
+            cfg = (cac.effective(root, warn=True) or {}).get(section, {}) or {}  # surface stale-key hygiene once (gate is a single call, not a loop)
+        except Exception as e:   # config unreadable — default config, but log (no silent failure)
+            sys.stderr.write(f"[co-agent {section}] config unreadable, using defaults: {e}\n")
+    try:
+        timeout = int(cfg.get("timeout", 180))     # tolerate a stray "300s"/None → default
+    except (TypeError, ValueError):
+        timeout = 180
+    result = {
+        "enabled": cfg.get("enabled", False),     # opt-in: enabling = consent to external fan-out
+        "block": cfg.get("block", True),          # hard-block (vs advisory-only) on a BLOCK verdict
+        "timeout": max(30, timeout),
+    }
+    if section == "pr_gate":
+        quorum = cfg.get("quorum", "majority")
+        if quorum not in ("majority", "any"):      # validate, don't silently accept a typo
+            sys.stderr.write(f"[co-agent PR gate] invalid pr_gate.quorum '{quorum}' — using 'majority'.\n")
+            quorum = "majority"
+        result["quorum"] = quorum                  # "majority" (default) | "any"
+    return result
+
+
+# Strong, broad credential patterns — this gate is the LAST line of defense before an external
+# fan-out, so the set must be comprehensive (not a weaker canonical fallback).
+_SECRET_RE = re.compile(
+    r"A(?:KIA|SIA)[0-9A-Z]{16}"                          # AWS access key id (incl. ASIA temp keys)
+    r"|aws_secret_access_key\s*[:=]\s*\S{16,}"           # AWS secret access key
+    r"|-----BEGIN [A-Z ]*PRIVATE KEY"                    # PEM private key
+    r"|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}"  # GitHub PAT/OAuth/app tokens
+    r"|xox[abprs]-[A-Za-z0-9-]{10,}"                     # Slack tokens
+    r"|sk-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}"             # OpenAI (incl. sk-proj-) / Anthropic keys
+    r"|AIza[0-9A-Za-z_\-]{30,}"                          # Google API key
+    # generic keyword=value, QUOTED literal — so a plain code assignment of a call's
+    # result to a variable named after a credential (identifier/call, no quote) is NOT a
+    # false match. (Deliberately not spelled out as a literal example here: this repo's
+    # own .claude/hooks/secret-scan.sh would flag the example itself.)
+    r"|(?:password|passwd|secret|api[_-]?key|token|client[_-]?secret)['\"]?\s*[:=]\s*['\"][^'\"]{8,}"
+    # …and an UNQUOTED high-entropy value (>=16 url-safe chars, no spaces/parens) for
+    # .env-style lines. Two guards keep source-code assignments out of the match set:
+    # the length/charset guard (a short function call), and a digit-or-/,+ requirement —
+    # a real key material value virtually always carries one, while a long camelCase
+    # identifier on the right of `token = someOwnerToken` never does (measured false
+    # positive: archify's viewer JS, PR #161 round 1).
+    r"|(?:api[_-]?key|aws_access_key_id|access[_-]?token|client[_-]?secret|secret|passwd|password|token)"
+    r"\s*[:=]\s*(?=[A-Za-z0-9/+_\-]{16,}\b)[A-Za-z_\-]*[0-9/+][A-Za-z0-9/+_\-]*\b",
+    re.I,
+)
+
+
+# Precise diff-metadata header match, applied ONLY in the pre-hunk block (see _scan_secret's
+# hunk-awareness). `+++ `/`--- ` are matched only when followed by `a/`/`b/`/`/dev/null` — but
+# that alone is NOT enough, because an added line whose content starts with `++ b/…` renders as
+# `+++ b/…`; the in-hunk guard in _scan_secret is what stops that line being skipped as a header.
+_DIFF_HEADER_RE = re.compile(
+    r"^(?:diff --git |index |@@ |new file|deleted file|old mode|new mode|similarity |rename |copy |Binary files )"
+    r"|^(?:\+\+\+|---)\s+(?:a/|b/|/dev/null|\"a/|\"b/)")
+
+
+def _is_diff_header(ln):
+    return bool(_DIFF_HEADER_RE.match(ln))
+
+
+# Inline allowlist (detect-secrets / gitleaks convention): a line carrying one of these EXPLICIT
+# markers is an intentional fixture/example, not a real secret — skip it so a security-test PR
+# isn't blocked. Deliberately NOT a loose phrase like "not a secret": this scanner is the last
+# line of defense before an external fan-out, and a free-text bypass would let a real credential
+# line (`password = "…"  # not a secret`) disarm it. Only the structured markers below count.
+_ALLOWLIST_RE = re.compile(r"pragma:\s*allowlist secret|co-agent:\s*test-fixture", re.I)
+
+
+def _scan_secret(diff):
+    """Scan EVERY line that will be sent — added (`+`), removed (`-`), AND context (unchanged) —
+    skipping only diff metadata headers. Returns (label, hard): label='' if clean; hard=True if a
+    secret appears on an added/context line (block-worthy), hard=False if it appears ONLY on
+    removed (`-`) lines (a cleanup PR removing a committed secret — refuse to fan out, but advisory
+    not a hard block, since 'remove the secret' is already what it's doing). Uses the UNION of the
+    strong local pattern and check_ai_context.SECRET_RE (never a weaker-only fallback).
+
+    HUNK-AWARE header detection: a `+++ `/`--- ` line is a genuine FILE HEADER only in the
+    pre-hunk metadata block (before the first `@@`); once INSIDE a hunk, every +/-/space line is
+    CONTENT. This closes a bypass where an added line whose content begins `++ b/…` renders as
+    `+++ b/…` and would otherwise be skipped as a header, smuggling a secret past the scanner."""
+    extra = None
+    try:
+        import check_ai_context as cac2
+        extra = getattr(cac2, "SECRET_RE", None)
+    except Exception:   # missing OR a SyntaxError in the sibling → fall back to the local pattern
+        pass
+    hit, hard = "", False
+    in_hunk = False
+    for ln in diff.splitlines():
+        if ln.startswith("@@"):
+            in_hunk = True
+            continue           # hunk header, not content
+        if ln.startswith("diff --git "):
+            in_hunk = False
+            continue           # new file section — back to the pre-hunk metadata block
+        if not in_hunk:
+            if _is_diff_header(ln):
+                continue       # genuine pre-hunk metadata / file header (incl. real `+++ b/…`)
+        elif ln.startswith("\\"):
+            continue           # "\ No newline at end of file" marker — not content
+        # else: inside a hunk → this is content; a `+++ `/`--- ` here is added/removed text, scan it
+        if _ALLOWLIST_RE.search(ln):
+            continue   # explicitly marked non-secret (test fixture / example) — detect-secrets style
+        if _SECRET_RE.search(ln) or (extra is not None and extra.search(ln)):
+            added = ln.startswith("+")
+            removed = ln.startswith("-")
+            kind = "an added" if added else ("a removed" if removed else "a context")
+            if not hit:
+                hit = f"matched a credential pattern on {kind} line"
+            if added:
+                # Hard-block ONLY a secret this PR ADDS. A secret on a context (unchanged,
+                # pre-existing) or removed line must NOT hard-block an unrelated PR that merely
+                # touches nearby code — it's advisory (we still refuse to fan the diff out, but
+                # never exit 2). Mirrors the removed-only=cleanup logic.
+                hard = True
+                hit = f"matched a credential pattern on {kind} line"
+    return hit, hard
+
+
+def _path_panel(host):
+    """Degraded fallback when the config module is unavailable: review CLIs on PATH."""
+    peers = [ai for ai in peer_roster(host) if ai in _REVIEW and shutil.which(ai)]
+    return peers, {}
+
+
+def _panel(root):
+    """The canonical panel (kiro-cli + opposite host CLI), filtered by
+    config `enabled` and PATH. Never the host. An explicit "all disabled" yields [] (no PATH override). Only a missing/failed config
+    module degrades to a best-effort PATH scan."""
+    host = detect_host()
+    if host not in HOSTS:
+        sys.stderr.write(f"[co-agent PR gate] unknown host '{host}' — skipping panel.\n")
+        return [], {}
+    if cac is None:
+        return _path_panel(host)
+    try:
+        ais = cac.panel_ais(host)
+        panelcfg = (cac.effective(root) or {}).get("panel", {}) or {}
+    except Exception as e:   # config/panel resolution failed — log, then PATH fallback (no hide)
+        sys.stderr.write(f"[co-agent PR gate] panel resolution failed (fail-open, PATH fallback): {e}\n")
+        return _path_panel(host)
+    peers, models = [], {}
+    for ai in ais:
+        if ai not in peer_roster(host) or ai not in _REVIEW or not shutil.which(ai):
+            continue
+        if not panelcfg.get(ai, {}).get("enabled", True):
+            continue   # respect an explicit disable (do NOT PATH-override it)
+        peers.append(ai)
+        models[ai] = _model_override(ai) or panelcfg.get(ai, {}).get("model")
+    return peers, models
+
+
+def _flag_value(cmd, cmd_detect, alt):
+    """Find a flag (alt = e.g. '--base|-B') in the quote-BLANKED cmd_detect — so a flag NAME that
+    appears inside a quoted argument body (`--title \"switch --base to prod\"`) is NOT matched —
+    then read its value from the RAW cmd at the same offset (offsets align; blanking is
+    length-preserving) so a legitimately quoted value like `--base 'main'` survives. The flag must
+    sit at a token boundary. Returns the unquoted value, or None if absent."""
+    m = re.search(rf"(?:^|[\s;&|()])(?:{alt})[= ]", cmd_detect)
+    if not m:
+        return None
+    vm = re.match(r"'([^']*)'|\"([^\"]*)\"|(\S+)", cmd[m.end():].lstrip())
+    if not vm:
+        return None
+    return next((g for g in vm.groups() if g is not None), None)
+
+
+def _build_argv(peer, model, fpath):
+    """Expand the adapter template. {I} → the fixed instruction (stdin-channel: references
+    stdin; file-channel: tells the CLI to fs_read {F}). {M} → the per-peer model flag. The
+    untrusted diff is NEVER placed in argv."""
+    retired = retired_peer_message(peer)
+    if retired:
+        raise ValueError(retired)
+    file_ch = _REVIEW[peer]["channel"] == "file"
+    instr = _GATE_INSTR_FILE.replace("{F}", fpath) if file_ch else _GATE_INSTR
+    argv = []
+    for tok in _REVIEW[peer]["argv"]:
+        if tok == "{I}":
+            argv.append(instr)
+        elif tok == "{M}":
+            if model and _MODEL_FLAG.get(peer):
+                argv += [_MODEL_FLAG[peer], model]
+        else:
+            argv.append(tok)
+    if peer == "codex":
+        effort = _codex_effort_override()
+        if effort:
+            argv += ["-c", f'model_reasoning_effort="{effort}"']
+    return argv
+
+
+def _review_one(peer, prompt_text, model, fpath, cwd, timeout, out):
+    try:
+        argv = _build_argv(peer, model, fpath)
+        # Run with cwd = an isolated dir (NOT the repo), so a prompt-injected reviewer's
+        # *relative* file reads can't reach repo files. (Absolute paths like ~/.aws remain a
+        # documented residual — reviewers are read-capable; see CLAUDE.md.)
+        # Strip credential-looking env vars the peer doesn't need for its own auth, so a
+        # prompt-injected reviewer can't read another tool's token/cloud-cred out of the env.
+        penv = _sanitized_env(peer)
+        if _REVIEW[peer]["channel"] == "file":
+            # Kiro ignores stdin in `chat` — it reads the diff from the temp file via fs_read.
+            r = subprocess.run(argv, cwd=cwd, env=penv, capture_output=True, text=True, timeout=timeout)
+        else:
+            # stdin channel: pipe prompt+diff (never argv → no `ps` exposure). A CLI that
+            # ignores stdin sees no diff → replies `BLOCK: no diff received` per the prompt.
+            r = subprocess.run(argv, cwd=cwd, env=penv, input=prompt_text, capture_output=True, text=True, timeout=timeout)
+        out[peer] = (r.stdout or "")[:8000] if r.returncode == 0 else f"__ERROR__ exit {r.returncode}"
+    except subprocess.TimeoutExpired:
+        out[peer] = "__TIMEOUT__"
+    except Exception as e:
+        out[peer] = f"__ERROR__ {e}"
+        sys.stderr.write(f"[co-agent PR gate] {peer} review errored (non-vote): {e!r}\n")
+
+
+def _build_push_argv(peer, model, fpath, lens):
+    """Same template expansion as `_build_argv`, but the file-channel instruction is
+    LENS-narrowed (`_PUSH_GATE_INSTR_FILE`) instead of the PR gate's fixed
+    `_GATE_INSTR_FILE` — the stdin-channel instruction stays the generic "read stdin"
+    pointer, since the lens text lives in the piped PROMPT body for that channel
+    (see ev_pre_push_gate's per-assignment `prompt_text`), not in argv."""
+    retired = retired_peer_message(peer)
+    if retired:
+        raise ValueError(retired)
+    file_ch = _REVIEW[peer]["channel"] == "file"
+    instr = _PUSH_GATE_INSTR_FILE.format(F=fpath, LENS=_PUSH_LENSES.get(lens, "")) if file_ch else _GATE_INSTR
+    argv = []
+    for tok in _REVIEW[peer]["argv"]:
+        if tok == "{I}":
+            argv.append(instr)
+        elif tok == "{M}":
+            if model and _MODEL_FLAG.get(peer):
+                argv += [_MODEL_FLAG[peer], model]
+        else:
+            argv.append(tok)
+    if peer == "codex":
+        effort = _codex_effort_override()
+        if effort:
+            argv += ["-c", f'model_reasoning_effort="{effort}"']
+    return argv
+
+
+def _review_one_push(peer, lens, prompt_text, model, fpath, cwd, timeout, out):
+    """Same shape as `_review_one`, keyed by (peer, lens) instead of just peer — one
+    peer can run MULTIPLE lenses (round-robin wraps when there are fewer peers than
+    lenses), so a single `out[peer]` slot would let a later lens silently overwrite an
+    earlier one's result for the same peer."""
+    key = (peer, lens)
+    try:
+        argv = _build_push_argv(peer, model, fpath, lens)
+        penv = _sanitized_env(peer)
+        if _REVIEW[peer]["channel"] == "file":
+            r = subprocess.run(argv, cwd=cwd, env=penv, capture_output=True, text=True, timeout=timeout)
+        else:
+            r = subprocess.run(argv, cwd=cwd, env=penv, input=prompt_text, capture_output=True, text=True, timeout=timeout)
+        out[key] = (r.stdout or "")[:8000] if r.returncode == 0 else f"__ERROR__ exit {r.returncode}"
+    except subprocess.TimeoutExpired:
+        out[key] = "__TIMEOUT__"
+    except Exception as e:
+        out[key] = f"__ERROR__ {e}"
+        sys.stderr.write(f"[co-agent push gate] {peer}/{lens} review errored (non-vote): {e!r}\n")
+
+
+def _resolve_push_range(root):
+    """Ref range for the commits about to be pushed — prefer the branch's configured
+    upstream (`@{upstream}...HEAD`, exactly what a bare `git push` would send); fall
+    back to the trunk ref `_base_ref` detects (origin/HEAD, origin/main, main,
+    origin/master, master) when no upstream is configured (first push of a new
+    branch). Returns (range_str, None) on success, (None, error) when neither
+    resolves — the caller must fail-open rather than guess a range."""
+    if _git(root, "rev-parse", "--verify", "--quiet", "@{upstream}"):
+        # THREE dots — see the same fix in kiro's kiro_review._resolve_push_range:
+        # two-dot ignores the merge base, so a branch behind trunk reviews trunk-only
+        # commits as deletions this push supposedly makes.
+        return "@{upstream}...HEAD", None
+    base = _base_ref(root)
+    if base:
+        return f"{base}...HEAD", None
+    return None, ("no upstream configured for this branch, and no origin/HEAD, "
+                   "origin/main, main, origin/master, master found to diff against")
+
+
+def _push_gate_mismatch_reason(cmd_detect, m):
+    """(reason string) if this ONE `git push` occurrence (matched by `m`, a
+    `_GIT_PUSH_CMD_RE` match against the full quote-blanked `cmd_detect` text) is
+    itself unreviewable, else None. Factored out of `ev_pre_push_gate` so a
+    COMPOUND command with more than one `git push` invocation (`git push --dry-run
+    && git push` is the natural, common case: dry-run first, then the real thing,
+    in one invocation) is judged occurrence-by-occurrence — judging only the first
+    occurrence would let ITS class (e.g. `--dry-run`) skip the entire command's
+    review, silently missing a second, perfectly reviewable push right after it."""
+    pre = cmd_detect[:m.start()]
+    # Same two skip classes as the PR gate: a cwd change before this push means the
+    # gate would diff the WRONG repo/subtree (it always diffs its own root); a
+    # state-changing git command before this push in the same invocation runs AFTER
+    # this PreToolUse hook, so the range diffed here misses that not-yet-created
+    # content — exactly what's about to be pushed.
+    if _PRECEDING_CD.search(pre):
+        return ("a `cd`/`pushd` precedes `git push` — the real command runs in a "
+                "different directory than this hook diffs, so the gated scope may "
+                "not match the push")
+    if _PRECEDING_GIT_MUT.search(pre):
+        return ("a git state-change (e.g. `git commit`) precedes `git push` — the "
+                "gate runs BEFORE it, so the diffed range would miss that commit "
+                "(incomplete diff)")
+    if _PUSH_REDIRECT_RE.search(m.group()):
+        return ("this push redirects at another repository or work tree, but the "
+                "gate only ever diffs its own root — it would review the WRONG "
+                "repository")
+    # Bounded to THIS occurrence: everything up to the next shell separator, so a
+    # `--delete`/`--dry-run` belonging to some OTHER push in the same compound
+    # command cannot suppress THIS one's review.
+    rest = re.split(r"[;&|\n]", cmd_detect[m.end():], 1)[0]
+    if _PUSH_DELETE_RE.search(rest):
+        return "a ref-deletion push has no content to review"
+    if _PUSH_DRY_RUN_RE.search(rest):
+        return ("this is a --dry-run/-n push — nothing is actually pushed, so "
+                "there is nothing to review yet")
+    if _PUSH_MULTIREF_RE.search(rest) or _push_has_explicit_refspec(rest):
+        return ("this push sends refs the gate's range does not describe "
+                "(--all/--tags/--mirror, or an explicit refspec) — reviewing the "
+                "current branch's diff would judge the wrong commits")
+    return None
+
+
+def _push_gate_skip_reason(cmd_detect, gm):
+    """(reason string) if this ONE `git push` occurrence should be skipped —
+    either it carries its OWN inline `CO_AGENT_PUSH_GATE=off` bypass prefix, or
+    `_push_gate_mismatch_reason` finds it otherwise unreviewable — else None.
+    Bypass is checked per-occurrence, not once for the whole command: shell
+    semantics mean an inline env prefix applies only to the ONE invocation it
+    literally prefixes, so `CO_AGENT_PUSH_GATE=off git push --dry-run && git
+    push` bypasses just the first push — the second, carrying no prefix of its
+    own, must remain reviewable on its own merits."""
+    if _PUSH_BYPASS_ENV_RE.search(gm.group()):
+        return "bypassed via an inline CO_AGENT_PUSH_GATE=off prefix on this push"
+    return _push_gate_mismatch_reason(cmd_detect, gm)
+
+
+def ev_pre_push_gate(root):
+    if os.environ.get("CO_AGENT_PUSH_GATE", "").lower() in ("off", "0", "false", "no"):
+        return 0
+    payload = _stdin_json()
+    cmd = (payload.get("tool_input", {}) or {}).get("command", "")
+    cmd_detect = re.sub(r"'[^']*'|\"[^\"]*\"", lambda mm: " " * len(mm.group()), cmd)
+    gms = list(_GIT_PUSH_CMD_RE.finditer(cmd_detect))
+    if not gms:
+        return 0  # not a `git push` — pass through
+    gate = _gate_config(root, "push_gate")
+    if not gate["enabled"]:
+        return 0
+    # Skip only when EVERY `git push` occurrence found is itself either bypassed
+    # or otherwise unreviewable — if at least one is reviewable (and not
+    # bypassed), fall through and review (erring toward reviewing, the safe
+    # direction for a gate). See `_push_gate_skip_reason`'s docstring.
+    reasons = [_push_gate_skip_reason(cmd_detect, gm) for gm in gms]
+    if all(reasons):
+        extra = (" (%d push invocations found in this command, all unreviewable)"
+                 % len(gms)) if len(gms) > 1 else ""
+        _notify("[co-agent push gate] note: %s%s. Gate SKIPPED; run "
+                "/co-agent:review on the range you actually intend to push.\n"
+                % (reasons[0], extra))
+        return 0
+
+    range_str, range_err = _resolve_push_range(root)
+    if range_err is not None:
+        _notify(f"[co-agent push gate] {range_err} — gate SKIPPED (fail-open).\n")
+        return 0
+    ok, diff, derr = _git_diff(root, range_str)
+    if not ok:
+        _notify(f"[co-agent push gate] `git diff {range_str}` failed — gate SKIPPED "
+                f"(fail-open): {derr.strip()[:200]}\n")
+        return 0
+    if not diff.strip():
+        return 0  # genuinely nothing to review
+
+    secret, hard = _scan_secret(diff)
+    if secret:
+        if hard and gate["block"]:
+            sys.stderr.write("[co-agent push gate] BLOCKED — the diff appears to add/contain "
+                             f"a secret ({secret}); it was NOT sent to third-party AIs. Remove/"
+                             "redact the secret from the diff, then retry the push. "
+                             "(CO_AGENT_PUSH_GATE=off would disable the whole gate, NOT a safe "
+                             "fix for a leak.)\n")
+            return 2
+        why = "block mode is off" if hard else "the secret is on a context or removed line, not one this push adds"
+        _notify(f"[co-agent push gate] ADVISORY — secret pattern detected ({secret}); the diff "
+                f"was NOT sent to third-party AIs and the gate was SKIPPED ({why}). Ensure the "
+                "secret is rotated/removed.\n")
+        return 0
+
+    body_diff = diff
+    if len(diff) > _DIFF_CAP:
+        body_diff = (diff[:_DIFF_CAP].rsplit("\n", 1)[0]
+                     + f"\n[...diff truncated to the first ~{_DIFF_CAP // 1024}KB for the gate...]")
+
+    peers, models = _panel(root)
+    if not peers:
+        _notify("[co-agent push gate] no panel peer installed/enabled — skipping the push "
+                "lens gate (install/auth a peer or run /co-agent:setup to enforce it).\n")
+        return 0
+    lenses = list(_PUSH_LENSES)   # dict preserves insertion order: correctness, security, scope
+    # Round-robin lenses across peers so the call COUNT is always len(lenses), regardless
+    # of panel size — 3 peers means one lens each; 1 peer means it runs all three in
+    # its own threads (still bounded by the shared deadline below, not 3x the timeout).
+    assignments = [(peers[i % len(peers)], lens) for i, lens in enumerate(lenses)]
+    _notify("[co-agent push gate] lens assignment: "
+            + ", ".join(f"{p}:{l}" for p, l in assignments) + "\n")
+
+    out = {}
+    with tempfile.TemporaryDirectory(prefix="coagent-pushgate-") as wdir:
+        fpath = os.path.join(wdir, "push.diff")
+        with open(fpath, "w", encoding="utf-8") as f:
+            f.write(body_diff)
+        threads = []
+        for peer, lens in assignments:
+            prompt_text = _PUSH_GATE_PROMPT.format(LENS=_PUSH_LENSES[lens]) + body_diff
+            t = threading.Thread(target=_review_one_push,
+                                  args=(peer, lens, prompt_text, models.get(peer), fpath,
+                                        wdir, gate["timeout"], out))
+            t.daemon = True
+            threads.append(t)
+        for t in threads:
+            t.start()
+        # Shared ABSOLUTE deadline (same reasoning as the PR gate): total wait stays
+        # ~timeout+5 even if several lens threads wedge, not timeout*len(assignments).
+        end = time.monotonic() + gate["timeout"] + 5
+        for t in threads:
+            t.join(max(0, end - time.monotonic()))
+
+    blockers, voted = [], []
+    for peer, lens in assignments:
+        v = out.get((peer, lens), "")
+        if not v or v.startswith("__TIMEOUT__") or v.startswith("__ERROR__"):
+            continue
+        verdict = vline = None
+        for ln in [l.rstrip().strip() for l in v.splitlines() if l.strip()][:8]:
+            vm = _VERDICT_RE.match(ln)
+            if vm:
+                raw = vm.group(1).upper()
+                verdict = "BLOCK" if raw.startswith("BLOCK") else "PASS"
+                vline = ln
+                break
+        if verdict is None:
+            continue   # unparseable verdict → don't count, don't block (fail-open)
+        if verdict == "BLOCK" and re.search(r"no diff received|empty/unreadable", vline, re.I):
+            sys.stderr.write(f"[co-agent push gate] {peer}/{lens}: 'no diff received' → "
+                             "treated as non-vote (delivery issue, not content).\n")
+            continue
+        voted.append((peer, lens))
+        if verdict == "BLOCK":
+            blockers.append((peer, lens, v.strip()[:1200]))
+
+    usable = len(voted)
+    if usable == 0:
+        _notify("[co-agent push gate] no lens returned a parseable PASS/BLOCK verdict — gate "
+                "could not run; allowing the push (fail-open). Re-run /co-agent:review "
+                "manually if needed.\n")
+        return 0
+
+    n_block = len(blockers)
+    if n_block == 0:
+        _notify(f"[co-agent push gate] [PASS] all {usable} lens(es) passed.\n")
+        return 0
+    if not gate["block"]:
+        _notify(f"[co-agent push gate] ADVISORY — {n_block}/{usable} lens(es) flagged issues "
+                "(block mode off; not vetoing — review and decide):\n"
+                + "\n".join(f"- {p}/{l}: {t[:300]}" for p, l, t in blockers) + "\n")
+        return 0
+
+    # Severity table from the plan: 2+ lenses agreeing is a hard BLOCK; exactly 1 is a
+    # CHAIR JUDGMENT call — a hook can't call Claude directly, so exit 2 + this stderr
+    # text IS how the verdict reaches the chair (the agent reading this output judges
+    # it, same contract kiro's pre-push-review.sh documents on its side).
+    if n_block >= 2:
+        head = (f"[co-agent push gate] BLOCKED — {n_block}/{usable} lens(es) flagged "
+                "CRITICAL/MAJOR issues on this push.")
+        tail = ("Resolve them (or re-run after fixing), then retry the push. To bypass, "
+                "prefix the push itself: `CO_AGENT_PUSH_GATE=off git push ...`, or turn the "
+                "gate off persistently with `/co-agent:configure set push_gate enabled off`.")
+    else:
+        head = ("[co-agent push gate] CHAIR JUDGMENT REQUIRED before this push — 1 lens "
+                "flagged an issue (no second lens corroborated it).")
+        tail = ("No second lens corroborated this — read the finding below against the "
+                "actual change and decide whether it's acceptable for this push (a chair "
+                "judgment call, not an automatic veto). If acceptable, re-run with "
+                "`CO_AGENT_PUSH_GATE=off git push ...`. If not, fix it and retry.")
+    msg = [head]
+    for p, l, t in blockers:
+        msg.append(f"\n── {p}/{l} ──\n{t}")
+    msg.append(tail)
+    sys.stderr.write("\n".join(msg) + "\n")
+    return 2
+
+
+def ev_pre_pr_gate(root):
+    if os.environ.get("CO_AGENT_PR_GATE", "").lower() in ("off", "0", "false", "no"):
+        return 0
+    payload = _stdin_json()
+    cmd = (payload.get("tool_input", {}) or {}).get("command", "")
+    # Blank out quoted spans (length-preserving) BEFORE matching, so a `gh pr create` literally
+    # INSIDE a string (`echo "; gh pr create"`, `rg '; gh pr create'`) doesn't trigger the gate.
+    # Offsets stay aligned with `cmd` (used below for --base/--head and the compound check).
+    cmd_detect = re.sub(r"'[^']*'|\"[^\"]*\"", lambda mm: " " * len(mm.group()), cmd)
+    m = _PR_CMD_RE.search(cmd_detect)
+    if not m:
+        return 0  # not a `gh pr create` — pass through
+    gate = _gate_config(root)
+    if not gate["enabled"]:
+        return 0
+    # Both compound checks run on the quote-blanked cmd_detect, so a `cd`/`git commit` literally
+    # inside a quoted string is ignored (offsets align — blanking is length-preserving).
+    pre = cmd_detect[:m.start()]
+    # A `cd`/`pushd` before `gh pr create` runs the real command in a different cwd, but this hook
+    # always diffs at its own root — so the gated diff would be the wrong repo/subtree. Skip rather
+    # than review a mismatched scope.
+    if _PRECEDING_CD.search(pre):
+        _notify("[co-agent PR gate] note: a `cd`/`pushd` precedes `gh pr create` — the real command "
+                "runs in a different directory than this hook diffs, so the gated scope may not match "
+                "the PR. Consensus gate SKIPPED; run /co-agent:consensus review from the PR's directory "
+                "if needed.\n")
+        return 0
+    # A state-changing git command (commit/add/merge/…) before `gh pr create` in a compound runs
+    # AFTER this PreToolUse hook, so `base...HEAD` would miss the not-yet-created commit — an
+    # INCOMPLETE diff. Skip rather than fan an incomplete diff out (consistent with the cd case).
+    if _PRECEDING_GIT_MUT.search(pre):
+        _notify("[co-agent PR gate] note: a git state-change (e.g. `git commit`) precedes "
+                "`gh pr create` — the gate runs BEFORE it, so `base...HEAD` would miss that commit "
+                "(incomplete diff). Consensus gate SKIPPED; run /co-agent:consensus review after the "
+                "commit.\n")
+        return 0
+    # Prefer the PR's explicit base (`gh pr create --base <ref>`) over the repo trunk, so we
+    # gate the same diff the PR will show; fall back to the detected trunk. Parse from the
+    # quote-blanked cmd_detect so a `--base` mention inside a quoted body isn't mis-parsed.
+    cand = _flag_value(cmd, cmd_detect, r"--base|-B")
+    base = ""
+    if cand:   # honor the PR's explicit base; try the local ref AND its remote-tracking form
+        for ref in (cand, f"origin/{cand}"):
+            if _git(root, "rev-parse", "--verify", "--quiet", ref):
+                base = ref
+                break
+        if not base:
+            # An explicit --base that doesn't resolve must NOT silently fall back to trunk (that
+            # would review a different scope than the PR). Warn + skip instead.
+            _notify(f"[co-agent PR gate] --base '{cand}' does not resolve (locally or "
+                             "origin/) — consensus gate SKIPPED rather than review a different "
+                             "scope. `git fetch origin` or check the base name.\n")
+            return 0
+    # `--head <owner:branch>` means the PR's head is NOT the current checkout — our local
+    # `base...HEAD` would review the wrong diff. Skip with an advisory rather than gate a
+    # mismatched scope (parsing a cross-fork head is out of scope for a local hook).
+    headval = _flag_value(cmd, cmd_detect, r"--head|-H")
+    if headval:
+        head = headval.split(":")[-1]   # drop owner: prefix
+        cur = _git(root, "rev-parse", "--abbrev-ref", "HEAD")
+        if head and cur and head != cur:
+            _notify(f"[co-agent PR gate] --head '{headval}' != current branch "
+                             f"'{cur}' — local diff would not match the PR; gate SKIPPED. Review "
+                             "from the head branch, or run /co-agent:consensus review manually.\n")
+            return 0
+    base = base or _base_ref(root)
+    if not base:
+        # No base ref (shallow clone / no remote): do NOT silently `git diff HEAD` (empty for an
+        # all-committed PR → silent pass). Warn instead so the bypass is never invisible.
+        _notify("[co-agent PR gate] could not determine a base branch to diff against "
+                         "(shallow clone / no remote?) — consensus gate SKIPPED. Run "
+                         "/co-agent:consensus review manually, or `git fetch origin main`.\n")
+        return 0
+    ok, diff, derr = _git_diff(root, f"{base}...HEAD")
+    if not ok:
+        # git ERROR (bad ref / merge-base failure) — distinguish from an empty diff; warn, don't
+        # silently pass (empty "" alone would look like "nothing to review").
+        _notify(f"[co-agent PR gate] `git diff {base}...HEAD` failed — gate SKIPPED "
+                         f"(fail-open): {derr.strip()[:200]}\n")
+        return 0
+    if not diff.strip():
+        return 0  # genuinely nothing to review
+    # Data boundary: secret-scan the FULL diff's added lines (catch a credential ANYWHERE in the
+    # PR, even past the cap) and refuse to fan out if any is found — before truncating the payload.
+    secret, hard = _scan_secret(diff)
+    if secret:
+        # ALWAYS refuse to fan a secret-bearing diff to third-party AIs (never sent either way).
+        # HARD-BLOCK only when it's on an added/context line AND block mode is on; a cleanup PR
+        # that only REMOVES a committed secret (hard=False) is advisory — blocking it would be
+        # perverse ("remove the secret" is exactly what it does).
+        if hard and gate["block"]:
+            sys.stderr.write("[co-agent PR gate] BLOCKED — the diff appears to add/contain a secret "
+                             f"({secret}); it was NOT sent to third-party AIs. Remove/redact the "
+                             "secret from the diff, then retry the PR. (CO_AGENT_PR_GATE=off would "
+                             "disable the whole gate, NOT a safe fix for a leak.)\n")
+            return 2
+        why = ("block mode is off" if hard
+               else "the secret is on a context or removed line, not one this PR adds")
+        _notify(f"[co-agent PR gate] ADVISORY — secret pattern detected ({secret}); the diff "
+                         f"was NOT sent to third-party AIs and the gate was SKIPPED ({why}). "
+                         "Ensure the secret is rotated/removed.\n")
+        return 0
+    # Truncate the SENT payload on a line boundary (never mid-line / mid-UTF-8); tell the panel.
+    body_diff = diff
+    if len(diff) > _DIFF_CAP:
+        body_diff = (diff[:_DIFF_CAP].rsplit("\n", 1)[0]
+                     + f"\n[...diff truncated to the first ~{_DIFF_CAP // 1024}KB for the gate...]")
+    body = _GATE_PROMPT + body_diff
+    peers, models = _panel(root)
+    if not peers:
+        # Can't reach consensus with no peer — degrade (advisory), never block on absence.
+        _notify("[co-agent PR gate] no panel peer installed/enabled — skipping consensus gate "
+                          "(install/auth a peer or run /co-agent:setup to enforce it).\n")
+        return 0
+    out = {}
+    # Isolated work dir = the peers' cwd (NOT the repo) so a prompt-injected reviewer's relative
+    # reads can't reach repo files; the file-channel diff lives here too. DELIBERATE trade-off:
+    # this also disables cwd-based context auto-loading by the supported peers,
+    # and the gate does not fold AGENTS.md in either — PR-gate reviewers judge the
+    # diff WITHOUT project context, by design (isolation > context here; the advisory fan-out is
+    # the context-rich review path).
+    with tempfile.TemporaryDirectory(prefix="coagent-prgate-") as wdir:
+        fpath = os.path.join(wdir, "pr.diff")
+        with open(fpath, "w", encoding="utf-8") as f:
+            f.write(body)
+        threads = []
+        for p in peers:
+            t = threading.Thread(target=_review_one, args=(p, body, models.get(p), fpath, wdir, gate["timeout"], out))
+            t.daemon = True   # never keep the process alive on a wedged peer thread
+            threads.append(t)
+        for t in threads:
+            t.start()
+        # Shared ABSOLUTE deadline: total wait is bounded to ~timeout+5, not timeout*N, even if
+        # several peer threads wedge (join takes a remaining-time duration, recomputed per call).
+        end = time.monotonic() + gate["timeout"] + 5
+        for t in threads:
+            t.join(max(0, end - time.monotonic()))
+    blockers, voted = [], []
+    for p in peers:
+        v = out.get(p, "")
+        if not v or v.startswith("__TIMEOUT__") or v.startswith("__ERROR__"):
+            continue
+        # Verdict = the first line that IS a `PASS`/`BLOCK` token among the first few non-empty
+        # lines (tolerates a short CLI banner) — NOT a free-text body scan, so an incidental
+        # "MAJOR" in prose can't flip it. No token in the head → unparseable → fail-open.
+        verdict = vline = None
+        for ln in [l.rstrip().strip() for l in v.splitlines() if l.strip()][:8]:  # rstrip → CRLF-safe
+            m = _VERDICT_RE.match(ln)
+            if m:
+                # Canonicalize PASSED/BLOCKED -> PASS/BLOCK so downstream `verdict == "BLOCK"`
+                # comparisons see the past-tense variant too.
+                raw = m.group(1).upper()
+                verdict = "BLOCK" if raw.startswith("BLOCK") else "PASS"
+                vline = ln
+                break
+        if verdict is None:
+            continue   # unparseable verdict → don't count, don't block (fail-open)
+        # A peer that didn't receive the diff (delivery glitch, not a content problem) is told to
+        # reply `BLOCK: no diff received`. Treat that as a NON-vote (fail-open), never a real BLOCK.
+        if verdict == "BLOCK" and re.search(r"no diff received|empty/unreadable", vline, re.I):
+            sys.stderr.write(f"[co-agent PR gate] {p}: 'no diff received' → treated as non-vote (delivery issue, not content).\n")
+            continue
+        voted.append(p)   # peers that returned a parseable verdict (the actual voters)
+        if verdict == "BLOCK":
+            blockers.append((p, v.strip()[:1200]))
+    usable = len(voted)
+    if usable == 0:
+        _notify("[co-agent PR gate] no peer returned a parseable PASS/BLOCK verdict — gate could not "
+                         "run; allowing the PR (fail-open). Re-run /co-agent:consensus review manually if needed.\n")
+        return 0
+    # Symmetric with the block quorum: a single voter is NOT a consensus (the adapter guide:
+    # "≤1 usable peer = not consensus"). In the default majority mode, usable<2 is advisory either
+    # way — a lone PASS isn't declared consensus, a lone BLOCK doesn't veto. ("any" opted into single.)
+    if gate["quorum"] != "any" and usable < 2:
+        verdicts = ", ".join(f"{p}:{'BLOCK' if any(p==bp for bp, _ in blockers) else 'PASS'}" for p in voted)
+        _notify(f"[co-agent PR gate] ADVISORY — only {usable} voting peer ({verdicts}); not a full "
+                "consensus (need ≥2). Allowing the PR — review the lone verdict and decide.\n")
+        return 0
+    # Chair Principle — never let ONE AI's verdict decide. Hard-block only on a QUORUM:
+    # "majority" (default) needs >half of voters AND ≥2 blockers; "any" needs ≥1. Below quorum,
+    # a BLOCK is surfaced as ADVISORY (the host decides), not an automatic veto.
+    n_block = len(blockers)
+    if gate["quorum"] == "any":
+        quorum_met = n_block >= 1
+    else:  # majority
+        quorum_met = n_block >= 2 and n_block * 2 > usable
+    if blockers and gate["block"] and quorum_met:
+        msg = [f"[co-agent PR gate] BLOCKED — {n_block}/{usable} panel peers flagged CRITICAL/MAJOR "
+               "issues on this PR diff (quorum reached).",
+               "Resolve them (or re-run after fixing), then retry the PR. To bypass, "
+               "`export CO_AGENT_PR_GATE=off` (disables the gate)."]
+        for p, v in blockers:
+            msg.append(f"\n── {p} ──\n{v}")
+        sys.stderr.write("\n".join(msg) + "\n")
+        return 2  # PreToolUse: exit 2 blocks the tool call and feeds stderr back to the agent
+    if blockers:  # below quorum (or block off) → advisory; the host weighs it, gate does not veto
+        _notify(f"[co-agent PR gate] ADVISORY — {n_block}/{usable} peer(s) flagged issues "
+                         "(below block quorum; not vetoing — review and decide):\n"
+                         + "\n".join(f"- {p}: {v[:300]}" for p, v in blockers) + "\n")
+        return 0
+    _notify(f"[co-agent PR gate] [PASS] consensus PASS ({usable} voting peer(s): {', '.join(voted)}).\n")
+    return 0
+
+
+def main():
+    a = sys.argv[1:]
+    if not a:
+        print(__doc__)
+        return 0
+    event = a[0]
+    root = a[a.index("--root") + 1] if "--root" in a and a.index("--root") + 1 < len(a) else "."
+    if root == ".":
+        # Hook cwd is wherever the Bash tool last ran, so a literal "." mis-roots config and
+        # consensus-state lookups from a subdirectory/worktree cwd. Resolve the repo toplevel
+        # via the hardened _git helper (NOT a bare subprocess — _git neutralizes repo-local
+        # fsmonitor/hooksPath/pager exec surfaces); fall back to "." on failure (fail-open).
+        root = _git(".", "rev-parse", "--show-toplevel") or "."
+    try:
+        if event == "stop":
+            rc = ev_stop(root)
+        elif event == "post-tooluse":
+            rc = ev_post_tooluse(root)
+        elif event == "pre-pr-gate":
+            rc = ev_pre_pr_gate(root)
+        elif event == "pre-push-gate":
+            rc = ev_pre_push_gate(root)
+        else:
+            rc = 0
+    except Exception as e:
+        # Fail-open (never wedge PR creation on a gate bug) but NOT silent — surface the error
+        # to stderr with a traceback so a swallowed bug is debuggable, then allow the action.
+        import traceback
+        sys.stderr.write(f"[co-agent {event}] internal error (fail-open): {e}\n")
+        traceback.print_exc(file=sys.stderr)
+        rc = 0
+    if rc == 0:
+        # On exit 2 the stderr channel already reaches the model; on exit 0 only this JSON
+        # envelope does. ev_stop / ev_post_tooluse print their own single envelope and never
+        # call _notify, so at most one JSON object ever lands on stdout.
+        _flush_notices()
+    return rc
+
+
+if __name__ == "__main__":
+    sys.exit(main())

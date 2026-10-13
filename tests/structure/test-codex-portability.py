@@ -31,6 +31,11 @@ class PortabilityTests(unittest.TestCase):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(source, target)
         shutil.copytree(ROOT / "scripts/codex", cls.generated / "scripts/codex")
+        shutil.copyfile(ROOT / "scripts/sync-plugin-cache.sh", cls.generated / "scripts/sync-plugin-cache.sh")
+        shutil.copytree(ROOT / "hosts", cls.generated / "hosts")
+        target = cls.generated / ".claude-plugin/marketplace.json"
+        target.parent.mkdir(parents=True)
+        shutil.copyfile(ROOT / ".claude-plugin/marketplace.json", target)
         target = cls.generated / ".agents/plugins/marketplace.json"
         target.parent.mkdir(parents=True)
         shutil.copyfile(ROOT / ".agents/plugins/marketplace.json", target)
@@ -181,9 +186,9 @@ class PortabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "source"
             shutil.copytree(self.generated, root)
-            source = root / "plugins/kiro/.claude-plugin/plugin.json"
+            source = root / "hosts/catalog.json"
             manifest = json.loads(source.read_text())
-            manifest["version"] = "9.8.7"
+            manifest["plugins"]["kiro"]["version"] = "9.8.7"
             source.write_text(json.dumps(manifest))
             market = root / ".agents/plugins/marketplace.json"
             before = json.loads(market.read_text())
@@ -331,47 +336,171 @@ class PortabilityTests(unittest.TestCase):
                 "root": str(plugin), "host": "codex",
             })
 
-    def test_agent_sourced_entries_carry_model_effort_tier_intent(self):
-        # Every generated skill whose ONLY source is agents/*.md must name its source's
-        # model/effort in prose (agent-flow output-token strategy) — Codex has no
-        # per-skill model field to set, so the intent has to survive as text or it is
-        # silently lost: delegating a strong-tier procedure would then spend whatever
-        # the CURRENT session happens to be on, unannounced.
-        checked_strong = 0
-        for plugin in sorted((self.generated / "plugins").iterdir()):
-            inventory_path = plugin / ".codex-plugin/inventory.json"
-            if not inventory_path.is_file():
-                continue
-            for entry in json.loads(inventory_path.read_text())["skills"]:
-                sources = entry["sources"]
-                if not sources or not all(s.startswith("agents/") for s in sources):
-                    continue
-                metas = []
-                for source in sources:
-                    text = (plugin / source).read_text()
-                    for key in ("model", "effort"):
-                        m = re.search(rf"^{key}:\s*(.+)$", text, re.M)
-                        if m:
-                            metas.append(m[1].strip())
-                if not metas:
-                    continue
-                body = (plugin / entry["path"]).read_text()
-                strong = any(v in ("opus", "fable", "high", "xhigh", "max") for v in metas)
-                with self.subTest(plugin=plugin.name, skill=entry["name"]):
-                    if strong:
-                        # Only the strong-tier wording carries the "no per-skill model
-                        # boundary" cost warning — a light-tier source has no cost gap
-                        # to warn about (the session model is already likely enough).
-                        self.assertIn("Codex has no per-skill model", body)
-                        self.assertIn("strong-tier", body)
-                        checked_strong += 1
-                    else:
-                        self.assertTrue("light-tier" in body or "Source frontmatter:" in body,
-                                        "expected a tier-intent line naming the source model/effort")
-        # 28/29 agents ship model: opus in this repo today (see plugins/*/agents/*.md) —
-        # require at least one strong-tier hit so a future refactor that silently drops
-        # the tier line cannot pass this test by finding zero agents to check.
-        self.assertGreater(checked_strong, 0)
+    def test_codex_reasoning_comes_from_its_own_execution_configuration(self):
+        checked = 0
+        for config in (self.generated / "hosts/codex").glob("*/execution.json"):
+            for name, reasoning in json.loads(config.read_text())["reasoning"].items():
+                entry = self.generated / "plugins" / config.parent.name / ".codex-plugin/skills" / name / "SKILL.md"
+                self.assertIn(f"Codex reasoning intent: {reasoning}.", entry.read_text())
+                self.assertNotIn("Source frontmatter:", entry.read_text())
+                checked += 1
+        self.assertGreater(checked, 0)
+
+    def test_claude_hook_and_model_changes_do_not_change_codex_configuration(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(self.generated, root, dirs_exist_ok=True)
+            native = root / "plugins/aws-content-plugin/.codex-plugin"
+            before = {p.relative_to(native): p.read_bytes() for p in native.rglob("*") if p.is_file()}
+            config = root / "hosts/claude/aws-content-plugin/plugin.json"
+            value = json.loads(config.read_text())
+            value["hooks"] = {"SessionStart": [{"hooks": [{"type": "command", "command": "echo Claude-only"}]}]}
+            config.write_text(json.dumps(value))
+            agents = root / "hosts/claude/aws-content-plugin/agents.json"
+            value = json.loads(agents.read_text())
+            value["reactive-presentation-agent.md"]["model"] = "haiku"
+            agents.write_text(json.dumps(value))
+            subprocess.run([sys.executable, str(GENERATOR), "--root", str(root)], check=True, capture_output=True)
+            self.assertEqual(before, {p.relative_to(native): p.read_bytes() for p in native.rglob("*") if p.is_file()})
+            installed = root / "packages/claude/aws-content-plugin/agents/reactive-presentation-agent.md"
+            self.assertRegex(installed.read_text(), r'(?m)^model: "haiku"$')
+            self.assertIn('mcpServers:\n  - "playwright"', installed.read_text())
+
+    def test_claude_execution_fields_are_not_inherited_from_shared_references(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(self.generated, root, dirs_exist_ok=True)
+            source = root / "plugins/project-init/agents/doc-sync-checker.md"
+            original = source.read_text()
+            source.write_text(original.replace("model: opus", "model: haiku\nmemory: project\neffort: low"))
+            subprocess.run([sys.executable, str(GENERATOR), "--root", str(root)], check=True, capture_output=True)
+            installed = root / "packages/claude/project-init/agents/doc-sync-checker.md"
+            self.assertRegex(installed.read_text(), r'(?m)^model: "opus"$')
+            self.assertNotRegex(installed.read_text(), r"(?m)^(memory|effort):")
+            self.assertEqual(original.replace("model: opus", "model: haiku\nmemory: project\neffort: low"), source.read_text())
+
+    def test_codex_hook_changes_do_not_change_claude_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(self.generated, root, dirs_exist_ok=True)
+            package = root / "packages/claude/aws-content-plugin"
+            before = {p.relative_to(package): p.read_bytes() for p in package.rglob("*") if p.is_file()}
+            config = root / "hosts/codex/aws-content-plugin/hooks.json"
+            value = json.loads(config.read_text())
+            value["hooks"]["SessionStart"][0]["hooks"][0]["command"] = "echo Codex-only"
+            config.write_text(json.dumps(value))
+            subprocess.run([sys.executable, str(GENERATOR), "--root", str(root)], check=True, capture_output=True)
+            self.assertEqual(before, {p.relative_to(package): p.read_bytes() for p in package.rglob("*") if p.is_file()})
+            installed = root / "packages/codex/aws-content-plugin/.codex-plugin/hooks.json"
+            self.assertEqual(value, json.loads(installed.read_text()))
+
+    def test_both_host_packages_work_without_the_source_tree(self):
+        with tempfile.TemporaryDirectory(prefix="separate hosts ") as tmp:
+            root = Path(tmp) / "source"
+            shutil.copytree(self.generated, root)
+            source = root / "plugins/token-saver"
+            (source / "shared-probe.py").write_text("from pathlib import Path\nprint(Path(__file__).with_name('asset.bin').read_bytes().hex())\n")
+            (source / "asset.bin").write_bytes(b"\x00\xfffixture")
+            (source / "shared-probe.py").chmod(0o755)
+            subprocess.run([sys.executable, str(GENERATOR), "--root", str(root)], check=True, capture_output=True)
+            installed = Path(tmp) / "installed"
+            shutil.copytree(root / "packages", installed)
+            shutil.rmtree(root)
+            for host, other in (("claude", "codex"), ("codex", "claude")):
+                package = installed / host / "token-saver"
+                self.assertTrue((package / f".{host}-plugin/plugin.json").is_file())
+                self.assertFalse((package / f".{other}-plugin").exists())
+                self.assertTrue((package / "shared-probe.py").stat().st_mode & 0o111)
+                result = subprocess.run([sys.executable, str(package / "shared-probe.py")], capture_output=True, text=True)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(b"\x00\xfffixture".hex(), result.stdout.strip())
+
+    def test_package_check_rejects_and_prunes_foreign_host_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(self.generated, root, dirs_exist_ok=True)
+            foreign = root / "packages/codex/kiro/.claude-plugin/plugin.json"
+            foreign.parent.mkdir()
+            foreign.write_text("{}")
+            args = [sys.executable, str(GENERATOR), "--root", str(root)]
+            self.assertNotEqual(0, subprocess.run(args + ["--check"], capture_output=True).returncode)
+            subprocess.run(args, check=True, capture_output=True)
+            self.assertFalse(foreign.exists())
+
+    def test_cache_inspection_and_fix_are_isolated_by_host_and_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "source"
+            state = Path(tmp) / "state"
+            shutil.copytree(self.generated, root)
+            name = "token-saver"
+            version = json.loads((root / "hosts/catalog.json").read_text())["plugins"][name]["version"]
+            for host, directory in (("claude", version), ("codex", "local")):
+                package = state / ("." + host) / "plugins/cache/oh-my-cloud-skills" / name / directory
+                shutil.copytree(root / "packages" / host / name, package)
+            args = ["bash", str(root / "scripts/sync-plugin-cache.sh"), "--state-root", str(state)]
+            self.assertEqual(0, subprocess.run(args, capture_output=True).returncode)
+            cached = state / ".codex/plugins/cache/oh-my-cloud-skills/token-saver/local"
+            target = cached / "skills/concise-responses/SKILL.md"
+            target.write_text("stale")
+            self.assertNotEqual(0, subprocess.run(args, capture_output=True).returncode)
+            self.assertEqual("stale", target.read_text(), "inspection must be read-only")
+            result = subprocess.run(args + ["--host", "codex", "--fix"], capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+            self.assertEqual((root / "packages/codex/token-saver/skills/concise-responses/SKILL.md").read_bytes(), target.read_bytes())
+            foreign = cached / ".claude-plugin/plugin.json"
+            foreign.parent.mkdir()
+            foreign.write_text("{}")
+            self.assertNotEqual(0, subprocess.run(args + ["--fix"], capture_output=True).returncode)
+            self.assertTrue(foreign.is_file(), "combined installs require host reinstallation")
+
+    def test_catalog_membership_adds_and_removes_both_host_packages(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(self.generated, root, dirs_exist_ok=True)
+            shutil.copytree(root / "plugins/token-saver", root / "plugins/extra")
+            for host in ("claude", "codex"):
+                shutil.copytree(root / "hosts" / host / "token-saver", root / "hosts" / host / "extra")
+            source = root / "plugins/extra/.claude-plugin/plugin.json"
+            value = json.loads(source.read_text())
+            value["name"] = "extra"
+            source.write_text(json.dumps(value))
+            handlers = root / "hosts/codex/extra/hook-handlers.json"
+            value = json.loads(handlers.read_text())
+            value["plugin"] = "extra"
+            handlers.write_text(json.dumps(value))
+            catalog = root / "hosts/catalog.json"
+            value = json.loads(catalog.read_text())
+            value["plugins"]["extra"] = {**value["plugins"]["token-saver"], "name": "extra"}
+            catalog.write_text(json.dumps(value))
+            args = [sys.executable, str(GENERATOR), "--root", str(root)]
+            subprocess.run(args, check=True, capture_output=True)
+            for host, market in (("claude", ".claude-plugin/marketplace.json"),
+                                ("codex", ".agents/plugins/marketplace.json")):
+                self.assertTrue((root / "packages" / host / "extra").is_dir())
+                self.assertIn("extra", [p["name"] for p in json.loads((root / market).read_text())["plugins"]])
+            value["plugins"].pop("extra")
+            catalog.write_text(json.dumps(value))
+            shutil.rmtree(root / "plugins/extra")
+            for host in ("claude", "codex"):
+                shutil.rmtree(root / "hosts" / host / "extra")
+            subprocess.run(args, check=True, capture_output=True)
+            for host, market in (("claude", ".claude-plugin/marketplace.json"),
+                                ("codex", ".agents/plugins/marketplace.json")):
+                self.assertFalse((root / "packages" / host / "extra").exists())
+                self.assertNotIn("extra", [p["name"] for p in json.loads((root / market).read_text())["plugins"]])
+
+    def test_claude_mod_registration_is_excluded_from_codex(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(self.generated, root, dirs_exist_ok=True)
+            plugin = root / "plugins/pr-dash"
+            (plugin / "hooks").mkdir(exist_ok=True)
+            (plugin / "hooks/hooks.json").write_text('{"modules":["./register.ts"]}')
+            (plugin / "hooks/register.ts").write_text('// Claude-only mod fixture\n')
+            subprocess.run([sys.executable, str(GENERATOR), "--root", str(root)], check=True, capture_output=True)
+            self.assertTrue((root / "packages/claude/pr-dash/hooks/hooks.json").is_file())
+            self.assertFalse((root / "packages/codex/pr-dash/hooks").exists())
+            self.assertTrue((root / "packages/codex/pr-dash/.codex-plugin/skills/pr-status/SKILL.md").is_file())
 
     def test_openai_yaml_matches_codex_plugin_validation(self):
         # codex-cli 0.154.0's own plugin validator (validate_skill_agent_manifest,

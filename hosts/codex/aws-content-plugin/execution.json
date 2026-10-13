@@ -1,0 +1,24 @@
+{
+  "reasoning": {
+    "animated-diagram-agent": "high",
+    "architecture-diagram-agent": "high",
+    "brochure-agent": "high",
+    "content-review-agent": "xhigh",
+    "document-agent": "low",
+    "gitbook-agent": "low",
+    "presentation-agent": "low",
+    "reactive-presentation-agent": "high",
+    "workshop-agent": "high"
+  },
+  "explicit_skills": [
+    "animated-diagram-agent",
+    "architecture-diagram-agent",
+    "brochure-agent",
+    "content-review-agent",
+    "document-agent",
+    "gitbook-agent",
+    "presentation-agent",
+    "reactive-presentation-agent",
+    "workshop-agent"
+  ]
+}

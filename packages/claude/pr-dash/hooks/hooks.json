@@ -1,0 +1,4 @@
+{
+  "description": "pr-dash hooks module",
+  "modules": ["./register.ts"]
+}

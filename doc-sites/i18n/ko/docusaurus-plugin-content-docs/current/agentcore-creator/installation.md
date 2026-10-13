@@ -25,7 +25,8 @@ title: "agentcore-creator 설치"
 저장소 체크아웃에서 로컬로 개발할 때는 다음과 같이 실행합니다:
 
 ```bash
-claude --plugin-dir ./plugins/agentcore-creator
+python3 scripts/sync-codex-plugins.py
+claude --plugin-dir ./packages/claude/agentcore-creator
 ```
 
 ## Codex {#codex}

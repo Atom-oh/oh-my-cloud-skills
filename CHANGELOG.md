@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Prepare 3.0.2 packages with shared identity and independently maintained Claude
+  and Codex execution sources. Marketplaces select self-contained host packages.
+- Assemble both hosts without inferring Codex hooks, MCP or reasoning settings
+  from Claude configuration. Validate package integrity, isolation and installed
+  discovery; cache inspection now covers both hosts.
+- Add ADR-027 and the trusted-base validator prerequisite for the marketplace
+  path migration. Preserve project-init's upstream source apart from its version.
+
 ### Added
 
 - Add the `pr-dash` plugin, the marketplace's first Claude Code mod. `/pr-dash`

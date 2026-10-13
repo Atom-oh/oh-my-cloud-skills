@@ -1,0 +1,132 @@
+{
+  "analytics-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "high",
+    "memory": "project",
+    "skills": [
+      "ops-observability"
+    ],
+    "mcpServers": [
+      "awsdocs",
+      "awsapi"
+    ]
+  },
+  "cost-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "low",
+    "memory": "project",
+    "skills": [
+      "ops-troubleshoot"
+    ],
+    "mcpServers": [
+      "awsdocs"
+    ]
+  },
+  "database-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "high",
+    "memory": "project",
+    "skills": [
+      "ops-troubleshoot"
+    ],
+    "mcpServers": [
+      "awsdocs",
+      "awsapi"
+    ]
+  },
+  "eks-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "high",
+    "memory": "project",
+    "skills": [
+      "ops-troubleshoot"
+    ],
+    "mcpServers": [
+      "awsdocs",
+      "awsapi"
+    ]
+  },
+  "iam-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "xhigh",
+    "memory": "project",
+    "skills": [
+      "ops-security-audit"
+    ],
+    "mcpServers": [
+      "awsdocs",
+      "awsapi"
+    ]
+  },
+  "network-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "high",
+    "memory": "project",
+    "skills": [
+      "ops-network-diagnosis"
+    ],
+    "mcpServers": [
+      "awsdocs",
+      "awsapi"
+    ]
+  },
+  "observability-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "high",
+    "memory": "project",
+    "skills": [
+      "ops-observability"
+    ],
+    "mcpServers": [
+      "awsdocs",
+      "awsapi"
+    ]
+  },
+  "ops-coordinator-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "xhigh",
+    "memory": "project",
+    "skills": [
+      "ops-troubleshoot",
+      "ops-health-check"
+    ],
+    "mcpServers": [
+      "awsdocs",
+      "awsapi"
+    ]
+  },
+  "storage-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "high",
+    "memory": "project",
+    "skills": [
+      "ops-troubleshoot"
+    ],
+    "mcpServers": [
+      "awsdocs",
+      "awsapi"
+    ]
+  },
+  "wellarchitected-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "xhigh",
+    "memory": "project",
+    "skills": [
+      "ops-wellarchitected-review"
+    ],
+    "mcpServers": [
+      "awsdocs",
+      "awsapi"
+    ]
+  }
+}

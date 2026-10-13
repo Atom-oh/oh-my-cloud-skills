@@ -1,0 +1,20 @@
+{
+  "skills": "./.codex-plugin/skills/",
+  "interface": {
+    "displayName": "Kiro Power Converter",
+    "shortDescription": "Convert Claude plugin content into Kiro Power packages.",
+    "longDescription": "Use Codex to analyze Claude Code plugins and generate Kiro Power compatible skill packages, conversion reports, and migration guidance.",
+    "developerName": "atomoh",
+    "category": "Conversion",
+    "capabilities": [
+      "Skills",
+      "Write",
+      "Migration"
+    ],
+    "defaultPrompt": [
+      "Convert this plugin to Kiro Power.",
+      "Convert this skill to Kiro format."
+    ]
+  },
+  "hooks": "./.codex-plugin/hooks.json"
+}

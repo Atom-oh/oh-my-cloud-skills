@@ -1,0 +1,458 @@
+#!/usr/bin/env python3
+"""co-agent panel-readiness preflight: detect + probe + report per peer.
+
+Usage:
+  check_panel.py classify --sentinel S --exit N --timeout 0|1   # stdin = candidate stdout
+  check_panel.py report [--root DIR] [--json] [--host claude|codex]
+  check_panel.py probe <peer> [--gate] [--timeout SECONDS]  # inherited env; --gate uses gate filter
+  check_panel.py status <peer> [--root DIR]
+  check_panel.py access <peer> [--root DIR]
+  check_panel.py gate-eligible <peer> [--root DIR]   # inherited-env READY AND raw_cli
+  check_panel.py fresh [--root DIR]                  # exit 0 iff summary config_hash matches current
+"""
+import sys
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+import signal
+import json
+import datetime
+import hashlib
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+from co_agent_host import (HOSTS, ACTIVE_PEERS, detect_host, peer_roster,
+                           retired_peer_message)
+from co_agent_env import sanitized_env as _sanitized_env, CLAUDE_GATE_ISOLATION
+
+try:
+    import co_agent_config  # sibling — for config_hash
+except Exception:
+    co_agent_config = None
+
+SCHEMA_VERSION = 2
+
+PEERS = ACTIVE_PEERS
+PEER_PLUGINS = {"codex": "openai/codex-plugin-cc"}   # peer → official Claude Code plugin repo
+PEER_MARKETPLACES = {"codex": "openai-codex"}   # peer → official marketplace.json "name" field
+
+
+def detect_cli(peer):
+    return shutil.which(peer) if peer in PEERS else None
+
+
+def detect_plugin(peer, plugins_root):
+    """True if the peer's official plugin appears installed under the plugin cache.
+
+    Two independent signals, either is sufficient: (1) a directory whose exact basename
+    matches the official repo's own name (e.g. "codex-plugin-cc") — the literal repo-name
+    convention; (2) a `marketplace.json` under plugins_root whose own "name" field matches
+    the peer's official marketplace (`PEER_MARKETPLACES`, e.g. "openai-codex") *and* declares
+    a plugin entry named after the peer's own CLI name ("codex") *and* whose "source"
+    resolves to a real, in-tree directory — the convention actually observed on a real
+    install, where Claude Code names the on-disk marketplace dir after marketplace.json's own
+    "name" field, not the git repo's name, and nests the plugin itself under
+    plugins/<plugin-name> ("codex"). (1) alone silently missed that genuinely-installed
+    official plugin and kept prompting to (re)install it. The marketplace-identity check on
+    (2) matters because entry `name` alone is spoofable: a fork or unrelated marketplace can
+    declare its own "codex"-named entry, and without the identity check a "source" that
+    happens to exist on disk (or an absolute/`..`-escaping "source" that `os.path.join` would
+    otherwise resolve outside marketplace_root) would false-positive as the official install —
+    hence resolving via `os.path.realpath` and confirming containment under marketplace_root
+    with `os.path.commonpath` before trusting `isdir()`. Malformed marketplace.json — invalid
+    JSON, non-UTF-8 bytes, wrong top-level type, a non-list/scalar "plugins" value, non-dict
+    entries, or a non-string "source" (including the object-form source Claude Code
+    marketplaces legitimately use for git-hosted plugins) — is skipped, not raised: this walk
+    covers every marketplace under plugins_root, including ones this peer doesn't own, so one
+    bad or differently-shaped file must not take down the whole probe.
+    """
+    repo = PEER_PLUGINS.get(peer)
+    if not repo or not plugins_root or not os.path.isdir(plugins_root):
+        return False
+    needle = repo.split("/")[-1]   # e.g. "codex-plugin-cc"
+    for dirpath, dirnames, filenames in os.walk(plugins_root):
+        if os.path.basename(dirpath) == needle or needle in dirnames:
+            return True
+        if os.path.basename(dirpath) == ".claude-plugin" and "marketplace.json" in filenames:
+            try:
+                with open(os.path.join(dirpath, "marketplace.json"), encoding="utf-8") as f:
+                    data = json.load(f)
+            except (OSError, ValueError):
+                # ValueError covers json.JSONDecodeError AND UnicodeDecodeError -- both are
+                # ValueError subclasses (the latter via UnicodeError), but NEITHER is a subclass
+                # of the other, so json.load's internal read() raising UnicodeDecodeError on
+                # non-UTF-8 bytes slips past a narrower `except (OSError, json.JSONDecodeError)`.
+                continue
+            if not isinstance(data, dict):
+                continue
+            if data.get("name") != PEER_MARKETPLACES.get(peer):
+                continue   # not the official marketplace — an entry named "codex" here proves nothing
+            marketplace_root = os.path.realpath(os.path.dirname(dirpath))
+            plugins = data.get("plugins")
+            if not isinstance(plugins, list):
+                continue
+            for entry in plugins:
+                if not isinstance(entry, dict) or entry.get("name") != peer:
+                    continue
+                source = entry.get("source")
+                if not (isinstance(source, str) and source):
+                    continue
+                resolved = os.path.realpath(os.path.join(marketplace_root, source))
+                # os.path.join drops marketplace_root entirely if source is absolute, and ".."
+                # can walk out of it even when relative — confirm the resolved path still lives
+                # under marketplace_root before trusting isdir() as proof of a real, in-tree install.
+                if os.path.commonpath([marketplace_root, resolved]) == marketplace_root and os.path.isdir(resolved):
+                    return True
+    return False
+
+
+def decide_access(peer, has_cli, has_plugin):
+    if peer not in PEERS:
+        return "none", False
+    if has_plugin:
+        return "plugin", False
+    if has_cli:
+        return "raw", peer in PEER_PLUGINS   # suggest installing the official plugin if one exists
+    return "none", False
+
+# AUTH vs ERROR only affects the diagnostic label on an already-failing (non-READY) probe —
+# both are non-READY, so the gate behaves identically. We keep bare 401/403 (catches
+# "got 401 from server", "server returned 403") and accept the rare cosmetic false-positive
+# (e.g. "Processed 401 items") rather than miss real auth failures.
+_AUTH_RE = re.compile(
+    r"not logged in|unauthenticated|invalid credentials|access denied|"
+    r"token expired|expired token|expiredtoken|"
+    r"please (log|sign) in|run .*login|\b401\b|\b403\b|unauthorized|forbidden",
+    re.I,
+)
+
+
+def classify(sentinel, stdout, stderr, returncode, timed_out):
+    """Pure: map a probe result to (status, reason)."""
+    if timed_out:
+        return "TIMEOUT", "probe exceeded the per-CLI timeout"
+    text = (stdout or "")
+    if returncode == 0 and sentinel and sentinel in text.strip().split():
+        return "READY", ""
+    blob = f"{stdout}\n{stderr}"
+    if _AUTH_RE.search(blob):
+        return "AUTH", "authentication required"
+    if returncode == 0:
+        return "NO_INGEST", "ran but did not echo the sentinel (input channel not consumed)"
+    return "ERROR", f"exit {returncode}"
+
+
+def _cmd_classify(argv):
+    def opt(name, default=None):
+        return argv[argv.index(name) + 1] if name in argv and argv.index(name) + 1 < len(argv) else default
+    sentinel = opt("--sentinel", "")
+    rc = int(opt("--exit", "0"))
+    timed_out = opt("--timeout", "0") in ("1", "true", "yes")
+    stdout = sys.stdin.read()
+    status, _reason = classify(sentinel, stdout, "", rc, timed_out)
+    print(status)
+    return 0
+
+
+# Read-only adapters, mirroring references/ai-cli-adapters.md. "{P}" = prompt, "{I}" = INPUT (prompt+sentinel).
+# NOTE: the probe runs each CLI in an isolated temp dir (not a git repo). codex exec refuses to
+# run outside a trusted/git dir, so the probe passes --skip-git-repo-check. The
+# isolated PR/push gates need it too; the context-rich fan-out in ai-cli-adapters.md
+# runs inside the repo and does not need the exception.
+ADAPTERS = {
+    "codex":    {"argv": ["codex", "exec", "-s", "read-only", "--skip-git-repo-check", "{P}"], "channel": "stdin"},
+    "claude":   {"argv": ["claude", "-p", "{P}", "--permission-mode", "plan", "--output-format", "text"], "channel": "stdin"},
+    "kiro-cli": {"argv": ["kiro-cli", "chat", "{I}", "--v3", "--mode", "default",
+                          "--no-interactive", "--trust-tools=fs_read", "--wrap", "never"],
+                 "channel": "argv"},
+}
+_CAP = 64 * 1024   # output-size cap
+
+
+def _kill_proc(p):
+    """Kill a probe child, whole process group on POSIX. os.killpg/getpgid don't exist on
+    Windows — fall back to p.kill() there instead of raising AttributeError (which the callers'
+    broad excepts would swallow, leaving the child alive)."""
+    try:
+        if hasattr(os, "killpg") and hasattr(os, "getpgid"):
+            os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+        else:
+            p.kill()
+    except Exception:
+        try:
+            p.kill()
+        except Exception:
+            pass
+
+
+def probe(peer, timeout=90, nonce="STATIC", gate=False):
+    """General fan-out inherits its environment; explicit gate probes use the gate filter."""
+    # Allow cold-start/auth-refresh time without concurrent probes contending for one backend.
+    retired = retired_peer_message(peer)
+    if retired:
+        return "ERROR", retired
+    if peer not in PEERS or peer not in ADAPTERS:
+        return "ERROR", f"unknown peer {peer}"
+    if not detect_cli(peer):
+        return "ABSENT", "command not found"
+    sentinel = f"COAGENT_PROBE_{nonce}"
+    spec = ADAPTERS[peer]
+    if spec["channel"] == "stdin":
+        # Ask about already-delivered input, not a second tool read from an exhausted pipe.
+        prompt = "Reply with exactly the text you received via stdin, and nothing else."
+        argv = [a.replace("{P}", prompt) for a in spec["argv"]]
+        stdin_data = sentinel + "\n"
+    else:  # argv
+        inp = f"Reply with exactly this token and nothing else: {sentinel}"
+        argv = [a.replace("{I}", inp) for a in spec["argv"]]
+        stdin_data = ""
+    if gate and peer == "claude":
+        argv.extend(CLAUDE_GATE_ISOLATION)
+    with tempfile.TemporaryDirectory() as cwd:
+        # Capture stdout/stderr to FILES, not PIPEs. Some peers refresh auth over the host fds
+        # they were launched with (kiro here runs --auth=acp-callback host-mediated refresh);
+        # replacing stdout with our own *pipe* severs that callback and the refresh hangs to the
+        # full timeout (kiro: 5s with a file, TIMEOUT with a pipe). File redirection leaves no
+        # reader on the other end and the auth path survives. stdin still uses a PIPE so we can
+        # feed the sentinel to stdin-channel peers; argv-channel peers get "".
+        outp = os.path.join(cwd, ".probe_out")
+        errp = os.path.join(cwd, ".probe_err")
+        p = None
+        try:
+            with open(outp, "w") as of, open(errp, "w") as ef:
+                p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE, stdout=of,
+                                     stderr=ef, text=True, start_new_session=True,
+                                     env=_sanitized_env(peer) if gate else None)
+                try:
+                    p.communicate(input=stdin_data, timeout=timeout)
+                    timed_out = False
+                except subprocess.TimeoutExpired:
+                    _kill_proc(p)
+                    # No pipes to drain — output is already in the files; just reap the corpse.
+                    try:
+                        p.communicate(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        pass
+                    timed_out = True
+            with open(outp, encoding="utf-8", errors="replace") as f:
+                out = f.read(_CAP)
+            with open(errp, encoding="utf-8", errors="replace") as f:
+                err = f.read(_CAP)
+            return classify(sentinel, out, err, p.returncode, timed_out)
+        except FileNotFoundError:
+            return "ABSENT", "command not found"
+        except Exception as e:  # never hard-fail a probe
+            return "ERROR", str(e)[:200]
+        finally:
+            # Ensure no detached child survives an error path other than TimeoutExpired
+            # (e.g. communicate raising mid-read) — Windows-safe kill (see _kill_proc).
+            if p is not None and p.poll() is None:
+                _kill_proc(p)
+
+
+def _config_hash(root, host=None, strict=False):
+    if co_agent_config is None:
+        return ""
+    try:
+        blob = json.dumps({"host": detect_host(host),
+                           "config": co_agent_config.effective(root, strict=strict)}, sort_keys=True)
+        return hashlib.sha256(blob.encode()).hexdigest()[:16]
+    except Exception:
+        return ""
+
+
+def _summary_path(root):
+    return os.path.join(root, ".claude", "co-agent-panel.local.json")
+
+
+def _atomic_write_json(path, obj):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+def _peer_entry(peer, plugins_root):
+    """Build one peer's readiness entry (the probe is the slow part). Pure per-peer — safe to
+    run concurrently across peers."""
+    cli = detect_cli(peer)
+    has_plugin = detect_plugin(peer, plugins_root)
+    access, suggest = decide_access(peer, bool(cli), has_plugin)
+    # raw_cli is recorded independently of access so a peer that has BOTH the official
+    # plugin AND a raw CLI stays implementer-eligible (the implementer gate needs a raw
+    # write-mode CLI, which access=="plugin" alone would otherwise hide).
+    entry = {"access": access, "raw_cli": bool(cli)}
+    if access == "plugin":
+        entry["plugin"] = PEER_PLUGINS.get(peer)
+        if cli:
+            # also has a raw CLI → probe it so its raw usability (implementer gate) is known
+            status, reason = probe(peer)
+            entry["status"] = status
+            entry["cli_path"] = cli
+            if reason:
+                entry["reason"] = reason
+        else:
+            entry["status"] = "READY"   # plugin-only: the plugin handles ingestion
+    elif access == "raw":
+        status, reason = probe(peer)
+        entry["status"] = status
+        entry["cli_path"] = cli
+        if reason:
+            entry["reason"] = reason
+        if suggest:
+            entry["suggest_install"] = PEER_PLUGINS.get(peer)
+    else:
+        entry["status"] = "ABSENT"
+    return entry
+
+
+def report(root, plugins_root, as_json=False, host=None):
+    host = detect_host(host)
+    if host not in HOSTS:
+        print(f"unknown host '{host}' (one of: {', '.join(HOSTS)})", file=sys.stderr)
+        return 2
+    if co_agent_config is None:
+        print("cannot resolve enabled panel: co_agent_config unavailable", file=sys.stderr)
+        return 2
+    # Probe sequentially: peers may share one backend and throttle each other.
+    enabled = co_agent_config.effective(root).get("panel", {})
+    peers = {peer: _peer_entry(peer, plugins_root)
+             for peer in co_agent_config.panel_ais(host)
+             if peer in peer_roster(host) and enabled.get(peer, {}).get("enabled", True)}
+    summary = {
+        "schema_version": SCHEMA_VERSION,
+        "generated_at": datetime.datetime.now().astimezone().isoformat(),
+        "host": host,
+        "probe_environment": "inherited",
+        "config_hash": _config_hash(root, host),
+        "peers": peers,
+    }
+    _atomic_write_json(_summary_path(root), summary)
+    if as_json:
+        print(json.dumps(summary, indent=2, ensure_ascii=False))
+    else:
+        print(f"{'peer':10} {'access':7} {'status':10} note")
+        for peer, e in peers.items():
+            note = e.get("suggest_install") or e.get("reason") or e.get("plugin") or ""
+            print(f"{peer:10} {e['access']:7} {e['status']:10} {note}")
+    return 0
+
+
+def _read_summary(root):
+    p = _summary_path(root)
+    if not os.path.isfile(p):
+        return None
+    try:
+        with open(p, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _reader(root, peer, field, default):
+    if peer not in PEERS:
+        return default
+    s = _read_summary(root)
+    if not isinstance(s, dict):
+        return default
+    return s.get("peers", {}).get(peer, {}).get(field, default)
+
+
+def is_fresh(root, host=None, strict=False):
+    """True iff the saved summary matches the current host and effective config; callers
+    re-run `/co-agent:setup` on a mismatch. Catches HOST/CONFIG drift — not PATH/auth/install
+    (a full `report` re-probe catches those; config_hash can't see them)."""
+    s = _read_summary(root)
+    if not isinstance(s, dict):
+        return False
+    if s.get("schema_version") != SCHEMA_VERSION or s.get("probe_environment") != "inherited":
+        return False
+    if s.get("host") != detect_host(host):
+        return False
+    cur = _config_hash(root, host, strict=strict)
+    # Missing provenance cannot establish readiness for an implementation plan.
+    return bool(cur) and s.get("config_hash", "") == cur
+
+
+def gate_eligible(root, peer, host=None):
+    """Historical name for inherited-environment raw-CLI readiness.
+
+    Consensus/harness use this result. It is not proof of sanitized gate auth;
+    `probe PEER --gate` verifies the separate gate environment before enabling gates.
+    """
+    resolved_host = detect_host(host)
+    if resolved_host not in HOSTS or peer not in peer_roster(resolved_host):
+        return False
+    s = _read_summary(root)
+    if not isinstance(s, dict) or not isinstance(s.get("peers"), dict):
+        return False
+    e = s.get("peers", {}).get(peer, {})
+    return isinstance(e, dict) and e.get("status") == "READY" and e.get("raw_cli") is True
+
+
+def main():
+    argv = sys.argv[1:]
+    host = None
+    if "--host" in argv:
+        index = argv.index("--host")
+        if index + 1 >= len(argv) or argv[index + 1] not in HOSTS:
+            print("--host requires claude|codex", file=sys.stderr)
+            return 2
+        host = argv[index + 1]
+        del argv[index:index + 2]
+    if not argv:
+        print(__doc__)
+        return 2
+    if argv[0] == "classify":
+        return _cmd_classify(argv[1:])
+    if argv[0] in ("probe", "status", "access", "gate-eligible", "--selftest-access"):
+        if len(argv) < 2:
+            print(f"{argv[0]} requires a peer", file=sys.stderr)
+            return 2
+        retired = retired_peer_message(argv[1])
+        if retired:
+            print(retired, file=sys.stderr)
+            return 2
+    if argv[0] == "probe":
+        peer = argv[1]
+        timeout = int(argv[argv.index("--timeout") + 1]) if "--timeout" in argv else 90
+        status, _ = probe(peer, timeout=timeout, gate="--gate" in argv)
+        print(status)
+        return (0 if status == "READY" else 1) if "--gate" in argv else 0
+    if argv[0] == "--selftest-access":
+        peer, hc, hp = argv[1], argv[2] == "1", argv[3] == "1"
+        access, suggest = decide_access(peer, hc, hp)
+        print(f"{access} {1 if suggest else 0}")
+        return 0
+    if argv[0] == "report":
+        root = argv[argv.index("--root") + 1] if "--root" in argv else "."
+        proot = argv[argv.index("--plugins-root") + 1] if "--plugins-root" in argv else os.path.expanduser("~/.claude/plugins")
+        return report(root, proot, as_json="--json" in argv, host=host)
+    if argv[0] in ("status", "access"):
+        peer = argv[1]
+        root = argv[argv.index("--root") + 1] if "--root" in argv else "."
+        default = "ABSENT" if argv[0] == "status" else "none"
+        print(_reader(root, peer, argv[0], default))
+        return 0
+    if argv[0] == "gate-eligible":
+        peer = argv[1]
+        root = argv[argv.index("--root") + 1] if "--root" in argv else "."
+        ok = gate_eligible(root, peer, host=host)
+        print("true" if ok else "false")
+        return 0 if ok else 1
+    if argv[0] == "fresh":
+        root = argv[argv.index("--root") + 1] if "--root" in argv else "."
+        ok = is_fresh(root, host=host)
+        print("fresh" if ok else "stale")
+        return 0 if ok else 1
+    print(__doc__)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

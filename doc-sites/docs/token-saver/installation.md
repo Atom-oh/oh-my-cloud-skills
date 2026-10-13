@@ -14,7 +14,8 @@ title: "Install token-saver"
 For local development from a repository checkout:
 
 ```bash
-claude --plugin-dir ./plugins/token-saver
+python3 scripts/sync-codex-plugins.py
+claude --plugin-dir ./packages/claude/token-saver
 ```
 
 Use the host's hook controls to inspect and trust the plugin, then start a new

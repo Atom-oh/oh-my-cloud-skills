@@ -1,0 +1,170 @@
+---
+name: decision-reconcile
+description: "Detect contradictions across accumulated ADRs and between ADRs and current reality using a multi-agent review panel, then draft a superseding ADR. Use when ADRs may conflict or a decision needs overturning. Triggers: ADR 모순, ADR 충돌, decision reconcile, reconcile ADRs, supersede ADR."
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - Bash
+  - Agent
+  - AskUserQuestion
+---
+
+# decision-reconcile — ADR decision reversal
+
+Also triggers on 의사결정 번복, 의사결정 모순, ADR 번복, 결정 번복, ADR 모순 검토, decision reversal, ADR contradiction, conflicting ADR. Uses available host subagents plus optional external AI CLIs, each given a different review lens.
+
+Find the contradictions that accumulate across a repo's ADRs — two Accepted ADRs
+mandating opposite things, a newer decision silently reversing an older one, an ADR the
+code no longer matches — and resolve them with a user-approved **superseding ADR** plus
+status corrections. The consumers are the ADR set itself and every future reader/agent
+that trusts it. Excellent looks like: every reported contradiction backed by verifiable
+quotes, panel diversity (actual providers/models × varied review lenses) surfacing the
+non-obvious conflicts a single pass misses, and nothing rewritten without the user's
+go-ahead.
+
+> Contradiction categories (C1–C6), the per-agent lenses, severity rubric, and the
+> superseding-ADR draft rules live in **`references/contradiction-taxonomy.md`** — the
+> canon for everything this file only names.
+
+## Flow
+
+```
+collect ADRs (script) → deterministic pre-checks → fan out diverse panel
+  (available host subagents ± external CLIs, one lens each) → verify quotes → synthesize
+  consensus/dissent → recommend resolution → draft superseding ADR → update statuses
+```
+
+## Step 1: Collect and pre-check ADRs
+
+Run the parser — it structures every ADR and flags status/link inconsistencies that need
+no LLM (category C6):
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/decision-reconcile/scripts/collect_adrs.py docs/decisions
+```
+
+(`--summary` for a human-readable list; pass a different decisions dir if needed.)
+
+Capture the JSON — it is the **single shared input** every panel agent receives. Treat
+the `warnings` array as confirmed C6 leads, not the full answer. Fewer than 2 ADRs →
+stop; there is nothing to reconcile.
+
+## Step 2: Confirm scope (only if an external panel will be used)
+
+Host subagents use the current host's delegation capabilities. **If you will also
+fan out to external AI CLIs** (Step 3, optional), the ADR text leaves the machine to
+third-party services — confirm with `AskUserQuestion` first (ADRs may name internal
+systems). Skip this when staying within the host or when the user already opted in this
+session.
+
+## Step 3: Fan out the diverse panel
+
+Assign **one lens per available agent** from `references/contradiction-taxonomy.md`.
+Use distinct models/providers only where the current host actually supports them;
+different lenses are useful even when every worker runs the same model.
+
+**Primary — host subagents, when supported.** On Claude Code, the `Agent` tool can
+dispatch the model-tier example below. On Codex, use its available native delegation
+tools and roles; these Markdown procedures do not register Claude tiers or a native
+`Agent` tool. If delegation is unavailable, the chair performs the four lenses
+sequentially and reports a solo review. Give all workers the same ADR JSON and
+enforce read-only review with the host's actual controls. Example Claude mapping:
+
+| Agent | `model` | Lens | Returns |
+|-------|---------|------|---------|
+| 1 | opus | L1 Logical (C1) | conflicting Accepted ADR pairs, quoted |
+| 2 | sonnet | L2 Temporal (C2/C6) | silent supersessions, dangling links |
+| 3 | sonnet | L3 Reality drift (C3) | ADR-vs-code/CLAUDE.md divergence, file:line |
+| 4 | haiku | L4 Assumptions (C4/C5) | invalidated assumptions, scope overlaps |
+
+Each agent quotes ADR numbers + the conflicting sentences (file:line for drift) and
+returns JSON `[{category, adrs, quotes, severity, why}]`. Unquotable = not a finding.
+
+**Optional — external AI CLIs for cross-family signal.** If installed, also fan the L1
+logical prompt (+ the ADR JSON) to whichever exist:
+
+```bash
+command -v kiro-cli >/dev/null 2>&1 && echo "kiro-cli available"   # NOTE: binary is kiro-cli, NOT kiro
+command -v codex    >/dev/null 2>&1 && echo "codex available"
+command -v claude   >/dev/null 2>&1 && echo "claude available"
+```
+
+If the **co-agent** plugin is loaded, prefer delegating this fan-out to it (it owns the
+adapters, size guards, and citation validation — `co-agent` skill, Review mode).
+Otherwise exclude the current host, then invoke peers read-only, capturing each to a file:
+Use the canonical `co-agent` `references/ai-cli-adapters.md` commands: Kiro reads a
+temporary ADR digest through `fs_read` (`--trust-tools=fs_read`, never `read,grep`);
+Codex/Claude receive the digest on stdin with their read-only flags. Keep the argv
+instruction fixed and quote the context path; do not interpolate ADR content into
+shell commands. Never call `agy` or `gemini`: both are retired by ADR-022.
+Installation alone is not readiness. Report which host workers and external peers
+actually returned usable results, skipped peers, and the actual model/provider
+diversity. Missing external CLIs can leave a host-only or solo advisory review.
+
+> **External CLIs get a digest, not repo access** — they can only find logical conflicts
+> between ADR texts (C1/C4/C5). **C3 reality-drift stays a host review job** (L3): only
+> the in-process subagents read the actual code / `CLAUDE.md` / `plugin.json`. Their
+> value is **cross-family signal** — when a different model family flags a pair Claude
+> waved off (or vice-versa), that split is meaningful (synthesis note in the taxonomy).
+
+## Step 4: Verify and synthesize
+
+Follow the [Synthesis](references/contradiction-taxonomy.md) section:
+
+1. **Verify every finding against the ADR JSON** — drop any whose quotes don't appear in
+   the cited ADR. Quote-verification, not vote-counting, is what confirms a finding.
+2. Cluster by the ADR set touched; mark **consensus** (≥2 agents) vs **dissent** (one
+   agent — name the agent + lens).
+3. Rank by severity (CRITICAL/MAJOR/MINOR); present CRITICAL/MAJOR with quotes.
+4. Recommend a **resolution pattern** per confirmed contradiction (supersede / amend /
+   reconcile-to-reality / status-only).
+
+Present the report and confirm which contradictions to act on before writing anything.
+
+## Step 5: Draft the superseding ADR and update statuses
+
+For each contradiction the user approves (resolution = supersede/amend/reconcile):
+
+1. Find the next ADR number — reuse the `/add-adr` numbering:
+
+   ```bash
+   find docs/decisions -name 'ADR-*.md' -not -name '.template.md' 2>/dev/null | sort | tail -1
+   ```
+
+2. **Draft the superseding ADR** following the target project's ADR convention
+   (Nygard sections, no emojis; this repository maintains English prose) plus the reversal additions in the
+   taxonomy: Status `Accepted`; Context cites the superseded ADR numbers + their
+   conflicting quotes; Consequences names "Supersedes ADR-NNN".
+3. **Edit each superseded ADR**: set Status to `Superseded by ADR-NNN`.
+   For a partial reversal, name the affected scope and preserve the dated rationale.
+4. Status-only fixes (C6): correct the existing ADR's Status/links — no new ADR.
+
+Then re-run `collect_adrs.py` to confirm the `warnings` array is now clean.
+
+## Output
+
+| Deliverable | Form |
+|-------------|------|
+| Contradiction report | Per contradiction: category, ADRs touched, verified quotes, severity, consensus/dissent attribution, recommended resolution pattern |
+| Superseding ADR(s) | `docs/decisions/ADR-NNN.md` per approved supersede/amend/reconcile |
+| Status corrections | Edited Status/links in superseded ADRs (and C6 fixes) |
+| Verification | Post-edit `collect_adrs.py` run showing a clean `warnings` array |
+
+## Chair principle
+
+External AIs and subagents **advise**; **you (the main agent) decide and write the final
+ADR**. Attribute notable findings to the agent/lens that raised them, surface
+disagreement instead of hiding it, and never overwrite an ADR without the user's
+go-ahead on that specific contradiction.
+
+## References
+
+- `references/contradiction-taxonomy.md` — C1–C6 categories, the 4 review lenses
+  (per-agent prompts), severity rubric, resolution patterns, superseding-ADR draft
+  rules, synthesis procedure
+- `scripts/collect_adrs.py` — parse `docs/decisions/ADR-*.md` → structured JSON +
+  deterministic inconsistency pre-checks (`--summary` for human-readable)
+- `commands/add-adr.md` (project-init) — the ADR file convention the draft must follow

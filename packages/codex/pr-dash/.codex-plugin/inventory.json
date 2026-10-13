@@ -1,0 +1,12 @@
+{
+  "plugin": "pr-dash",
+  "skills": [
+    {
+      "name": "pr-status",
+      "path": ".codex-plugin/skills/pr-status/SKILL.md",
+      "sources": [
+        "skills/pr-status/SKILL.md"
+      ]
+    }
+  ]
+}

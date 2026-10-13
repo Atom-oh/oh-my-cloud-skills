@@ -1,0 +1,8 @@
+{
+  "kiro-delegate-agent.md": {
+    "tools": "Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "xhigh",
+    "memory": "user"
+  }
+}

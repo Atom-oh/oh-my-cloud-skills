@@ -1,0 +1,10 @@
+{
+  "kiro-converter-agent.md": {
+    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
+    "model": "opus",
+    "effort": "low",
+    "skills": [
+      "kiro-convert"
+    ]
+  }
+}

@@ -148,6 +148,15 @@ def validate(root):
                 continue
             config_root = root / "hosts" / host / name
             config = load(config_root / "plugin.json")
+            policy = load(config_root / "package.json")
+            excluded = policy.get("exclude")
+            if not isinstance(excluded, list):
+                error(f"{host}/{name}: package.exclude must be an array")
+                excluded = []
+            for relative in excluded:
+                path = inside(package, relative)
+                if path is None or path.exists():
+                    error(f"{host}/{name}: excluded host files are present or invalid: {relative}")
             if set(config) & IDENTITY_FIELDS:
                 error(f"{host}/{name}: host configuration cannot override shared identity")
             manifest = load(package / f".{host}-plugin/plugin.json")

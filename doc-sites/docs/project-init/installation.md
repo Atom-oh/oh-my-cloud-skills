@@ -22,7 +22,8 @@ title: "Install project-init"
 For local development from a repository checkout:
 
 ```bash
-claude --plugin-dir ./plugins/project-init
+python3 scripts/sync-codex-plugins.py
+claude --plugin-dir ./packages/claude/project-init
 ```
 
 ## Codex {#codex}

@@ -1,0 +1,23 @@
+title: "Hybrid (Direct Connect)"
+onprem:
+  label: "On-Premises (IDC)"
+  services:
+    - {id: app_srv, icon: ec2, label: "App Server"}
+    - {id: ora, icon: ec2, label: "Oracle DB"}
+edge:
+  - {id: dx, icon: directconnect, label: "Direct Connect"}
+region:
+  label: "AWS Region (ap-northeast-2)"
+  vpc:
+    label: "VPC 10.0.0.0/16"
+    azs: ["AZ-2a", "AZ-2c"]
+    tiers:
+      - {name: "Private App Subnet", kind: private, services: [{id: ec2, icon: ec2, label: "EC2"}]}
+      - {name: "Private Data Subnet", kind: private, services: [{id: rds, icon: rds, label: "RDS"}]}
+flows:
+  - {from: app_srv, to: dx, label: "VPN/DX"}
+  - {from: dx, to: ec2_0, label: "private"}
+  - {from: ec2_0, to: rds_0, label: "query"}
+  - {from: ec2_1, to: rds_0, label: "query"}
+  - {from: ora, to: rds_0, label: "DMS migrate", kind: async}
+  - {from: rds_0, to: rds_1, label: "standby", kind: async}

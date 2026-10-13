@@ -1,0 +1,191 @@
+{
+  "host": "codex",
+  "plugin": "project-init",
+  "version": "3.0.2",
+  "files": {
+    ".codex-plugin/plugin.json": {
+      "sha256": "36975fc72c51ba3282d87075f15b79437e6296d466ae5219f3936faadd2976ea",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "8a7592088664b4052f218266f243c7002d6e9adaa8d4fc57934ea51c60a4b8fe",
+      "executable": false
+    },
+    "agents/doc-sync-checker.md": {
+      "sha256": "8f031cf8a7786f632e6c0c969e2a821ccc7ce74a8bf9e2ddd052f6682c3a275e",
+      "executable": false
+    },
+    "commands/add-adr.md": {
+      "sha256": "ae98af148cb57cab38fcc92cb3b5820b0486104912f1903f52722a465ef9d38d",
+      "executable": false
+    },
+    "commands/add-module.md": {
+      "sha256": "cf8385faac53b3e570bef08d3a0176cecb8bc87bfdeba5d8088f433222a5379f",
+      "executable": false
+    },
+    "commands/add-reference-doc.md": {
+      "sha256": "56952194415376279236d93a763a8013a9c526ad393a3607d64809c3881c012f",
+      "executable": false
+    },
+    "commands/add-runbook.md": {
+      "sha256": "830541f38dd671ccc0047244141d99891cbfa3b5f0ade16749adcbc1ba582a20",
+      "executable": false
+    },
+    "commands/generate-changelog.md": {
+      "sha256": "e4d800dab075a7a1816684849fdb215e747b4d9c0e006af96f9da26a599a00dd",
+      "executable": false
+    },
+    "commands/generate-readme.md": {
+      "sha256": "2b57d6618c3f8ffa99adfb14eef9dd376d1b75ca645d9c1d7b53385636811760",
+      "executable": false
+    },
+    "commands/health-check.md": {
+      "sha256": "d378639d619f8f95a2db767136d8f09966fe40d3b75e4db7766b3d67ec6da592",
+      "executable": false
+    },
+    "commands/init-project.md": {
+      "sha256": "f2599694d8e91169b257181f6db2b27c17bf2e37dbffbdb91869386fbece65cc",
+      "executable": false
+    },
+    "commands/migrate-hooks.md": {
+      "sha256": "e551d5b3a993b18939c89d187a64170ff1b35b3d1f1c073a8f50768755744508",
+      "executable": false
+    },
+    "commands/sync-docs.md": {
+      "sha256": "3e846795e0f11522fe5f89fd9c86ee1f2f38b09eab31d8dbb8f257fc29c20f66",
+      "executable": false
+    },
+    "skills/project-scaffolder/SKILL.md": {
+      "sha256": "f11e010941092a7caf243866ee8e2ad20845764944b1c36a5323ba770ea99242",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/agents-templates.md": {
+      "sha256": "32c63238c411e177dbaebf6413b7cbbba70985294ac87aed3f8008eb37e0c4d6",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/changelog-template.md": {
+      "sha256": "4fee04f9a3ceec13ae01e6578e29cc01f091583014c4cae7533db5bf0989f009",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/claude-md-template.md": {
+      "sha256": "a64340463c3c70ae32476f8fb82c5c65bdf3690ccc48be9bb1fa8a223e385e41",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/docs-templates.md": {
+      "sha256": "48985d320feaa6c6c1a07fa0e3b5806720f441cf7672b46baf6133cff2a0031d",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/hook-scripts.md": {
+      "sha256": "4c96792032d2bcefa22a0dec45ac9a79950030391e05200abaa8093c8a3317da",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/mcp-json-template.md": {
+      "sha256": "4b922d70b140cbd6252aa348b65e9e187c80ba927c4913182e6fbcfa42973b98",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/readme-template.md": {
+      "sha256": "dfeb380fd9458ccb0eebbb1cb5d80d989252469724ba6e46c4c53466b360342b",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/reference-doc-template.md": {
+      "sha256": "21437ffe8bf58569f8ff7917d4e88e7894715c9c84e7c33594637d658e48f5be",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/scripts-templates.md": {
+      "sha256": "295f8d81b85a7cb5ecf3cee0dcdc8b4768ded6f3df7490543b5a84e814271b86",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/settings-json-template.md": {
+      "sha256": "8449562e5c3ef2560e348364a3802ada4a1dd8efc721b9a2ff71b3744306de9f",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/skills-templates.md": {
+      "sha256": "a742a919ea7ddcae73ae5a3d9d701922c93ea4c905cddd3eb55058b05f2ff652",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/tests-templates.md": {
+      "sha256": "17bf51aa085af1a1cb90d71bdd3c884fe1d684329a465dc898f0693dc2bea50b",
+      "executable": false
+    },
+    "skills/project-scaffolder/references/writing-style-guide.md": {
+      "sha256": "80bca45d798092b16451dbe1affa3344d8358cd6d1a37b6a42063ba2852eb746",
+      "executable": false
+    },
+    ".codex-plugin/skills/add-adr/SKILL.md": {
+      "sha256": "b3276a2cb0c9cfc20265ec36aad0f3fd0e17e3f3f2b40fd4cfd1fdef30380715",
+      "executable": false
+    },
+    ".codex-plugin/skills/add-module/SKILL.md": {
+      "sha256": "14f9c6c2fdb45d174708b1a6ba087f4e311a1475f4ddc3396712222276208c23",
+      "executable": false
+    },
+    ".codex-plugin/skills/add-reference-doc/SKILL.md": {
+      "sha256": "b6fc96caba48ae60c5d0ecec3371138833a5c01b62fbc2e19ee3dbe9e83df08b",
+      "executable": false
+    },
+    ".codex-plugin/skills/add-runbook/SKILL.md": {
+      "sha256": "046a356b24900418b1eced49b626ff511f4a9ef6a2de40565f3cb0fe61184f16",
+      "executable": false
+    },
+    ".codex-plugin/skills/doc-sync-checker/SKILL.md": {
+      "sha256": "551536e7dd9f5564a15a06a71e44a8d9216b97ac9a82c9c123715e39295195f1",
+      "executable": false
+    },
+    ".codex-plugin/skills/doc-sync-checker/agents/openai.yaml": {
+      "sha256": "a2720e9df89ec4716c718f90089309d091b9e5a71d215ce34c94167f8cf1a149",
+      "executable": false
+    },
+    ".codex-plugin/skills/generate-changelog/SKILL.md": {
+      "sha256": "ffd79be773f051f57c6584c3d65de1378334ceb4dfaf40336b107def7233728d",
+      "executable": false
+    },
+    ".codex-plugin/skills/generate-readme/SKILL.md": {
+      "sha256": "83538c2881e6d490c1a3bd8ecac92bcdb8263ad2120fd7c5d7efd587634dc8ef",
+      "executable": false
+    },
+    ".codex-plugin/skills/init-project/SKILL.md": {
+      "sha256": "fa798445ddaa7c253bacb81f714571b8a2c87048b76bac8038e2495125f5c0cd",
+      "executable": false
+    },
+    ".codex-plugin/skills/migrate-hooks/SKILL.md": {
+      "sha256": "7d9f81af2e0cacfb47a4944aa5e0bd686546b3fc3549059b67ba7c9577af0b01",
+      "executable": false
+    },
+    ".codex-plugin/skills/project-scaffolder/SKILL.md": {
+      "sha256": "07b7235fd3b3c2e6e7a1f44bda6feaf104944852858e998b16da7c2669038f48",
+      "executable": false
+    },
+    ".codex-plugin/skills/source-command-health-check/SKILL.md": {
+      "sha256": "2522281b5914ffd25eb66ec2857036f47f989778a6fa10fb798f63f5bbb908a8",
+      "executable": false
+    },
+    ".codex-plugin/skills/sync-docs/SKILL.md": {
+      "sha256": "5319d8b60e3af4e82455caf2d550e9b6dcc2345da4e6018ce4813ae97f1ef9d7",
+      "executable": false
+    },
+    ".codex-plugin/inventory.json": {
+      "sha256": "21dc0e14d5f73580f77744ff5c8a0364672845525e7505630741e700b0943482",
+      "executable": false
+    },
+    ".codex-plugin/runtime.md": {
+      "sha256": "abc2183e07ac4b1450796f9db45e9d434fd5dd42b65625c770feeab3055f9ba8",
+      "executable": false
+    },
+    ".codex-plugin/run.py": {
+      "sha256": "53d259a9e0bc0393586ed5fa709695e4c00d4d46403c3a4dc19454b4cc86faf2",
+      "executable": false
+    },
+    ".codex-plugin/workflow.md": {
+      "sha256": "4dbcba415f4a55c39e8ae11678f85c8bfd4f42ed30bac04f5f09c6aaeb9c319a",
+      "executable": false
+    },
+    ".codex-plugin/project-template/.codex/hooks.json": {
+      "sha256": "3a427455081738dec412d2c06122739efce1190488da83c00eafac9d72502118",
+      "executable": false
+    },
+    ".codex-plugin/project-template/.codex/hooks/project_context.py": {
+      "sha256": "4e965bf336db76b9506d486f37a4feed33d4d7f720036b8d000968c1498df60c",
+      "executable": false
+    }
+  }
+}
