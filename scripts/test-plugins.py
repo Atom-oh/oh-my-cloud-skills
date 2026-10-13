@@ -205,6 +205,31 @@ class PluginTestSuite:
         except json.JSONDecodeError as e:
             self.error(f"Invalid JSON in plugin.json: {e}")
             return
+        if not isinstance(self.manifest, dict):
+            self.error("plugin.json must contain a JSON object")
+            self.manifest = None
+            return
+
+        mcp_servers = self.manifest.get("mcpServers", {})
+        if isinstance(mcp_servers, str):
+            source_path = self.plugin_dir / mcp_servers
+            path = source_path.resolve()
+            try:
+                if (not mcp_servers.startswith("./") or
+                        self.plugin_dir.resolve() not in path.parents or source_path.is_symlink()):
+                    raise ValueError("MCP path must stay inside the plugin")
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                if not isinstance(payload, dict) or not isinstance(payload.get("mcpServers"), dict):
+                    raise ValueError("MCP file must contain a mcpServers object")
+                mcp_servers = payload["mcpServers"]
+            except (OSError, ValueError) as exc:
+                self.error(f"Invalid mcpServers file: {exc}")
+                mcp_servers = {}
+        elif not isinstance(mcp_servers, dict):
+            self.error("mcpServers must be an object or package-relative JSON file")
+            mcp_servers = {}
+        # All downstream checks consume one shape, without changing files on disk.
+        self.manifest["mcpServers"] = mcp_servers
 
         # Required fields
         for field in ['name', 'version']:
@@ -299,7 +324,9 @@ class PluginTestSuite:
         mcp_servers = self.manifest.get('mcpServers', {})
         if mcp_servers:
             for server_name, config in mcp_servers.items():
-                if 'command' not in config:
+                if not isinstance(config, dict):
+                    self.error(f"MCP server '{server_name}' must be an object")
+                elif 'command' not in config and 'url' not in config:
                     self.error(f"MCP server '{server_name}' missing 'command' field")
 
         self.log(f"Manifest OK: {self.agent_count} agents, {self.skill_count} skills")
