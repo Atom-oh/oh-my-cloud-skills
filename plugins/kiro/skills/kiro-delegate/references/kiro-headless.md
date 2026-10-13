@@ -209,6 +209,15 @@ the **worktree isolation + capture + scope_guard** path load-bearing for that on
    an absolute read outside it. 3-5 remain the actual guarantee for what reaches the
    main tree even if a write slips past the hook.
 
+   The guard checks every path in the payload: V2's `fs_write` sends `tool_input.path`,
+   and V2's `fs_read` sends `tool_input.operations[]` (each `path`, or `image_paths` in
+   Image mode). It refuses a path that starts with `~` or contains `$`, because kiro-cli
+   expands both. It also refuses a payload with no path or with a path-like key it does
+   not read, and it writes the reason to stderr. Before the 2026-10 fix, the guard read
+   only `tool_input.path`: every V2 read passed, and so did `~/…` and `$HOME/…` paths for
+   reads and writes (measured on kiro-cli 2.29.1). Agent files generated before the fix
+   fail `verify-agents`; regenerate them with `write-agents --force`.
+
 **What 1-6 do NOT cover: `execute_bash`.** All of the above governs `fs_write`/`fs_read`
 and the main tree only. `execute_bash` is **off by default** in
 `.kiro/agents/kiro-implementer.json` (`kiro_setup.py write-agents`) — `/kiro:setup`
@@ -244,7 +253,8 @@ warning; that warning arrived right before the unguarded call ran, so it was nev
 real chance to object — `/kiro:review` now requires an explicit `--allow-unguarded`,
 which `commands/review.md` only passes after asking the user first via
 `AskUserQuestion`; (b) the guard is a kiro-cli hook, so it presumes kiro-cli honors
-`preToolUse` exit-2 blocking; (c) `_sanitized_env()` additionally strips
+`preToolUse` exit-2 blocking (V2 does; V3 honors it only when the hook writes to stderr,
+which the guard does); (c) `_sanitized_env()` additionally strips
 credential-shaped env vars from the reviewer's process env. Treat authorship trust as
 defense-in-depth on top of the guard, not the other way around.
 

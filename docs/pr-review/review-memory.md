@@ -21,6 +21,8 @@ review runs. Older detail is in
   commit/push. Scanner diagnostics must not echo the matched secret (PR #158–159).
 - Trace all consumers when changing a data shape or shared rendering behavior;
   generated/shared code can still introduce a real defect (PR #163).
+- Validate every exempted path key at each payload level. A top-level `image_paths`
+  exemption without collection allowed an outside path alongside an inside decoy (PR #256).
 
 ## Known false-positive patterns (conditions to verify, not exemptions)
 
@@ -48,6 +50,10 @@ review runs. Older detail is in
 - Review the full control/data path before inferring failure from an isolated line:
   root normalization, defaults, overrides, named modes and path-scoped commits matter.
   Lack of a new trust boundary is a question to investigate, not a blanket dismissal.
+- Correcting a guard call-site count is not evidence of removing a hook; base has
+  three `_GUARD_CMD` call sites (PR #256).
+- Temporary-directory cleanup in Kiro guard fixtures follows an existing test
+  convention; verify a changed exposure before making it blocking (PR #256).
 
 ## Panel-cell judgment quality (historical carry-forward)
 
@@ -56,6 +62,6 @@ for automatic roster changes. The current host updates them only from verified e
 
 | cell | unsupported | total findings | last |
 |---|---|---|---|
-| kiro-opus-full | 18 | 103 | PR #163 |
+| kiro-opus-full | 20 | 107 | PR #256 |
 | kiro-gpt-full | 10 | 26 | PR #158 |
 | codex-full | 8 | 27 | PR #163 |

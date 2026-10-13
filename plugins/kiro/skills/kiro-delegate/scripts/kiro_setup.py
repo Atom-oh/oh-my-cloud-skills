@@ -56,8 +56,27 @@ _AUTH_RE = re.compile(
 # existing file, realpath resolves the existing ancestry, so a write THROUGH an
 # out-pointing symlinked directory is still caught. Kept as a single -c one-liner because
 # it's embedded in the generated .kiro/agents JSON. Shared verbatim across both tool
-# types (the check only inspects tool_input.path, which every fs_* tool call carries) and
-# both agents (implementer, reviewer) — one path-confinement guard, four call sites.
+# types and both agents (implementer, reviewer) — one path-confinement guard, three call
+# sites.
+#
+# Every path in the payload is checked, and the call is refused unless at least one path
+# was found and all of them resolve inside the cwd. fs_write carries `tool_input.path`,
+# but the V2 engine's fs_read (kiro-cli 2.29.1) carries `tool_input.operations[]`, each
+# with its own `path` (or `image_paths` in Image mode) and no top-level path. The earlier
+# guard read only `tool_input.path`, saw "", resolved it to the cwd and allowed every
+# read, including absolute paths outside the worktree. An operation with no path, a
+# non-list `operations`, or a non-string path is refused rather than guessed at.
+#
+# kiro-cli expands `~` and environment variables in tool paths before opening them, so
+# `~/.aws/credentials` and `$HOME/.aws/credentials` reached the home directory while this
+# guard resolved them as relative names inside the cwd (measured on 2.29.1, reads and
+# writes alike). Rather than reimplement the CLI's expansion rules (`~user`, unset
+# variables), any path that starts with `~` or contains `$` is refused.
+# A path-like key the guard does not read (`file_path`, `paths`, ...) is refused too, so
+# a CLI field alias cannot carry a path past the check.
+#
+# A refusal writes its reason to stderr. The V3 engine ignores exit 2 when stderr is
+# empty and runs the tool anyway (measured on 2.29.1); V2 blocks either way.
 #
 # `python3 -I` (isolated mode), NOT bare `python3 -c`: this guard RUNS with cwd = the
 # worktree — a checkout of HEAD in a repo this plugin's own threat model treats as
@@ -70,10 +89,22 @@ _AUTH_RE = re.compile(
 # import-hijack path entirely; it changes nothing else about this one-liner's behavior.
 _GUARD_CMD = (
     "python3 -I -c \"import json,sys,os; d=json.load(sys.stdin); "
-    "p=(d.get('tool_input') or {}).get('path',''); "
+    "i=d.get('tool_input'); i=i if isinstance(i,dict) else {}; "
+    "o=i.get('operations',[]); o=o if isinstance(o,list) else [None]; "
+    "g=lambda v: v if isinstance(v,list) else [None]; "
+    "f=lambda e: (([e['path']] if 'path' in e else []) + g(e.get('image_paths',[]))) "
+    "if isinstance(e,dict) else [None]; "
+    "z=lambda e: [None] if any('path' in str(k).lower() and k not in ('path','image_paths') "
+    "for k in e) else []; "
+    "ps=f(i) + z(i) "
+    "+ [p for e in o for p in ((f(e) + (z(e) if isinstance(e,dict) else [])) or [None])]; "
     "wt=os.path.realpath(os.getcwd()); "
-    "t=os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); "
-    "sys.exit(0 if t==wt or t.startswith(wt+os.sep) else 2)\""
+    "r=lambda p: os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); "
+    "ok=bool(ps) and all(isinstance(p,str) and p and p[0]!='~' and '$' not in p "
+    "and chr(0) not in p and (r(p)==wt or r(p).startswith(wt+os.sep)) for p in ps); "
+    "ok or sys.stderr.write('kiro guard: refused a path outside the working directory, "
+    "or a payload without a checkable path'+chr(10)); "
+    "sys.exit(0 if ok else 2)\""
 )
 
 
