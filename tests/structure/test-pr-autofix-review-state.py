@@ -218,8 +218,26 @@ class ReviewStateTests(unittest.TestCase):
 import json, os, pathlib, sys
 path = pathlib.Path(os.environ["TEST_LIVE_PR"])
 if pathlib.Path(sys.argv[0]).name == "git":
-    if sys.argv[1:] == ["rev-parse", "--verify", "HEAD"]:
+    args = sys.argv[1:]
+    while args and args[0] in ("--no-pager", "-c", "-C"):
+        args = args[1:] if args[0] == "--no-pager" else args[2:]
+    if args == ["rev-parse", "--verify", "HEAD"]:
         print(os.environ.get("TEST_LOCAL_HEAD", "a" * 40))
+    elif args == ["rev-parse", "--is-shallow-repository"]:
+        print("false")
+    elif args[:2] == ["rev-parse", "--verify"] and args[2].endswith("^{commit}"):
+        print(args[2].removesuffix("^{commit}"))
+    elif args[0] == "fetch":
+        if os.environ.get("TEST_DIFF_FAIL"):
+            sys.exit(1)
+    elif args[0] == "merge-base":
+        print("b" * 40)
+    elif args[0] == "diff":
+        print(os.environ.get("TEST_DIFF", "fixture diff"))
+        if os.environ.get("TEST_HEAD_RACE"):
+            data = json.loads(path.read_text())
+            data["headRefOid"] = "d" * 40
+            path.write_text(json.dumps(data))
     else:
         os.execv(os.environ["TEST_REAL_GIT"], [os.environ["TEST_REAL_GIT"], *sys.argv[1:]])
 elif sys.argv[1:3] == ["repo", "view"]:

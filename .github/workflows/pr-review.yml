@@ -29,6 +29,7 @@ jobs:
       ANTHROPIC_BEDROCK_BASE_URL: https://bedrock-runtime.ap-northeast-2.amazonaws.com
       AWS_REGION: ap-northeast-2
       REVIEW_HEAD: ${{ github.event.pull_request.head.sha }}
+      REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
       REVIEW_BASE_REF: ${{ github.event.pull_request.base.ref }}
     steps:
       # Never execute PR-head code on this credentialed review runner.
@@ -81,7 +82,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr diff "$PR_NUMBER" > "$pr_work_dir/pr-diff-raw.txt"
+          set -euo pipefail
+          python3 plugins/co-agent/skills/pr-autofix/scripts/pr_diff.py \
+            --repo "$GITHUB_WORKSPACE" --base "$REVIEW_BASE_SHA" --head "$REVIEW_HEAD" \
+            --verify-base-checkout --output "$pr_work_dir/pr-diff-raw.txt"
           awk '
             /^diff --git/ {
               path = substr($3, 3)
