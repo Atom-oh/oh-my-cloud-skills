@@ -5,6 +5,7 @@ import os
 import sys
 import re
 import argparse
+import runpy
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
@@ -204,6 +205,31 @@ class PluginTestSuite:
         except json.JSONDecodeError as e:
             self.error(f"Invalid JSON in plugin.json: {e}")
             return
+        if not isinstance(self.manifest, dict):
+            self.error("plugin.json must contain a JSON object")
+            self.manifest = None
+            return
+
+        mcp_servers = self.manifest.get("mcpServers", {})
+        if isinstance(mcp_servers, str):
+            source_path = self.plugin_dir / mcp_servers
+            path = source_path.resolve()
+            try:
+                if (not mcp_servers.startswith("./") or
+                        self.plugin_dir.resolve() not in path.parents or source_path.is_symlink()):
+                    raise ValueError("MCP path must stay inside the plugin")
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                if not isinstance(payload, dict) or not isinstance(payload.get("mcpServers"), dict):
+                    raise ValueError("MCP file must contain a mcpServers object")
+                mcp_servers = payload["mcpServers"]
+            except (OSError, ValueError) as exc:
+                self.error(f"Invalid mcpServers file: {exc}")
+                mcp_servers = {}
+        elif not isinstance(mcp_servers, dict):
+            self.error("mcpServers must be an object or package-relative JSON file")
+            mcp_servers = {}
+        # All downstream checks consume one shape, without changing files on disk.
+        self.manifest["mcpServers"] = mcp_servers
 
         # Required fields
         for field in ['name', 'version']:
@@ -298,8 +324,11 @@ class PluginTestSuite:
         mcp_servers = self.manifest.get('mcpServers', {})
         if mcp_servers:
             for server_name, config in mcp_servers.items():
-                if 'command' not in config:
-                    self.error(f"MCP server '{server_name}' missing 'command' field")
+                if not isinstance(config, dict):
+                    self.error(f"MCP server '{server_name}' must be an object")
+                elif not any(isinstance(config.get(key), str) and config[key].strip()
+                             for key in ("command", "url")):
+                    self.error(f"MCP server '{server_name}' missing command or url")
 
         self.log(f"Manifest OK: {self.agent_count} agents, {self.skill_count} skills")
 
@@ -690,6 +719,19 @@ def main():
     plugins_dir = project_root / 'plugins'
 
     plugins = ["aws-content-plugin", "aws-ops-plugin", "kiro-power-converter", "co-agent", "agentcore-creator", "project-init", "kiro", "token-saver", "pr-dash"]
+    catalog_path = project_root / "hosts/catalog.json"
+    if catalog_path.is_file():
+        try:
+            payload = json.loads(catalog_path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                raise ValueError("catalog must contain a JSON object")
+            catalog = payload["plugins"]
+            discovered = {path.parents[1].name for path in plugins_dir.glob("*/.claude-plugin/plugin.json")}
+            if not isinstance(catalog, dict) or not catalog or set(catalog) != discovered:
+                raise ValueError("host catalog must cover every source plugin exactly once")
+            plugins = sorted(catalog)
+        except (OSError, ValueError, KeyError) as exc:
+            parser.error(f"Invalid host catalog: {exc}")
     if args.plugin:
         if args.plugin not in plugins:
             print(f"Unknown plugin: {args.plugin}")
@@ -732,6 +774,21 @@ def main():
     if not version_ok:
         all_passed = False
         total_errors += 1
+
+    if (project_root / "hosts/catalog.json").is_file() and not args.plugin:
+        package_checks = runpy.run_path(str(Path(__file__).with_name("test-host-packages.py")))
+        for error in package_checks["validate"](project_root):
+            print(f"  ERROR: {error}")
+            total_errors += 1
+            all_passed = False
+        for plugin_name in plugins:
+            suite = PluginTestSuite(project_root / "packages/claude" / plugin_name, args.verbose)
+            suite.run_all()
+            total_errors += len(suite.errors)
+            for error in suite.errors:
+                print(f"  ERROR: packaged Claude {plugin_name}: {error}")
+            if suite.errors:
+                all_passed = False
 
     # Final summary
     print(f"\n{'=' * 50}")
