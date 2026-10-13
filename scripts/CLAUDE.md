@@ -27,6 +27,13 @@ The manifest validators load `test-host-packages.py` via their own `__file__`
 directory using `runpy`. `--root` supplies package data only; it never selects
 Python code from the PR tree.
 
+Host consistency checks do not prove equivalence to maintained source procedures;
+the isolated head generator freshness job owns that check. Unfiltered validators
+check complete installed packages; `--plugin` checks are source-only iteration aids.
+Policy and agent YAML are parsed structurally using the assembler's canonical
+subset. Multi-line scalars, duplicate keys and flow mappings are rejected instead
+of interpreted by line matches.
+
 Source-mirror discovery does not authorize a Codex publication exception or source fork:
 
 | Constant | Script | Means |

@@ -326,7 +326,8 @@ class PluginTestSuite:
             for server_name, config in mcp_servers.items():
                 if not isinstance(config, dict):
                     self.error(f"MCP server '{server_name}' must be an object")
-                elif 'command' not in config and 'url' not in config:
+                elif not any(isinstance(config.get(key), str) and config[key].strip()
+                             for key in ("command", "url")):
                     self.error(f"MCP server '{server_name}' missing command or url")
 
         self.log(f"Manifest OK: {self.agent_count} agents, {self.skill_count} skills")

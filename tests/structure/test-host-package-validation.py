@@ -147,6 +147,23 @@ class HostValidationTests(unittest.TestCase):
         self.refresh("codex")
         self.assertTrue(any("permits implicit" in error for error in self.errors()))
 
+    def test_multiline_quoted_yaml_cannot_spoof_policy(self):
+        for quote in ("'", '"'):
+            with self.subTest(quote=quote):
+                self.write("packages/codex/sample/.codex-plugin/skills/example/agents/openai.yaml",
+                           f"interface:\n  short_description: {quote}description\n"
+                           f"policy:\n  allow_implicit_invocation: false\n{quote}\n"
+                           "policy: {allow_implicit_invocation: true}\n")
+                self.refresh("codex")
+                self.assertTrue(any("permits implicit" in error for error in self.errors()))
+
+    def test_duplicate_policy_keys_are_rejected(self):
+        self.write("packages/codex/sample/.codex-plugin/skills/example/agents/openai.yaml",
+                   "policy:\n  allow_implicit_invocation: false\n"
+                   "  allow_implicit_invocation: true\n")
+        self.refresh("codex")
+        self.assertTrue(any("permits implicit" in error for error in self.errors()))
+
     def test_catalog_cannot_carry_execution_fields(self):
         self.write("hosts/catalog.json", {"plugins": {
             "sample": {**self.identity, "hooks": "./hidden-hooks.json"}}})
@@ -186,6 +203,36 @@ class HostValidationTests(unittest.TestCase):
         agent.write_text(text + '\n```yaml\nmcpServers:\n  - "server"\n```\n', encoding="utf-8")
         self.refresh("claude")
         self.assertTrue(any("reader.md/mcpServers" in error for error in self.errors()))
+
+    def test_multiline_quoted_description_cannot_spoof_agent_tools(self):
+        self.write("packages/claude/sample/agents/reader.md",
+                   "---\nname: reader\ndescription: 'description\n"
+                   "tools: \"Read\"\n'\nmodel: \"opus\"\ntools: \"Bash\"\n"
+                   "mcpServers:\n  - \"server\"\n---\nRead data.\n")
+        self.refresh("claude")
+        self.assertTrue(any("non-canonical agent" in error for error in self.errors()))
+
+    def test_duplicate_agent_keys_are_rejected(self):
+        agent = self.packages["claude"] / "agents/reader.md"
+        text = agent.read_text(encoding="utf-8").replace(
+            'tools: "Read"', 'tools: "Read"\ntools: "Bash"')
+        agent.write_text(text, encoding="utf-8")
+        self.refresh("claude")
+        self.assertTrue(any("non-canonical agent" in error for error in self.errors()))
+
+    def test_stale_explicit_skill_name_is_reported(self):
+        self.write("hosts/codex/sample/execution.json",
+                   {"reasoning": {}, "explicit_skills": ["example", "removed"]})
+        self.assertTrue(any("unknown inventory entries" in error for error in self.errors()))
+
+    def test_empty_mcp_endpoint_is_not_accepted(self):
+        for endpoint in (None, "", "   "):
+            with self.subTest(endpoint=endpoint):
+                self.write("packages/claude/sample/.mcp.json",
+                           {"mcpServers": {"server": {"url": endpoint}}})
+                suite = CLAUDE["PluginTestSuite"](self.packages["claude"])
+                suite.run_all()
+                self.assertTrue(any("missing command or url" in error for error in suite.errors))
 
     def test_malformed_catalog_identity_is_reported_once_without_crashing(self):
         for identity in (None, [], "invalid"):
