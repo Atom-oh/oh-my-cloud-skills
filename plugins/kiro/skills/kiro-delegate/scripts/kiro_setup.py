@@ -6,9 +6,11 @@ Usage:
   kiro_setup.py probe [--timeout N]                  # READY | AUTH | NO_INGEST | TIMEOUT | ERROR | ABSENT
   kiro_setup.py list-models                          # one model id per line (best-effort)
   kiro_setup.py write-agents [--root DIR] [--force] [--enable-bash]
-                                                      # write .kiro/agents/kiro-{implementer,reviewer}.json
+                                                      # write .kiro/agents/kiro-{implementer,reviewer,websearch}.json
                                                       # --enable-bash grants the implementer execute_bash
-                                                      # (off by default — see _implementer_agent's docstring)
+                                                      # (off by default — see _implementer_agent's docstring);
+                                                      # an unedited plugin-generated V2 implementer/reviewer
+                                                      # file is upgraded without --force
   kiro_setup.py verify-agents [--root DIR]            # confirm kiro-implementer.json is plugin-generated
                                                       # (not tampered) before the pipeline runs its hook;
                                                       # exit 0 ok · 1 mismatch/tampered · 2 missing
@@ -78,6 +80,22 @@ _AUTH_RE = re.compile(
 # A refusal writes its reason to stderr. The V3 engine ignores exit 2 when stderr is
 # empty and runs the tool anyway (measured on 2.29.1); V2 blocks either way.
 #
+# The V3 engine's payloads (measured on 2.29.1): `read_file` {path, offset, limit},
+# `list_directory` {path, ...}, `fs_write` {path, text} and `str_replace` {path, ...}
+# carry a top-level `path`, which the same check covers. The universal-format `read`
+# matcher also routes V3's search tools here, and those carry no path at all:
+# `grep_search` {query, includePattern, excludePattern, ...} and `file_search`
+# {query, excludePattern, ...}. V3 itself already confines both to the workspace (an
+# outside includePattern finds nothing, and symlinks are not followed), so allowing
+# them here is defense in depth on top of that confinement, not a replacement for it.
+# Only those two tool names may pass without a path, and only when the payload has no
+# path-like key at all. Their glob patterns (checked whether or not a path is present)
+# must be None or a relative string: no leading `/`, `\` or `~`, no `$`, NUL or `..`,
+# no drive prefix such as `C:`, and nothing os.path.isabs accepts. A pattern of any
+# other type is refused. Every other path-less payload (`introspect`, `tool_search`,
+# ...) is still refused. The backslash is written as chr(92) so the one-liner needs no
+# shell or JSON escaping.
+#
 # `python3 -I` (isolated mode), NOT bare `python3 -c`: this guard RUNS with cwd = the
 # worktree — a checkout of HEAD in a repo this plugin's own threat model treats as
 # untrusted (that's the whole reason capture-diff/scope_guard/these guards exist).
@@ -98,6 +116,35 @@ _GUARD_CMD = (
     "for k in e) else []; "
     "ps=f(i) + z(i) "
     "+ [p for e in o for p in ((f(e) + (z(e) if isinstance(e,dict) else [])) or [None])]; "
+    "t=isinstance(d.get('tool_input'),dict) and d.get('tool_name') in ('grep_search','file_search'); "
+    "s=t and not ps and not any(k in i for k in ('path','image_paths','operations')); "
+    "q=lambda v: v is None or (isinstance(v,str) and not os.path.isabs(v) "
+    "and v[:1] not in ('/',chr(92),'~') and '$' not in v and chr(0) not in v "
+    "and '..' not in v and not (v[1:2]==':' and v[:1].isalpha())); "
+    "wt=os.path.realpath(os.getcwd()); "
+    "r=lambda p: os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); "
+    "ok=(s or (bool(ps) and all(isinstance(p,str) and p and p[0]!='~' and '$' not in p "
+    "and chr(0) not in p and (r(p)==wt or r(p).startswith(wt+os.sep)) for p in ps))) "
+    "and (not t or all(q(i.get(k)) for k in ('includePattern','excludePattern'))); "
+    "ok or sys.stderr.write('kiro guard: refused a path outside the working directory, "
+    "or a payload without a checkable path'+chr(10)); "
+    "sys.exit(0 if ok else 2)\""
+)
+
+# The guard embedded in the previous plugin-generated V2 agent files (before the V3
+# search-tool rule above). Kept verbatim only so write_agents can recognize such a file
+# as plugin-generated and upgrade it in place; it is never written to a new file.
+_LEGACY_V2_GUARD_CMD = (
+    "python3 -I -c \"import json,sys,os; d=json.load(sys.stdin); "
+    "i=d.get('tool_input'); i=i if isinstance(i,dict) else {}; "
+    "o=i.get('operations',[]); o=o if isinstance(o,list) else [None]; "
+    "g=lambda v: v if isinstance(v,list) else [None]; "
+    "f=lambda e: (([e['path']] if 'path' in e else []) + g(e.get('image_paths',[]))) "
+    "if isinstance(e,dict) else [None]; "
+    "z=lambda e: [None] if any('path' in str(k).lower() and k not in ('path','image_paths') "
+    "for k in e) else []; "
+    "ps=f(i) + z(i) "
+    "+ [p for e in o for p in ((f(e) + (z(e) if isinstance(e,dict) else [])) or [None])]; "
     "wt=os.path.realpath(os.getcwd()); "
     "r=lambda p: os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); "
     "ok=bool(ps) and all(isinstance(p,str) and p and p[0]!='~' and '$' not in p "
@@ -108,95 +155,125 @@ _GUARD_CMD = (
 )
 
 
+_IMPLEMENTER_DESCRIPTION = ("Implements tasks handed off by the /kiro:delegate pipeline, inside a "
+                            "throwaway git worktree the host controls.")
+_IMPLEMENTER_PROMPT = ("You implement exactly the task described in the prompt you're given, using "
+                       "the requirements/design/tasks spec files as context (read them with "
+                       "fs_read). Make the minimal change that satisfies the task. Do not touch "
+                       "files outside the task's declared file set. Do not run git commit — the "
+                       "host commits after review.")
+_REVIEWER_DESCRIPTION = ("Reviews a diff for the /kiro:review command and the pre-commit hook. "
+                         "Read-only — never writes; reads only within its launch directory "
+                         "(the isolated temp dir holding the diff).")
+_REVIEWER_PROMPT = ("You are a strict but fair code reviewer. Read the diff you're pointed to "
+                    "with fs_read and report findings as instructed in the prompt. Never modify "
+                    "any file. You can only read files inside your working directory.")
+
+
+def _guard_hook(index, matcher):
+    """One preToolUse entry in kiro-cli's universal agent format (2.29.1), exactly as
+    `kiro-cli agent upgrade` emits it, so the upgrade reports the generated files as
+    already universal. The V3 engine refuses the older V2 format (exit 4); the V2 engine
+    loads this format too."""
+    return {"name": f"preToolUse-{index}", "trigger": "preToolUse", "matcher": matcher,
+            "action": {"type": "command", "command": _GUARD_CMD}, "timeout": 10}
+
+
 def _implementer_agent(enable_bash):
     """`enable_bash` grants execute_bash — OFF by default. worktree/capture-diff/
     scope_guard only guarantee what reaches the main git tree; they do nothing about a
     shell command's host-side side effects (reading credentials, deleting files outside
     the worktree, network calls) while it runs. Granting execute_bash is a separate trust
     decision about kiro-cli itself, made explicitly via `/kiro:setup`'s AskUserQuestion —
-    never silently defaulted on."""
-    tools = ["fs_read", "fs_write"] + (["execute_bash"] if enable_bash else [])
+    never silently defaulted on.
+
+    Universal agent format, the shape `kiro-cli agent upgrade` produces from the V2
+    file: `tools` uses the universal names (`read`, `shell`, `write`, in that order),
+    `allowedTools` keeps the V2 names, and `permissions.rules` allows the same
+    capabilities."""
     return {
-    "name": "kiro-implementer",
-    "description": "Implements tasks handed off by the /kiro:delegate pipeline, inside a "
-                    "throwaway git worktree the host controls.",
-    "prompt": "You implement exactly the task described in the prompt you're given, using "
-              "the requirements/design/tasks spec files as context (read them with "
-              "fs_read). Make the minimal change that satisfies the task. Do not touch "
-              "files outside the task's declared file set. Do not run git commit — the "
-              "host commits after review.",
-    "tools": tools,
-    "allowedTools": tools,
-    # kiro-cli's agent-config hook schema is FLAT per preToolUse entry
-    # ({"matcher", "command"}) — NOT Claude Code's nested {"matcher", "hooks":
-    # [{"type","command"}]} shape. The nested shape validates as a no-op in older
-    # kiro-cli releases but kiro-cli 2.11.1's `agent validate` rejects it ("missing
-    # field `command`") and kiro-cli silently falls back to its default agent, which
-    # has no auto-approval in headless mode — every fs_write/fs_read/execute_bash call
-    # then gets rejected with "no user to approve". Confirmed against the installed
-    # kiro-cli via `kiro-cli agent validate`: flat validates clean, nested doesn't.
-    "hooks": {
-        "preToolUse": [
-            {
-                "matcher": "fs_write",
-                # Defense-in-depth on top of the host's worktree.py capture-diff +
-                # scope_guard.py (the load-bearing guarantee — see
-                # references/kiro-headless.md): refuse a write that RESOLVES
-                # outside the cwd the implementer was launched in (the worktree).
-                # realpath-based, not string-based: a plain startswith('/')/'..'
-                # check misses (a) a symlink inside the worktree pointing out of
-                # it — the write path LOOKS relative but lands outside — and
-                # (b) Windows drive/UNC absolute paths, which isabs() catches but
-                # a '/'-prefix check doesn't. Escapes that slip past this still
-                # can't reach the main tree (the host only ever applies the
-                # CAPTURED, scope-guarded diff) — this hook just narrows the
-                # blast radius earlier.
-                "command": _GUARD_CMD
-            },
-            {
-                "matcher": "fs_read",
-                # Same realpath containment, applied to reads. Without this, a
-                # prompt-injection payload reachable from the task prompt or spec
-                # content could direct the implementer to fs_read an absolute
-                # path outside the worktree (credentials, SSH keys) and have its
-                # contents surface in Kiro's response — a confidentiality leak
-                # that execute_bash-off does nothing to prevent. The pipeline
-                # copies spec files INTO the worktree specifically so the
-                # implementer never needs an out-of-worktree absolute read.
-                "command": _GUARD_CMD
-            }
-        ]
-    }
+        "name": "kiro-implementer",
+        "description": _IMPLEMENTER_DESCRIPTION,
+        "prompt": _IMPLEMENTER_PROMPT,
+        "tools": ["read"] + (["shell"] if enable_bash else []) + ["write"],
+        "allowedTools": ["fs_read", "fs_write"] + (["execute_bash"] if enable_bash else []),
+        "hooks": [
+            # `write` covers fs_write/str_replace and V3's `code` tool. Defense-in-depth
+            # on top of the host's worktree.py capture-diff + scope_guard.py (the
+            # load-bearing guarantee — see references/kiro-headless.md): refuse a write
+            # that RESOLVES outside the cwd the implementer was launched in (the
+            # worktree). realpath-based, not string-based: a plain startswith('/')/'..'
+            # check misses (a) a symlink inside the worktree pointing out of it — the
+            # write path LOOKS relative but lands outside — and (b) Windows drive/UNC
+            # absolute paths, which isabs() catches but a '/'-prefix check doesn't.
+            # Escapes that slip past this still can't reach the main tree (the host
+            # only ever applies the CAPTURED, scope-guarded diff) — this hook just
+            # narrows the blast radius earlier.
+            _guard_hook(0, "write"),
+            # `read` covers fs_read/read_file/list_directory and V3's grep, glob, code,
+            # introspect and tool_search tools. Same realpath containment, applied to
+            # reads. Without this, a prompt-injection payload reachable from the task
+            # prompt or spec content could direct the implementer to read an absolute
+            # path outside the worktree (credentials, SSH keys) and have its contents
+            # surface in Kiro's response — a confidentiality leak that execute_bash-off
+            # does nothing to prevent. The pipeline copies spec files INTO the worktree
+            # specifically so the implementer never needs an out-of-worktree read.
+            _guard_hook(1, "read"),
+        ],
+        "permissions": {"rules": [{"capability": "fs_read", "effect": "allow"},
+                                  {"capability": "fs_write", "effect": "allow"}]
+                                 + ([{"capability": "shell", "effect": "allow"}]
+                                    if enable_bash else [])},
     }
 
 
-# Reviewer's fs_read guard: the same _GUARD_CMD above, applied to reads. kiro_review.py
+# Reviewer's read guard: the same _GUARD_CMD above, applied to reads. kiro_review.py
 # runs the reviewer with cwd = an isolated temp dir containing ONLY the diff file, so
-# confining fs_read to the resolved cwd is exactly the "expose only the diff" allowlist:
-# a prompt-injection payload in an untrusted diff that tells the reviewer to fs_read
+# confining reads to the resolved cwd is exactly the "expose only the diff" allowlist:
+# a prompt-injection payload in an untrusted diff that tells the reviewer to read
 # ~/.aws/credentials (or any absolute path / ../ escape / symlink out) gets exit 2 at the
 # TOOL layer instead of relying on prose cautions. This is the technical mitigation for
-# the standing /kiro:review path, which review.on_commit=false never protected.
+# the standing /kiro:review path, which review.on_commit=false never protected. Same
+# universal format as _implementer_agent.
 _REVIEWER_AGENT = {
     "name": "kiro-reviewer",
-    "description": "Reviews a diff for the /kiro:review command and the pre-commit hook. "
-                    "Read-only — never writes; reads only within its launch directory "
-                    "(the isolated temp dir holding the diff).",
-    "prompt": "You are a strict but fair code reviewer. Read the diff you're pointed to "
-              "with fs_read and report findings as instructed in the prompt. Never modify "
-              "any file. You can only read files inside your working directory.",
-    "tools": ["fs_read"],
+    "description": _REVIEWER_DESCRIPTION,
+    "prompt": _REVIEWER_PROMPT,
+    "tools": ["read"],
     "allowedTools": ["fs_read"],
-    # Flat preToolUse shape — see the note above _implementer_agent's hooks block.
-    "hooks": {
-        "preToolUse": [
-            {
-                "matcher": "fs_read",
-                "command": _GUARD_CMD
-            }
-        ]
-    }
+    "hooks": [_guard_hook(0, "read")],
+    "permissions": {"rules": [{"capability": "fs_read", "effect": "allow"}]},
 }
+
+
+def _legacy_v2_implementer_agent(enable_bash):
+    """The kiro-implementer file the plugin wrote before the universal format: V2 tool
+    names, the flat V2 hook map ({"preToolUse": [{"matcher", "command"}]}) and
+    _LEGACY_V2_GUARD_CMD. Recognized by write_agents only, so an unedited
+    plugin-generated V2 file is upgraded without --force. Never written."""
+    tools = ["fs_read", "fs_write"] + (["execute_bash"] if enable_bash else [])
+    return {
+        "name": "kiro-implementer",
+        "description": _IMPLEMENTER_DESCRIPTION,
+        "prompt": _IMPLEMENTER_PROMPT,
+        "tools": tools,
+        "allowedTools": tools,
+        "hooks": {"preToolUse": [{"matcher": "fs_write", "command": _LEGACY_V2_GUARD_CMD},
+                                 {"matcher": "fs_read", "command": _LEGACY_V2_GUARD_CMD}]},
+    }
+
+
+def _legacy_v2_reviewer_agent():
+    """The kiro-reviewer file the plugin wrote before the universal format. See
+    _legacy_v2_implementer_agent."""
+    return {
+        "name": "kiro-reviewer",
+        "description": _REVIEWER_DESCRIPTION,
+        "prompt": _REVIEWER_PROMPT,
+        "tools": ["fs_read"],
+        "allowedTools": ["fs_read"],
+        "hooks": {"preToolUse": [{"matcher": "fs_read", "command": _LEGACY_V2_GUARD_CMD}]},
+    }
 
 
 # Web-search delegation agent: lets a Claude Code session WITHOUT the WebSearch tool
@@ -210,6 +287,10 @@ _REVIEWER_AGENT = {
 # kiro_websearch.py refuses to run unless the on-disk file matches this dict exactly
 # (same tamper defense as kiro_review.py's _reviewer_agent_ok — a hand-edited file
 # that quietly adds execute_bash must not be trusted).
+#
+# Unlike the two agents above, this one stays in the V2 format: kiro_websearch.py runs
+# on the default V2 engine, and `kiro-cli agent upgrade` would add a `web` (fetch URL)
+# tool next to `web_search`, widening the agent's tool list.
 _WEBSEARCH_AGENT = {
     "name": "kiro-websearch",
     "description": "Answers one-shot web search queries for the kiro plugin's "
@@ -229,10 +310,13 @@ def probe(timeout=90, model=None, effort=None):
     sentinel = "KIRO_SETUP_PROBE"
     argv = ["kiro-cli", "chat", "--no-interactive", "--trust-tools=", "--wrap", "never",
             f"Reply with exactly this token and nothing else: {sentinel}"]
+    # The V3 engine, which the delegate and review paths run on (websearch stays on the
+    # default V2 engine). An invalid --model fails on V3 with exit 1 ("The model '<id>'
+    # is not available") instead of a silent substitution.
+    argv += ["--agent-engine", "v3"]
     if model:
         argv += ["--model", model]
     else:
-        # The default (V2) engine, the one every plugin call runs on — not `--v3`.
         argv += ["--mode", "default"]
     if effort:
         argv += ["--effort", effort]
@@ -377,6 +461,13 @@ def write_agents(root, force=False, enable_bash=False):
     os.makedirs(d, exist_ok=True)
     written = []
     skip_bad = []
+    # An existing file equal to a V2-format file this plugin generated earlier (which
+    # the V3 engine refuses) is upgraded in place without --force: it holds no
+    # user edits to preserve. The upgrade keeps that file's own execute_bash choice;
+    # --enable-bash, like any config change to an existing file, still needs --force.
+    legacy = {"kiro-implementer.json": [(_legacy_v2_implementer_agent(b), _implementer_agent(b))
+                                        for b in (False, True)],
+              "kiro-reviewer.json": [(_legacy_v2_reviewer_agent(), _REVIEWER_AGENT)]}
     for name, spec in (("kiro-implementer.json", _implementer_agent(enable_bash)),
                         ("kiro-reviewer.json", _REVIEWER_AGENT),
                         ("kiro-websearch.json", _WEBSEARCH_AGENT)):
@@ -399,7 +490,18 @@ def write_agents(root, force=False, enable_bash=False):
                   f"root) — writing here would land in the wrong place. "
                   f"Remove/replace it before running write-agents again.", file=sys.stderr)
             return 2
+        upgrade = None
         if os.path.isfile(p) and not force:
+            try:
+                with open(p, encoding="utf-8") as f:
+                    current = json.load(f)
+            except (OSError, ValueError):
+                current = None
+            upgrade = next((new for old, new in legacy.get(name, []) if current == old), None)
+        if upgrade is not None:
+            spec = upgrade
+            print(f"upgraded (plugin-generated V2 agent): {p}")
+        elif os.path.isfile(p) and not force:
             # Still validate an existing file we're skipping — a PRIOR write-agents run
             # that hit a validation failure (e.g. kiro-cli was mid-upgrade and timed
             # out) already left a bad file on disk; without this, the natural recovery
@@ -539,11 +641,18 @@ def verify_agents(root):
         return 1
     # Compare against BOTH legitimate shapes (execute_bash off / on). Comparing the whole
     # dict (incl. the preToolUse hook command) means a tampered hook can't slip through.
+    # Only the universal format passes: the V3 engine refuses the older V2 format.
+    if any(got == _legacy_v2_implementer_agent(b) for b in (False, True)):
+        print(f"❌ {p} is a plugin-generated V2-format kiro-implementer agent, which the "
+              f"V3 engine refuses — re-run `kiro_setup.py write-agents` (no --force "
+              f"needed) to upgrade it in place before delegating", file=sys.stderr)
+        return 1
     if not any(got == _implementer_agent(b) for b in (False, True)):
-        print(f"❌ {p} does not match a plugin-generated kiro-implementer agent "
-              f"(tampered or hand-edited?) — regenerate with `kiro_setup.py write-agents "
-              f"--force` before delegating; the pipeline runs this agent's preToolUse hook",
-              file=sys.stderr)
+        print(f"❌ {p} does not match a plugin-generated kiro-implementer agent in the "
+              f"universal format — re-run `kiro_setup.py write-agents` (it upgrades an "
+              f"unedited plugin-generated V2 file in place); a tampered or hand-edited "
+              f"file needs `write-agents --force`. Do this before delegating; the pipeline "
+              f"runs this agent's preToolUse hook", file=sys.stderr)
         return 1
     # Shape match alone isn't enough: `write_agents` can write a file THAT IS the
     # generator's exact output and still have kiro-cli reject it (this function's

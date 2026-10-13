@@ -22,6 +22,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   discovery; cache inspection now covers both hosts.
 - Add ADR-027 and the trusted-base validator prerequisite for the marketplace
   path migration. Preserve project-init's upstream source apart from its version.
+- Run the kiro plugin's delegate (implementer) and review paths on kiro-cli's V3
+  engine (`--agent-engine v3`); websearch stays on the default V2 engine, because
+  upgrading its agent would add a `web` fetch tool. `kiro_setup.py write-agents` now
+  writes `kiro-implementer` and `kiro-reviewer` in kiro-cli 2.29.1's universal agent
+  format (the `kiro-cli agent upgrade` output, which both engines load; V3 refuses
+  the V2 format with exit 4). An unedited V2 file from the previous generator is
+  upgraded in place without `--force`, keeping its `execute_bash` choice; other
+  existing files still need `--force`. `verify-agents` and the reviewer check accept
+  only the universal shapes. The path guard also allows V3's path-less `grep_search`
+  and `file_search` when every include/exclude pattern is null or a relative string
+  without `~`, `$`, `..` or a drive prefix; other path-less calls stay refused, on
+  top of V3's own workspace confinement. The setup probe, all three review modes
+  (including Codex's tool-free review) and the documented implementer argv pass
+  `--agent-engine v3`. On V3 an invalid `--model` fails rather than being replaced,
+  the text log has no `Credits:` footer, so the delegation report omits credits,
+  and one user measured 1.5–2.7x more credits per short prompt than on V2.
 
 ### Added
 
@@ -56,12 +72,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   probe`, `kiro_review.py` and `kiro_websearch.py` now return an error naming
   `kiro-cli update`, and the new `kiro_run.py model-check <log>` lets the delegate
   agent reject such an attempt and fall back. kiro-cli 2.29.1 applies the flag.
-- Stop passing `--v3` to kiro-cli when no review model is configured. On kiro-cli
-  2.29.1 the V3 engine refuses the plugin's V2-format agent files (exit 4), so with the
-  default settings `/kiro:review` and the pre-commit and pre-push review hooks skipped
-  every review (fail-open) and the Codex review path returned `ERROR`. The setup probe
-  now tests the default engine as well. `kiro-headless.md` records the 2.29.1 flag
-  surface, `--output-format stream-json`, and what a move to V3 would change.
+- Fix kiro reviews with no review model configured. The plugin passed `--v3` only in
+  that case, and on kiro-cli 2.29.1 the V3 engine refuses the plugin's V2-format agent
+  files (exit 4), so with the default settings `/kiro:review` and the pre-commit and
+  pre-push review hooks skipped every review (fail-open) and the Codex review path
+  returned `ERROR`. Every review now selects V3 explicitly with universal-format
+  agents (see Changed). `kiro-headless.md` records the 2.29.1 flag surface and
+  `--output-format stream-json`.
 - Remove co-agent's `commands/pr-autofix.md` wrapper, which registered a second
   `co-agent:pr-autofix` entry beside the `pr-autofix` skill in Claude Code. The skill
   remains the single entry and is still invoked as `/co-agent:pr-autofix`.

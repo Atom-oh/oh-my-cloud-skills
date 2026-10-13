@@ -19,6 +19,7 @@ import kiro_codex
 import kiro_review
 import kiro_run
 import kiro_setup
+import kiro_websearch
 
 
 class CodexReviewTests(unittest.TestCase):
@@ -58,11 +59,12 @@ class CodexReviewTests(unittest.TestCase):
         self.assertEqual("selected-model", argv[argv.index("--model") + 1])
         self.assertEqual("max", argv[argv.index("--effort") + 1])
         self.assertEqual(57, timeout)
+        self.assertEqual("v3", argv[argv.index("--agent-engine") + 1])
         self.assertNotIn("--v3", argv)
         self.assertIn(json.dumps(payload), " ".join(argv))
-        for key in ("tools", "allowedTools", "resources"):
+        for key in ("tools", "allowedTools", "resources", "hooks"):
             self.assertEqual([], agent[key])
-        self.assertEqual({}, agent["hooks"])
+        self.assertEqual({"rules": []}, agent["permissions"])
         self.assertEqual({}, agent["mcpServers"])
         self.assertIs(False, agent["useLegacyMcpJson"])
         self.assertNotIn("UNRELATED_API_KEY", environment)
@@ -199,16 +201,18 @@ class CodexReviewTests(unittest.TestCase):
             self.assertEqual(("READY", ""), kiro_setup.probe(model="selected", effort="max"))
         argv = self.calls[0]
         self.assertIn("--trust-tools=", argv)
+        self.assertEqual("v3", argv[argv.index("--agent-engine") + 1])
         self.assertNotIn("--v3", argv)
         self.assertEqual("selected", argv[argv.index("--model") + 1])
         self.assertEqual("max", argv[argv.index("--effort") + 1])
 
-    def test_model_less_calls_stay_on_the_default_engine(self):
-        # V3 refuses the plugin's V2-format agents (exit 4) on kiro-cli 2.29.1, so a
-        # model-less review that added --v3 always failed open.
+    def test_model_less_calls_run_on_the_v3_engine(self):
+        # The universal-format agents load on V3, so a model-less review and probe select
+        # it explicitly with --agent-engine v3 (never the bare --v3 alias).
         status, result = self.invoke()
         self.assertEqual((0, "PASS"), (status, result["status"]))
         self.assertNotIn("--model", self.calls[0][0])
+        self.assertEqual("v3", self.calls[0][0][self.calls[0][0].index("--agent-engine") + 1])
         self.assertNotIn("--v3", self.calls[0][0])
         calls = []
         def process(argv, **kwargs):
@@ -218,6 +222,74 @@ class CodexReviewTests(unittest.TestCase):
         with mock.patch.object(kiro_setup.shutil, "which", return_value="/fake/kiro-cli"), \
                 mock.patch.object(kiro_setup.subprocess, "run", side_effect=process):
             self.assertEqual(("READY", ""), kiro_setup.probe())
+        self.assertEqual("v3", calls[0][calls[0].index("--agent-engine") + 1])
+        self.assertNotIn("--v3", calls[0])
+
+    def review_argv(self, **options):
+        calls = []
+        def transport(argv, cwd, env, outp, errp, timeout, echo_tag=None):
+            calls.append(argv)
+            Path(outp).write_text("[]")
+            Path(errp).write_text("")
+            return 0
+        with mock.patch.object(kiro_review.shutil, "which", return_value="/fake/kiro-cli"), \
+                mock.patch.object(kiro_review, "_run_streamed", side_effect=transport):
+            result = kiro_review.run_review(str(self.root), "diff --git a/f b/f\n+x\n", None, 30,
+                                            **options)
+        return result, calls
+
+    def test_every_review_mode_runs_on_the_v3_engine(self):
+        agent = self.root / ".kiro/agents/kiro-reviewer.json"
+        agent.parent.mkdir(parents=True)
+        agent.write_text(json.dumps(kiro_setup._REVIEWER_AGENT))
+        guarded, guarded_calls = self.review_argv()
+        agent.unlink()
+        fallback, fallback_calls = self.review_argv(allow_unguarded=True)
+        notools, notools_calls = self.review_argv(no_tools=True)
+        for name, result, calls, marker in (
+                ("kiro-reviewer agent", guarded, guarded_calls, ["--agent", "kiro-reviewer"]),
+                ("ad-hoc fallback", fallback, fallback_calls, ["--trust-tools=fs_read"]),
+                ("no-tools agent", notools, notools_calls, ["--agent", "kiro-review-notools"])):
+            with self.subTest(mode=name):
+                self.assertEqual(([], None), result[:2])
+                argv = calls[0]
+                self.assertEqual("v3", argv[argv.index("--agent-engine") + 1])
+                self.assertNotIn("--v3", argv)
+                self.assertTrue(all(item in argv for item in marker), argv)
+
+    def test_v2_format_reviewer_agent_is_not_loaded(self):
+        # Even an unedited plugin-generated V2 file is refused: V3 cannot load it, and
+        # kiro_setup.py write-agents upgrades it in place.
+        agent = self.root / ".kiro/agents/kiro-reviewer.json"
+        agent.parent.mkdir(parents=True)
+        agent.write_text(json.dumps(kiro_setup._legacy_v2_reviewer_agent()))
+        self.assertFalse(kiro_review._reviewer_agent_ok(str(agent)))
+        (findings, error, _), calls = self.review_argv()
+        self.assertIsNone(findings)
+        self.assertIn("write-agents", error)
+        self.assertEqual([], calls)
+
+    def test_websearch_stays_on_the_default_engine(self):
+        config = self.root / ".claude/kiro.local.json"
+        config.parent.mkdir()
+        config.write_text(json.dumps({"websearch": {"enabled": True}}))
+        agent = self.root / ".kiro/agents/kiro-websearch.json"
+        agent.parent.mkdir(parents=True)
+        agent.write_text(json.dumps(kiro_setup._WEBSEARCH_AGENT))
+        calls = []
+        real_run = subprocess.run
+        def process(argv, **kwargs):
+            if argv[0] != "kiro-cli":     # kiro_config's git tracked-file check
+                return real_run(argv, **kwargs)
+            calls.append(argv)
+            kwargs["stdout"].write("summary\nhttps://example.test/source\n")
+            return subprocess.CompletedProcess(argv, 0)
+        with mock.patch.object(kiro_websearch.shutil, "which", return_value="/fake/kiro-cli"), \
+                mock.patch.object(kiro_websearch.subprocess, "run", side_effect=process), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(0, kiro_websearch.run_search(str(self.root), "query"))
+        self.assertIn("kiro-websearch", calls[0])
+        self.assertNotIn("--agent-engine", calls[0])
         self.assertNotIn("--v3", calls[0])
 
     def test_ignored_model_flag_is_an_error_not_a_review(self):
