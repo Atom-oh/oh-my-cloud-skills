@@ -12,6 +12,7 @@ commands from the scripts here; do not create dummy application/configuration fi
 | `eval-skill-behavior.py` | E2E behavioral testing via `claude --print` |
 | `test-plugins.py` | Validate Claude manifests and file references |
 | `test-codex-plugins.py` | Validate every Codex manifest, source inventory and component path |
+| `test-host-packages.py` | Data-only host package checks loaded from the trusted validator's sibling directory |
 | `sync-codex-plugins.py` | Generate all Codex adapters; `--check` rejects missing or stale outputs |
 | `test-codex-runtime.py` | Check actual disposable Codex installation and discovery |
 | `test-codex-native-hooks.py` | Execute native hook fixtures; `--project-init` includes project templates |
@@ -21,6 +22,17 @@ commands from the scripts here; do not create dummy application/configuration fi
 | `pr-review/` | Trusted-base CI prechecks, panel orchestration and review publication |
 
 ## Validator scope
+
+The manifest validators load `test-host-packages.py` via their own `__file__`
+directory using `runpy`. `--root` supplies package data only; it never selects
+Python code from the PR tree.
+
+Host consistency checks do not prove equivalence to maintained source procedures;
+the isolated head generator freshness job owns that check. Unfiltered validators
+check complete installed packages; `--plugin` checks are source-only iteration aids.
+Policy and agent YAML are parsed structurally using the assembler's canonical
+subset. Multi-line scalars, duplicate keys and flow mappings are rejected instead
+of interpreted by line matches.
 
 Source-mirror discovery does not authorize a Codex publication exception or source fork:
 
