@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import runpy
 import re
 import sys
 from pathlib import Path
@@ -322,7 +323,8 @@ class CodexPluginValidator:
                 self.error(f"marketplace: entry {name} has no .codex-plugin manifest")
 
             source = entry.get("source")
-            expected_path = f"./plugins/{name}"
+            packaged = (self.project_root / "hosts/catalog.json").is_file()
+            expected_path = f"./packages/codex/{name}" if packaged else f"./plugins/{name}"
             if not isinstance(source, dict):
                 self.error(f"marketplace {name}: source object is required")
             else:
@@ -330,7 +332,7 @@ class CodexPluginValidator:
                     self.error(f"marketplace {name}: source.source must be local")
                 if source.get("path") != expected_path:
                     self.error(f"marketplace {name}: source.path must be {expected_path}")
-                if not (self.project_root / "plugins" / name).is_dir():
+                if not (self.project_root / expected_path).is_dir():
                     self.error(f"marketplace {name}: source path does not exist")
 
             policy = entry.get("policy")
@@ -390,6 +392,14 @@ class CodexPluginValidator:
 
         if not only_plugin:
             self.validate_marketplace(plugin_names)
+            if (self.project_root / "hosts/catalog.json").is_file():
+                validator = runpy.run_path(str(Path(__file__).with_name("test-host-packages.py")))
+                self.errors.extend(validator["validate"](self.project_root))
+                installed = CodexPluginValidator(self.project_root, self.verbose)
+                installed.plugins_dir = self.project_root / "packages/codex"
+                for name in plugin_names:
+                    installed.validate_manifest(name)
+                self.errors.extend(installed.errors)
 
         print("=" * 50)
         print(f"  Plugins checked: {len(plugin_names)}")

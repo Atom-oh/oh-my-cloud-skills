@@ -5,6 +5,7 @@ import os
 import sys
 import re
 import argparse
+import runpy
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
@@ -690,6 +691,16 @@ def main():
     plugins_dir = project_root / 'plugins'
 
     plugins = ["aws-content-plugin", "aws-ops-plugin", "kiro-power-converter", "co-agent", "agentcore-creator", "project-init", "kiro", "token-saver", "pr-dash"]
+    catalog_path = project_root / "hosts/catalog.json"
+    if catalog_path.is_file():
+        try:
+            catalog = json.loads(catalog_path.read_text(encoding="utf-8"))["plugins"]
+            discovered = {path.parents[1].name for path in plugins_dir.glob("*/.claude-plugin/plugin.json")}
+            if not isinstance(catalog, dict) or not catalog or set(catalog) != discovered:
+                raise ValueError("host catalog must cover every source plugin exactly once")
+            plugins = sorted(catalog)
+        except (OSError, ValueError, KeyError) as exc:
+            parser.error(f"Invalid host catalog: {exc}")
     if args.plugin:
         if args.plugin not in plugins:
             print(f"Unknown plugin: {args.plugin}")
@@ -732,6 +743,21 @@ def main():
     if not version_ok:
         all_passed = False
         total_errors += 1
+
+    if (project_root / "hosts/catalog.json").is_file() and not args.plugin:
+        package_checks = runpy.run_path(str(Path(__file__).with_name("test-host-packages.py")))
+        for error in package_checks["validate"](project_root):
+            print(f"  ERROR: {error}")
+            total_errors += 1
+            all_passed = False
+        for plugin_name in plugins:
+            suite = PluginTestSuite(project_root / "packages/claude" / plugin_name, args.verbose)
+            suite.run_all()
+            total_errors += len(suite.errors)
+            for error in suite.errors:
+                print(f"  ERROR: packaged Claude {plugin_name}: {error}")
+            if suite.errors:
+                all_passed = False
 
     # Final summary
     print(f"\n{'=' * 50}")
