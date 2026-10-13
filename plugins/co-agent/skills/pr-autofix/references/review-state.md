@@ -187,7 +187,7 @@ the planner/implementer must not produce it.
 |---|---|
 | `head` | Requested PR `headRefOid`, full commit SHA |
 | `base_sha` | `baseRefOid` used for this review; a commit SHA, not `base_ref`'s branch name |
-| `diff_sha256` | SHA-256 of the exact bytes from `gh pr diff "$PR_NUMBER" --repo "$REPO" --color never`, captured between matching HEAD/base queries before review |
+| `diff_sha256` | SHA-256 of the exact bytes from the bundled `pr_diff.py` helper with the queried full base/head SHAs, captured between matching HEAD/base queries before review |
 | `handles` | Array of verified provider/run/check identifiers, including still-live runs |
 | `requirements` | Object keyed by source; each value has `required` (boolean), nonempty `basis` (task/project/protection/config evidence), and any expected providers/lenses |
 | `sources` | Object keyed by source; each value records the native `verdict` (`PASSED`, `BLOCKED`, `ERROR`, `PENDING`, `UNBOUND`, `NOT_REQUIRED`), reviewed `head`, `coverage_complete`, and unresolved `blocking_findings` |
@@ -195,6 +195,23 @@ the planner/implementer must not produce it.
 Changed scope needs new coverage, not relabeled old evidence. Bound verdicts must
 match `head`; only `UNBOUND` and justified `NOT_REQUIRED` may lack it, and neither
 satisfies a required source. Never rewrite `BLOCKED` to `PASSED`.
+
+Capture the full diff with the bundled helper rather than GitHub's diff API,
+which rejects PRs with more than 300 changed files. Pass the queried `baseRefOid`
+and `headRefOid` as `DIFF_BASE_SHA` and `DIFF_HEAD_SHA` and requery them afterwards:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/pr_diff.py" \
+  --repo "$REPO_ROOT" --base "$DIFF_BASE_SHA" --head "$DIFF_HEAD_SHA" \
+  --output "$STATE_DIR/pr-diff.tmp.txt" || exit 1
+DIFF_SHA=$(python3 -c 'import hashlib, sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' \
+  "$STATE_DIR/pr-diff.tmp.txt") || exit 1
+```
+
+The helper fetches commit objects and full ancestry without checking out the PR
+or running hooks, external diff or textconv. It preserves the attached checkout.
+Do not reuse a checkpoint made with the old API producer: collect fresh evidence
+and a new digest with this helper before marking clean.
 
 ```bash
 REVIEW_RECORD="$STATE_DIR/review-observation.tmp.json"
@@ -220,10 +237,16 @@ Failure preserves state. The host separately rechecks authorized integration.
 
 ```bash
 set -o pipefail
+REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
 PR_FIELDS=number,state,headRefName,headRefOid,baseRefName,baseRefOid,reviewDecision,mergeStateStatus,mergeable
 PR_BEFORE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json "$PR_FIELDS") || exit 1
-DIFF_SHA=$(gh pr diff "$PR_NUMBER" --repo "$REPO" --color never |
-  python3 -c 'import hashlib, sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())') || exit 1
+DIFF_BASE_SHA=$(printf '%s' "$PR_BEFORE" | jq -er '.baseRefOid') || exit 1
+DIFF_HEAD_SHA=$(printf '%s' "$PR_BEFORE" | jq -er '.headRefOid') || exit 1
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/pr_diff.py" \
+  --repo "$REPO_ROOT" --base "$DIFF_BASE_SHA" --head "$DIFF_HEAD_SHA" \
+  --output "$STATE_DIR/pr-diff.tmp.txt" || exit 1
+DIFF_SHA=$(python3 -c 'import hashlib, sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' \
+  "$STATE_DIR/pr-diff.tmp.txt") || exit 1
 CHECKS="$STATE_DIR/required-checks.tmp.json"
 HEAD_REF=$(printf '%s' "$PR_BEFORE" | jq -er '.headRefName | select(type == "string" and length > 0)') || exit 1
 if gh pr checks "$PR_NUMBER" --repo "$REPO" --required --json name,bucket,state > "$CHECKS" 2> "$CHECKS.err"; then
@@ -272,7 +295,7 @@ jq -L "${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts" -s \
     else .phase = "stop" | .stop_reason = "clean" | .stop_detail = null end
 ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" \
   || { echo "clean transition refused; preserve state and refresh evidence"; exit 1; }
-rm -f "$CHECKS" "$CHECKS.err"
+rm -f "$CHECKS" "$CHECKS.err" "$STATE_DIR/pr-diff.tmp.txt"
 ```
 
 ## Bound the local wait without restarting a remote job

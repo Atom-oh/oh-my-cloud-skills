@@ -25,6 +25,8 @@ comments even when a check is green.
 |---|---|
 | `L1 validation failed` | Read the named manifest/version/inventory error. Fix the source and run both validators locally. |
 | `L1 infrastructure failed` | Fetch/archive failed before validators started. Inspect runner/Git access; do not guess a manifest defect. |
+| `PR diff capture failed` | Check that the pinned base/head commits remain available and that the trusted checkout matches the requested base. The helper fetches Git objects without executing PR code. |
+| HTTP 406, diff exceeds 300 files | An older trusted workflow still uses the GitHub diff API. Land the separate trusted diff-acquisition repair, then trigger a fresh PR event using that base; rerunning the same old workflow does not repair it. |
 | `Review context unavailable` or missing base context | Restore/regenerate base AGENTS.md from CLAUDE.md and verify provenance, size and secret checks. |
 | BLOCKED, active Critical/Major | Verify the finding against code, fix a real defect, test and push; obtain a fresh full review. |
 | `Review coverage incomplete` | At least one configured cell failed or returned no usable result. Diagnose that provider/CLI; all required cells must complete. |
