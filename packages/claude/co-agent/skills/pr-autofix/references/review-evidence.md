@@ -50,10 +50,12 @@ Check unresolved inline findings against current code; a summary alone cannot
 establish that they were fixed. Checkpoint scope, coverage
 and run identities through `review-state.md`. New HEADs invalidate old passes;
 retargets may change the diff without changing HEAD, so compare against the recorded scope.
-The CI `git diff` hash identifies its snapshot; it is not byte-comparable with the
-host's `gh pr diff` hash. Verify matching refs and patch scope across those formats.
-Mark clean compares the host's recorded `gh pr diff` hash with a fresh result from
-that same producer; the CI snapshot hash is separate provenance evidence.
+The host captures and hashes the full diff with the bundled `pr_diff.py` helper,
+as described in review-state.md. CI uses the same pinned, data-only producer before
+its marketplace filters and prompt caps. Filtered/truncated CI prompt hashes are
+separate provenance evidence; never compare them to the host's full raw diff hash.
+Mark clean compares the recorded full helper output with a fresh result from
+that same producer and rechecks the PR scope.
 
 For human reviews, use each reviewer's latest effective state; ignore dismissed
 reviews and superseded change requests. Apply branch protection's stale-approval

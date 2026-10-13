@@ -2,10 +2,11 @@
 """Run-telemetry helpers for the `/kiro:delegate` pipeline — the things the delegate
 loop needs from a finished kiro-cli call that the CLI won't hand back structurally.
 
-kiro-cli headless has no `--output-format json` (upstream: kiro#5423) and no headless
-session-id/credit JSON (kiro#9066), so both of these read what IS available today: the
-`--list-sessions --format json` store, and the human-readable log the caller already
-redirects to a file (mandatory — a pipe severs kiro's `--auth=acp-callback` refresh).
+These read the `--list-sessions --format json` store and the human-readable log the
+caller already redirects to a file (mandatory — a pipe severs kiro's
+`--auth=acp-callback` refresh). kiro-cli 2.11.1 had no structured turn output; 2.29.1's
+`--output-format stream-json` carries the session id and credits, but the plugin does not
+use it yet (references/kiro-headless.md).
 
 Usage:
   kiro_run.py session-id <dir>      # newest sessionId kiro-cli recorded for cwd=<dir>,
