@@ -61,8 +61,11 @@ cwd's.
    These land at `.kiro/agents/kiro-implementer.json` (fs_read/fs_write, plus
    execute_bash only if granted; worktree-write-only via a preToolUse hook),
    `.kiro/agents/kiro-reviewer.json` (fs_read only), and
-   `.kiro/agents/kiro-websearch.json` (web_search only — no filesystem, no shell). Re-run
-   with `--force` to regenerate (e.g. after changing the step 3 answer).
+   `.kiro/agents/kiro-websearch.json` (web_search only — no filesystem, no shell). The
+   implementer and reviewer use kiro-cli's universal agent format for the V3 engine. An
+   unedited V2-format file matching the previous generator's output is upgraded in place
+   without `--force`; older or edited files still need it. Re-run with `--force` to
+   regenerate (e.g. after changing the step 3 answer).
 
 5. Ask (`AskUserQuestion`) about the three delegation/review toggles. Each is a consent
    gate: state the egress plainly before offering it.
