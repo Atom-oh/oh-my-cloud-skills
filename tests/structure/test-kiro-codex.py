@@ -203,6 +203,23 @@ class CodexReviewTests(unittest.TestCase):
         self.assertEqual("selected", argv[argv.index("--model") + 1])
         self.assertEqual("max", argv[argv.index("--effort") + 1])
 
+    def test_model_less_calls_stay_on_the_default_engine(self):
+        # V3 refuses the plugin's V2-format agents (exit 4) on kiro-cli 2.29.1, so a
+        # model-less review that added --v3 always failed open.
+        status, result = self.invoke()
+        self.assertEqual((0, "PASS"), (status, result["status"]))
+        self.assertNotIn("--model", self.calls[0][0])
+        self.assertNotIn("--v3", self.calls[0][0])
+        calls = []
+        def process(argv, **kwargs):
+            calls.append(argv)
+            kwargs["stdout"].write("KIRO_SETUP_PROBE\n")
+            return subprocess.CompletedProcess(argv, 0)
+        with mock.patch.object(kiro_setup.shutil, "which", return_value="/fake/kiro-cli"), \
+                mock.patch.object(kiro_setup.subprocess, "run", side_effect=process):
+            self.assertEqual(("READY", ""), kiro_setup.probe())
+        self.assertNotIn("--v3", calls[0])
+
     def test_ignored_model_flag_is_an_error_not_a_review(self):
         config = self.root / ".claude/kiro.local.json"
         config.parent.mkdir()

@@ -21,6 +21,7 @@ review runs. Older detail is in
   commit/push. Scanner diagnostics must not echo the matched secret (PR #158–159).
 - Trace all consumers when changing a data shape or shared rendering behavior;
   generated/shared code can still introduce a real defect (PR #163).
+  Documented V2 `operations[].path` must be parsed before enabling guarded reviews (PR #259).
 - Validate every exempted path key at each payload level. A top-level `image_paths`
   exemption without collection allowed an outside path alongside an inside decoy (PR #256).
 
@@ -54,6 +55,8 @@ review runs. Older detail is in
   three `_GUARD_CMD` call sites (PR #256).
 - Temporary-directory cleanup in Kiro guard fixtures follows an existing test
   convention; verify a changed exposure before making it blocking (PR #256).
+- Kiro review hooks report non-zero CLI exits through a skip warning; verify actual
+  diagnostics before alleging silent fail-open behavior (PR #259).
 
 ## Panel-cell judgment quality (historical carry-forward)
 
@@ -62,6 +65,6 @@ for automatic roster changes. The current host updates them only from verified e
 
 | cell | unsupported | total findings | last |
 |---|---|---|---|
-| kiro-opus-full | 20 | 107 | PR #256 |
+| kiro-opus-full | 21 | 109 | PR #259 |
 | kiro-gpt-full | 10 | 26 | PR #158 |
 | codex-full | 8 | 27 | PR #163 |

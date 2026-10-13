@@ -90,12 +90,13 @@ see it in an older note, treat the agent-file requirement above as authoritative
   `chat.defaultModel` with exit 0; 2.29.1 applies the flag. `kiro_run.py model-check
   <log>` detects the warning for delegate runs, and `kiro_review.py`, `kiro_websearch.py`
   and the `kiro_setup.py probe` turn it into an error. The fix is `kiro-cli update`.
-- **`--v3` narrows the model catalog** and can reject some model ids
-  (`INVALID_MODEL_ID` — reproduced with pre-rename model names; see co-agent's ADR-012).
-  Drop `--v3` whenever an explicit `--model` is set; only use `--v3`+no-model for the
-  CLI's own default routing.
+- **Never pass `--v3` with these agents.** Every plugin call runs on the default V2
+  engine. On kiro-cli 2.29.1 the V3 engine refuses the plugin's V2-format agent files
+  (`needs upgrading for this agent engine`, exit **4**). The older reason, a narrower V3
+  model catalog (`INVALID_MODEL_ID`, co-agent ADR-012), no longer holds: both engines
+  list the same 22 models. See "V3 engine status" below.
 
-## The real headless flag surface (measured on kiro-cli 2.11.1, 2026-07)
+## The real headless flag surface (measured on kiro-cli 2.11.1, 2026-07; rechecked on 2.29.1, 2026-10)
 
 **Read this before assuming a lever doesn't exist.** The public headless blog post lists
 only four flags (`--no-interactive`, `--trust-all-tools`, `--trust-tools`,
@@ -113,23 +114,53 @@ is the authoritative source; re-run it after a CLI upgrade rather than trusting 
 | `--require-mcp-startup` (exit **3**) | delegate invocation — a silently-dead MCP server fails fast instead of failing the tests later for an unrelated-looking reason |
 | `--mode default\|spec`, `--wrap never`, `--agent`, `--model` | already in use throughout |
 
-`-d/--delete-session`, `--session-source v1\|v2`, `--agent-engine`, `--v3` also exist;
-`--v3` narrows the model catalog (see the `INVALID_MODEL_ID` note above).
+`-d/--delete-session`, `--session-source v1\|v2`, `--agent-engine v1\|v2\|v3`, `--v3`
+and `--output-format text\|stream-json` also exist. The plugin uses none of them.
 
-### What is genuinely missing: turn-level event streaming
+### Turn-level event streaming (available since the 2.11.1 measurements)
 
-There is **no `--output-format stream-json`** equivalent — a `chat` turn's output is the
-same human-readable text a terminal user sees (`--format json` applies to the
-`--list-models`/`--list-sessions` **list** flags, not to a turn). Upstream requests:
-`--output-format json` + `--progress-file <path>` NDJSON (kiro#5423) and headless
-session-id/credit JSON (kiro#9066). Note the narrower claim than before: `--resume-id`,
-`--effort` and session JSON all exist today — only the live event stream doesn't, and
-kiro#9066's session-id ask is already worked around by reading the session store.
+kiro-cli 2.11.1 had no structured turn output: a `chat` turn printed the same text a
+terminal user sees, and `--format json` applied only to the `--list-models` /
+`--list-sessions` list flags (upstream asks: kiro#5423, kiro#9066). On 2.29.1,
+`--output-format stream-json` emits the run's ACP events as JSON Lines on both engines.
+They include the session id, the credits used (V2 `meteringUsage`; V3
+`session_info_update.promptTurnSummaries`), every tool call with its status, and a final
+`runFinished` with `status` and `finalText`. The plugin still reads the text log, the
+session store and the credits footer described below. Moving to stream-json is open work.
 
 The credit figure from that same wish-list is likewise scrapeable rather than absent:
 kiro-cli prints a `Credits: <n>` turn footer into the log the caller already redirects, so
 `kiro_run.py credits <log>...` sums it for the delegation-rate report — best-effort, and
 the report omits the line rather than guessing if the footer format changes.
+
+## V3 engine status (measured on kiro-cli 2.29.1, 2026-10)
+
+The plugin does not use V3. These are the differences that block or change a move to it,
+apart from cost: one user measured 1.5–2.7x more credits per short prompt on V3.
+
+- **Agent format.** V3 refuses the plugin's V2-format agent files (exit 4).
+  `kiro-cli agent upgrade <dir>` rewrites them to a "universal" format. V2 and V3 both load
+  that format; on V2 the upgraded agents' tools and hooks behaved as before. The generator
+  and the exact-match tamper checks (`verify-agents`, `_reviewer_agent_ok`,
+  `kiro_websearch.py`) would all have to adopt it.
+- **Wider hook matchers.** The upgrade maps `fs_read` to `read`, which also covers `grep`,
+  `glob`, `code`, `introspect` and `tool_search`, and `fs_write` to `write`, which also
+  covers `code`. V3's `grep_search` carries no path (`query`, `includePattern`), so the
+  path guard refuses it. A V3 implementer would lose grep unless the guard learns that
+  tool's payload.
+- **Hook refusals need stderr.** V3 ignores a `preToolUse` exit 2 when the hook's stderr is
+  empty and runs the tool anyway. V2 blocks either way. The guard must print a reason.
+- **V3 payloads.** Tools are `read_file`, `grep_search` and `execute_bash`, and `read_file`
+  carries a top-level `path`. V2's `fs_read` uses `operations[].path` instead.
+- **V3's own workspace limit.** V3 refuses reads and writes outside the workspace by itself
+  (`kiro-scope:workspace-escape`), including through a symlink inside the worktree. This
+  is independent of the hook. `execute_bash` is disabled by default and requires setup
+  with `--enable-bash`. Neither engine confines it: with shell access
+  granted, `cat` reads any file the user can read.
+- **websearch.** The upgrade adds a `web` (fetch URL) tool next to `web_search`. Fetch needs
+  approval, so a headless run rejects it, but the agent's tool list is wider.
+- **Unchanged.** `--resume-id`, `--list-sessions` (sessions are tagged `"source": "v3"`),
+  `--require-mcp-startup`, `--effort`, `--mode default` and `--model` all work on V3.
 
 ## Watching a run
 
