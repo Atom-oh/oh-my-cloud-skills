@@ -21,6 +21,7 @@ review runs. Older detail is in
   commit/push. Scanner diagnostics must not echo the matched secret (PR #158–159).
 - Trace all consumers when changing a data shape or shared rendering behavior;
   generated/shared code can still introduce a real defect (PR #163).
+  Documented V2 `operations[].path` must be parsed before enabling guarded reviews (PR #259).
 
 ## Known false-positive patterns (conditions to verify, not exemptions)
 
@@ -48,6 +49,8 @@ review runs. Older detail is in
 - Review the full control/data path before inferring failure from an isolated line:
   root normalization, defaults, overrides, named modes and path-scoped commits matter.
   Lack of a new trust boundary is a question to investigate, not a blanket dismissal.
+- Kiro review hooks report non-zero CLI exits through a skip warning; verify actual
+  diagnostics before alleging silent fail-open behavior (PR #259).
 
 ## Panel-cell judgment quality (historical carry-forward)
 
@@ -56,6 +59,6 @@ for automatic roster changes. The current host updates them only from verified e
 
 | cell | unsupported | total findings | last |
 |---|---|---|---|
-| kiro-opus-full | 18 | 103 | PR #163 |
+| kiro-opus-full | 19 | 105 | PR #259 |
 | kiro-gpt-full | 10 | 26 | PR #158 |
 | codex-full | 8 | 27 | PR #163 |
