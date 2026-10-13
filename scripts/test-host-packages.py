@@ -12,6 +12,63 @@ IDENTITY_FIELDS = {"name", "version", "description", "author", "homepage",
                    "repository", "license", "keywords"}
 
 
+def canonical_yaml(text):
+    """Parse the assembler's YAML subset; reject ambiguous YAML rather than guess."""
+    lines = [(len(line) - len(line.lstrip(" ")), line.lstrip(" "))
+             for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+
+    def scalar(value):
+        if not value or "\t" in value:
+            raise ValueError("invalid scalar")
+        if value.startswith('"'):
+            result = json.loads(value)
+            if not isinstance(result, str):
+                raise ValueError("quoted scalar must be text")
+            return result
+        if value.startswith("'"):
+            if not re.fullmatch(r"'(?:[^']|'')*'", value):
+                raise ValueError("multi-line quoted scalar is not canonical")
+            return value[1:-1].replace("''", "'")
+        if (value[0] in "|>{[&*!`@#" or ": " in value or " #" in value or
+                value in {"yes", "no", "on", "off", "True", "False", "Null", "~"}):
+            raise ValueError("unsupported YAML scalar")
+        if value in {"true", "false", "null"} or re.fullmatch(r"-?(?:0|[1-9][0-9]*)", value):
+            return json.loads(value)
+        return value
+
+    def mapping(index, indent):
+        result = {}
+        while index < len(lines) and lines[index][0] == indent:
+            match = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_-]*):(?: (.*))?", lines[index][1])
+            if match is None or match[1] in result:
+                raise ValueError("invalid mapping or duplicate key")
+            key, value = match[1], match[2]
+            index += 1
+            if value not in (None, ""):
+                result[key] = scalar(value)
+            elif index < len(lines) and lines[index][0] == indent + 2:
+                if lines[index][1].startswith("- "):
+                    items = []
+                    while index < len(lines) and lines[index][0] == indent + 2:
+                        if not lines[index][1].startswith("- "):
+                            raise ValueError("mixed collection")
+                        items.append(scalar(lines[index][1][2:]))
+                        index += 1
+                    result[key] = items
+                else:
+                    result[key], index = mapping(index, indent + 2)
+            else:
+                raise ValueError("empty mapping value")
+            if index < len(lines) and lines[index][0] > indent:
+                raise ValueError("unsupported continuation or indentation")
+        return result, index
+
+    result, consumed = mapping(0, 0)
+    if consumed != len(lines):
+        raise ValueError("unexpected indentation")
+    return result
+
+
 def validate(root):
     errors = []
     def error(message):
@@ -148,6 +205,13 @@ def validate(root):
                         error(f"codex/{name}: hook handlers differ from Codex-owned source")
                 if isinstance(execution.get("explicit_skills"), list):
                     skill_inventory = load(package / ".codex-plugin/inventory.json").get("skills", [])
+                    skill_names = {
+                        entry["name"] for entry in skill_inventory
+                        if isinstance(entry, dict) and isinstance(entry.get("name"), str)
+                    } if isinstance(skill_inventory, list) else set()
+                    if any(not isinstance(name, str) or name not in skill_names
+                           for name in execution["explicit_skills"]):
+                        error(f"codex/{name}: explicit_skills references unknown inventory entries")
                     for entry in skill_inventory if isinstance(skill_inventory, list) else []:
                         if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
                             continue
@@ -160,10 +224,13 @@ def validate(root):
                             error(f"codex/{name}: selection policy differs for {entry.get('name')}")
                         elif explicit:
                             text = policy.read_text(encoding="utf-8")
-                            blocks = re.findall(r"(?m)^policy:\s*\n((?:[ \t]+[^\n]*\n?)+)", text)
-                            values = re.findall(r"(?m)^  allow_implicit_invocation:\s*(\S+)\s*$",
-                                                blocks[0]) if len(blocks) == 1 else []
-                            if values != ["false"]:
+                            try:
+                                parsed = canonical_yaml(text)
+                                valid = (isinstance(parsed.get("policy"), dict) and
+                                         parsed["policy"].get("allow_implicit_invocation") is False)
+                            except ValueError:
+                                valid = False
+                            if not valid:
                                 error(f"codex/{name}: explicit entry permits implicit invocation")
             else:
                 if isinstance(config.get("mcpServers"), str):
@@ -182,22 +249,13 @@ def validate(root):
                     if opening is None:
                         error(f"claude/{name}: agent has no opening frontmatter: {filename}")
                         continue
-                    text = opening[1].replace("\r\n", "\n")
+                    try:
+                        active = canonical_yaml(opening[1])
+                    except ValueError:
+                        error(f"claude/{name}: non-canonical agent frontmatter: {filename}")
+                        continue
                     for key, value in settings.items():
-                        if isinstance(value, list):
-                            block = re.search(rf"(?m)^{re.escape(key)}:\n((?:[ \t]+[^\n]*\n?)+)", text)
-                            try:
-                                actual = [
-                                    json.loads(line.strip()[2:]) for line in block[1].splitlines()
-                                    if line.strip().startswith("- ")
-                                ] if block else None
-                            except ValueError:
-                                actual = None
-                            matches = actual == value
-                        else:
-                            expected = json.dumps(value, ensure_ascii=False)
-                            matches = re.search(rf"^{re.escape(key)}: {re.escape(expected)}$", text, re.M)
-                        if not matches:
+                        if key not in active or active[key] != value:
                             error(f"claude/{name}: agent setting drift in {filename}/{key}")
     return errors
 
