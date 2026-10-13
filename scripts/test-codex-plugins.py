@@ -308,6 +308,7 @@ class CodexPluginValidator:
 
         expected = set(plugin_names)
         seen: set[str] = set()
+        packaged = (self.project_root / "hosts/catalog.json").is_file()
         for entry in entries:
             if not isinstance(entry, dict):
                 self.error("marketplace: plugin entries must be objects")
@@ -323,7 +324,6 @@ class CodexPluginValidator:
                 self.error(f"marketplace: entry {name} has no .codex-plugin manifest")
 
             source = entry.get("source")
-            packaged = (self.project_root / "hosts/catalog.json").is_file()
             expected_path = f"./packages/codex/{name}" if packaged else f"./plugins/{name}"
             if not isinstance(source, dict):
                 self.error(f"marketplace {name}: source object is required")

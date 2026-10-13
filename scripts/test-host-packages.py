@@ -54,10 +54,13 @@ def validate(root):
             error(f"{host}: marketplace plugins must be an array")
             entries = []
         names = [entry.get("name") for entry in entries if isinstance(entry, dict)]
-        if len(names) != len(entries) or len(names) != len(set(names)) or set(names) != sources:
+        valid_names = all(isinstance(name, str) for name in names)
+        if (not valid_names or len(names) != len(entries) or
+                len(names) != len(set(names)) or set(names) != sources):
             error(f"{host}: marketplace membership must match the host catalog exactly")
         for entry in entries:
-            if not isinstance(entry, dict) or entry.get("name") not in catalog:
+            if (not isinstance(entry, dict) or not isinstance(entry.get("name"), str)
+                    or entry["name"] not in catalog):
                 continue
             name = entry["name"]
             expected_source = f"./packages/{host}/{name}"
@@ -72,8 +75,15 @@ def validate(root):
             if not isinstance(identity, dict) or identity.get("name") != name:
                 error(f"catalog: invalid identity for {name}")
                 continue
-            source = root / "plugins" / name
+            if set(identity) - IDENTITY_FIELDS:
+                error(f"catalog: non-identity fields for {name}")
+                continue
             package = root / "packages" / host / name
+            host_root = root / "packages" / host
+            if (package.is_symlink() or host_root.is_symlink() or
+                    host_root.resolve() not in package.resolve().parents):
+                error(f"{host}/{name}: linked or escaping package root")
+                continue
             config_root = root / "hosts" / host / name
             config = load(config_root / "plugin.json")
             policy = load(config_root / "package.json")
@@ -105,7 +115,7 @@ def validate(root):
             for path in package.rglob("*"):
                 if path.is_symlink():
                     error(f"{host}/{name}: package contains a symlink")
-                elif path.is_file() and path.name != "package-inventory.json":
+                elif path.is_file() and path != package / "package-inventory.json":
                     actual_files.add(str(path.relative_to(package)))
             if set(files) != actual_files:
                 error(f"{host}/{name}: untracked or missing packaged files")
@@ -143,10 +153,13 @@ def validate(root):
                         explicit = entry.get("name") in execution["explicit_skills"]
                         if explicit != policy.is_file():
                             error(f"codex/{name}: selection policy differs for {entry.get('name')}")
-                        elif explicit and not re.search(
-                            r"(?m)^\s+allow_implicit_invocation:\s*false\s*$", policy.read_text()
-                        ):
-                            error(f"codex/{name}: explicit entry permits implicit invocation")
+                        elif explicit:
+                            text = policy.read_text(encoding="utf-8")
+                            blocks = re.findall(r"(?m)^policy:\s*\n((?:[ \t]+[^\n]*\n?)+)", text)
+                            values = re.findall(r"(?m)^  allow_implicit_invocation:\s*(\S+)\s*$",
+                                                blocks[0]) if len(blocks) == 1 else []
+                            if values != ["false"]:
+                                error(f"codex/{name}: explicit entry permits implicit invocation")
             else:
                 if isinstance(config.get("mcpServers"), str):
                     path = inside(package, config["mcpServers"])
@@ -159,14 +172,17 @@ def validate(root):
                     if path is None or not path.is_file() or not isinstance(settings, dict):
                         error(f"claude/{name}: missing or invalid agent override {filename}")
                         continue
-                    text = path.read_text()
+                    text = path.read_text(encoding="utf-8")
                     for key, value in settings.items():
                         if isinstance(value, list):
                             block = re.search(rf"(?m)^{re.escape(key)}:\n((?:[ \t]+[^\n]*\n?)+)", text)
-                            actual = [
-                                json.loads(line.strip()[2:]) for line in block[1].splitlines()
-                                if line.strip().startswith("- ")
-                            ] if block else None
+                            try:
+                                actual = [
+                                    json.loads(line.strip()[2:]) for line in block[1].splitlines()
+                                    if line.strip().startswith("- ")
+                                ] if block else None
+                            except ValueError:
+                                actual = None
                             matches = actual == value
                         else:
                             expected = json.dumps(value, ensure_ascii=False)
