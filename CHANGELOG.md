@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or with a path-like key it does not read. It also refuses paths that start with
   `~` or contain `$`: kiro-cli expands both, so `~/.aws/credentials` and
   `$HOME/...` reached the home directory through the read and write guards alike.
+  A refusal now prints its reason to stderr, because the V3 engine ignores an exit 2
+  with empty stderr.
   Existing agent files no longer match the generated shape: run `/kiro:setup`
   (`write-agents --force`) after updating.
 - Make the kiro plugin fail when kiro-cli does not apply the configured model.

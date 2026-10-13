@@ -839,6 +839,15 @@ cases = [({'operations': [line('a.md')]}, 0),
          ({'operations': [{'mode': 'Line', 'path': 'a.md', 'paths': ['/etc/passwd']}]}, 2),
          ({'operations': [{'mode': 'Search', 'path': 'src', 'pattern': 'x'}]}, 0)]
 bad = [(c, e, run(c)) for c, e in cases if run(c) != e]
+# the V3 engine runs the tool anyway when a refusing hook leaves stderr empty
+r = subprocess.run(cmd, shell=True, input=json.dumps({'tool_input': {'path': '/etc/passwd'}}),
+                   capture_output=True, text=True, cwd=wt)
+if not r.stderr.strip():
+    bad.append(('refusal must explain itself on stderr', r.returncode, r.stderr))
+ok = subprocess.run(cmd, shell=True, input=json.dumps({'tool_input': {'path': 'a.md'}}),
+                    capture_output=True, text=True, cwd=wt)
+if ok.returncode != 0 or ok.stderr:
+    bad.append(('allowed call must stay silent', ok.returncode, ok.stderr))
 print('OPS_GUARD_OK' if not bad else f'OPS_GUARD_FAIL {bad}')
 " 2>&1)
 assert_contains "$OPS_GUARD_OUT" "OPS_GUARD_OK" "fs_read guard checks every operations[] path (V2 engine payload), refuses ~/\$ paths and payloads with no path"

@@ -75,6 +75,9 @@ _AUTH_RE = re.compile(
 # A path-like key the guard does not read (`file_path`, `paths`, ...) is refused too, so
 # a CLI field alias cannot carry a path past the check.
 #
+# A refusal writes its reason to stderr. The V3 engine ignores exit 2 when stderr is
+# empty and runs the tool anyway (measured on 2.29.1); V2 blocks either way.
+#
 # `python3 -I` (isolated mode), NOT bare `python3 -c`: this guard RUNS with cwd = the
 # worktree — a checkout of HEAD in a repo this plugin's own threat model treats as
 # untrusted (that's the whole reason capture-diff/scope_guard/these guards exist).
@@ -97,8 +100,11 @@ _GUARD_CMD = (
     "+ [p for e in o for p in ((f(e) + (z(e) if isinstance(e,dict) else [])) or [None])]; "
     "wt=os.path.realpath(os.getcwd()); "
     "r=lambda p: os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); "
-    "sys.exit(0 if ps and all(isinstance(p,str) and p and p[0]!='~' and '$' not in p "
-    "and (r(p)==wt or r(p).startswith(wt+os.sep)) for p in ps) else 2)\""
+    "ok=bool(ps) and all(isinstance(p,str) and p and p[0]!='~' and '$' not in p "
+    "and (r(p)==wt or r(p).startswith(wt+os.sep)) for p in ps); "
+    "ok or sys.stderr.write('kiro guard: refused a path outside the working directory, "
+    "or a payload without a checkable path'+chr(10)); "
+    "sys.exit(0 if ok else 2)\""
 )
 
 
