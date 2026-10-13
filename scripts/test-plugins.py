@@ -327,7 +327,7 @@ class PluginTestSuite:
                 if not isinstance(config, dict):
                     self.error(f"MCP server '{server_name}' must be an object")
                 elif 'command' not in config and 'url' not in config:
-                    self.error(f"MCP server '{server_name}' missing 'command' field")
+                    self.error(f"MCP server '{server_name}' missing command or url")
 
         self.log(f"Manifest OK: {self.agent_count} agents, {self.skill_count} skills")
 
@@ -721,7 +721,10 @@ def main():
     catalog_path = project_root / "hosts/catalog.json"
     if catalog_path.is_file():
         try:
-            catalog = json.loads(catalog_path.read_text(encoding="utf-8"))["plugins"]
+            payload = json.loads(catalog_path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                raise ValueError("catalog must contain a JSON object")
+            catalog = payload["plugins"]
             discovered = {path.parents[1].name for path in plugins_dir.glob("*/.claude-plugin/plugin.json")}
             if not isinstance(catalog, dict) or not catalog or set(catalog) != discovered:
                 raise ValueError("host catalog must cover every source plugin exactly once")

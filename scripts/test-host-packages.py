@@ -19,6 +19,8 @@ def validate(root):
 
     def load(path):
         try:
+            if path.is_symlink() or root.resolve() not in path.resolve().parents:
+                raise ValueError("linked or escaping data file")
             value = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(value, dict):
                 raise ValueError("expected an object")
@@ -44,6 +46,15 @@ def validate(root):
     sources = {p.parents[1].name for p in (root / "plugins").glob("*/.claude-plugin/plugin.json")}
     if set(catalog) != sources:
         error("host catalog does not match source plugin membership")
+    identities = {}
+    for name, identity in catalog.items():
+        if not isinstance(identity, dict) or identity.get("name") != name:
+            error(f"catalog: invalid identity for {name}")
+        elif set(identity) - IDENTITY_FIELDS:
+            error(f"catalog: non-identity fields for {name}")
+        else:
+            identities[name] = identity
+    catalog = identities
     marketplaces = {
         "claude": load(root / ".claude-plugin/marketplace.json"),
         "codex": load(root / ".agents/plugins/marketplace.json"),
@@ -72,12 +83,6 @@ def validate(root):
             if entry.get("version") != catalog[name].get("version"):
                 error(f"{host}/{name}: marketplace version differs from the host catalog")
         for name, identity in catalog.items():
-            if not isinstance(identity, dict) or identity.get("name") != name:
-                error(f"catalog: invalid identity for {name}")
-                continue
-            if set(identity) - IDENTITY_FIELDS:
-                error(f"catalog: non-identity fields for {name}")
-                continue
             package = root / "packages" / host / name
             host_root = root / "packages" / host
             if (package.is_symlink() or host_root.is_symlink() or
@@ -164,6 +169,11 @@ def validate(root):
                         error(f"claude/{name}: missing or invalid agent override {filename}")
                         continue
                     text = path.read_text(encoding="utf-8")
+                    opening = re.match(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n|$)", text, re.S)
+                    if opening is None:
+                        error(f"claude/{name}: agent has no opening frontmatter: {filename}")
+                        continue
+                    text = opening[1].replace("\r\n", "\n")
                     for key, value in settings.items():
                         if isinstance(value, list):
                             block = re.search(rf"(?m)^{re.escape(key)}:\n((?:[ \t]+[^\n]*\n?)+)", text)
