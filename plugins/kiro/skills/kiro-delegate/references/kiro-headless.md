@@ -154,7 +154,8 @@ apart from cost: one user measured 1.5–2.7x more credits per short prompt on V
   carries a top-level `path`. V2's `fs_read` uses `operations[].path` instead.
 - **V3's own workspace limit.** V3 refuses reads and writes outside the workspace by itself
   (`kiro-scope:workspace-escape`), including through a symlink inside the worktree. This
-  is independent of the hook. Neither engine confines `execute_bash`: with shell access
+  is independent of the hook. `execute_bash` is disabled by default and requires setup
+  with `--enable-bash`. Neither engine confines it: with shell access
   granted, `cat` reads any file the user can read.
 - **websearch.** The upgrade adds a `web` (fetch URL) tool next to `web_search`. Fetch needs
   approval, so a headless run rejects it, but the agent's tool list is wider.
