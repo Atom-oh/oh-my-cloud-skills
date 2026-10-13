@@ -123,15 +123,10 @@ def run_search(root, query):
                 "--agent", "kiro-websearch"]
         if model:
             argv += ["--model", model]
-        # Deliberately NO `--v3` on the no-model path, diverging from kiro_review.py's
-        # convention: measured against the installed kiro-cli 2.11.1, the SAME
-        # web-search prompt through the SAME kiro-websearch agent ran web_search fine
-        # without --v3 ("Found 10 search results") but got the search BLOCKED with
-        # --v3 ("I wasn't able to perform a live web search") — the v3 catalog's
-        # default routing evidently lands on a model/profile without web_search
-        # access. The reviewer convention exists for fs_read-only review calls where
-        # either catalog works; here the whole feature depends on the tool being
-        # available, so the empirical result wins.
+        # No `--v3`: measured on 2.11.1, the V3 catalog's default routing blocked
+        # web_search ("I wasn't able to perform a live web search"), and on 2.29.1 V3
+        # refuses this V2-format agent file outright (exit 4). Every plugin call runs on
+        # the default V2 engine (references/kiro-headless.md).
         # Capture to FILES, not PIPEs — a pipe severs kiro-cli's auth-refresh callback
         # and the call hangs to the full timeout (references/kiro-headless.md).
         outp, errp = os.path.join(wdir, ".out"), os.path.join(wdir, ".err")
