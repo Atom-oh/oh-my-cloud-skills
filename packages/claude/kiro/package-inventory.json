@@ -8,11 +8,11 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "bbf1de0e66b1e53e216c239186d961c1bc7c09a3409e05e85523b9bd923c5977",
+      "sha256": "e6331eea0b1acb8538ea58a75241d2bc2838f7888294232e3cbe4e37dbc43855",
       "executable": false
     },
     "agents/kiro-delegate-agent.md": {
-      "sha256": "19d72e1eaefff6f1b9af7a03383de769c0c404327708d9e495359e6fddbd51ca",
+      "sha256": "7838d3a0a209970b62085b36b39b020e9624cfba9871998f7f575913d5f5a25c",
       "executable": false
     },
     "commands/configure.md": {
@@ -20,7 +20,7 @@
       "executable": false
     },
     "commands/delegate.md": {
-      "sha256": "66ccf40d4d795f48b19ff92975b002614f5f8a922da59b95c12f6a406a327ad0",
+      "sha256": "aa9e5ddfef0e451364ca9a6dd57e345198ab34e3bee87971a41db18b3b162698",
       "executable": false
     },
     "commands/review.md": {
@@ -28,7 +28,7 @@
       "executable": false
     },
     "commands/setup.md": {
-      "sha256": "48cd15c6841da268530e8eec5ab8f4e964851b33ed59b28e5f8507aab74727cf",
+      "sha256": "62590ddac8eb2934422b8a8d44b0913912dfd4bf09a78e92e4ab3bb7053ac19f",
       "executable": false
     },
     "hooks/pre-commit-review.sh": {
@@ -44,7 +44,7 @@
       "executable": true
     },
     "skills/kiro-delegate/SKILL.md": {
-      "sha256": "ade8a668fd4e0a88de2de6d23024b8da71231ae218886f2d76dcea5982498dd7",
+      "sha256": "99b9a425170f6100e5ec81f4f8b0c72c4d685ee10b64021060916e024c57c9bd",
       "executable": false
     },
     "skills/kiro-delegate/kiro.defaults.json": {
@@ -52,7 +52,7 @@
       "executable": false
     },
     "skills/kiro-delegate/references/kiro-headless.md": {
-      "sha256": "09a36faef02fdfc873b422a0bb5a63b3ae4a47b1a4a5f2f5e45e6986a9ecda01",
+      "sha256": "915b5dc14223a3ab9a0df51e9200f405201925ce378edd1b1dba7921084916a2",
       "executable": false
     },
     "skills/kiro-delegate/references/spec-format.md": {
@@ -72,19 +72,19 @@
       "executable": true
     },
     "skills/kiro-delegate/scripts/kiro_review.py": {
-      "sha256": "19b1147e8b92bd1f1d7cbaa4ce154be8f4ec67e53d954e5c23f895c9d2880ae8",
+      "sha256": "dcb5d3c8ff1e3272c558fc0fe2f90e9247de541ec80a08e6450511a31eeeb186",
       "executable": true
     },
     "skills/kiro-delegate/scripts/kiro_run.py": {
-      "sha256": "9b7cfbfa9549a7c89c1b38c7ebaea4ec31377cf8b1146e994545a29607e92451",
+      "sha256": "855768aa987e64c3e34cb0a96a2c2575b978151ba0a224d111c1911550dfe8c8",
       "executable": true
     },
     "skills/kiro-delegate/scripts/kiro_setup.py": {
-      "sha256": "4ede0a7d19d6837389669959da40ff81917eb53ffd971d99d17ded7641cb4aa8",
+      "sha256": "be9232224536a44a194e267f2a405bd328225a3d613c5bfb2c7e33f104d42aea",
       "executable": true
     },
     "skills/kiro-delegate/scripts/kiro_websearch.py": {
-      "sha256": "c07027f469674f0aa3d8dee370646847e7e2f4edbfa1d8564720a86e4bb5a433",
+      "sha256": "cf1ef1cea9ad16397f62417aa539828f771210926d3c8f43f2395d85b8d9359d",
       "executable": true
     },
     "skills/kiro-delegate/scripts/parse_plan.py": {

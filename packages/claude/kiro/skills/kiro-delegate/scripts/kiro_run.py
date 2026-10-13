@@ -6,7 +6,8 @@ These read the `--list-sessions --format json` store and the human-readable log 
 caller already redirects to a file (mandatory — a pipe severs kiro's
 `--auth=acp-callback` refresh). kiro-cli 2.11.1 had no structured turn output; 2.29.1's
 `--output-format stream-json` carries the session id and credits, but the plugin does not
-use it yet (references/kiro-headless.md).
+use it yet (references/kiro-headless.md). The `Credits:` footer `credits` reads is printed
+by the V2 engine only; V3 text output (the delegate and review paths) has none.
 
 Usage:
   kiro_run.py session-id <dir>      # newest sessionId kiro-cli recorded for cwd=<dir>,
@@ -14,12 +15,13 @@ Usage:
                                     # `kiro-cli chat --resume-id <id>` so a fix round
                                     # continues the SAME conversation instead of
                                     # re-reading the whole task from scratch.
-  kiro_run.py credits <log>...      # sum the `Credits: <n>` figures kiro-cli prints in
-                                    # its own turn footer across one or more captured
-                                    # logs; prints the total (2 dp) or nothing.
+  kiro_run.py credits <log>...      # sum the `Credits: <n>` figures kiro-cli's V2 engine
+                                    # prints in its turn footer across one or more
+                                    # captured logs; prints the total (2 dp) or nothing.
                                     # Best-effort telemetry for the delegation-rate
-                                    # report — exit 1 with no output if the footer
-                                    # format changed, never an error.
+                                    # report — exit 1 with no output if no footer was
+                                    # found (V3 logs have none, or the format changed),
+                                    # never an error.
   kiro_run.py model-check <log>...  # exit 1 (printing the model id) if kiro-cli logged
                                     # that it could not apply `--model`; exit 0 otherwise.
                                     # Run it after every call that passed `--model`.
@@ -35,8 +37,9 @@ import tempfile
 # kiro-cli colorizes its turn footer even when stdout is a redirected file, so strip
 # escapes before matching (same reason kiro_review.py strips them before JSON-scanning).
 _ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[@-Z\\-_]")
-# The footer looks like `▸ Credits: 0.27 • Time: 3s` (observed on 2.11.1). Matching only
-# the labelled number keeps this from picking up prose in the model's own output.
+# The footer looks like `▸ Credits: 0.27 • Time: 3s` (observed on 2.11.1, V2 engine; the
+# V3 engine prints no footer on 2.29.1). Matching only the labelled number keeps this
+# from picking up prose in the model's own output.
 _CREDITS = re.compile(r"\bCredits:\s*([0-9]+(?:\.[0-9]+)?)")
 
 
@@ -87,9 +90,11 @@ def session_id(directory):
 
 
 def credits(paths):
-    """Sum every `Credits: <n>` in the given captured logs. Best-effort by contract: the
+    """Sum every `Credits: <n>` in the given captured logs. Only V2-engine logs carry the
+    footer; a V3 log (the delegate path) has none. Best-effort by contract: the
     delegation-rate report omits the figure rather than claiming a wrong one, so an
-    unreadable log or a changed footer format is exit 1 with no output, never a crash."""
+    unreadable log, a V3 log or a changed footer format is exit 1 with no output,
+    never a crash."""
     total = 0.0
     found = False
     for p in paths:

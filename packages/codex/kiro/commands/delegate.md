@@ -37,8 +37,11 @@ rationale: the `$ROOT` note atop `agents/kiro-delegate-agent.md` → "Pipeline")
      fall through to an ad-hoc `--trust-tools=fs_read,fs_write` invocation — the custom
      agent file is what carries the `preToolUse` write-guard
      (`references/kiro-headless.md` → "Trust boundary" step 6).
-   - exit 1 (tampered / hand-edited): do NOT run it — the pipeline copies it into a
-     worktree and its `preToolUse.runCommand` is a host command that executes.
+   - exit 1 naming a plugin-generated V2-format file (the V3 engine refuses that
+     format): run `... kiro_setup.py write-agents --root "$ROOT"` (no `--force`), which
+     upgrades it in place, then re-verify.
+   - any other exit 1 (tampered / hand-edited): do NOT run it — the pipeline copies it
+     into a worktree and its `preToolUse.runCommand` is a host command that executes.
      Regenerate with `... kiro_setup.py write-agents --force --root "$ROOT"`, or ask
      the user, before delegating.
    - exit 0: proceed.

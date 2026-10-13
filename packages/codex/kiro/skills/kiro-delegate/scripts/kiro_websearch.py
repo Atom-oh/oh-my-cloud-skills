@@ -123,10 +123,12 @@ def run_search(root, query):
                 "--agent", "kiro-websearch"]
         if model:
             argv += ["--model", model]
-        # No `--v3`: measured on 2.11.1, the V3 catalog's default routing blocked
-        # web_search ("I wasn't able to perform a live web search"), and on 2.29.1 V3
-        # refuses this V2-format agent file outright (exit 4). Every plugin call runs on
-        # the default V2 engine (references/kiro-headless.md).
+        # Default (V2) engine on purpose, unlike the delegate and review paths, which run
+        # on V3: this agent file stays in the V2 format, which V3 refuses (exit 4), and
+        # converting it with `kiro-cli agent upgrade` would add a `web` (fetch URL) tool
+        # next to web_search. On 2.11.1 the V3 catalog's default routing also blocked
+        # web_search ("I wasn't able to perform a live web search"), and V3 costs more
+        # credits per call. See references/kiro-headless.md -> "Engine selection".
         # Capture to FILES, not PIPEs — a pipe severs kiro-cli's auth-refresh callback
         # and the call hangs to the full timeout (references/kiro-headless.md).
         outp, errp = os.path.join(wdir, ".out"), os.path.join(wdir, ".err")
