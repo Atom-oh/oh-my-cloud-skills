@@ -30,9 +30,9 @@ Usage:
                                                   # since this call reviews a PUSH.
   --progress          Tail kiro-cli's own stdout to stderr line-by-line while it runs
                        (prefixed `[kiro:<lens>]`), plus a 15s "still running" heartbeat,
-                       instead of a blind wait for the whole `review.timeout`. kiro-cli
-                       has no stream-json mode; this streams the human-readable output it
-                       already writes (see _run_streamed). Meant for calls a human or
+                       instead of a blind wait for the whole `review.timeout`. This
+                       streams the human-readable output kiro-cli already writes
+                       (see _run_streamed). Meant for calls a human or
                        Claude is WATCHING — run it in a background Bash and poll. The
                        hooks deliberately don't pass it: their stderr only surfaces after
                        the call returns, so streaming buys nothing there.
@@ -92,11 +92,9 @@ def _run_streamed(argv, cwd, env, outp, errp, timeout, echo_tag=None):
     in run_review) and, when `echo_tag` is set, tail the stdout file to our own stderr
     line-by-line while it runs.
 
-    kiro-cli headless has no `--output-format stream-json` equivalent — turn-level event
-    streaming is the one thing genuinely missing (`--format json` applies to the
-    `--list-models`/`--list-sessions` list flags, not to a `chat` turn) — so the stream we
-    can offer is the human-readable stdout it already writes, tailed from the capture
-    file. Reading the file instead of a pipe is what keeps the auth callback intact.
+    kiro-cli 2.11.1 had no turn-level event stream, so this tails the human-readable
+    stdout from the capture file. 2.29.1 adds `--output-format stream-json`, which this
+    plugin does not use yet (references/kiro-headless.md). Reading the file instead of a pipe is what keeps the auth callback intact.
 
     Returns the exit code, or None if the timeout was hit (process killed)."""
     prefix = f"[kiro:{echo_tag}] " if echo_tag else ""
@@ -463,9 +461,9 @@ def run_review(root, diff, model, timeout, allow_unguarded=False, lens=None, pro
             argv += ["--effort", effort]
         if model:
             argv += ["--model", model]
-        else:
-            # No specific model configured — --v3 is fine on the CLI default catalog.
-            argv.insert(2, "--v3")
+        # No `--v3` even without a model: on kiro-cli 2.29.1 the V3 engine refuses the
+        # plugin's V2-format agent files ("needs upgrading for this agent engine", exit 4),
+        # so a model-less review always failed open. See references/kiro-headless.md.
         # Capture to FILES, not PIPEs: kiro-cli can refresh auth over the host fds it
         # was launched with (--auth=acp-callback), and a pipe severs that callback,
         # hanging the call to the full timeout (see co-agent's check_panel.py probe()).

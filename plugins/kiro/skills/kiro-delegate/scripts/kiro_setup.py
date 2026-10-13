@@ -201,7 +201,8 @@ def probe(timeout=90, model=None, effort=None):
     if model:
         argv += ["--model", model]
     else:
-        argv += ["--v3", "--mode", "default"]
+        # The default (V2) engine, the one every plugin call runs on — not `--v3`.
+        argv += ["--mode", "default"]
     if effort:
         argv += ["--effort", effort]
     with tempfile.TemporaryDirectory() as cwd:
