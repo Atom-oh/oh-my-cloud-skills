@@ -176,7 +176,7 @@
       "executable": false
     },
     "skills/pr-autofix/references/review-evidence.md": {
-      "sha256": "70efd548322b635520f05833b7b50db819db24a21fce8aaee60eaf65e94cddb5",
+      "sha256": "b62133d205fc5c78e071fcfdfca255ed7a565c3e8f39384e9127ac81ffbc0d61",
       "executable": false
     },
     "skills/pr-autofix/references/review-memory-maintenance.md": {
@@ -184,7 +184,7 @@
       "executable": false
     },
     "skills/pr-autofix/references/review-state.md": {
-      "sha256": "5d56146d7d616c1edebcae6e3fcf102ff7dac594c223670accac0c99f5d46cd5",
+      "sha256": "b5f788d6b7c8697aebb182bbca47985f81b0b9b94a83edbeb6a255172b5d03b8",
       "executable": false
     },
     "skills/pr-autofix/scripts/check_pr_target.py": {
@@ -197,6 +197,10 @@
     },
     "skills/pr-autofix/scripts/poll_probe.py": {
       "sha256": "043a667798ccb1ff68b174b2a88084bb4bde3d865ece0a74034637fc809d7944",
+      "executable": false
+    },
+    "skills/pr-autofix/scripts/pr_diff.py": {
+      "sha256": "17ce50da4e9babe0f678777be03c4c90c3794b0226a05b74ce761ec848ffa84e",
       "executable": false
     },
     "skills/pr-autofix/scripts/resolve_pr_state.py": {

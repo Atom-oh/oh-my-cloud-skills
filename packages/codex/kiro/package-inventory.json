@@ -12,7 +12,7 @@
       "executable": false
     },
     "agents/kiro-delegate-agent.md": {
-      "sha256": "268735616ab3d69d00025efeb95299684fd8fec4c94fdcc32e7538908ca5ac88",
+      "sha256": "8f6e90ee8414412fe960fc6538f214d1615c29085f9094463aec3595648069fe",
       "executable": false
     },
     "commands/configure.md": {
@@ -52,7 +52,7 @@
       "executable": false
     },
     "skills/kiro-delegate/references/kiro-headless.md": {
-      "sha256": "a5eea00b2e1e1a06fb552af6b36f8b7bda2b1cf8584152fafe4abd257b3d384d",
+      "sha256": "09a36faef02fdfc873b422a0bb5a63b3ae4a47b1a4a5f2f5e45e6986a9ecda01",
       "executable": false
     },
     "skills/kiro-delegate/references/spec-format.md": {
@@ -72,19 +72,19 @@
       "executable": true
     },
     "skills/kiro-delegate/scripts/kiro_review.py": {
-      "sha256": "e47590d19ee6059aaf6852336ab309def729f74cec5ad98c17b04f1ebb24edf5",
+      "sha256": "19b1147e8b92bd1f1d7cbaa4ce154be8f4ec67e53d954e5c23f895c9d2880ae8",
       "executable": true
     },
     "skills/kiro-delegate/scripts/kiro_run.py": {
-      "sha256": "09627f3ea508bb79e691c96ea41343dfb3955ed76b62a664d5a9e208f18dcb38",
+      "sha256": "9b7cfbfa9549a7c89c1b38c7ebaea4ec31377cf8b1146e994545a29607e92451",
       "executable": true
     },
     "skills/kiro-delegate/scripts/kiro_setup.py": {
-      "sha256": "1c93e216521706b5af5f5cb5ebf8581a3a1e15e96f99a1ecc413beec0c802da7",
+      "sha256": "4ede0a7d19d6837389669959da40ff81917eb53ffd971d99d17ded7641cb4aa8",
       "executable": true
     },
     "skills/kiro-delegate/scripts/kiro_websearch.py": {
-      "sha256": "664819e4b6e55e0ad5c0f671f0a93d05cf88cade15caaf0216d4576851bb7155",
+      "sha256": "c07027f469674f0aa3d8dee370646847e7e2f4edbfa1d8564720a86e4bb5a433",
       "executable": true
     },
     "skills/kiro-delegate/scripts/parse_plan.py": {

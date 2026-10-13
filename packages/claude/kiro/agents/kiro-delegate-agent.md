@@ -153,8 +153,8 @@ and stdin shown below when using that runner.
      **Launch it in a BACKGROUND Bash with stdout+stderr redirected to a log outside
      `<wt>`** (`> "$RUN_DIR/task-<task-id>-attempt-0.log" 2>&1`, never `| tee` — a pipe severs
      kiro's auth callback and hangs the call to the full `delegate.timeout`), then
-     `tail -n 20` the log between polls to relay progress; kiro-cli has no stream-json
-     mode, so this tail IS the progress stream. Outside `<wt>` so the log can never
+     `tail -n 20` the log between polls to relay progress; this tail IS the progress
+     stream (the plugin does not use `--output-format stream-json` yet). Outside `<wt>` so the log can never
      enter `capture-diff`'s scope.
    - **When `--model` was passed, check the log before using the result**:
      `python3 .../kiro_run.py model-check "$RUN_DIR/task-<task-id>-attempt-<n>.log"`.
