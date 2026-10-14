@@ -137,12 +137,15 @@ def _run_streamed(argv, cwd, env, outp, errp, timeout, echo_tag=None):
 
 
 def _reviewer_agent_ok(path):
-    """True iff the reviewer agent file exists AND matches the plugin-generated shape.
-    Same rationale as kiro_setup.verify_agents for the implementer: the agent file's
-    preToolUse.runCommand is a host command kiro-cli executes, so a tampered file must
-    not be copied into the review cwd and run — fall back to the (announced) ad-hoc
-    invocation instead of trusting it. Imported lazily so a broken sibling module can't
-    take down the fail-open review path."""
+    """True iff the reviewer agent file exists AND matches the plugin-generated shape in
+    the universal format (a V2-format file, even an unedited plugin-generated one, is
+    refused: the V3 engine this review runs on cannot load it, and `kiro_setup.py
+    write-agents` upgrades it in place). Same rationale as kiro_setup.verify_agents
+    for the implementer: the agent file's preToolUse command is a host command
+    kiro-cli executes, so a tampered file must not be copied into the review cwd and
+    run — fall back to the (announced) ad-hoc invocation instead of trusting it.
+    Imported lazily so a broken sibling module can't take down the fail-open review
+    path."""
     if not os.path.isfile(path):
         return False
     try:
@@ -409,7 +412,10 @@ def run_review(root, diff, model, timeout, allow_unguarded=False, lens=None, pro
                 "mcpServers": {},
                 "useLegacyMcpJson": False,
                 "resources": [],
-                "hooks": {},
+                # Universal agent format (`kiro-cli agent upgrade` output for this
+                # agent): the V3 engine refuses the V2 form, whose empty hooks were {}.
+                "hooks": [],
+                "permissions": {"rules": []},
             }
             agents_dir = os.path.join(wdir, ".kiro", "agents")
             os.makedirs(agents_dir, exist_ok=True)
@@ -445,25 +451,34 @@ def run_review(root, diff, model, timeout, allow_unguarded=False, lens=None, pro
             # through an unconfined fs_read. A caller that wants to proceed anyway must
             # pass allow_unguarded=True, and must have gotten a human's confirmation
             # BEFORE calling this — not after, from a warning this function prints.
-            return None, ("kiro-reviewer agent missing or not plugin-generated — "
-                           "skipping the review rather than running it unguarded. Run "
-                           "/kiro:setup (write-agents --force if tampered) to restore "
-                           "it, or re-run with --allow-unguarded after confirming you "
-                           "trust this diff's authorship."), truncated
+            return None, ("kiro-reviewer agent missing or not plugin-generated in the "
+                           "universal format — skipping the review rather than running "
+                           "it unguarded. Run /kiro:setup or `kiro_setup.py "
+                           "write-agents` to restore it (it upgrades an unedited "
+                           "plugin-generated V2 file in place; --force if tampered), or "
+                           "re-run with --allow-unguarded after confirming you trust "
+                           "this diff's authorship."), truncated
         else:
             print("⚠️  kiro review: .kiro/agents/kiro-reviewer.json missing or not "
-                  "plugin-generated — running with ad-hoc --trust-tools=fs_read (NO "
-                  "read-scope guard), as explicitly confirmed. Run /kiro:setup "
-                  "(write-agents --force if tampered) to restore the guard.",
-                  file=sys.stderr)
+                  "plugin-generated in the universal format — running with ad-hoc "
+                  "--trust-tools=fs_read (NO read-scope guard), as explicitly "
+                  "confirmed. Run /kiro:setup or `kiro_setup.py write-agents` (it "
+                  "upgrades an unedited plugin-generated V2 file; --force if "
+                  "tampered) to restore the guard.", file=sys.stderr)
             argv += ["--trust-tools=fs_read"]
+        # All three modes run on the V3 engine (kiro-cli 2.29.1). The kiro-reviewer and
+        # kiro-review-notools agents are written in the universal format V3 requires
+        # (it refuses V2-format agent files with exit 4); the reviewer's read guard
+        # also covers V3's path-less grep/file search tools, and V3 itself confines
+        # reads and searches to the workspace (the isolated temp dir). An invalid
+        # --model fails with exit 1 instead of being silently substituted. V3 prints no
+        # Credits footer and costs more credits per call than V2. Websearch stays on
+        # V2. See references/kiro-headless.md -> "Engine selection".
+        argv += ["--agent-engine", "v3"]
         if effort:
             argv += ["--effort", effort]
         if model:
             argv += ["--model", model]
-        # No `--v3` even without a model: on kiro-cli 2.29.1 the V3 engine refuses the
-        # plugin's V2-format agent files ("needs upgrading for this agent engine", exit 4),
-        # so a model-less review always failed open. See references/kiro-headless.md.
         # Capture to FILES, not PIPEs: kiro-cli can refresh auth over the host fds it
         # was launched with (--auth=acp-callback), and a pipe severs that callback,
         # hanging the call to the full timeout (see co-agent's check_panel.py probe()).

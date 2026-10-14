@@ -16,9 +16,9 @@ Codex ships native setup/configure/review procedures generated from
 `scripts/codex/kiro-skills/`. Its `kiro_codex.py` runner diagnoses installation and
 performs tool-free reviews with structured results. Manual Codex review needs no
 project agent files; a temporary no-tools agent receives the supplied input with
-`--no-interactive --trust-tools=`. Failed, malformed, oversized or partial reviews
-return ERROR, not PASS. This does not change the opt-in hook engine or delegate
-agent trust boundary described below.
+`--no-interactive --trust-tools=` on the V3 engine (`--agent-engine v3`). Failed,
+malformed, oversized or partial reviews return ERROR, not PASS. This does not change
+the opt-in hook engine or delegate agent trust boundary described below.
 
 ---
 

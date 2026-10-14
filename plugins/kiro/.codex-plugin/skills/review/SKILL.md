@@ -38,8 +38,9 @@ error, a skipped call or an oversized input as a passing review. Inputs above
 reviewed.
 
 The runner preserves configured review model, effort and timeout, sends input as
-data, and invokes Kiro with `--no-interactive --trust-tools=` and a temporary
-agent with no tools, MCP servers, resources or hooks. Do not add `fs_read`,
+data, and invokes Kiro on the V3 engine (`--agent-engine v3`) with
+`--no-interactive --trust-tools=` and a temporary agent with no tools, MCP
+servers, resources or hooks. Do not add `fs_read`,
 `--allow-unguarded` or implementation privileges to make a review succeed.
 Compare findings with the real source before applying changes. This local
 result does not replace mandatory PR review coverage or CI.

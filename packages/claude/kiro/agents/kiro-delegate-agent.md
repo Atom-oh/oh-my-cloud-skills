@@ -72,7 +72,9 @@ and stdin shown below when using that runner.
      `preToolUse.runCommand` is a host command that executes); regenerate with
      `write-agents --force` or ask the user. Never fall through to an ad-hoc
      `--trust-tools=fs_read,fs_write` invocation — it carries no write-guard hook
-     (the hook lives *in* the custom agent file).
+     (the hook lives *in* the custom agent file). If verify-agents reports a
+     plugin-generated V2-format file (the V3 engine refuses that format), run plain
+     `write-agents` (no `--force`): it upgrades such a file in place, then re-verify.
    - Clean-tree check on the plan's whole declared file set:
      `git -C "$ROOT" --literal-pathspecs status --porcelain -- <every declared file>`
      must be empty. Step 5's fallback restore/clean cannot tell Kiro's half-finished
@@ -142,8 +144,8 @@ and stdin shown below when using that runner.
    - Run Kiro inside `<wt>`: `kiro-cli chat "Read .kiro/task-prompt.md via fs_read — it
      has your task and any spec file pointers — then implement exactly what it
      describes. Do not touch files outside the task's declared file set."
-     --mode default --no-interactive --wrap never --require-mcp-startup --agent kiro-implementer
-     [--effort <delegate.effort>] [--model <delegate.model>]`
+     --agent-engine v3 --mode default --no-interactive --wrap never --require-mcp-startup
+     --agent kiro-implementer [--effort <delegate.effort>] [--model <delegate.model>]`
      — this exact sentence, unchanged across every task; **cwd MUST be `<wt>`**.
      `--effort` comes from `kiro_config.py delegate-effort`; omit the flag entirely when
      that command prints nothing. `--require-mcp-startup` turns a silently-dead MCP
@@ -155,7 +157,8 @@ and stdin shown below when using that runner.
      kiro's auth callback and hangs the call to the full `delegate.timeout`), then
      `tail -n 20` the log between polls to relay progress; this tail IS the progress
      stream (the plugin does not use `--output-format stream-json` yet). Outside `<wt>` so the log can never
-     enter `capture-diff`'s scope.
+     enter `capture-diff`'s scope. On the V3 engine the log also carries KAS (Kiro Agent
+     Server) `[INFO]` lines; they are not errors.
    - **When `--model` was passed, check the log before using the result**:
      `python3 .../kiro_run.py model-check "$RUN_DIR/task-<task-id>-attempt-<n>.log"`.
      Exit 1 means kiro-cli ignored the configured model and ran its default one (seen
@@ -174,7 +177,7 @@ and stdin shown below when using that runner.
    `"$RUN_DIR"` containing only the new information (the failing test output,
    trimmed). Update the worktree prompt using
    `python3 "$SK/prepare_worktree.py" write-prompt --worktree "<wt>" < "$RUN_DIR/task-<task-id>-retry-<attempt-number>.txt"`;
-   check exit 0, then re-run with `--resume-id <the id from step 3>`
+   check exit 0, then re-run with `--agent-engine v3 --resume-id <the id from step 3>`
    plus the same fixed instruction sentence — Kiro already has the task, spec, and its
    first attempt in session history. No recorded id (exit 1) → fresh call whose prompt
    file carries the task **and** the failure; a missing session id never fails the task.
@@ -196,8 +199,9 @@ and stdin shown below when using that runner.
    delegation rate (tasks Kiro completed vs. the host took over) plus the credits Kiro
    spent: `python3 "$SK/kiro_run.py" credits "$RUN_DIR"/*.log`. This glob is restricted
    to the current unique run directory, never other sessions' logs. Best-effort by
-   contract — exit 1 means the footer format changed or no log was readable, so omit
-   the line rather than report a possibly-wrong figure.
+   contract — exit 1 means no `Credits:` footer was found or no log was readable, so omit
+   the line rather than report a possibly-wrong figure. V3 text logs carry no such
+   footer, so a V3 delegate run reports no credits figure.
 7. **Clean up.** `worktree.py remove <wt>` for every worktree used.
 
 ## Default-delegate mode

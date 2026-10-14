@@ -27,8 +27,8 @@ caller.
 ```bash
 kiro-cli chat "Read .kiro/task-prompt.md via fs_read — it has your task and any spec \
 file pointers — then implement exactly what it describes. Do not touch files outside \
-the task's declared file set." --mode default --no-interactive --wrap never \
-  --require-mcp-startup --agent kiro-implementer [--effort low] [--model <m>]
+the task's declared file set." --agent-engine v3 --mode default --no-interactive \
+  --wrap never --require-mcp-startup --agent kiro-implementer [--effort low] [--model <m>]
 ```
 
 `--effort` is `delegate.effort` (`kiro_config.py delegate-effort`, default **`low`** — the
@@ -40,7 +40,7 @@ fix-round-worthy task failure.
 
 **Fix rounds resume, they don't restart.** After the first call, record the session with
 `kiro_run.py session-id <wt>` and re-run round 2 as
-`kiro-cli chat "<the same fixed sentence>" --resume-id <id> …`, having rewritten
+`kiro-cli chat "<the same fixed sentence>" --agent-engine v3 --resume-id <id> …`, having rewritten
 `<wt>/.kiro/task-prompt.md` to hold **only the failing test output**. The session already
 has the task, the spec, and Kiro's own first attempt; re-sending them costs a full context
 re-read and invites redoing finished work. No id found (exit 1) → fall back to a fresh
@@ -90,11 +90,10 @@ see it in an older note, treat the agent-file requirement above as authoritative
   `chat.defaultModel` with exit 0; 2.29.1 applies the flag. `kiro_run.py model-check
   <log>` detects the warning for delegate runs, and `kiro_review.py`, `kiro_websearch.py`
   and the `kiro_setup.py probe` turn it into an error. The fix is `kiro-cli update`.
-- **Never pass `--v3` with these agents.** Every plugin call runs on the default V2
-  engine. On kiro-cli 2.29.1 the V3 engine refuses the plugin's V2-format agent files
-  (`needs upgrading for this agent engine`, exit **4**). The older reason, a narrower V3
-  model catalog (`INVALID_MODEL_ID`, co-agent ADR-012), no longer holds: both engines
-  list the same 22 models. See "V3 engine status" below.
+- **Pass `--agent-engine v3` on every implementer call**, first attempt and fix round
+  alike. The delegate and review paths run on the V3 engine with the universal-format
+  agent files `write-agents` generates; websearch stays on the default V2 engine. See
+  "Engine selection" below.
 
 ## The real headless flag surface (measured on kiro-cli 2.11.1, 2026-07; rechecked on 2.29.1, 2026-10)
 
@@ -112,10 +111,12 @@ is the authoritative source; re-run it after a CLI upgrade rather than trusting 
 | `-l/--list-sessions` + `-f json\|json-pretty` | how `session-id` finds that id (grouped by `cwd`, so a per-task worktree identifies its session unambiguously) |
 | `--list-models --format json` | `kiro_setup.py list-models` |
 | `--require-mcp-startup` (exit **3**) | delegate invocation — a silently-dead MCP server fails fast instead of failing the tests later for an unrelated-looking reason |
+| `--agent-engine v1\|v2\|v3` | `v3` on delegate (implementer) and review calls and the setup probe; websearch omits it and runs on the default `v2` — see "Engine selection" |
 | `--mode default\|spec`, `--wrap never`, `--agent`, `--model` | already in use throughout |
 
-`-d/--delete-session`, `--session-source v1\|v2`, `--agent-engine v1\|v2\|v3`, `--v3`
-and `--output-format text\|stream-json` also exist. The plugin uses none of them.
+`-d/--delete-session`, `--session-source v1\|v2`, `--v3`, `--v2` and
+`--output-format text\|stream-json` also exist. The plugin uses none of them; it selects
+the engine with `--agent-engine` only.
 
 ### Turn-level event streaming (available since the 2.11.1 measurements)
 
@@ -128,39 +129,85 @@ They include the session id, the credits used (V2 `meteringUsage`; V3
 `runFinished` with `status` and `finalText`. The plugin still reads the text log, the
 session store and the credits footer described below. Moving to stream-json is open work.
 
-The credit figure from that same wish-list is likewise scrapeable rather than absent:
+The credit figure from that same wish-list is scrapeable only on the V2 engine: there
 kiro-cli prints a `Credits: <n>` turn footer into the log the caller already redirects, so
-`kiro_run.py credits <log>...` sums it for the delegation-rate report — best-effort, and
-the report omits the line rather than guessing if the footer format changes.
+`kiro_run.py credits <log>...` sums it — best-effort, and the delegation-rate report omits
+the line rather than guessing if the footer format changes. The V3 engine prints no
+footer, so for the V3 delegate and review paths `credits` exits 1 and the report omits
+the figure. V3 records it in its session store instead (see "Engine selection").
 
-## V3 engine status (measured on kiro-cli 2.29.1, 2026-10)
+## Engine selection (measured on kiro-cli 2.29.1, 2026-10)
 
-The plugin does not use V3. These are the differences that block or change a move to it,
-apart from cost: one user measured 1.5–2.7x more credits per short prompt on V3.
+The delegate path (the implementer, first attempt and `--resume-id` fix rounds) and all
+three review forms (`kiro-reviewer` agent, the confirmed `--allow-unguarded`
+`--trust-tools=fs_read` fallback, and Codex's tool-free `kiro-review-notools` agent) pass
+`--agent-engine v3`, and so does the `kiro_setup.py probe`. `kiro_websearch.py` omits the
+flag and runs on the default V2 engine: its agent file stays in the V2 format, because
+`kiro-cli agent upgrade` would add a `web` (fetch URL) tool next to `web_search`. On
+2.11.1 the V3 catalog's default routing also blocked `web_search`.
 
-- **Agent format.** V3 refuses the plugin's V2-format agent files (exit 4).
-  `kiro-cli agent upgrade <dir>` rewrites them to a "universal" format. V2 and V3 both load
-  that format; on V2 the upgraded agents' tools and hooks behaved as before. The generator
-  and the exact-match tamper checks (`verify-agents`, `_reviewer_agent_ok`,
-  `kiro_websearch.py`) would all have to adopt it.
-- **Wider hook matchers.** The upgrade maps `fs_read` to `read`, which also covers `grep`,
-  `glob`, `code`, `introspect` and `tool_search`, and `fs_write` to `write`, which also
-  covers `code`. V3's `grep_search` carries no path (`query`, `includePattern`), so the
-  path guard refuses it. A V3 implementer would lose grep unless the guard learns that
-  tool's payload.
+- **Agent format.** V3 refuses V2-format agent files (`needs upgrading for this agent
+  engine`, exit **4**). `write-agents` generates `kiro-implementer` and `kiro-reviewer` in
+  the universal format `kiro-cli agent upgrade <dir>` produces, which V2 and V3 both load
+  (`agent upgrade --dry-run` reports them `already universal`). `tools` uses the universal
+  names (`read`, `shell`, `write`, in that order), `allowedTools` keeps the V2 names
+  (`fs_read`, `fs_write`, `execute_bash`), `hooks` is a list of entries such as
+  `{"name": "preToolUse-0", "trigger": "preToolUse", "matcher": "write", "action":
+  {"type": "command", "command": <guard>}, "timeout": 10}` (implementer: `write` then
+  `read`; reviewer: one `read`), and `permissions.rules` allows `fs_read`, `fs_write` and,
+  with `--enable-bash`, `shell`. An agent with no hooks has `"hooks": []` and
+  `"permissions": {"rules": []}`, as in `kiro-review-notools`. `verify-agents` and
+  `kiro_review.py`'s reviewer check accept only these universal shapes. An unedited V2
+  file written by any earlier plugin release or main-branch generator (v3.0.0 included)
+  matches a SHA-256 digest in `_LEGACY_V2_DIGESTS` and is upgraded by plain
+  `write-agents` (it prints `upgraded (plugin-generated V2 agent): <path>`), keeping
+  that file's `execute_bash` choice; any other existing file still needs `--force`.
+- **Wider hook matchers.** `read` also matches `grep`, `glob`, `code`, `introspect` and
+  `tool_search`; `write` also matches `code`.
+- **Hook payloads.** Top-level keys are `cwd`, `hook_event_name`, `session_id`,
+  `tool_input` and `tool_name`. Tool inputs: `read_file` {`path`, `offset`, `limit`},
+  `list_directory` {`path`, `explanation`, `depth`}, `fs_write` {`path`, `text`},
+  `str_replace` {`path`, `oldStr`, `newStr`, `replace_all`}, `grep_search` {`query`,
+  `caseSensitive`, `excludePattern`, `explanation`, `includePattern`} and `file_search`
+  {`query`, `explanation`, `excludePattern`, `includeIgnoredFiles`}. The last two carry no
+  path.
+- **Search-tool guard rule.** The guard lets `grep_search` and `file_search` through
+  without a path under two allowlists, because the glob engine interprets patterns: a
+  literal denylist let brace expansion (`{/etc,src}/*`), escapes (`.\./x`), character
+  classes (`[.][.]/x`) and an unknown `directory` key through. Keys: every `tool_input`
+  key must be in the measured set for that tool (`grep_search`: `query`,
+  `caseSensitive`, `excludePattern`, `explanation`, `includePattern`; `file_search`:
+  `query`, `explanation`, `excludePattern`, `includeIgnoredFiles`), so a `path`,
+  `directory` or newly added field is refused. Patterns: `includePattern` and
+  `excludePattern` must be `null` or a string that fully matches `[A-Za-z0-9_.*?/!-]*`
+  (no braces, brackets, backslash, comma, `$`, `~`, colon, whitespace or NUL), does not
+  start with `/`, is not `os.path.isabs` and contains no `..`. Everything else is
+  refused, as is every other path-less payload (`introspect`, `tool_search`, ...). This
+  is defense in depth over V3's own confinement below. V2's `operations[]` handling is
+  unchanged.
+- **V3's own workspace limit.** Independently of the hook, V3 confines `grep_search` and
+  `file_search` to the workspace (an `includePattern` of `../*` or an absolute outside
+  path finds nothing, and symlinks are not followed), refuses `list_directory ..`, and
+  refuses `read_file` through a symlink that points outside
+  (`kiro-scope:workspace-escape`). Neither engine confines `execute_bash`, which stays off
+  unless setup ran with `--enable-bash`; with shell access granted, `cat` reads any file
+  the user can read.
 - **Hook refusals need stderr.** V3 ignores a `preToolUse` exit 2 when the hook's stderr is
-  empty and runs the tool anyway. V2 blocks either way. The guard must print a reason.
-- **V3 payloads.** Tools are `read_file`, `grep_search` and `execute_bash`, and `read_file`
-  carries a top-level `path`. V2's `fs_read` uses `operations[].path` instead.
-- **V3's own workspace limit.** V3 refuses reads and writes outside the workspace by itself
-  (`kiro-scope:workspace-escape`), including through a symlink inside the worktree. This
-  is independent of the hook. `execute_bash` is disabled by default and requires setup
-  with `--enable-bash`. Neither engine confines it: with shell access
-  granted, `cat` reads any file the user can read.
-- **websearch.** The upgrade adds a `web` (fetch URL) tool next to `web_search`. Fetch needs
-  approval, so a headless run rejects it, but the agent's tool list is wider.
-- **Unchanged.** `--resume-id`, `--list-sessions` (sessions are tagged `"source": "v3"`),
-  `--require-mcp-startup`, `--effort`, `--mode default` and `--model` all work on V3.
+  empty and runs the tool anyway; V2 blocks either way. The guard always prints a reason.
+  A refused call is recorded in the session store as `"status": "denied"`.
+- **No credits footer.** V3 text output prints no `Credits:` footer, so `kiro_run.py
+  credits` exits 1 on a V3 log and the delegation report omits the credits line. The
+  session store (`~/.kiro/sessions/<dir>/<session-id>/messages.jsonl`) records each turn's
+  `usage_summary.promptTurnSummaries[].usage`; reading it, or stream-json, is open work.
+  The redirected log also carries KAS (Kiro Agent Server) `[INFO]` lines such as
+  `kas.server.starting`, and a Node `ExperimentalWarning` tagged `[ERROR]`; neither is a
+  failure.
+- **Invalid `--model`.** V3 fails with exit 1 (`The model '<id>' is not available`) rather
+  than substituting another model. `--model claude-sonnet-5.5 --effort low` works.
+- **Cost.** One user measured 1.5–2.7x more credits per short prompt on V3 than on V2.
+- **Unchanged.** `--resume-id`, `--list-sessions` (sessions are tagged `"source": "v3"`;
+  `kiro_run.py session-id` finds them), `--require-mcp-startup`, `--effort`,
+  `--mode default`, `--model` and an agent-less `--trust-tools=fs_read` all work on V3.
 
 ## Watching a run
 
@@ -179,8 +226,9 @@ turns a blind wait into visible progress with no protocol support at all:
   `tail -n 20` that log between polls.
 
   ```bash
-  kiro-cli chat "<the fixed instruction sentence>" --mode default --no-interactive \
-    --wrap never --agent kiro-implementer > /tmp/kiro-delegate-<task>.log 2>&1
+  kiro-cli chat "<the fixed instruction sentence>" --agent-engine v3 --mode default \
+    --no-interactive --wrap never --agent kiro-implementer \
+    > /tmp/kiro-delegate-<task>.log 2>&1
   ```
 
   Outside `<wt>` because anything written inside it lands in `capture-diff`'s scope; and
@@ -191,14 +239,17 @@ turns a blind wait into visible progress with no protocol support at all:
 
 ```bash
 kiro-cli chat "<instruction to fs_read the diff file and report findings>" \
-  --mode default --no-interactive --trust-tools=fs_read --wrap never \
-  [--effort high] [--model <m>] [--agent kiro-reviewer]
+  --mode default --no-interactive --wrap never --agent kiro-reviewer \
+  --agent-engine v3 [--effort high] [--model <m>]
 ```
 
-Same argv/stdin rules as implement, but `--trust-tools=fs_read` only (or the
-`kiro-reviewer` custom agent, which has no `fs_write`/`execute_bash` at all) — the
-reviewer must never be able to write. `kiro_review.py` is the concrete implementation
-(diff → temp file → `fs_read` instruction → JSON findings contract).
+Same argv/stdin rules as implement, with the `kiro-reviewer` custom agent, which has no
+`fs_write`/`execute_bash` at all — the reviewer must never be able to write. Only after a
+confirmed `--allow-unguarded` does `kiro_review.py` replace `--agent kiro-reviewer` with
+the unguarded `--trust-tools=fs_read`. Codex's tool-free review instead passes
+`--trust-tools=` with a temporary `kiro-review-notools` agent and embeds the diff in the
+prompt. All three forms pass `--agent-engine v3`. `kiro_review.py` is the concrete
+implementation (diff → temp file → `fs_read` instruction → JSON findings contract).
 
 ## Trust boundary (mirrors co-agent's delegated-implement.md) — and its actual limits
 
@@ -248,6 +299,11 @@ the **worktree isolation + capture + scope_guard** path load-bearing for that on
    only `tool_input.path`: every V2 read passed, and so did `~/…` and `$HOME/…` paths for
    reads and writes (measured on kiro-cli 2.29.1). Agent files generated before the fix
    fail `verify-agents`; regenerate them with `write-agents --force`.
+
+   On the V3 engine, `read_file`, `list_directory`, `fs_write` and `str_replace` send a
+   top-level `path`, which the same check covers. `grep_search` and `file_search` send no
+   path; the guard allows them only under the key and pattern allowlists in "Engine
+   selection".
 
 **What 1-6 do NOT cover: `execute_bash`.** All of the above governs `fs_write`/`fs_read`
 and the main tree only. `execute_bash` is **off by default** in

@@ -87,17 +87,24 @@ enters argv, where a `$(...)` or backtick would execute on the host shell first:
 # the Bash tool for up to delegate.timeout per task
 cd "$wt" && kiro-cli chat \
   "Read .kiro/task-prompt.md via fs_read — it has your task and any spec file pointers — then implement exactly what it describes. Do not touch files outside the task's declared file set." \
-  --mode default --no-interactive --wrap never --require-mcp-startup --agent kiro-implementer \
+  --agent-engine v3 --mode default --no-interactive --wrap never --require-mcp-startup \
+  --agent kiro-implementer \
   > "/tmp/kiro-delegate-$task.log" 2>&1        # a pipe severs kiro's auth callback; redirect to a file
 ```
+
+The implementer runs on kiro-cli's V3 engine (`--agent-engine v3`, first attempt and fix
+rounds alike) with the universal-format agent file `kiro_setup.py write-agents` generates.
+V3 text logs carry no `Credits:` footer, so the delegation report omits the credits line,
+and they contain KAS (Kiro Agent Server) `[INFO]` lines, which are not errors. Engine
+details: `references/kiro-headless.md` → "Engine selection".
 
 Fix rounds resume the same Kiro session instead of restarting it:
 
 ```bash
 python3 "$SK/kiro_run.py" session-id "$wt"   # newest sessionId for that cwd; exit 1 = none
 # rewrite $wt/.kiro/task-prompt.md to hold only the failing test output, then:
-#   kiro-cli chat "<same fixed sentence>" --resume-id <id> ...
-python3 "$SK/kiro_run.py" credits /tmp/kiro-delegate-*.log   # sums 'Credits: <n>' footers for the report
+#   kiro-cli chat "<same fixed sentence>" --agent-engine v3 --resume-id <id> ...
+python3 "$SK/kiro_run.py" credits /tmp/kiro-delegate-*.log   # sums V2 'Credits: <n>' footers; exit 1 on V3 logs
 ```
 
 ## What "safe" means here — and what it doesn't
@@ -159,7 +166,8 @@ Full tiering rationale and the measured kiro-cli flag surface:
 - **Delegation rate** — tasks Kiro completed vs. tasks the host took over (each fallback
   named, with why the fix loop was exhausted).
 - **Credits spent** — `kiro_run.py credits` over the run's logs; omitted entirely when
-  the script exits 1 (best-effort by contract — never a guessed figure).
+  the script exits 1 (best-effort by contract — never a guessed figure). V3 logs have no
+  `Credits:` footer, so a V3 delegate run omits this line.
 - **Spec location** — `$ROOT/.kiro/specs/<name>/` with `tasks.md` checkboxes ticked, so
   the user can continue remaining work natively in Kiro IDE if they want.
 
