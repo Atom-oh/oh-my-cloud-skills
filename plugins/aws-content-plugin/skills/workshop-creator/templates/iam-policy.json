@@ -2,21 +2,49 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "WorkshopBasePermissions",
+      "Sid": "WorkshopReadOnlyDescribeList",
       "Effect": "Allow",
       "Action": [
         "ec2:Describe*",
         "eks:Describe*",
         "eks:List*",
-        "s3:GetObject",
-        "s3:ListBucket",
         "cloudformation:Describe*",
         "cloudformation:List*",
-        "logs:Describe*",
-        "logs:Get*",
+        "logs:Describe*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:PrincipalAccount": "{{.AccountId}}"
+        }
+      }
+    },
+    {
+      "Sid": "WorkshopAssetsRead",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::{{.AssetsBucketName}}/{{.AssetsBucketPrefix}}/*"
+    },
+    {
+      "Sid": "WorkshopAssetsList",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::{{.AssetsBucketName}}",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": "{{.AssetsBucketPrefix}}/*"
+        }
+      }
+    },
+    {
+      "Sid": "WorkshopLogsRead",
+      "Effect": "Allow",
+      "Action": [
+        "logs:GetLogEvents",
+        "logs:GetLogGroupFields",
         "logs:FilterLogEvents"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:logs:*:{{.AccountId}}:log-group:*"
     }
   ]
 }
