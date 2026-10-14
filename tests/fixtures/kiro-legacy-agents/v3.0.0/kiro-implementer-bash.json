@@ -1,0 +1,27 @@
+{
+  "name": "kiro-implementer",
+  "description": "Implements tasks handed off by the /kiro:delegate pipeline, inside a throwaway git worktree the host controls.",
+  "prompt": "You implement exactly the task described in the prompt you're given, using the requirements/design/tasks spec files as context (read them with fs_read). Make the minimal change that satisfies the task. Do not touch files outside the task's declared file set. Do not run git commit \u2014 the host commits after review.",
+  "tools": [
+    "fs_read",
+    "fs_write",
+    "execute_bash"
+  ],
+  "allowedTools": [
+    "fs_read",
+    "fs_write",
+    "execute_bash"
+  ],
+  "hooks": {
+    "preToolUse": [
+      {
+        "matcher": "fs_write",
+        "command": "python3 -I -c \"import json,sys,os; d=json.load(sys.stdin); p=(d.get('tool_input') or {}).get('path',''); wt=os.path.realpath(os.getcwd()); t=os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); sys.exit(0 if t==wt or t.startswith(wt+os.sep) else 2)\""
+      },
+      {
+        "matcher": "fs_read",
+        "command": "python3 -I -c \"import json,sys,os; d=json.load(sys.stdin); p=(d.get('tool_input') or {}).get('path',''); wt=os.path.realpath(os.getcwd()); t=os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); sys.exit(0 if t==wt or t.startswith(wt+os.sep) else 2)\""
+      }
+    ]
+  }
+}

@@ -988,6 +988,39 @@ write(impl, k._implementer_agent(False))
 print('LEGACY_OK' if not bad else f'LEGACY_FAIL {bad}')
 " 2>&1)
 assert_contains "$LEGACY_OUT" "LEGACY_OK" "write-agents upgrades an unedited plugin-generated V2 agent without --force (keeping its bash choice) and still skips an edited one"
+# Files written by the v3.0.0 release carry an older guard string than the last V2
+# builder; the digest table must still recognize them (fixtures generated from the tag).
+FX300="$(pwd)/tests/fixtures/kiro-legacy-agents/v3.0.0"
+REL_OUT=$(cd "$SK" && python3 -I -c "
+import json, shutil, subprocess, sys
+sys.path.insert(0, '.')
+import kiro_setup as k
+impl, rev, fx = '$IMPL', '$REV', '$FX300'
+def load(p):
+    with open(p) as f:
+        return json.load(f)
+def setup():
+    return subprocess.run([sys.executable, 'kiro_setup.py', 'write-agents', '--root', '$R4'],
+                          capture_output=True, text=True).stdout
+bad = []
+for src, bash in (('kiro-implementer.json', False), ('kiro-implementer-bash.json', True)):
+    shutil.copyfile(f'{fx}/{src}', impl); shutil.copyfile(f'{fx}/kiro-reviewer.json', rev)
+    out = setup()
+    if out.count('upgraded (plugin-generated V2 agent): ') != 2: bad.append((src, out))
+    if load(impl) != k._implementer_agent(bash): bad.append((src, 'implementer not upgraded'))
+    if load(rev) != k._REVIEWER_AGENT: bad.append((src, 'reviewer not upgraded'))
+edited = load(f'{fx}/kiro-reviewer.json'); edited['hooks']['preToolUse'][0]['command'] = 'true'
+with open(rev, 'w') as f:
+    json.dump(edited, f)
+out = setup()
+if load(rev) != edited or 'upgraded' in out: bad.append(('edited v3.0.0 reviewer overwritten', out))
+with open(impl, 'w') as f:
+    json.dump(k._implementer_agent(False), f)
+with open(rev, 'w') as f:
+    json.dump(k._REVIEWER_AGENT, f)
+print('RELEASE_OK' if not bad else f'RELEASE_FAIL {bad}')
+" 2>&1)
+assert_contains "$REL_OUT" "RELEASE_OK" "write-agents upgrades unedited v3.0.0-release agent files without --force and skips an edited one"
 # verify-agents: plugin-generated file passes; a tampered preToolUse hook is rejected
 python3 "$SETUP" verify-agents --root "$R4" >/dev/null 2>&1 && VA0=0 || VA0=$?
 assert_eq "0" "$VA0" "verify-agents accepts a freshly plugin-generated implementer (exit 0)"

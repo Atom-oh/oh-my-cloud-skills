@@ -158,7 +158,8 @@ flag and runs on the default V2 engine: its agent file stays in the V2 format, b
   with `--enable-bash`, `shell`. An agent with no hooks has `"hooks": []` and
   `"permissions": {"rules": []}`, as in `kiro-review-notools`. `verify-agents` and
   `kiro_review.py`'s reviewer check accept only these universal shapes. An unedited V2
-  file matching the previous generator's output is recognized and upgraded by plain
+  file written by any earlier plugin release or main-branch generator (v3.0.0 included)
+  matches a SHA-256 digest in `_LEGACY_V2_DIGESTS` and is upgraded by plain
   `write-agents` (it prints `upgraded (plugin-generated V2 agent): <path>`), keeping
   that file's `execute_bash` choice; any other existing file still needs `--force`.
 - **Wider hook matchers.** `read` also matches `grep`, `glob`, `code`, `introspect` and

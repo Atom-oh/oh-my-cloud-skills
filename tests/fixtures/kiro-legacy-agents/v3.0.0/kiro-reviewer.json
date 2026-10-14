@@ -1,0 +1,19 @@
+{
+  "name": "kiro-reviewer",
+  "description": "Reviews a diff for the /kiro:review command and the pre-commit hook. Read-only \u2014 never writes; reads only within its launch directory (the isolated temp dir holding the diff).",
+  "prompt": "You are a strict but fair code reviewer. Read the diff you're pointed to with fs_read and report findings as instructed in the prompt. Never modify any file. You can only read files inside your working directory.",
+  "tools": [
+    "fs_read"
+  ],
+  "allowedTools": [
+    "fs_read"
+  ],
+  "hooks": {
+    "preToolUse": [
+      {
+        "matcher": "fs_read",
+        "command": "python3 -I -c \"import json,sys,os; d=json.load(sys.stdin); p=(d.get('tool_input') or {}).get('path',''); wt=os.path.realpath(os.getcwd()); t=os.path.realpath(p if os.path.isabs(p) else os.path.join(wt,p)); sys.exit(0 if t==wt or t.startswith(wt+os.sep) else 2)\""
+      }
+    ]
+  }
+}

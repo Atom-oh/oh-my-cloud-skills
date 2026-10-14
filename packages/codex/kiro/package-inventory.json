@@ -52,7 +52,7 @@
       "executable": false
     },
     "skills/kiro-delegate/references/kiro-headless.md": {
-      "sha256": "915b5dc14223a3ab9a0df51e9200f405201925ce378edd1b1dba7921084916a2",
+      "sha256": "42946a698e387dd7b6e42b8f5ee4048560e6a3b8de1f75979d4180b694bd2028",
       "executable": false
     },
     "skills/kiro-delegate/references/spec-format.md": {
@@ -80,7 +80,7 @@
       "executable": true
     },
     "skills/kiro-delegate/scripts/kiro_setup.py": {
-      "sha256": "be9232224536a44a194e267f2a405bd328225a3d613c5bfb2c7e33f104d42aea",
+      "sha256": "208097057c469d61d5d140c566fcf97f132ff77449d226611706e24089e0e7e6",
       "executable": true
     },
     "skills/kiro-delegate/scripts/kiro_websearch.py": {

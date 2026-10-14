@@ -27,7 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   upgrading its agent would add a `web` fetch tool. `kiro_setup.py write-agents` now
   writes `kiro-implementer` and `kiro-reviewer` in kiro-cli 2.29.1's universal agent
   format (the `kiro-cli agent upgrade` output, which both engines load; V3 refuses
-  the V2 format with exit 4). An unedited V2 file from the previous generator is
+  the V2 format with exit 4). An unedited V2 file written by any earlier release or
+  main-branch generator, including v3.0.0, is recognized by its SHA-256 digest and
   upgraded in place without `--force`, keeping its `execute_bash` choice; other
   existing files still need `--force`. `verify-agents` and the reviewer check accept
   only the universal shapes. The path guard also allows V3's path-less `grep_search`
