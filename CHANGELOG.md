@@ -38,9 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Scope the workshop-creator participant IAM policy template. S3 reads are limited
   to the assets bucket prefix and log reads to the workshop account's log groups.
-  The `Resource: "*"` statement keeps only Describe/List actions and requires
-  `aws:PrincipalAccount` to match the workshop account. `logs:Get*` is narrowed to
-  `GetLogEvents` and `GetLogGroupFields`.
+  The `Resource: "*"` statement keeps only Describe/List actions; its
+  `aws:PrincipalAccount` condition pins the caller to the provisioning account
+  rather than restricting resource scope. `logs:Get*` is narrowed to
+  `GetLogEvents` and `GetLogGroupFields`. Asset patterns use the documented prefix's
+  trailing slash directly, avoiding a doubled delimiter that would deny access.
 - Fix the kiro plugin's `fs_read` guard, which blocked nothing on kiro-cli 2.29.1's
   default (V2) engine. That engine sends reads as `tool_input.operations[]` with no
   top-level `path`; the guard read only `tool_input.path`, resolved the empty value

@@ -23,7 +23,7 @@
       "Sid": "WorkshopAssetsRead",
       "Effect": "Allow",
       "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::{{.AssetsBucketName}}/{{.AssetsBucketPrefix}}/*"
+      "Resource": "arn:aws:s3:::{{.AssetsBucketName}}/{{.AssetsBucketPrefix}}*"
     },
     {
       "Sid": "WorkshopAssetsList",
@@ -32,7 +32,7 @@
       "Resource": "arn:aws:s3:::{{.AssetsBucketName}}",
       "Condition": {
         "StringLike": {
-          "s3:prefix": "{{.AssetsBucketPrefix}}/*"
+          "s3:prefix": "{{.AssetsBucketPrefix}}*"
         }
       }
     },
