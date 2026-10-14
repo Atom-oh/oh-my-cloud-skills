@@ -334,6 +334,9 @@ StateMachine:
 
 Participant IAM policy for workshop access:
 
+`AssetsBucketPrefix` includes its trailing `/`. Append the wildcard directly to
+that value when constructing an object ARN.
+
 ```json
 {
   "Version": "2012-10-17",
@@ -357,7 +360,7 @@ Participant IAM policy for workshop access:
       ],
       "Resource": [
         "arn:aws:s3:::{{.AssetsBucketName}}",
-        "arn:aws:s3:::{{.AssetsBucketName}}/{{.AssetsBucketPrefix}}/*"
+        "arn:aws:s3:::{{.AssetsBucketName}}/{{.AssetsBucketPrefix}}*"
       ]
     }
   ]

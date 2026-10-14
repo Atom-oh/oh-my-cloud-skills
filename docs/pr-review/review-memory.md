@@ -24,12 +24,11 @@ review runs. Older detail is in
   Documented V2 `operations[].path` must be parsed before enabling guarded reviews (PR #259).
 - Validate every exempted path key at each payload level. A top-level `image_paths`
   exemption without collection allowed an outside path alongside an inside decoy (PR #256).
+- Workshop Studio AssetsBucketPrefix examples end in `/`; append `*` directly.
+  An extra delimiter renders `assets//*` and misses intended object/list requests (PR #262).
 
 ## Known false-positive patterns (conditions to verify, not exemptions)
 
-- MDX comments and alias spans before an H1 did not duplicate titles in the
-  verified Docusaurus 3.9.2 build. Inspect generated HTML before claiming duplicate
-  H1s from source ordering alone (PR #199).
 - A helper absent from the diff may already exist in base. Verify its definition
   before reporting it missing; never invent a reproduction (PR #177–184).
 - Source skills, commands and agents sum to source procedures. Generated Codex
@@ -57,6 +56,8 @@ review runs. Older detail is in
   convention; verify a changed exposure before making it blocking (PR #256).
 - Kiro review hooks report non-zero CLI exits through a skip warning; verify actual
   diagnostics before alleging silent fail-open behavior (PR #259).
+- A service/account-scoped log ARN with wildcard region/name segments is not the
+  bare `Resource: "*"` pattern targeted by review-routing.md (PR #262).
 
 ## Panel-cell judgment quality (historical carry-forward)
 
@@ -65,6 +66,6 @@ for automatic roster changes. The current host updates them only from verified e
 
 | cell | unsupported | total findings | last |
 |---|---|---|---|
-| kiro-opus-full | 21 | 109 | PR #259 |
-| kiro-gpt-full | 10 | 26 | PR #158 |
+| kiro-opus-full | 23 | 114 | PR #262 |
+| kiro-gpt-full | 11 | 27 | PR #262 |
 | codex-full | 8 | 27 | PR #163 |

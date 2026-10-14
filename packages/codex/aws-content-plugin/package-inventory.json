@@ -17380,7 +17380,7 @@
       "executable": false
     },
     "skills/workshop-creator/references/cloudformation-reference.md": {
-      "sha256": "4c935778102637a20ba74876ac2a2c47c28f3455e1b73a607f3822d814891eda",
+      "sha256": "6cfb6438489ec0b50c17692458ca3f2d4abfdd0b68c5ea50745fe72aa296adf7",
       "executable": false
     },
     "skills/workshop-creator/references/code-reference.md": {
@@ -17416,7 +17416,7 @@
       "executable": false
     },
     "skills/workshop-creator/references/infrastructure-guide.md": {
-      "sha256": "a05c3e892ef9952e0e9bc9d28f2dc6fe6a87be3e7672c87b454994bac35a1870",
+      "sha256": "831f626915dbe76a64f19380518e8c8c03cab63cfe507491d2730cae3bd71406",
       "executable": false
     },
     "skills/workshop-creator/references/platform-features-guide.md": {
@@ -17444,7 +17444,7 @@
       "executable": false
     },
     "skills/workshop-creator/templates/iam-policy.json": {
-      "sha256": "714d593a1ec1907f29e36c2e5fc6a85234c1ff7306883b42e07f6f746f77cb29",
+      "sha256": "3953b84abb48cf23949a0710e018e7238e9dc62ff10011153db5026dfdee5ae2",
       "executable": false
     },
     ".codex-plugin/skills/animated-diagram/SKILL.md": {

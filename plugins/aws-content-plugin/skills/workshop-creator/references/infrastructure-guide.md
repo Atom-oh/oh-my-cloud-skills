@@ -89,6 +89,10 @@ Use these variables in CloudFormation templates and IAM policies:
 
 ### Usage in IAM Policy
 
+`AssetsBucketPrefix` already ends in `/` (see the examples in
+`references/contentspec-complete.md`). Append `*` directly; inserting another `/`
+would match a different S3 key prefix.
+
 ```json
 {
   "Version": "2012-10-17",
@@ -96,7 +100,7 @@ Use these variables in CloudFormation templates and IAM policies:
     {
       "Effect": "Allow",
       "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::{{.AssetsBucketName}}/{{.AssetsBucketPrefix}}/*"
+      "Resource": "arn:aws:s3:::{{.AssetsBucketName}}/{{.AssetsBucketPrefix}}*"
     }
   ]
 }
