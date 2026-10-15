@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Move co-agent's default `codex` panel model to `openai.gpt-6.1-sol` with a
+  1M `context_limit` (was `openai.gpt-5.6-sol`, 272K); pr-autofix's Codex
+  escalation rung follows.
 - Prepare 3.0.2 packages with shared identity and independently maintained Claude
   and Codex execution sources. Marketplaces select self-contained host packages.
 - Assemble both hosts without inferring Codex hooks, MCP or reasoning settings

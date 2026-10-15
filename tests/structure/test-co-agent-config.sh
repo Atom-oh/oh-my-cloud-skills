@@ -50,7 +50,7 @@ assert_eq "2" "$GS" "gemini is rejected as a retired ai (exit 2)"
 # effort is available only where the headless CLI supports it; others show n/a
 assert_contains "$SHOW" "n/a" "effort marked n/a for non-Codex"
 # context window column present in show
-assert_contains "$SHOW" "272,000" "show reports codex context window"
+assert_contains "$SHOW" "1,000,000" "show reports codex context window"
 
 # set Codex model + effort → flags inject -m and reasoning effort
 python3 "$CFG" set codex model gpt-5-codex --root "$R" >/dev/null 2>&1
@@ -109,20 +109,20 @@ assert_eq "2" "$MG" "model with glob char rejected (exit 2)"
 python3 "$CFG" set codex model gpt-4.1 --root "$R" >/dev/null 2>&1 && MV=0 || MV=$?
 assert_eq "0" "$MV" "valid model accepted (exit 0)"
 
-# context-size guard: defaults Kiro/Claude 1M, Codex 272K
+# context-size guard: defaults Kiro/Claude/Codex 1M
 R3=$(mktemp -d "${TMPDIR:-/tmp}/coagentctx3.XXXXXX")
-assert_eq "272000" "$(python3 "$CFG" context-limit codex --root "$R3" 2>&1)" "codex default context-limit 272000"
+assert_eq "1000000" "$(python3 "$CFG" context-limit codex --root "$R3" 2>&1)" "codex default context-limit 1000000"
 assert_eq "1000000" "$(python3 "$CFG" context-limit kiro-cli --root "$R3" 2>&1)" "kiro-cli default context-limit 1000000"
 assert_eq "1000000" "$(python3 "$CFG" context-limit claude --host codex --root "$R3" 2>&1)" "Claude default context-limit 1000000"
 python3 "$CFG" fits codex 200000 --root "$R3" >/dev/null 2>&1 && F1=0 || F1=$?
 assert_eq "0" "$F1" "200K tokens fits codex window (exit 0)"
-python3 "$CFG" fits codex 812861 --root "$R3" >/dev/null 2>&1 && F2=0 || F2=$?
-assert_eq "1" "$F2" "812K tokens exceeds codex window (exit 1)"
+python3 "$CFG" fits codex 1200000 --root "$R3" >/dev/null 2>&1 && F2=0 || F2=$?
+assert_eq "1" "$F2" "1.2M tokens exceeds codex 1M window (exit 1)"
 python3 "$CFG" fits kiro-cli 812861 --root "$R3" >/dev/null 2>&1 && F3=0 || F3=$?
 assert_eq "0" "$F3" "812K tokens fits kiro-cli 1M window (exit 0)"
-python3 "$CFG" set codex context_limit 900000 --root "$R3" >/dev/null 2>&1
+python3 "$CFG" set codex context_limit 400000 --root "$R3" >/dev/null 2>&1
 python3 "$CFG" fits codex 812861 --root "$R3" >/dev/null 2>&1 && F4=0 || F4=$?
-assert_eq "0" "$F4" "raised codex context_limit lets 812K fit (exit 0)"
+assert_eq "1" "$F4" "lowered codex context_limit makes 812K skip (exit 1)"
 python3 "$CFG" set codex context_limit 0 --root "$R3" >/dev/null 2>&1 && CL0=0 || CL0=$?
 assert_eq "2" "$CL0" "context_limit must be positive (0 rejected)"
 rm -rf "$R3"
