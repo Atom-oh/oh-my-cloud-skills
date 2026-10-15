@@ -1,10 +1,10 @@
 {
   "host": "claude",
   "plugin": "kiro-power-converter",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "ffec8ca76b5dfeb3bd841d9e3b8b08272d88471fed29a18221ce12f391dff414",
+      "sha256": "3539cdd1cb7d370c4c12c3d77b7d75b2fb9a67e1cf4dd3a9db4768c0fa8371a2",
       "executable": false
     },
     "CLAUDE.md": {
