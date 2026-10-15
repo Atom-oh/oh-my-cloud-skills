@@ -75,7 +75,7 @@ Argument: `$ARGUMENTS`
    python3 "$H" set timeout 300                 # global per-CLI timeout (s)
    python3 "$H" set codex context_limit 400000  # raise/lower a model's context window
    python3 "$H" set autosync on                 # auto-sync AI context on CLAUDE.md change
-   python3 "$H" set codex model openai.gpt-5.6-sol --scope user   # write to ~/.claude (all your repos)
+   python3 "$H" set codex model openai.gpt-6.1-sol --scope user   # write to ~/.claude (all your repos)
    python3 "$H" set kiro-cli models claude-opus-5.5,minimax-m2.5  # multi-model list
    python3 "$H" set profile deep                # activate each AI's `models` list
    python3 "$H" set harness review_mode relay    # harness gate: hybrid (default) | relay | parallel
@@ -91,7 +91,7 @@ Argument: `$ARGUMENTS`
    Key semantics:
    - `context_limit` — the fan-out **skips** an AI whose model window can't hold the
      context (the cause of "prompt tokens exceed model maximum") instead of hard-failing:
-     e.g. Codex (~272K) is skipped on a huge diff while a configured peer with a larger window may still run.
+     e.g. a peer whose `context_limit` was lowered is skipped on a huge diff while a peer with a larger window may still run.
    - `model` values are charset-validated (letters/digits/`. _ : / - ( )` + spaces; shell metacharacters stay rejected) to block
      fan-out injection.
    - `profile deep` (the committed default) makes every model in an AI's `models` list its

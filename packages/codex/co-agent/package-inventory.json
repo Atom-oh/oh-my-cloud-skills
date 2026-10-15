@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "co-agent",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "bdf02500dc4511f4dccc981930d61128bfcac761ba4c5c2059955aada29ae0c5",
+      "sha256": "360520d72e68baf25153216ab07dbb066775787991ce745d0efc2655bbe6a656",
       "executable": false
     },
     "CLAUDE.md": {
@@ -32,7 +32,7 @@
       "executable": false
     },
     "commands/configure.md": {
-      "sha256": "b92d81412627e06b0be245f20c3282ab6d1e607d5f69fd28def3d23e884b51b1",
+      "sha256": "50c2c610e405e8800bad7549c8a4415b9dec8305c4c682a3f93ef20d580e397c",
       "executable": false
     },
     "commands/consensus.md": {
@@ -56,7 +56,7 @@
       "executable": false
     },
     "skills/co-agent/co-agent.defaults.json": {
-      "sha256": "78a435cf0b6150a701a3c300c4a7bc3b1af57ec85ef1d1a60dcbc935ed836b73",
+      "sha256": "049a79365a564be451dbb8bab01a386284fd50e2af9f7468b2b91e8a2fb41b48",
       "executable": false
     },
     "skills/co-agent/references/ai-cli-adapters.md": {
@@ -168,7 +168,7 @@
       "executable": false
     },
     "skills/pr-autofix/references/model-escalation.md": {
-      "sha256": "0dd62ad1296bc6d67c59440a187de0be584771a30b2406478285520806e8b4ac",
+      "sha256": "061dd05dd07809b77c0b100643da9bc14cf76e86486532044a139890d56e420f",
       "executable": false
     },
     "skills/pr-autofix/references/pr-review-workflow.yml": {
