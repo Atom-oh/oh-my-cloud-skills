@@ -30,6 +30,9 @@ python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 | `TITLE_LENGTH` | WARNING | Slide title exceeds 28 characters | Shorten to a headline of 28 characters or fewer (§3 Slide Title Voice) |
 | `STATIC_HTML` | WARNING | 3+ `:::html` elements but no fragments | Add `fragment fade-up` + `data-fragment-index` |
 | `INVALID_FIT` | WARNING | `@fit:` directive or frontmatter `fit:` is not `auto`, `shrink` or `off` | Use `@fit: auto\|shrink\|off` (or drop it — `auto` is the default) |
+| `EM_DASH` | WARNING | Authored prose contains an em dash, middle dot or matching HTML entity | Rewrite with a sentence, comma, colon, parentheses or line break |
+| `AI_TONE` | WARNING | A slide overuses arrows, repeated formulaic labels or note cliches | Rewrite the copy with specific claims and natural transitions |
+| `DETAIL_REF` | CRITICAL | A detail ID is duplicated, malformed, nested or referenced without a matching slide-level block | Add one valid top-level `:::detail` block for each slide-scoped reference |
 
 `validate --json` emits an array of diagnostics and exits nonzero for CRITICAL
 findings or invalid input. `build` and `sync` apply the same gate before writing
@@ -56,6 +59,7 @@ python3 {skill-dir}/scripts/measure_deck.py <deck> --viewports 1920x1080,1280x72
 | `MIN_FONT` | WARN / FAIL | Effective text size (computed `font-size` × fit zoom) below 22px (11pt) → WARN; below 18px (9pt) → FAIL. One finding per slide, pointing at the smallest element | Remove manual font shrinking; use role tokens (`--fs-caption` is the floor) and let the fit engine scale. If the slide is still flagged, it is too dense: split it |
 | `FIT_OVERFLOW` | FAIL | Slide carries `data-fit-overflow` — content still does not fit at the minimum fit scale (0.82) | Split the slide |
 | `DECK_OFFSCREEN` | FAIL | The scaled deck box is not fully inside the viewport (each `--viewports` size, sidebar as loaded and hidden) — the bottom or side of every slide is cut off | Do not give `.slide-deck` auto margins or a viewport-based size; keep the theme.css fixed-canvas rules |
+| `SENTENCE_RUNON` | WARN | A multi-sentence text block wraps to 3+ lines and a new sentence begins in the middle of a rendered line | Use one claim line plus one reason line, add a line break, or move the explanation to `:::detail` |
 
 **Density rules** (how the fit engine sizes a slide):
 
@@ -78,7 +82,9 @@ Each tell is enforced by a **lint rule id** (machine-detected) or by the review 
 
 | Anti-pattern (AI-slide tell) | Why it reads as AI-generated | Use instead | Enforcement (lint rule / gate) |
 |--------------------------|----------------|------|--------------------------|
-| Em dashes (U+2014) or middle dots (U+00B7/U+30FB) in authored text | Formulaic sentence breaks and decorative separators | Natural sentences, commas, colons, parentheses or separate lines | Copy style (review gate) |
+| Em dashes (U+2014) or middle dots (U+00B7/U+30FB) in authored text | Formulaic sentence breaks and decorative separators | Natural sentences, commas, colons, parentheses or separate lines | `EM_DASH` (lint) |
+| More than three arrows on one slide, repeated formula labels, or note cliches | Repeats predictable AI writing patterns instead of making a specific claim | Use descriptive labels, direct claims and natural transitions | `AI_TONE` (lint) |
+| Multiple sentences wrapped into one long card description | Hides the claim and creates awkward sentence starts inside a rendered line | Use one claim line plus one reason line, or move elaboration to the detail layer | `SENTENCE_RUNON` (measure_deck) |
 | Hardcoded hex (raw 6-digit color values) | Ignores theme tokens, locks the deck to a single theme | Semantic role tokens like `var(--accent)` | `RAW_HEX` (lint) |
 | Inline color/spacing style (color/padding written directly in `style=`) | Bypasses the token system, breaks consistency | Token classes (`.card-grid`, `.metric-card`) + `:::css` | `INLINE_STYLE` (lint) |
 | Raw rgba color functions | Cannot adapt to theme, hardcoded shadows/overlays | `var(--surface-*)`, `color-mix()` tokens | `RAW_RGBA` (lint) |
@@ -99,6 +105,11 @@ em dashes or middle dots, including HTML entities that render those characters
 according to its meaning. Adapt copied template text to this rule before building.
 Preserve literal code, URLs, identifiers and verbatim quotations when exact text is
 required; the rule governs authored prose and decorative separators.
+
+Card description rule: use one claim line plus an optional one reason line.
+Put additional reasoning, caveats and operational detail in `:::detail`. Treat
+`EM_DASH` and `AI_TONE` warnings as must-fix items in the authoring loop even
+though WARNING findings do not block the compiler.
 
 ---
 

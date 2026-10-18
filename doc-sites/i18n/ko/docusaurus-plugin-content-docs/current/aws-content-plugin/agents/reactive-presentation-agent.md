@@ -31,6 +31,32 @@ Remarp 소스를 작성하고 인터랙티브 HTML 슬라이드를 빌드한 뒤
 테스트하고 게시 전에 콘텐츠 리뷰를 수행합니다. 그룹이나 분기가 있는 아키텍처와
 인터랙티브 계산기에는 HTML/CSS를 사용하며, Canvas는 작은 선형 흐름에만 사용합니다.
 
+## 상세 정보 우선 작성 {#detail-first-authoring}
+
+카드와 표 셀은 간결하게 작성합니다. 짧은 설명은 `{tip="..."}`으로
+추가하고, 청중에게 긴 설명이 필요하면 슬라이드 최상위의 `:::detail`
+블록을 참조합니다.
+
+```markdown
+[UDP 8472]{detail=vxlan-8472}
+
+:::detail vxlan-8472 "Why UDP 8472 is required"
+tip: Cilium VXLAN tunnel port between hybrid nodes
+
+The port carries VXLAN traffic between nodes.
+:::
+```
+
+각 상세 정보 참조에는 같은 슬라이드의 최상위에 일치하는 블록이 하나
+있어야 합니다.
+
+## 검증 정책 {#validation-policy}
+
+빌드하려면 CRITICAL 진단이 없어야 합니다. `DETAIL_REF`는 CRITICAL입니다.
+`EM_DASH`와 `AI_TONE`은 작성 단계에서 에이전트가 수정하는 경고입니다.
+`SENTENCE_RUNON`은 렌더링 뒤 검사합니다. 주장과 이유를 나누거나 이유를
+`:::detail`로 옮깁니다.
+
 ## 결과물과 검증 {#output-and-verification}
 
 편집 가능한 소스, 렌더링 결과, 관련 빌드 명령과 검증 근거를 제공합니다. 완료나 게시 전에 콘텐츠 리뷰 게이트를 통과해야 합니다. 파일을 저장했다는 사실만으로 리뷰를 통과한 것은 아닙니다.
