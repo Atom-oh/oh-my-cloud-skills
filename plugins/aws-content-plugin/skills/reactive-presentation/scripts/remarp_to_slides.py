@@ -232,15 +232,20 @@ def _remove_remarp_blocks(text: str, block_types) -> str:
 def _detail_plain_text(markdown: str) -> str:
     """Convert detail Markdown to one searchable text line per source line."""
     output = []
-    in_fence = False
+    fence = None
     for source_line in markdown.replace('\r\n', '\n').replace('\r', '\n').split('\n'):
-        if _fence_open(source_line):
-            in_fence = not in_fence
+        if fence is None:
+            opening = _fence_open(source_line)
+            if opening:
+                fence = opening[1]
+                continue
+        elif _fence_close(source_line, fence):
+            fence = None
             continue
         line = source_line.strip()
         if not line:
             continue
-        if in_fence:
+        if fence is not None:
             output.append(line)
             continue
         line, code_spans = _mask_code_spans(line)
@@ -5681,9 +5686,10 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
     detail_source, _detail_spans = _mask_code_spans(detail_source)
     # A reference inside an HTML comment never renders, so it cannot be dangling.
     detail_source = re.sub(r'<!--.*?-->', '', detail_source, flags=re.DOTALL)
-    # Raw HTML <code>/<pre> bodies are examples, not references.
+    # Raw HTML <code>/<pre> bodies are examples and <script>/<style> bodies are
+    # code; neither holds references.
     detail_source = re.sub(
-        r'(<(code|pre)\b[^>]*>).*?(</\2\s*>)', r'\1\3',
+        r'(<(code|pre|script|style)\b[^>]*>).*?(</\2\s*>)', r'\1\3',
         detail_source, flags=re.IGNORECASE | re.DOTALL)
     detail_refs = re.findall(r'\{detail=([^}]*)\}', detail_source)
     malformed_refs = {
