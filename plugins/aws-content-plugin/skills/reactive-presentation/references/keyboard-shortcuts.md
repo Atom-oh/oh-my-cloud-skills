@@ -7,15 +7,26 @@ Shortcuts the generated slideshow supports at viewing time.
 | ← → | Previous / Next slide |
 | Space | Next slide |
 | ↑ ↓ | Cycle tabs/compare options on current slide; step animation if registered |
+| Cmd+K / Ctrl+K | Open slide search |
+| / | Open slide search when focus is not in a form control |
 | F | Toggle fullscreen |
 | N | Toggle speaker notes panel (bottom 20% overlay) |
 | P | Open presenter view (new window with notes, timer, slide sync) |
 | O | Toggle overview mode (slide grid thumbnails) |
 | S | Toggle slide sidebar (non-fullscreen only) |
 | B | Blackout screen |
-| Esc | Exit fullscreen / dismiss notes panel / exit overview |
+| Esc | Close search or detail / exit fullscreen / dismiss notes panel / exit overview |
 | Home/End | First/Last slide |
 | 1-9 | Jump to slide number |
+
+## Deck Overlay Navigation
+
+- Hover the top-right viewport corner to open the agenda.
+- Agenda block and slide links call `SlideFramework.goTo(index)`.
+- Search covers slide titles, visible content and detail text. Speaker notes are excluded.
+- Arrow keys choose a search result and Enter opens it.
+- Search shortcuts are ignored while focus is in an input, textarea, select or editable region.
+- Agenda, search and detail UI exist only in the deck window and are hidden in overview and capture paths.
 
 ## Tab/Step Navigation (↑↓)
 

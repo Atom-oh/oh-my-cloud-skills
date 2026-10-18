@@ -3198,3 +3198,62 @@ A donut chart using pure CSS conic-gradient — no JavaScript required.
 ---
 
 For complex interactive patterns (simulators, dashboards, YAML builders), see [interactive-patterns-guide.md](interactive-patterns-guide.md).
+
+## Detail Layer and Deck Navigation
+
+Use the detail layer to keep visible slide copy compact. A short tooltip needs
+only an inline attribute:
+
+```markdown
+[UDP 8472]{tip="Cilium VXLAN port"}
+```
+
+Use a slide-scoped ID when the term also needs a long explanation:
+
+```markdown
+[UDP 8472]{detail=vxlan-8472}
+
+:::detail vxlan-8472 "Why UDP 8472 is required"
+tip: Cilium VXLAN tunnel port between hybrid nodes
+
+The port carries VXLAN traffic between nodes.
+
+| Check | Guidance |
+|---|---|
+| Scope | Allow only the required node networks |
+| Review | Keep firewall rules aligned with the cluster topology |
+:::
+```
+
+The opening line is `:::detail ID "Title"`. IDs accept letters, numbers,
+underscores and hyphens. The block must be at the top level of the same slide as
+its reference. The optional first `tip:` line becomes the tooltip. If it is
+missing, the title becomes the tooltip. The remaining Markdown body supports
+paragraphs, lists, code and tables.
+
+`validate` reports a CRITICAL `DETAIL_REF` finding for duplicate IDs, invalid or
+nested detail declarations, and references without a matching block. Detail IDs
+are slide-scoped, so the same ID may be reused on another slide.
+
+Inside `:::html`, use the compiled term form directly and keep the detail block
+outside the HTML block:
+
+```markdown
+:::html
+<div class="metric-card">
+  <span class="rp-detail" data-tip="Cilium VXLAN port" data-detail="vxlan-8472">UDP 8472</span>
+</div>
+:::
+
+:::detail vxlan-8472 "Why UDP 8472 is required"
+The port carries VXLAN traffic between nodes.
+:::
+```
+
+The built deck provides two navigation layers:
+
+- Hover the top-right corner to open the agenda of blocks and slide titles.
+- Press Cmd+K, Ctrl+K or `/` to search titles, visible slide text and detail text.
+- Search excludes speaker notes and presentation clones.
+- Agenda and search jumps use the framework's zero-based `goTo(index)` method.
+- Overlay UI is hidden in overview, presenter previews, measurements and exports.

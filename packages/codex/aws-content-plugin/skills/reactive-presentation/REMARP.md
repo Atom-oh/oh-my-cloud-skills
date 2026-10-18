@@ -246,6 +246,38 @@ Block-level fragments are also supported:
 
 12 animation types: `fade-in`, `fade-up`, `fade-down`, `fade-left`, `fade-right`, `grow`, `shrink`, `highlight`, `highlight-red`, `highlight-green`, `strike`, `fade-out`
 
+### Detail Layer
+
+Keep table cells and cards short, then attach optional explanations to the terms
+that need them. A tooltip uses the inline `tip` attribute:
+
+```markdown
+[UDP 8472]{tip="Cilium VXLAN port"}
+```
+
+Long content uses a slide-scoped detail ID. The `:::detail` block must be at the
+top level of the same slide:
+
+```markdown
+[UDP 8472]{detail=vxlan-8472}
+
+:::detail vxlan-8472 "Why UDP 8472 is required"
+tip: Cilium VXLAN tunnel port between hybrid nodes
+
+The port carries VXLAN traffic between nodes.
+
+- Open it only between the required node networks.
+- Keep the short claim on the slide and the operational reason here.
+:::
+```
+
+The optional `tip:` line supplies the tooltip. When it is omitted, the detail
+title is used as the tooltip. Detail bodies support paragraphs, lists, code and
+tables. Duplicate IDs and missing references produce a CRITICAL `DETAIL_REF`
+finding. Inside `:::html`, write the term directly as
+`<span class="rp-detail" data-tip="..." data-detail="vxlan-8472">UDP 8472</span>`
+and keep the matching `:::detail` block at slide level.
+
 ### Column Layout
 
 ```markdown
@@ -434,14 +466,19 @@ Export options:
 | ← → | Previous/next slide |
 | Space | Next fragment → next slide |
 | ↑ ↓ | Switch tabs/comparisons, animation steps |
+| Cmd+K / Ctrl+K | Search all slides |
+| / | Search when focus is not in a form control |
 | F | Fullscreen |
 | N | Speaker notes panel |
 | P | Presenter view (new window) |
 | O | Slide overview (grid) |
 | B | Blackout |
-| Esc | Exit fullscreen/overview |
+| Esc | Close search or detail, then exit fullscreen/overview |
 
 Keyboard customization is configured in the `keys:` section of frontmatter.
+Hover the top-right corner to open the agenda. Agenda, search, tooltips and the
+detail panel appear only in the deck window. They are hidden from presenter
+previews, overview mode, measurement and exported screenshots.
 
 ---
 
