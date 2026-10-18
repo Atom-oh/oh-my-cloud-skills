@@ -1,0 +1,168 @@
+/**
+ * Reactive Presentation agenda and search styles.
+ * All overlay roots are attached directly to document.body.
+ */
+
+#rp-agenda-hotzone {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--space-8);
+  height: var(--space-8);
+  z-index: var(--z-toast);
+}
+
+#rp-agenda {
+  position: fixed;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: var(--z-modal);
+  width: min(28em, calc(100vw - var(--space-6)));
+  max-height: calc(100vh - var(--space-6));
+  padding: var(--space-3);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-3);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(calc(-1 * var(--space-2)));
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    visibility var(--duration-fast);
+}
+
+body.rp-agenda-open #rp-agenda {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+body.rp-detail-open #rp-agenda-hotzone,
+body.rp-search-open #rp-agenda-hotzone {
+  pointer-events: none;
+}
+
+.rp-agenda-block + .rp-agenda-block {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.rp-agenda-block-title {
+  width: 100%;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--on-surface-muted);
+  font-weight: var(--weight-bold);
+}
+
+.rp-agenda-block.is-current-block .rp-agenda-block-title {
+  color: var(--accent);
+}
+
+.rp-agenda-slides {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.rp-agenda-row {
+  display: grid;
+  grid-template-columns: var(--space-6) 1fr;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.rp-agenda-row:hover,
+.rp-agenda-row:focus-visible,
+.rp-agenda-row.is-current {
+  background: var(--accent-subtle);
+}
+
+.rp-agenda-number {
+  color: var(--on-surface-muted);
+  font-family: var(--font-mono);
+}
+
+#rp-search {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+}
+
+body.rp-search-open #rp-search {
+  display: flex;
+}
+
+.rp-search-dialog {
+  width: min(44em, 100%);
+  max-height: calc(100vh - var(--space-8) - var(--space-8));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-3);
+}
+
+#rp-search-input {
+  width: 100%;
+  padding: var(--space-4);
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  outline: 0;
+  background: transparent;
+  color: var(--on-surface);
+  font: inherit;
+  font-size: 1.333em;
+}
+
+#rp-search-input:focus {
+  box-shadow: inset 0 -2px 0 var(--border-focus);
+}
+
+#rp-search-results {
+  max-height: calc(100vh - var(--space-8) - var(--space-8) - var(--space-8));
+  padding: var(--space-2);
+  overflow: auto;
+}
+
+.rp-search-row {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: transparent;
+}
+
+.rp-search-row:hover,
+.rp-search-row:focus-visible,
+.rp-search-row.is-selected {
+  background: var(--accent-subtle);
+}
+
+.rp-search-meta,
+.rp-search-snippet {
+  color: var(--on-surface-muted);
+  font-size: .917em;
+}
+
+.rp-search-row mark {
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+  color: var(--on-surface);
+}
