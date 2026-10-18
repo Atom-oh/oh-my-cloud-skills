@@ -1,0 +1,187 @@
+/**
+ * Reactive Presentation tooltip and detail styles.
+ * All overlay roots are attached directly to document.body.
+ */
+
+.rp-detail {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--accent);
+  text-underline-offset: .16em;
+  cursor: help;
+}
+
+.rp-detail:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.rp-detail[data-detail] {
+  cursor: pointer;
+}
+
+.rp-detail[data-detail]::after {
+  content: "i" / "";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  margin-inline-start: var(--space-1);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  color: var(--accent);
+  font-family: var(--font-main);
+  font-size: .65em;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  vertical-align: .12em;
+}
+
+#rp-tooltip {
+  position: fixed;
+  z-index: var(--z-toast);
+  max-width: min(calc(var(--rp-ui-rem, 1rem) * 22), calc(100vw - var(--space-6)));
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-2);
+  color: var(--on-surface);
+  font-size: calc(var(--rp-ui-rem, 1rem) * .917);
+  line-height: var(--leading-normal);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    visibility var(--duration-fast);
+}
+
+#rp-tooltip.is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+#rp-detail-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  width: min(34em, calc(100vw - var(--space-6)));
+  height: 100vh;
+  border-inline-start: 1px solid var(--border);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-3);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    visibility var(--duration-normal);
+}
+
+body.rp-detail-open #rp-detail-panel {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.rp-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.rp-detail-title {
+  margin: 0;
+  color: var(--on-surface);
+  font-family: var(--font-display);
+  font-size: 1.333em;
+}
+
+.rp-detail-close {
+  flex: none;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.rp-detail-close:hover,
+.rp-detail-close:focus-visible {
+  border-color: var(--border-focus);
+}
+
+.rp-detail-body {
+  padding: var(--space-4);
+  overflow: auto;
+  color: var(--on-surface);
+  line-height: var(--leading-normal);
+}
+
+.rp-detail-body > :first-child {
+  margin-top: 0;
+}
+
+.rp-detail-body > :last-child {
+  margin-bottom: 0;
+}
+
+.rp-detail-body ul,
+.rp-detail-body ol {
+  margin-block: var(--space-3);
+  padding-inline-start: var(--space-6);
+}
+
+.rp-detail-body li + li {
+  margin-top: var(--space-1);
+}
+
+.rp-detail-body table {
+  width: 100%;
+  margin-block: var(--space-4);
+  border-collapse: collapse;
+}
+
+.rp-detail-body th,
+.rp-detail-body td {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.rp-detail-body th {
+  background: var(--surface-2);
+  color: var(--on-surface);
+  font-weight: var(--weight-bold);
+}
+
+.rp-detail-body pre,
+.rp-detail-body code {
+  font-family: var(--font-mono);
+}
+
+.rp-detail-body code {
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.rp-detail-body pre {
+  margin-block: var(--space-4);
+  padding: var(--space-3);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.rp-detail-body pre code {
+  padding: 0;
+  background: transparent;
+}

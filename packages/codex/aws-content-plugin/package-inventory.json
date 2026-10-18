@@ -467,6 +467,22 @@
       "sha256": "48b30cb487fb0c97a5c239312290aeeac3e0bcc75409f552604f1ac03e866c1e",
       "executable": false
     },
+    "skills/reactive-presentation/assets/deck-detail.css": {
+      "sha256": "cc9449d09ee3ad333ac0d9fb8298872e2815ec27aae761a6fba06bfc122cf87a",
+      "executable": false
+    },
+    "skills/reactive-presentation/assets/deck-detail.js": {
+      "sha256": "8502f07eb83733303c309f4fec5c68fbd859935d34cbe0f63788f7658194cf40",
+      "executable": false
+    },
+    "skills/reactive-presentation/assets/deck-overlay.css": {
+      "sha256": "2b6ef0efe2989ed429c714ca631ea477f006d218a1d181c4c4ad0ac28b154397",
+      "executable": false
+    },
+    "skills/reactive-presentation/assets/deck-overlay.js": {
+      "sha256": "c3fd3febc02e9f0dc8819562838f291c8bbffba8c67977bca511739185ff4a06",
+      "executable": false
+    },
     "skills/reactive-presentation/assets/design-tokens.css": {
       "sha256": "ba930a0a821894474efce980e7f474a26034025cd56ea664dab91929112cbde0",
       "executable": false
@@ -492,7 +508,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-framework.js": {
-      "sha256": "357af3af46c58d076a352890858c9564e68ba75e754c73db5dc56180150e8c64",
+      "sha256": "137e1a675a38dc4820dbac965ffcbc55937ea743d5d3e9698623cfdc2ba0d2bc",
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-renderer.js": {
