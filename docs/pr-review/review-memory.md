@@ -37,6 +37,8 @@ review runs. Older detail is in
 
 ## Known false-positive patterns (conditions to verify, not exemptions)
 
+- A helper absent from the diff may already exist in base. Verify its definition
+  before reporting it missing; never invent a reproduction (PR #177–184).
 - Source skills, commands and agents sum to source procedures. Generated Codex
   entries can combine aliases. CI cells are another population. Use the supplied
   base inventory and account for the proposed head change (PR #184).
