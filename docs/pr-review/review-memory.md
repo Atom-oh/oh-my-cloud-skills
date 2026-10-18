@@ -32,11 +32,11 @@ review runs. Older detail is in
 - In this review mode the chair checkout is trusted base: head-only helpers cannot be read
   locally, so panel "reproduced" claims about them stay unverified unless the hunk is in
   the supplied diff (PR #265).
+- Class-level unittest skips leave testsRun at zero with one skipped entry; check TAP skip sentinels against setUpClass skips, not only per-test skips (PR #270, PR #271).
+- A reporting closure over a filename is corrupted when a later loop reuses that variable; preserve the filename when grouping findings (PR #270).
 
 ## Known false-positive patterns (conditions to verify, not exemptions)
 
-- A helper absent from the diff may already exist in base. Verify its definition
-  before reporting it missing; never invent a reproduction (PR #177–184).
 - Source skills, commands and agents sum to source procedures. Generated Codex
   entries can combine aliases. CI cells are another population. Use the supplied
   base inventory and account for the proposed head change (PR #184).
@@ -64,6 +64,9 @@ review runs. Older detail is in
   diagnostics before alleging silent fail-open behavior (PR #259).
 - A service/account-scoped log ARN with wildcard region/name segments is not the
   bare `Resource: "*"` pattern targeted by review-routing.md (PR #262).
+- Optional overlay/nav assets in check_deck.py remain advisory for legacy and hand-authored decks; verify the documented optional contract before requiring FAIL (PR #270).
+- Compiler-produced detail-store HTML is author-owned content; cloning it is not a new injection boundary without a claimed hosted untrusted build path (PR #271).
+- Search indexes direct slide children and rejects detail stores; template content and body-level thumbnail clones do not expose speaker notes (PR #272).
 
 ## Panel-cell judgment quality (historical carry-forward)
 
@@ -72,6 +75,6 @@ for automatic roster changes. The current host updates them only from verified e
 
 | cell | unsupported | total findings | last |
 |---|---|---|---|
-| kiro-opus-full | 23 | 114 | PR #262 |
-| kiro-gpt-full | 11 | 27 | PR #262 |
+| kiro-opus-full | 26 | 119 | PR #271 |
+| kiro-gpt-full | 12 | 29 | PR #270 |
 | codex-full | 8 | 27 | PR #163 |
