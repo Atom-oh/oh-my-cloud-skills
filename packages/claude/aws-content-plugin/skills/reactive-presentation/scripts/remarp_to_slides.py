@@ -3301,7 +3301,9 @@ class RemarpHTMLGenerator:
     def _gen_cover_slide(self, slide: Slide) -> str:
         """Generate session cover slide using absolute positioning (§0a/§0b)."""
         content = slide.content
-        lines = [l for l in content.split('\n') if l.strip()]
+        # Consumed block placeholders (:::detail, :::css, ...) are not meta text.
+        lines = [l for l in content.split('\n')
+                 if l.strip() and not re.match(r'^\s*<!-- __BLOCK:[\w-]+:\d+__ -->\s*$', l)]
 
         title = ''
         subtitle = ''
@@ -3389,7 +3391,9 @@ class RemarpHTMLGenerator:
     def _gen_title_slide(self, slide: Slide) -> str:
         """Generate title slide HTML."""
         content = slide.content
-        lines = [l for l in content.split('\n') if l.strip()]
+        # Consumed block placeholders (:::detail, :::css, ...) are not meta text.
+        lines = [l for l in content.split('\n')
+                 if l.strip() and not re.match(r'^\s*<!-- __BLOCK:[\w-]+:\d+__ -->\s*$', l)]
 
         title = ''
         subtitle = ''
@@ -5686,6 +5690,9 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
     detail_source, _detail_spans = _mask_code_spans(detail_source)
     # A reference inside an HTML comment never renders, so it cannot be dangling.
     detail_source = re.sub(r'<!--.*?-->', '', detail_source, flags=re.DOTALL)
+    # URLs and entity-escaped tags render as text, not as terms.
+    detail_source = re.sub(r'https?://\S+', '', detail_source)
+    detail_source = re.sub(r'&lt;[^\n]*?&gt;', '', detail_source)
     # Raw HTML <code>/<pre> bodies are examples and <script>/<style> bodies are
     # code; neither holds references.
     detail_source = re.sub(
