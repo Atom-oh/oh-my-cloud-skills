@@ -26,6 +26,12 @@ review runs. Older detail is in
   exemption without collection allowed an outside path alongside an inside decoy (PR #256).
 - Workshop Studio AssetsBucketPrefix examples end in `/`; append `*` directly.
   An extra delimiter renders `assets//*` and misses intended object/list requests (PR #262).
+- A capped diff that orders CHANGELOG, `doc-sites/`, `docs/` and `packages/claude` before
+  `plugins/` can hide every maintained source; generated copies are not a substitute, so
+  request the `plugins/` hunks before judging (PR #265).
+- In this review mode the chair checkout is trusted base: head-only helpers cannot be read
+  locally, so panel "reproduced" claims about them stay unverified unless the hunk is in
+  the supplied diff (PR #265).
 
 ## Known false-positive patterns (conditions to verify, not exemptions)
 
