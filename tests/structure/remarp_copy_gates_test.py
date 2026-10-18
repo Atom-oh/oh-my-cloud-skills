@@ -112,6 +112,23 @@ class CopyGateTests(unittest.TestCase):
                                 env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
         self.assertEqual(0, result.returncode, result.stderr + result.stdout)
 
+    def test_copy_gates_scan_columns_tabs_and_detail_titles(self):
+        cases = (
+            "## T\n\n:::left\nA \u2014 B\n:::\n\n:::right\nx\n:::\n",
+            '## T\n\n:::tab "A"\nA \u2014 B\n:::\n',
+            '## T\n\n[a]{detail=d}\n\n:::detail d "A \u2014 B"\nbody\n:::\n',
+            '## T\n\n[a]{tip="A \u2014 B"}\n',
+        )
+        for src in cases:
+            with self.subTest(src=src):
+                self.assertIn("EM_DASH", self.rule_ids(self.validate_text(src)))
+        arrows = "## T\n\n:::left\na \u2192 b \u2192 c\n:::\n\n:::right\nd \u2192 e \u2192 f\n:::\n"
+        self.assertIn("AI_TONE", self.rule_ids(self.validate_text(arrows)))
+
+    def test_stray_backtick_does_not_hide_later_paragraphs(self):
+        src = "## T\n\nan unpaired ` backtick here\n\nlater A \u2014 B and `code` end\n"
+        self.assertIn("EM_DASH", self.rule_ids(self.validate_text(src)))
+
 
 if __name__ == "__main__":
     unittest.main()

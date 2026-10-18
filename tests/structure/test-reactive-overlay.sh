@@ -20,3 +20,4 @@ RP_EU="$(cat plugins/aws-content-plugin/skills/reactive-presentation/assets/expo
 assert_contains "$RP_EU" "'deck-overlay.js'" "export-utils COMMON_FILES ships deck-overlay.js"
 assert_contains "$RP_EU" "'deck-overlay.css'" "export-utils COMMON_FILES ships deck-overlay.css"
 assert_contains "$RP_EU" ".rp-overlay-ui" "export-utils capture paths hide the overlay"
+assert_contains "$RP_EU" "rp-detail-store" "export-utils browser PPTX export carries detail text into notes"

@@ -733,6 +733,13 @@ ${styleSheets}
 
     const clone = sourceSlide.cloneNode(true);
     clone.className = sourceSlide.className;
+    Array.from(clone.classList).forEach(className => {
+      if (className === 'leaving' ||
+          className === 'entering' ||
+          className.startsWith('transition-')) {
+        clone.classList.remove(className);
+      }
+    });
     clone.classList.add('active');
     if (revealAll) {
       clone.querySelectorAll('.fragment').forEach(fragment => {

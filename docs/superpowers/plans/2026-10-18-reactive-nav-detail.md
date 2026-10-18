@@ -350,6 +350,7 @@ git commit -m "style(reactive-presentation): drop callout accent bars and colour
 - Modify: `plugins/aws-content-plugin/skills/reactive-presentation/references/framework-guide.md`
 - Modify: `plugins/aws-content-plugin/agents/reactive-presentation-agent.md`
 - Modify: `plugins/aws-content-plugin/skills/reactive-presentation/assets/example-deck/index.html`
+- Modify: `plugins/aws-content-plugin/skills/reactive-presentation/assets/example-deck/toc.html`
 - Modify: `doc-sites/docs/aws-content-plugin/skills/reactive-presentation.md`
 - Modify: `doc-sites/i18n/ko/docusaurus-plugin-content-docs/current/aws-content-plugin/skills/reactive-presentation.md`
 - Modify: `doc-sites/docs/aws-content-plugin/agents/reactive-presentation-agent.md`

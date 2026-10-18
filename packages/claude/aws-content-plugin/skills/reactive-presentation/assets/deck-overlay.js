@@ -12,6 +12,9 @@
   let selectedResult = 0;
   let previousFocus = null;
   let touchTerm = null;
+  let tooltipTerm = null;
+  let detailOpener = null;
+  let uiScale = 1;
   let ignoreMouseUntil = 0;
 
   const overlayRoots = [];
@@ -44,14 +47,27 @@
   }
 
   function visibleSlideText(slide) {
-    const clone = slide.cloneNode(true);
-    clone.querySelectorAll('.rp-detail-store, template.notes').forEach(el => el.remove());
-    return normalizeText(clone.textContent);
+    const values = [];
+    const heading = slide.querySelector('h1, h2');
+    const walker = document.createTreeWalker(slide, NodeFilter.SHOW_TEXT, {
+      acceptNode: node => {
+        const parent = node.parentElement;
+        if (!parent || !normalizeText(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+        if (heading && heading.contains(parent)) return NodeFilter.FILTER_REJECT;
+        if (parent.closest('style, script, template, .rp-detail-store')) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    while (walker.nextNode()) values.push(walker.currentNode.nodeValue);
+    return normalizeText(values.join(' '));
   }
 
   function detailSlideText(slide) {
     const values = [];
     slide.querySelectorAll('.rp-detail-store section').forEach(section => {
+      values.push(section.dataset.title || '');
       values.push(section.dataset.text || section.textContent || '');
     });
     slide.querySelectorAll('.rp-detail[data-tip]').forEach(term => {
@@ -77,9 +93,41 @@
     const el = document.createElement(tag);
     el.id = id;
     el.className = 'rp-overlay-ui';
+    if (document.documentElement.lang) el.lang = document.documentElement.lang;
     document.body.appendChild(el);
     overlayRoots.push(el);
     return el;
+  }
+
+  function updateOverlayScale() {
+    if (!deck) return;
+    const rawScale = parseFloat(getComputedStyle(deck).getPropertyValue('--deck-scale'));
+    uiScale = Number.isFinite(rawScale) && rawScale > 0 ? rawScale : 1;
+    const rootFont = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    document.documentElement.style.setProperty('--rp-ui-scale', String(uiScale));
+    document.documentElement.style.setProperty('--rp-ui-rem', (rootFont * uiScale) + 'px');
+  }
+
+  function termIsAvailable(term) {
+    return Boolean(term && liveTerm(term) && !term.closest('.fragment:not(.visible)'));
+  }
+
+  function updateTermState(term) {
+    const available = termIsAvailable(term);
+    term.setAttribute('tabindex', available ? '0' : '-1');
+    if (term.dataset.detail) {
+      term.setAttribute('role', 'button');
+      term.setAttribute('aria-haspopup', 'dialog');
+      term.setAttribute('aria-controls', 'rp-detail-panel');
+      if (!term.hasAttribute('aria-expanded')) term.setAttribute('aria-expanded', 'false');
+    }
+    if (!available && tooltipTerm === term) hideTooltip();
+    if (!available && detailOpener === term) closeDetail(false);
+  }
+
+  function updateAllTermStates() {
+    if (!deck) return;
+    deck.querySelectorAll(':scope > .slide .rp-detail').forEach(updateTermState);
   }
 
   function applyOverlayTheme() {
@@ -189,12 +237,13 @@
     const needle = query.toLocaleLowerCase();
     const matchAt = lower.indexOf(needle);
     if (matchAt < 0) {
-      container.textContent = source;
+      container.textContent = ': ' + source;
       return;
     }
 
     const start = Math.max(0, matchAt - 42);
     const end = Math.min(source.length, matchAt + query.length + 68);
+    container.appendChild(document.createTextNode(': '));
     if (start > 0) container.appendChild(document.createTextNode('...'));
     container.appendChild(document.createTextNode(source.slice(start, matchAt)));
     const mark = document.createElement('mark');
@@ -237,6 +286,7 @@
       row.className = 'rp-search-row';
       row.dataset.goto = result.item.index;
       row.classList.toggle('is-selected', index === selectedResult);
+      row.setAttribute('aria-selected', index === selectedResult ? 'true' : 'false');
 
       const meta = document.createElement('span');
       meta.className = 'rp-search-meta';
@@ -256,7 +306,11 @@
     const rows = Array.from(document.querySelectorAll('#rp-search-results .rp-search-row'));
     if (!rows.length) return;
     selectedResult = (selectedResult + delta + rows.length) % rows.length;
-    rows.forEach((row, index) => row.classList.toggle('is-selected', index === selectedResult));
+    rows.forEach((row, index) => {
+      const selected = index === selectedResult;
+      row.classList.toggle('is-selected', selected);
+      row.setAttribute('aria-selected', selected ? 'true' : 'false');
+    });
     rows[selectedResult].scrollIntoView({ block: 'nearest' });
   }
 
@@ -331,14 +385,26 @@
   function showTooltip(term) {
     const tooltip = document.getElementById('rp-tooltip');
     const tip = term && term.dataset.tip;
-    if (!tooltip || !tip) return;
+    if (!tooltip || !tip || !termIsAvailable(term)) return;
+    if (tooltipTerm && tooltipTerm !== term) {
+      const ids = (tooltipTerm.getAttribute('aria-describedby') || '')
+        .split(/\s+/).filter(id => id && id !== tooltip.id);
+      if (ids.length) tooltipTerm.setAttribute('aria-describedby', ids.join(' '));
+      else tooltipTerm.removeAttribute('aria-describedby');
+    }
+    tooltipTerm = term;
+    const describedBy = new Set(
+      (term.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean)
+    );
+    describedBy.add(tooltip.id);
+    term.setAttribute('aria-describedby', Array.from(describedBy).join(' '));
     tooltip.textContent = tip;
     tooltip.setAttribute('aria-hidden', 'false');
     tooltip.classList.add('is-visible');
 
     const anchor = term.getBoundingClientRect();
     const box = tooltip.getBoundingClientRect();
-    const gap = 12;
+    const gap = 12 * uiScale;
     const left = Math.max(gap, Math.min(
       anchor.left + anchor.width / 2 - box.width / 2,
       window.innerWidth - box.width - gap
@@ -352,6 +418,13 @@
   function hideTooltip() {
     const tooltip = document.getElementById('rp-tooltip');
     if (!tooltip) return;
+    if (tooltipTerm) {
+      const ids = (tooltipTerm.getAttribute('aria-describedby') || '')
+        .split(/\s+/).filter(id => id && id !== tooltip.id);
+      if (ids.length) tooltipTerm.setAttribute('aria-describedby', ids.join(' '));
+      else tooltipTerm.removeAttribute('aria-describedby');
+    }
+    tooltipTerm = null;
     tooltip.classList.remove('is-visible');
     tooltip.setAttribute('aria-hidden', 'true');
     touchTerm = null;
@@ -361,6 +434,7 @@
     const panel = makeOverlay('aside', 'rp-detail-panel');
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'false');
+    panel.setAttribute('tabindex', '-1');
 
     const header = document.createElement('header');
     header.className = 'rp-detail-header';
@@ -379,8 +453,14 @@
     close.addEventListener('click', closeDetail);
   }
 
-  function openDetail(slideEl, id) {
+  function openDetail(slideEl, id, opener) {
     if (!slideEl || !id) return;
+    const activeTerm = liveTerm(document.activeElement);
+    const candidate = opener ||
+      (activeTerm && activeTerm.dataset.detail === String(id) ? activeTerm : null) ||
+      Array.from(slideEl.querySelectorAll('.rp-detail[data-detail]'))
+        .find(term => term.dataset.detail === String(id));
+    if (!termIsAvailable(candidate)) return;
     const section = Array.from(
       slideEl.querySelectorAll('.rp-detail-store section[data-detail-id]')
     ).find(el => el.dataset.detailId === String(id));
@@ -392,19 +472,35 @@
     title.textContent = section.dataset.title || '';
     body.replaceChildren(...Array.from(section.childNodes, node => node.cloneNode(true)));
     panel.setAttribute('aria-label', title.textContent || 'Slide details');
+    deck.querySelectorAll(':scope > .slide .rp-detail[data-detail]').forEach(term => {
+      term.setAttribute('aria-expanded', term === candidate ? 'true' : 'false');
+    });
+    detailOpener = candidate;
     document.body.classList.add('rp-detail-open');
     hideTooltip();
+    const close = panel.querySelector('.rp-detail-close');
+    setTimeout(() => {
+      if (document.body.classList.contains('rp-detail-open')) (close || panel).focus();
+    }, 50);
   }
 
-  function closeDetail() {
+  function closeDetail(restoreFocus = true) {
+    const wasOpen = document.body.classList.contains('rp-detail-open');
     document.body.classList.remove('rp-detail-open');
+    if (deck) {
+      deck.querySelectorAll(':scope > .slide .rp-detail[data-detail]')
+        .forEach(term => term.setAttribute('aria-expanded', 'false'));
+    }
+    const opener = detailOpener;
+    detailOpener = null;
+    if (wasOpen && restoreFocus && termIsAvailable(opener)) opener.focus();
   }
 
   function bindDetailEvents() {
     deck.addEventListener('mouseover', event => {
       if (Date.now() < ignoreMouseUntil) return;
       const term = liveTerm(event.target);
-      if (term) showTooltip(term);
+      if (termIsAvailable(term)) showTooltip(term);
     });
     deck.addEventListener('mouseout', event => {
       const term = liveTerm(event.target);
@@ -413,7 +509,7 @@
     });
     deck.addEventListener('focusin', event => {
       const term = liveTerm(event.target);
-      if (term) showTooltip(term);
+      if (termIsAvailable(term)) showTooltip(term);
     });
     deck.addEventListener('focusout', event => {
       const term = liveTerm(event.target);
@@ -422,7 +518,7 @@
     });
     deck.addEventListener('pointerdown', event => {
       const term = liveTerm(event.target);
-      if (!term || term.dataset.detail || event.pointerType !== 'touch') return;
+      if (!termIsAvailable(term) || term.dataset.detail || event.pointerType !== 'touch') return;
       ignoreMouseUntil = Date.now() + 500;
       if (touchTerm === term && document.getElementById('rp-tooltip').classList.contains('is-visible')) {
         hideTooltip();
@@ -434,14 +530,14 @@
     });
     deck.addEventListener('click', event => {
       const term = liveTerm(event.target);
-      if (!term || !term.dataset.detail) return;
-      openDetail(term.closest('.slide'), term.dataset.detail);
+      if (!termIsAvailable(term) || !term.dataset.detail) return;
+      openDetail(term.closest('.slide'), term.dataset.detail, term);
     });
     deck.addEventListener('keydown', event => {
       const term = liveTerm(event.target);
-      if (!term || !term.dataset.detail || event.key !== 'Enter') return;
+      if (!termIsAvailable(term) || !term.dataset.detail || event.key !== 'Enter') return;
       event.preventDefault();
-      openDetail(term.closest('.slide'), term.dataset.detail);
+      openDetail(term.closest('.slide'), term.dataset.detail, term);
     });
 
     document.addEventListener('pointerdown', event => {
@@ -452,6 +548,8 @@
   }
 
   function handleGlobalKeydown(event) {
+    if (event.isComposing || event.keyCode === 229) return;
+
     if (document.body.classList.contains('rp-search-open')) {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -470,11 +568,17 @@
       return;
     }
 
-    if (document.body.classList.contains('rp-detail-open') && event.key === 'Escape') {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      closeDetail();
-      return;
+    if (document.body.classList.contains('rp-detail-open')) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closeDetail();
+        return;
+      }
+      if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', ' ', 'PageUp', 'PageDown']
+        .includes(event.key)) {
+        closeDetail();
+      }
     }
 
     if (isTypingTarget(event.target) || isOverview()) return;
@@ -493,9 +597,6 @@
     if (!deck) return;
 
     buildIndex();
-    deck.querySelectorAll(':scope > .slide .rp-detail').forEach(term => {
-      if (!term.hasAttribute('tabindex')) term.setAttribute('tabindex', '0');
-    });
     document.querySelectorAll('.slide-sidebar .rp-detail').forEach(term => {
       term.setAttribute('tabindex', '-1');
     });
@@ -504,6 +605,8 @@
     createSearch();
     createTooltip();
     createDetailPanel();
+    updateAllTermStates();
+    updateOverlayScale();
     bindDetailEvents();
     document.addEventListener('keydown', handleGlobalKeydown);
     document.addEventListener('rp:slidechange', () => {
@@ -512,6 +615,32 @@
       updateAgenda();
       applyOverlayTheme();
     });
+    const stateObserver = new MutationObserver(records => {
+      let termsChanged = false;
+      let scaleChanged = false;
+      records.forEach(record => {
+        if (record.attributeName === 'class') termsChanged = true;
+        if (record.target === deck && record.attributeName === 'style') scaleChanged = true;
+      });
+      if (scaleChanged) updateOverlayScale();
+      if (termsChanged) {
+        updateAllTermStates();
+        if (isOverview()) {
+          closeAgenda();
+          closeSearch();
+          closeDetail(false);
+          hideTooltip();
+        }
+      }
+    });
+    stateObserver.observe(deck, {
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+      subtree: true
+    });
+    window.addEventListener('resize', () => requestAnimationFrame(updateOverlayScale));
+    document.addEventListener('fullscreenchange', () => requestAnimationFrame(updateOverlayScale));
+    requestAnimationFrame(updateOverlayScale);
     updateAgenda();
     applyOverlayTheme();
   }

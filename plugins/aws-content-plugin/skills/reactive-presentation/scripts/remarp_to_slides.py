@@ -114,12 +114,32 @@ def _mask_code_spans(text: str) -> Tuple[str, List[str]]:
     """Protect inline code spans while applying other inline rules."""
     spans: List[str] = []
 
-    def replace(match):
-        token = f'\x00CS{len(spans)}\x00'
-        spans.append(match.group(2))
-        return token
+    def mask_line(line: str) -> str:
+        runs = list(re.finditer(r'`+', line))
+        if not runs:
+            return line
+        output = []
+        pos = 0
+        run_idx = 0
+        while run_idx < len(runs):
+            opener = runs[run_idx]
+            closer_idx = next(
+                (idx for idx in range(run_idx + 1, len(runs))
+                 if len(runs[idx].group(0)) == len(opener.group(0))),
+                None)
+            if closer_idx is None:
+                break
+            closer = runs[closer_idx]
+            output.append(line[pos:opener.start()])
+            token = f'\x00CS{len(spans)}\x00'
+            spans.append(line[opener.end():closer.start()])
+            output.append(token)
+            pos = closer.end()
+            run_idx = closer_idx + 1
+        output.append(line[pos:])
+        return ''.join(output)
 
-    masked = re.sub(r'(`+)(.+?)\1', replace, text, flags=re.DOTALL)
+    masked = ''.join(mask_line(line) for line in text.splitlines(keepends=True))
     return masked, spans
 
 
@@ -446,6 +466,7 @@ class Slide:
     archify_blocks: List[Dict[str, Any]] = field(default_factory=list)
     details: List[Dict[str, str]] = field(default_factory=list)
     detail_errors: List[str] = field(default_factory=list)
+    authored_copy_parts: List[str] = field(default_factory=list)
     raw_source: str = ''
     source_index: Optional[int] = None
 
@@ -695,6 +716,25 @@ class RemarpParser:
         if notes:
             notes.content = _restore_literals(notes.content, literals)
 
+        authored_copy_parts = [
+            re.sub(r'<!-- __BLOCK:[\w-]+:\d+__ -->', '', md_text)
+        ]
+
+        def collect_authored_copy(block):
+            if block.block_type in ('css', 'script', 'prompt', 'detail'):
+                return
+            if block.block_type == 'tab' and block.args:
+                authored_copy_parts.append(block.args)
+            own_content = re.sub(r'<!-- __CHILD:\d+__ -->', '', block.content)
+            if own_content.strip():
+                authored_copy_parts.append(own_content)
+            for child in block.children:
+                collect_authored_copy(child)
+
+        for blocks_of_type in all_blocks.values():
+            for block in blocks_of_type:
+                collect_authored_copy(block)
+
         # -- Distribute extracted blocks to their handlers --
 
         detail_errors: List[str] = []
@@ -898,6 +938,7 @@ class RemarpParser:
             archify_blocks=archify_blocks,
             details=details,
             detail_errors=detail_errors,
+            authored_copy_parts=authored_copy_parts,
             raw_source=raw_source,
         )
 
@@ -5398,15 +5439,19 @@ def _validate_deck_tone(
 
     for entry in entries:
         slide = entry[0]
-        visible_parts = [_mask_authored_copy(slide.content)]
-        visible_parts.extend(_mask_authored_copy(block) for block in slide.html_blocks)
+        copy_parts = slide.authored_copy_parts or [slide.content]
+        visible_parts = [_mask_authored_copy(part) for part in copy_parts]
+        detail_parts = []
+        for detail in slide.details:
+            detail_parts.extend((
+                _mask_authored_copy(detail.get('title', '')),
+                _mask_authored_copy(detail.get('tip', '')),
+                _mask_authored_copy(detail.get('body', '')),
+            ))
+        visible_parts.extend(detail_parts)
         visible_text = '\n'.join(visible_parts)
-        note_text = _mask_authored_copy(
-            slide.notes.content if slide.notes else '')
-        detail_text = '\n'.join(
-            _mask_authored_copy(detail.get('body', ''))
-            for detail in slide.details)
-        authored_text = '\n'.join((visible_text, note_text, detail_text))
+        note_text = _mask_authored_copy(slide.notes.content if slide.notes else '')
+        authored_text = '\n'.join((visible_text, note_text))
 
         if _EM_DASH_PATTERN.search(authored_text):
             add(entry, 'EM_DASH',
@@ -5571,8 +5616,20 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
     detail_source = RemarpParser.NOTES_PATTERN.sub('', detail_source)
     detail_source = RemarpParser.LEGACY_NOTES_PATTERN.sub('', detail_source)
     detail_source, _detail_spans = _mask_code_spans(detail_source)
-    referenced = set(re.findall(
-        r'\{detail=([A-Za-z0-9_-]+)\}', detail_source))
+    detail_refs = re.findall(r'\{detail=([^}]*)\}', detail_source)
+    malformed_refs = sorted({
+        ref for ref in detail_refs
+        if not re.fullmatch(r'[A-Za-z0-9_-]+', ref)
+    })
+    if malformed_refs:
+        shown_refs = ', '.join(ref if ref else '(empty)' for ref in malformed_refs)
+        add('CRITICAL', 'DETAIL_REF',
+            f'Malformed detail id: {shown_refs}',
+            'Use only letters, numbers, underscores, and hyphens in detail ids')
+    referenced = {
+        ref for ref in detail_refs
+        if re.fullmatch(r'[A-Za-z0-9_-]+', ref)
+    }
     referenced.update(re.findall(
         r'\bdata-detail\s*=\s*["\']([A-Za-z0-9_-]+)["\']',
         detail_source))

@@ -49,12 +49,12 @@ SLIDES_A = f"""<div class="slide-deck">
       그리고 <span class="rp-detail" data-detail="xss" data-tip="{XSS}">raw term</span></p>
     </div>
     <div class="rp-detail-store" hidden>
-      <section data-detail-id="vxlan" data-title="UDP 8472가 필요한 이유" data-text="- direct routing, Gateway 모두 필요"><ul><li>direct routing, Gateway 모두 필요</li></ul></section>
+      <section data-detail-id="vxlan" data-title="UDP 8472가 필요한 이유" data-text="- direct routing, Gateway 모두 필요"><ul><li>direct routing, Gateway 모두 필요</li></ul><table><tr><th>모드</th><th>필요</th></tr><tr><td>Gateway</td><td>예</td></tr></table></section>
       <section data-detail-id="xss" data-title="{XSS}" data-text="raw body"><p>raw body</p></section>
     </div>
   </div>
-  <div class="slide" data-block="01-a" data-block-title="개요"><div class="slide-header"><h2>Second</h2></div><div class="slide-body"><p>two</p></div></div>
-  <div class="slide" data-block="01-a" data-block-title="개요"><div class="slide-header"><h2>Third</h2></div><div class="slide-body"><p>three</p></div></div>
+  <div class="slide" data-block="01-a" data-block-title="개요"><div class="slide-header"><h2>Second</h2></div><div class="slide-body"><p>two</p><p class="fragment" data-fragment-index="1">hidden <span class="rp-detail" tabindex="0" data-detail="hid" data-tip="숨은 팁">secret term</span></p><p class="fragment" data-fragment-index="2">later</p></div><div class="rp-detail-store" hidden><section data-detail-id="hid" data-title="숨은 상세" data-text="hidden body"><p>hidden body</p></section></div></div>
+  <div class="slide" data-block="01-a" data-block-title="개요"><style>.styleonlytoken {{ color: red; }}</style><div class="slide-header"><h2>Third</h2></div><div class="slide-body"><p>three</p></div></div>
   <div class="slide" data-block="02-b" data-block-title="네트워킹"><div class="slide-header"><h2>Overlay</h2></div><div class="slide-body"><p>Cilium uses VXLAN encapsulation</p></div></div>
   <div class="slide" data-block="02-b" data-block-title="네트워킹"><div class="slide-header"><h2>Input slide</h2></div><div class="slide-body"><input id="fixture-input" type="text"></div></div>
   <div class="slide" data-block="02-b" data-block-title="네트워킹"><div class="slide-header"><h2>Notes slide</h2></div><div class="slide-body"><p>last</p></div>
@@ -371,6 +371,116 @@ class DeckOverlayTests(unittest.TestCase):
             page.wait_for_function("() => { const l = document.querySelector('.slide-logo'); return l && l.complete; }")
             page.wait_for_timeout(200)
             self._assert_hint_clear(page)
+
+    # --- code-gate round 1 / content review regressions ---------------------------
+    def test_search_ignores_ime_composition_keys(self):
+        page = self.open()
+        self.open_search(page, "vx")
+        before = page.evaluate("() => document.querySelector('#rp-search-results .is-selected, #rp-search-results [aria-selected=true]')?.dataset.goto ?? null")
+        for key in ("ArrowDown", "Enter"):
+            page.evaluate("(k) => document.getElementById('rp-search-input').dispatchEvent("
+                          "new KeyboardEvent('keydown', {key: k, isComposing: true, bubbles: true, cancelable: true}))", key)
+        page.wait_for_timeout(150)
+        self.assertTrue(self.has_body_class(page, "rp-search-open"))
+        self.assertEqual(self.active(page), 0)
+        after = page.evaluate("() => document.querySelector('#rp-search-results .is-selected, #rp-search-results [aria-selected=true]')?.dataset.goto ?? null")
+        self.assertEqual(before, after)
+
+    def test_search_skips_style_text_and_indexes_detail_titles(self):
+        page = self.open()
+        self.open_search(page, "styleonlytoken")
+        self.assertEqual(page.locator("#rp-search-results .rp-search-row").count(), 0)
+        page.fill("#rp-search-input", "필요한 이유")
+        page.wait_for_timeout(150)
+        self.assertEqual(page.locator("#rp-search-results .rp-search-row").first.get_attribute("data-goto"), "0")
+
+    def test_search_snippet_separates_blocks(self):
+        page = self.open()
+        self.open_search(page, "encapsulation")
+        text = page.inner_text("#rp-search-results .rp-search-row")
+        self.assertNotIn("OverlayCilium", text.replace("\n", ""))
+
+    def test_hidden_fragment_term_inert(self):
+        page = self.open()
+        page.evaluate("() => deck.goTo(1)")
+        page.wait_for_timeout(300)
+        sel = '.slide-deck > .slide .rp-detail[data-detail="hid"]'
+        self.assertEqual(page.get_attribute(sel, "tabindex"), "-1")
+        page.evaluate("(s) => document.querySelector(s).focus()", sel)
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(200)
+        self.assertFalse(self.has_body_class(page, "rp-detail-open"))
+        page.keyboard.press("ArrowRight")
+        page.wait_for_timeout(300)
+        self.assertEqual(page.get_attribute(sel, "tabindex"), "0")
+
+    def test_panel_closes_on_fragment_reveal(self):
+        page = self.open()
+        page.evaluate("() => deck.goTo(1)")
+        page.wait_for_timeout(300)
+        page.keyboard.press("ArrowRight")
+        page.wait_for_timeout(300)
+        page.click('.slide-deck > .slide .rp-detail[data-detail="hid"]')
+        page.wait_for_timeout(200)
+        self.assertTrue(self.has_body_class(page, "rp-detail-open"))
+        page.keyboard.press("ArrowRight")
+        page.wait_for_timeout(300)
+        self.assertFalse(self.has_body_class(page, "rp-detail-open"))
+
+    def test_panel_close_button_not_covered_by_hotzone(self):
+        page = self.open()
+        page.click('.slide-deck > .slide .rp-detail[data-detail="vxlan"]')
+        page.wait_for_timeout(200)
+        hit = page.evaluate(
+            "() => { const b = document.querySelector('#rp-detail-panel button'); const r = b.getBoundingClientRect();"
+            " const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return b === e || b.contains(e); }")
+        self.assertTrue(hit)
+
+    def test_detail_term_aria_and_focus(self):
+        page = self.open()
+        sel = '.slide-deck > .slide .rp-detail[data-detail="vxlan"]'
+        self.assertEqual(page.get_attribute(sel, "role"), "button")
+        self.assertEqual(page.get_attribute(sel, "aria-haspopup"), "dialog")
+        page.focus(sel)
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(200)
+        self.assertEqual(page.get_attribute(sel, "aria-expanded"), "true")
+        self.assertTrue(page.evaluate("() => document.getElementById('rp-detail-panel').contains(document.activeElement)"))
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(200)
+        self.assertTrue(page.evaluate("(s) => document.activeElement === document.querySelector(s)", sel))
+
+    def test_overlay_korean_keep_all(self):
+        page = self.open()
+        page.click('.slide-deck > .slide .rp-detail[data-detail="vxlan"]')
+        page.wait_for_timeout(200)
+        self.assertEqual(page.evaluate("() => getComputedStyle(document.querySelector('#rp-detail-panel li')).wordBreak"), "keep-all")
+
+    def test_panel_table_is_styled(self):
+        page = self.open()
+        page.click('.slide-deck > .slide .rp-detail[data-detail="vxlan"]')
+        page.wait_for_timeout(200)
+        pad = page.evaluate("() => parseFloat(getComputedStyle(document.querySelector('#rp-detail-panel td')).paddingLeft)")
+        self.assertGreater(pad, 0)
+
+    def test_overview_clears_open_panel(self):
+        page = self.open()
+        page.click('.slide-deck > .slide .rp-detail[data-detail="vxlan"]')
+        page.wait_for_timeout(200)
+        page.keyboard.press("o")
+        page.wait_for_timeout(300)
+        self.assertFalse(self.has_body_class(page, "rp-detail-open"))
+
+    def test_overlay_scales_with_deck(self):
+        sizes = []
+        for vp in ({"width": 1920, "height": 1080}, {"width": 3840, "height": 2160}):
+            page = self.open()
+            page.set_viewport_size(vp)
+            page.wait_for_timeout(400)
+            page.click('.slide-deck > .slide .rp-detail[data-detail="vxlan"]')
+            page.wait_for_timeout(200)
+            sizes.append(page.evaluate("() => parseFloat(getComputedStyle(document.querySelector('#rp-detail-panel li')).fontSize)"))
+        self.assertGreater(sizes[1], sizes[0] * 1.5, sizes)
 
 
 if __name__ == "__main__":

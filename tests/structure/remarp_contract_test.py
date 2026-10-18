@@ -444,6 +444,15 @@ class RemarpDetailContractTests(unittest.TestCase):
         findings = plain if isinstance(plain, list) else plain.get("findings", [])
         self.assertNotIn("MISSING_OVERLAY", {f.get("rule") for f in findings})
 
+    def test_malformed_detail_ref_is_critical(self):
+        for src in ('## T\n\n[x]{detail=}\n', '## T\n\n[x]{detail=bad id}\n', '## T\n\n[x]{detail=a.b}\n'):
+            with self.subTest(src=src):
+                self.assertIn(("CRITICAL", "DETAIL_REF"), self.rules(self.validate_text(src)))
+
+    def test_stray_backtick_keeps_detail_ref_check(self):
+        src = "## T\n\nan unpaired ` backtick\n\nthen [x]{detail=nope} and `code`\n"
+        self.assertIn(("CRITICAL", "DETAIL_REF"), self.rules(self.validate_text(src)))
+
 
 if __name__ == "__main__":
     unittest.main()

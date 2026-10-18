@@ -98,6 +98,11 @@ class SentenceRunonTests(unittest.TestCase):
                           viewports=((1920, 1080), (1280, 720)))
         self.assertEqual(1, len(hits), hits)
 
+    def test_runon_ignores_inline_markup_on_two_lines(self):
+        body = ('<div class="card-desc" style="width:900px">첫 문장에 <code>code</code>와 <strong>강조</strong>가 있습니다. '
+                '둘째 문장도 <span class="rp-detail" data-tip="t">용어</span> 포함입니다.</div>')
+        self.assertEqual([], self.runon([slide("A", body)]))
+
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result

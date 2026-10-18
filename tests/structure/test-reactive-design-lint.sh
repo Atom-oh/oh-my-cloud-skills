@@ -121,3 +121,8 @@ for f in doc-sites/docs/aws-content-plugin/skills/reactive-presentation.md \
   assert_contains "$(cat "$f" 2>/dev/null)" '<span id="keyboard-shortcuts" />' "$(basename "$(dirname "$f")")/$(basename "$f") keeps the keyboard-shortcuts anchor"
 done
 assert_contains "$(cat CHANGELOG.md)" "deck-overlay" "CHANGELOG mentions the deck overlay"
+# Example deck copy follows the EM_DASH / AI_TONE rules it demonstrates (content review R4).
+for f in "$RP6/assets/example-deck/index.html" "$RP6/assets/example-deck/toc.html"; do
+  EXD="$(cat "$f" 2>/dev/null || true)"
+  assert_grep_no_match "\x{2014}|\x{00B7}|&mdash;|&middot;" "$EXD" "$(basename "$f") has no em dashes or middle dots"
+done

@@ -184,13 +184,32 @@ _DENSITY_JS = r"""
     const boundaries = [...text.matchAll(/[.?!] +(?=\S)/g)];
     if (boundaries.length < 1) continue;
 
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const lineTops = new Set(
-      [...range.getClientRects()]
-        .filter(rect => rect.width > 0 && rect.height > 0)
-        .map(rect => Math.round(rect.top * 2) / 2));
-    if (lineTops.size < 3) continue;
+    const rects = [];
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (!node.textContent.trim()) continue;
+      const parent = node.parentElement;
+      if (!parent || inTemplate(parent) || !shown(parent)) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      for (const rect of range.getClientRects()) {
+        if (rect.width > 0 && rect.height > 0) rects.push(rect);
+      }
+    }
+    if (!rects.length) continue;
+
+    const heights = rects.map(rect => rect.height).sort((a, b) => a - b);
+    const lineHeight = heights[Math.floor(heights.length / 2)];
+    const lineTolerance = Math.max(1, lineHeight / 2);
+    const lineTops = [];
+    for (const rect of rects.sort((a, b) => a.top - b.top)) {
+      const roundedTop = Math.round(rect.top * 2) / 2;
+      if (!lineTops.some(top => Math.abs(top - roundedTop) <= lineTolerance)) {
+        lineTops.push(roundedTop);
+      }
+    }
+    if (lineTops.length < 3) continue;
 
     findings.push({ rule: 'SENTENCE_RUNON', severity: 'WARN', el: sel(el),
       message: 'multiple sentences in one text block wrap across 3 or more lines; split into separate lines or move the reason to :::detail' });

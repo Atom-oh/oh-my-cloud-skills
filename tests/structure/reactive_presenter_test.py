@@ -177,6 +177,15 @@ class PresenterPreviewTests(unittest.TestCase):
         fs = self.pv.evaluate("() => getComputedStyle(document.querySelector('.presenter-timer')).fontSize")
         self.assertEqual(fs, "24px")
 
+    def test_next_preview_after_going_back_is_visible(self):
+        self.goto(1)
+        self.page.keyboard.press("ArrowLeft")
+        self.settle()
+        cls = self.pv.evaluate("() => document.querySelector('#p-next .slide').className")
+        for bad in ("leaving", "entering", "transition-"):
+            self.assertNotIn(bad, cls)
+        self.assertEqual(self.pv.evaluate("() => getComputedStyle(document.querySelector('#p-next .slide')).opacity"), "1")
+
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result
