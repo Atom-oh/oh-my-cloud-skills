@@ -488,7 +488,7 @@ const ExportUtils = {
     var entries = [];
     slide.querySelectorAll('.rp-detail-store section').forEach(function(section) {
       var title = String(section.getAttribute('data-title') || '').trim();
-      var text = String(section.getAttribute('data-text') || '').trim();
+      var text = String(section.getAttribute('data-text') || section.textContent || '').trim();
       if (!title && !text) return;
       // Same "- title: text" lines as export_pptx.py _details_to_text.
       entries.push('- ' + [title, text].filter(Boolean).join(': '));

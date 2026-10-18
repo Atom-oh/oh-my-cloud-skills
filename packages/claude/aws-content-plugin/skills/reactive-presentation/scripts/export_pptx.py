@@ -270,7 +270,7 @@ _DETAILS_JS = """
   const details = slide
     ? Array.from(slide.querySelectorAll('.rp-detail-store section')).map(section => ({
         title: section.dataset.title || '',
-        text: section.dataset.text || ''
+        text: section.dataset.text || section.textContent || ''
       }))
     : [];
   return { lang, details };

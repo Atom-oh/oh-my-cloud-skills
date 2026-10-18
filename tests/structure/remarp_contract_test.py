@@ -446,12 +446,13 @@ class RemarpDetailContractTests(unittest.TestCase):
             "const fs = require('fs');"
             "const src = fs.readFileSync(process.argv[1], 'utf8') + '\\nmodule.exports = ExportUtils;';"
             "const m = { exports: {} }; new Function('module', src)(m);"
-            "const sec = (t, x) => ({ getAttribute: k => (k === 'data-title' ? t : x) });"
-            "const slide = { querySelectorAll: () => [sec('A', 'b'), sec('', 'c'), sec('', '')] };"
+            "const sec = (t, x, body = '') => ({ textContent: body, getAttribute: k => (k === 'data-title' ? t : x) });"
+            "const slide = { querySelectorAll: () => [sec('A', 'b'), sec('', 'c'), sec('', ''), sec('D', null, 'body only')] };"
             "process.stdout.write(m.exports._detailNotesFromSlide(slide, 'ko-KR'));")
         result = subprocess.run(["node", "-e", script, str(EXPORT_UTILS)], capture_output=True, text=True)
         self.assertEqual(0, result.returncode, result.stderr)
-        expected = export._details_to_text([{"title": "A", "text": "b"}, {"title": "", "text": "c"}], "ko")
+        expected = export._details_to_text([{"title": "A", "text": "b"}, {"title": "", "text": "c"},
+                                            {"title": "D", "text": "body only"}], "ko")
         self.assertEqual(expected, result.stdout)
 
     def test_export_prepare_hides_overlay(self):

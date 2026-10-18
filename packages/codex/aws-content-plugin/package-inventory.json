@@ -480,7 +480,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-nav.js": {
-      "sha256": "5be57db7ae0f83133318a0ce738f75ea5d01a482eeb70154140b4a94d8de62f0",
+      "sha256": "7ca6498a0cab525df06a19756c59e2f19b31432f9daf6f2c287dd21dfc6b75f7",
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-overlay.css": {
@@ -504,7 +504,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/export-utils.js": {
-      "sha256": "721970862e7912b45251abfa321c12f635863ce128fafa5bb798100bece1eeec",
+      "sha256": "af2eece6e4bdb22fd34f145ba88b7ad60b01baa4ef5f4333c9b70d18e5d85e02",
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
@@ -17364,7 +17364,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/export_pptx.py": {
-      "sha256": "6a0cb724f97ba4a6c46f31be92be992f2fd9e3a2b8c042153235c46ad8b35aa2",
+      "sha256": "f6cffe3f09961df00cc3d08e1817f1b00cd5d74ddf2f72fb24bf7870add4a9a7",
       "executable": false
     },
     "skills/reactive-presentation/scripts/extract_aws_icons.py": {
