@@ -5681,19 +5681,20 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
     detail_source, _detail_spans = _mask_code_spans(detail_source)
     # A reference inside an HTML comment never renders, so it cannot be dangling.
     detail_source = re.sub(r'<!--.*?-->', '', detail_source, flags=re.DOTALL)
+    # Raw HTML <code>/<pre> bodies are examples, not references.
+    detail_source = re.sub(
+        r'(<(code|pre)\b[^>]*>).*?(</\2\s*>)', r'\1\3',
+        detail_source, flags=re.IGNORECASE | re.DOTALL)
     detail_refs = re.findall(r'\{detail=([^}]*)\}', detail_source)
     malformed_refs = {
         ref for ref in detail_refs
         if not re.fullmatch(r'[A-Za-z0-9_-]+', ref)
     }
 
-    raw_detail_source = re.sub(
-        r'(<(code|pre)\b[^>]*>).*?(</\2\s*>)', r'\1\3',
-        detail_source, flags=re.IGNORECASE | re.DOTALL)
     raw_detail_values: List[str] = []
     for match in re.finditer(
             r'\bdata-detail\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+)|(?=>))',
-            raw_detail_source, re.IGNORECASE):
+            detail_source, re.IGNORECASE):
         raw_detail_values.append(next(
             (value for value in match.groups() if value is not None), ''))
     malformed_refs.update(

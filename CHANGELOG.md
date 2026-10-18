@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now use one claim line with an optional reason line, with longer explanations
   moved to `:::detail`.
 - Move co-agent's default `codex` panel model to `openai.gpt-6.1-sol` with a
-  1M `context_limit` (was `openai.gpt-5.6-sol`, 272K); pr-autofix's Codex
+  878K `context_limit` (was `openai.gpt-5.6-sol`, 272K); pr-autofix's Codex
   escalation rung follows.
 - Bump all plugin manifests and both marketplaces to 3.0.3.
 - Prepare 3.0.2 packages with shared identity and independently maintained Claude

@@ -202,13 +202,13 @@ def check_file(deck_dir, name, skill_selectors, findings):
             f'new SlideFramework( appears {n_fw} time(s), expected exactly 1')
     if re.search(r'class=["\'][^"\']*\brp-detail\b', text):
         missing_overlay = []
-        for name in ('deck-overlay', 'deck-detail'):
+        for asset in ('deck-overlay', 'deck-detail'):
             if not re.search(
-                    r'<script[^>]*src="[^"]*' + re.escape(name) + r'\.js"', text):
-                missing_overlay.append(name + '.js')
+                    r'<script[^>]*src="[^"]*' + re.escape(asset) + r'\.js"', text):
+                missing_overlay.append(asset + '.js')
             if not re.search(
-                    r'<link[^>]*href="[^"]*' + re.escape(name) + r'\.css"', text):
-                missing_overlay.append(name + '.css')
+                    r'<link[^>]*href="[^"]*' + re.escape(asset) + r'\.css"', text):
+                missing_overlay.append(asset + '.css')
         if missing_overlay:
             add('WARN', 'MISSING_OVERLAY',
                 f'detail terms require overlay assets: {", ".join(missing_overlay)}')

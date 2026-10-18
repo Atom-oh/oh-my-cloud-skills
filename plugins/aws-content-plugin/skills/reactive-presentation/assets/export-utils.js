@@ -488,15 +488,16 @@ const ExportUtils = {
     var entries = [];
     slide.querySelectorAll('.rp-detail-store section').forEach(function(section) {
       var title = String(section.getAttribute('data-title') || '').trim();
-      var text = String(section.getAttribute('data-text') || '').trim();
+      var text = String(section.getAttribute('data-text') || section.textContent || '').trim();
       if (!title && !text) return;
-      entries.push([title, text].filter(Boolean).join('\n'));
+      // Same "- title: text" lines as export_pptx.py _details_to_text.
+      entries.push('- ' + [title, text].filter(Boolean).join(': '));
     });
     if (!entries.length) return '';
     var heading = String(lang || '').toLowerCase().split('-')[0] === 'ko'
       ? '[디테일]'
       : '[Details]';
-    return heading + '\n' + entries.join('\n\n');
+    return heading + '\n' + entries.join('\n');
   },
 
   /**
@@ -609,67 +610,68 @@ const ExportUtils = {
 
         var iframeDoc = result.doc;
         var iframe = result.iframe;
+        try {
+          // Presenter notes → PPTX speaker notes (keyed by 1-based slide number)
+          var blockNotes = this._extractNotesFromIframe(iframeDoc);
 
-        // Presenter notes → PPTX speaker notes (keyed by 1-based slide number)
-        var blockNotes = this._extractNotesFromIframe(iframeDoc);
+          // Complete all animations (fragments visible, canvas at final step)
+          this._completeAllAnimations(iframeDoc);
 
-        // Complete all animations (fragments visible, canvas at final step)
-        this._completeAllAnimations(iframeDoc);
+          // Wait a moment for canvas redraws to finish
+          await new Promise(function(r) { setTimeout(r, 300); });
 
-        // Wait a moment for canvas redraws to finish
-        await new Promise(function(r) { setTimeout(r, 300); });
+          // Capture each slide
+          var slides = iframeDoc.querySelectorAll('.slide');
+          for (var j = 0; j < slides.length; j++) {
+            var slideEl = slides[j];
+            totalSlides++;
+            var pctBase = 40 + ((totalSlides - 1) / Math.max(slides.length * blocks.length, 1)) * 45;
+            self.updateProgress('Capturing slide ' + totalSlides + '...', pctBase);
 
-        // Capture each slide
-        var slides = iframeDoc.querySelectorAll('.slide');
-        for (var j = 0; j < slides.length; j++) {
-          var slideEl = slides[j];
-          totalSlides++;
-          var pctBase = 40 + ((totalSlides - 1) / Math.max(slides.length * blocks.length, 1)) * 45;
-          self.updateProgress('Capturing slide ' + totalSlides + '...', pctBase);
+            // Ensure slide is properly sized for capture
+            slideEl.style.width = '1920px';
+            slideEl.style.height = '1080px';
+            slideEl.style.minHeight = '1080px';
+            slideEl.style.overflow = 'hidden';
 
-          // Ensure slide is properly sized for capture
-          slideEl.style.width = '1920px';
-          slideEl.style.height = '1080px';
-          slideEl.style.minHeight = '1080px';
-          slideEl.style.overflow = 'hidden';
+            var pptxSlide = pres.addSlide();
+            var slideHeading = slideEl.querySelector('h1, h2');
+            var noteRaw = blockNotes[j + 1] || blockNotes[String(j + 1)] || '';
+            var noteText = noteRaw ? self._notesToPlainText(noteRaw) : '';
+            var headingText = slideHeading ? slideHeading.textContent.trim() : '';
+            var detailText = self._detailNotesFromSlide(
+              slideEl,
+              iframeDoc.documentElement.lang
+            );
+            var combined = headingText && noteText
+              ? headingText + '\n\n' + noteText
+              : (noteText || headingText);
+            if (detailText) combined = combined ? combined + '\n\n' + detailText : detailText;
 
-          var pptxSlide = pres.addSlide();
-          var slideHeading = slideEl.querySelector('h1, h2');
-          var noteRaw = blockNotes[j + 1] || blockNotes[String(j + 1)] || '';
-          var noteText = noteRaw ? self._notesToPlainText(noteRaw) : '';
-          var headingText = slideHeading ? slideHeading.textContent.trim() : '';
-          var detailText = self._detailNotesFromSlide(
-            slideEl,
-            iframeDoc.documentElement.lang
-          );
-          var combined = headingText && noteText
-            ? headingText + '\n\n' + noteText
-            : (noteText || headingText);
-          if (detailText) combined = combined ? combined + '\n\n' + detailText : detailText;
+            try {
+              var dataUrl = await self._captureSlide(slideEl, iframe.contentWindow, options.scale);
 
-          try {
-            var dataUrl = await self._captureSlide(slideEl, iframe.contentWindow, options.scale);
-
-            pptxSlide.addImage({
-              data: dataUrl,
-              x: 0, y: 0,
-              w: '100%', h: '100%'
-            });
-          } catch (captureErr) {
-            console.warn('Capture failed for slide ' + totalSlides + ', using text fallback:', captureErr);
-            // Fallback: text-based slide
-            if (slideHeading) {
-              pptxSlide.addText(slideHeading.textContent.trim(), {
-                x: 0.5, y: 0.5, w: '90%', fontSize: 24, color: 'FFFFFF', bold: true
+              pptxSlide.addImage({
+                data: dataUrl,
+                x: 0, y: 0,
+                w: '100%', h: '100%'
               });
+            } catch (captureErr) {
+              console.warn('Capture failed for slide ' + totalSlides + ', using text fallback:', captureErr);
+              // Fallback: text-based slide
+              if (slideHeading) {
+                pptxSlide.addText(slideHeading.textContent.trim(), {
+                  x: 0.5, y: 0.5, w: '90%', fontSize: 24, color: 'FFFFFF', bold: true
+                });
+              }
+              pptxSlide.background = { color: '0F1B2A' };
             }
-            pptxSlide.background = { color: '0F1B2A' };
+            if (combined) pptxSlide.addNotes(combined);
           }
-          if (combined) pptxSlide.addNotes(combined);
+        } finally {
+          // Clean up iframe even when a block fails mid-capture
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
         }
-
-        // Clean up iframe
-        document.body.removeChild(iframe);
       }
 
       this.updateProgress('Generating PPTX (' + totalSlides + ' slides)...', 90);

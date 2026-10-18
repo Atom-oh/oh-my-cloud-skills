@@ -1,6 +1,6 @@
 """Browser regression tests for measure_deck SENTENCE_RUNON (reactive-nav-detail Task 4).
 
-Skips (exit 0, prints SKIPPED-ALL) without Playwright/Chromium.
+Browser cases skip (exit 0, prints SKIPPED-BROWSER) without Playwright/Chromium.
 """
 import importlib.util
 import shutil
@@ -106,6 +106,6 @@ class SentenceRunonTests(unittest.TestCase):
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result
-    if result.skipped and len(result.skipped) >= 3:
+    if any(reason == "playwright/chromium unavailable" for _, reason in result.skipped):
         print("SKIPPED-BROWSER")
     sys.exit(0 if result.wasSuccessful() else 1)

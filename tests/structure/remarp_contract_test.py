@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -279,6 +280,7 @@ class RemarpContractTests(unittest.TestCase):
 
 EXPORT_SCRIPT = ROOT / "plugins/aws-content-plugin/skills/reactive-presentation/scripts/export_pptx.py"
 CHECK_SCRIPT = ROOT / "plugins/aws-content-plugin/skills/reactive-presentation/scripts/check_deck.py"
+EXPORT_UTILS = ROOT / "plugins/aws-content-plugin/skills/reactive-presentation/assets/export-utils.js"
 
 
 def _load(name, path):
@@ -436,6 +438,22 @@ class RemarpDetailContractTests(unittest.TestCase):
         self.assertEqual(export._details_to_text([{"title": "A", "text": "b"}], "ko"), "[디테일]\n- A: b")
         self.assertEqual(export._details_to_text([{"title": "A", "text": "b"}], "en"), "[Details]\n- A: b")
         self.assertEqual(export._details_to_text([], "en"), "")
+        self.assertEqual(export._details_to_text([{"title": "", "text": "b"}], "en"), "[Details]\n- b")
+
+    @unittest.skipUnless(shutil.which("node"), "node not installed")
+    def test_browser_export_detail_notes_match_python(self):
+        script = (
+            "const fs = require('fs');"
+            "const src = fs.readFileSync(process.argv[1], 'utf8') + '\\nmodule.exports = ExportUtils;';"
+            "const m = { exports: {} }; new Function('module', src)(m);"
+            "const sec = (t, x, body = '') => ({ textContent: body, getAttribute: k => (k === 'data-title' ? t : x) });"
+            "const slide = { querySelectorAll: () => [sec('A', 'b'), sec('', 'c'), sec('', ''), sec('D', null, 'body only')] };"
+            "process.stdout.write(m.exports._detailNotesFromSlide(slide, 'ko-KR'));")
+        result = subprocess.run(["node", "-e", script, str(EXPORT_UTILS)], capture_output=True, text=True)
+        self.assertEqual(0, result.returncode, result.stderr)
+        expected = export._details_to_text([{"title": "A", "text": "b"}, {"title": "", "text": "c"},
+                                            {"title": "D", "text": "body only"}], "ko")
+        self.assertEqual(expected, result.stdout)
 
     def test_export_prepare_hides_overlay(self):
         self.assertIn(".rp-overlay-ui", export._PREPARE_JS)
@@ -459,6 +477,7 @@ class RemarpDetailContractTests(unittest.TestCase):
         findings = with_term if isinstance(with_term, list) else with_term.get("findings", [])
         self.assertIn(("WARN", "MISSING_OVERLAY"),
                       {(f.get("severity"), f.get("rule")) for f in findings})
+        self.assertNotIn("deck-detail", {f.get("file") for f in findings})
         plain = self.check_deck_findings(base.format(body="x"))
         findings = plain if isinstance(plain, list) else plain.get("findings", [])
         self.assertNotIn("MISSING_OVERLAY", {f.get("rule") for f in findings})
@@ -480,7 +499,8 @@ class RemarpDetailContractTests(unittest.TestCase):
     def test_detail_ref_ignores_html_comments_and_code_examples(self):
         examples = ('<!-- <span data-detail="old">x</span> -->\n'
                     '<code>&lt;span data-detail="ex"&gt;</code>\n'
-                    '<pre>data-detail="p"</pre>\n')
+                    '<pre>data-detail="p"</pre>\n'
+                    '<pre>[x]{detail=inpre}</pre>\n')
         clean = '## T\n\n:::html\n' + examples + ':::\n'
         self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(clean))})
         real = ('## T\n\n:::html\n' + examples
