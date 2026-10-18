@@ -58,6 +58,42 @@ Plan the audience, message, blocks, and timing. Use `_presentation.md` for share
 
 Supported slide forms include content, code, compare, Canvas, quiz, tabs, timeline, and checklist. Use native HTML/CSS grids for KPI cards, charts, grouped architectures, and readable layouts. Use `:::script` for calculators or simulators with real input/output state. Canvas is limited to simple linear diagrams with at most four boxes/icons; groups and branches use HTML/CSS.
 
+## Navigation and detail layers {#navigation-and-detail-layers}
+
+Hover the top-right corner to open the deck agenda. Press Cmd+K, Ctrl+K, or `/`
+to search slide titles, visible content, and detail text. Search excludes speaker
+notes. Agenda and search are available in the deck window and are hidden from
+overview, presenter previews, measurement, and export captures.
+
+Use a tooltip for a short explanation:
+
+```markdown
+[UDP 8472]{tip="Cilium VXLAN port"}
+```
+
+Use a slide-scoped detail block for longer content:
+
+```markdown
+[UDP 8472]{detail=vxlan-8472}
+
+:::detail vxlan-8472 "Why UDP 8472 is required"
+tip: Cilium VXLAN tunnel port between hybrid nodes
+
+The port carries VXLAN traffic between nodes.
+:::
+```
+
+The detail block must be at the top level of the same slide. Duplicate IDs and
+missing references are CRITICAL `DETAIL_REF` findings. The detail panel opens by
+click or Enter and closes with Esc, an outside click, or a slide change.
+
+## Copy gates {#copy-gates}
+
+`EM_DASH` and `AI_TONE` are source validation warnings that must be resolved in
+the authoring loop. `SENTENCE_RUNON` is a rendered measurement warning. Keep each
+card description to one claim line plus an optional reason line, then put
+additional explanation in `:::detail`.
+
 ## Design and notes {#design-and-notes}
 
 Use semantic tokens and class-based themes. Brand input uses `--pptx-*` variables consumed by the framework. Keep type hierarchy and contrast clear, use the shared AWS icon library, and include useful notes explaining the message, practical implications, audience cues, and transition.

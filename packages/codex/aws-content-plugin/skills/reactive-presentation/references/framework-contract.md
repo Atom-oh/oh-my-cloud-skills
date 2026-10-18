@@ -15,6 +15,7 @@ Everything here is derived from the actual code in `assets/` — if this documen
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Deck Title</title>
   <link rel="stylesheet" href="./common/theme.css">
+  <link rel="stylesheet" href="./common/deck-overlay.css">
   <!-- PPTX 테마 추출 시에만: -->
   <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
 </head>
@@ -38,6 +39,7 @@ Everything here is derived from the actual code in `assets/` — if this documen
   <!-- ... more .slide ... -->
 </div>
 <script src="./common/animation-utils.js"></script>
+<script src="./common/deck-overlay.js"></script>
 <script src="./common/slide-framework.js"></script>
 <script src="./common/quiz-component.js"></script>
 <script src="./common/presenter-view.js"></script>
@@ -63,6 +65,54 @@ Everything here is derived from the actual code in `assets/` — if this documen
 - Speaker notes: `<template class="notes">` is recommended (no escaping needed, clean diffs).
   The legacy `const presenterNotes = {1: "...", ...}` + `presenterNotes:` option still works.
   If both are present, the option object takes priority.
+
+### Overlay and detail DOM contract
+
+`deck-overlay.css` must load in the document head. `deck-overlay.js` must load
+before `slide-framework.js`, because `SlideFramework` initializes
+`window.DeckOverlay` after collecting the slides.
+
+The compiler marks every slide in a multi-block build with `data-block` and
+`data-block-title`. A single-block or manual deck may omit those attributes;
+the agenda then treats all direct child slides as one block.
+
+Remarp detail syntax compiles to this slide-local structure:
+
+```html
+<span class="rp-detail" tabindex="0"
+      data-detail="vxlan-8472"
+      data-tip="Cilium VXLAN port">UDP 8472</span>
+
+<div class="rp-detail-store" hidden>
+  <section data-detail-id="vxlan-8472"
+           data-title="Why UDP 8472 is required"
+           data-text="The port carries VXLAN traffic between nodes.">
+    <p>The port carries VXLAN traffic between nodes.</p>
+  </section>
+</div>
+```
+
+The `.rp-detail-store` is hidden source content inside its owning slide. Every
+runtime root created for agenda, search, tooltip and the right detail panel is a
+direct child of `document.body` with class `rp-overlay-ui`. The runtime never
+inserts content into a `.slide`. The detail icon is the
+`.rp-detail[data-detail]::after` pseudo-element, so it is present before the
+first fit pass.
+
+All author-derived values in `data-tip`, `data-title`, `data-text` and
+`data-block-title` are HTML attribute escaped by the compiler. Runtime titles
+and tooltips use text content. A detail reference without a matching
+slide-scoped store entry is a CRITICAL `DETAIL_REF` validation finding.
+
+Capture and measurement paths inject this exact hide rule:
+
+```css
+.rp-overlay-ui { display:none !important } .rp-detail { text-decoration:none !important } .rp-detail::after { visibility:hidden !important }
+```
+
+Using `visibility` for the pseudo-element preserves the fitted layout while
+removing the icon from captured output. PPTX export appends detail titles and
+plain text to the slide's speaker notes under `[Details]` or `[디테일]`.
 
 ## 2. Theme Tokens (theme.css)
 

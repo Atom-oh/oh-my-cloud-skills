@@ -58,6 +58,43 @@ Remarp로 발표자 노트, 키보드 탐색, 라이트·다크 테마, 퀴즈, 
 
 지원하는 슬라이드 형식은 content, code, compare, Canvas, quiz, tabs, timeline과 checklist입니다. KPI 카드, 차트, 그룹이 있는 아키텍처와 읽기 쉬운 레이아웃에는 HTML/CSS 그리드를 사용합니다. 실제 입력·출력 상태를 다루는 계산기나 시뮬레이터에는 `:::script`를 사용합니다. Canvas는 상자·아이콘이 최대 네 개인 단순 선형 다이어그램으로 제한하며, 그룹과 분기에는 HTML/CSS를 사용합니다.
 
+## 탐색과 상세 정보 계층 {#navigation-and-detail-layers}
+
+화면 오른쪽 위 모서리에 마우스를 올리면 덱 아젠다가 열립니다. Cmd+K,
+Ctrl+K 또는 `/`를 누르면 슬라이드 제목, 화면에 보이는 내용과 상세 정보
+텍스트를 검색합니다. 발표자 노트는 검색하지 않습니다. 아젠다와 검색은
+덱 창에서만 제공되며 개요, 발표자 미리보기, 측정과 내보내기 화면에서는
+숨겨집니다.
+
+짧은 설명에는 툴팁을 사용합니다.
+
+```markdown
+[UDP 8472]{tip="Cilium VXLAN port"}
+```
+
+긴 설명에는 슬라이드 범위의 상세 정보 블록을 사용합니다.
+
+```markdown
+[UDP 8472]{detail=vxlan-8472}
+
+:::detail vxlan-8472 "Why UDP 8472 is required"
+tip: Cilium VXLAN tunnel port between hybrid nodes
+
+The port carries VXLAN traffic between nodes.
+:::
+```
+
+상세 정보 블록은 같은 슬라이드의 최상위에 있어야 합니다. ID가 중복되거나
+참조할 블록이 없으면 CRITICAL `DETAIL_REF` 진단이 발생합니다. 상세 정보
+패널은 클릭이나 Enter로 열고 Esc, 바깥 영역 클릭 또는 슬라이드 변경으로
+닫습니다.
+
+## 문장 품질 검사 {#copy-gates}
+
+`EM_DASH`와 `AI_TONE`은 소스 검증 경고이며 작성 단계에서 반드시
+수정합니다. `SENTENCE_RUNON`은 렌더링 측정 경고입니다. 카드 설명은 주장
+한 줄과 선택적인 이유 한 줄로 제한하고 추가 설명은 `:::detail`에 둡니다.
+
 ## 디자인과 노트 {#design-and-notes}
 
 의미 기반 토큰과 클래스 기반 테마를 사용합니다. 브랜드 설정에는 프레임워크가 사용하는 `--pptx-*` 변수를 활용합니다. 글자 계층과 대비를 명확히 유지하고 공유 AWS 아이콘 라이브러리를 사용합니다. 메시지, 실무적 의미, 청중 반응 유도와 다음 내용으로의 전환을 설명하는 유용한 노트를 포함합니다.

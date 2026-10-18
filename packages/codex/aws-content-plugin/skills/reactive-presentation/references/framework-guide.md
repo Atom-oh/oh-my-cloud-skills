@@ -48,6 +48,27 @@ body { background: #000; }  /* black letterbox bars */
 
 All `rem`-based sizing scales automatically. Canvas elements need manual proportional handling (see slide-patterns.md §5).
 
+### deck-overlay.css
+
+Token-based styles for the agenda hot zone, agenda panel, search modal, tooltip,
+detail panel and the `.rp-detail` affordance. Overlay roots use
+`.rp-overlay-ui` and live under `document.body`. The stylesheet also hides the
+overlay in print and overview mode.
+
+### deck-overlay.js
+
+`DeckOverlay` provides deck-window navigation and detail UI:
+
+- Hover agenda grouped by `data-block` and `data-block-title`
+- Cmd+K, Ctrl+K and `/` search across titles, visible content and detail text
+- Tooltip display for `.rp-detail[data-tip]`
+- Right detail panel backed by `.rp-detail-store section[data-detail-id]`
+- Slide jumps through `SlideFramework.goTo(index)`
+
+Load `deck-overlay.js` before `slide-framework.js`. `SlideFramework` calls
+`DeckOverlay.init(this)` after it collects slides. Speaker notes and framework
+clones are excluded from search.
+
 ### slide-framework.js
 `SlideFramework` class — instantiate with `new SlideFramework({ onSlideChange: fn })`.
 
@@ -204,6 +225,7 @@ Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, corr
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Block Title</title>
   <link rel="stylesheet" href="../common/theme.css">
+  <link rel="stylesheet" href="../common/deck-overlay.css">
   <style>/* block-specific overrides */</style>
 </head>
 <body>
@@ -225,6 +247,7 @@ Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, corr
 </div>
 
 <script src="../common/animation-utils.js"></script>
+<script src="../common/deck-overlay.js"></script>
 <script src="../common/slide-framework.js"></script>
 <script src="../common/quiz-component.js"></script>
 <script>
@@ -371,6 +394,8 @@ export function init(canvasId, slideIndex, deck) {
 │   └── animations/
 └── common/                    # Framework (same as before)
     ├── theme.css
+    ├── deck-overlay.css
+    ├── deck-overlay.js
     ├── slide-framework.js
     ├── slide-renderer.js      # ← newly added
     ├── animation-utils.js

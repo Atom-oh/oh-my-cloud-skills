@@ -40,7 +40,7 @@
       "executable": false
     },
     "agents/reactive-presentation-agent.md": {
-      "sha256": "b0d409c436cf4f62cf0eaf2b1977b29e76d0f0cf4bf4f0c73e8d1dcacfb76f06",
+      "sha256": "1cd65c29515d9c8159c874ea8330de1e2cbb5ce40a89da1413f0c88a24b98074",
       "executable": false
     },
     "agents/workshop-agent.md": {
@@ -452,7 +452,7 @@
       "executable": false
     },
     "skills/reactive-presentation/REMARP.md": {
-      "sha256": "e56779f1b754f06f4eed582a7c0f42445462ce4a1777af6886966005508ff639",
+      "sha256": "6eff8fa7187d7e3a5ec54d1584d02e30fde8db96df6e83e1b15fe67fa0b6e35a",
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
@@ -480,7 +480,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/example-deck/index.html": {
-      "sha256": "0e23a6e1e51f16fac00fce6c9af3f4aeef234ae4c43a0fd574fab9bde54187f8",
+      "sha256": "a7172f0697785783ad8194d753af5bd1deabb77d5bc32fcfa371eed4f5434d1d",
       "executable": false
     },
     "skills/reactive-presentation/assets/example-deck/toc.html": {
@@ -17276,7 +17276,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/authoring-rules.md": {
-      "sha256": "b782258b4ad205f8c0857f039e9a1e986ea51b58ed31622a9227174f85d2a6b7",
+      "sha256": "661c4e5daf635e7718cd6360faea9a53ceedd394f9906e51f6a4136c905ce46f",
       "executable": false
     },
     "skills/reactive-presentation/references/aws-icons-guide.md": {
@@ -17304,11 +17304,11 @@
       "executable": false
     },
     "skills/reactive-presentation/references/framework-contract.md": {
-      "sha256": "9cbb6ebfc3d74200cd0c0acbee5bfae7126431b501905b6668fd569f8a3017a4",
+      "sha256": "17fffe3d2aa83297d335e46d84ccb98cbd6f160ccf8d72307a1df3815f25c30e",
       "executable": false
     },
     "skills/reactive-presentation/references/framework-guide.md": {
-      "sha256": "94b8534b66eeb68ec1b368c67e7809ef1f485006e5f67fb567176c8009ea08ab",
+      "sha256": "e19a85aa00b07eecde2e45dd7818acb9de109c5309c661c20611164e63863355",
       "executable": false
     },
     "skills/reactive-presentation/references/interactive-patterns-guide.md": {
@@ -17316,7 +17316,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/keyboard-shortcuts.md": {
-      "sha256": "3954aac3315cbe4aaf4734aa4fa299552bdbb3bf32f5ab24f70b2c4940eead8b",
+      "sha256": "6f5e98c63a79a988da1f1be9183f58ee0ebaae52a960d622cf8c2d0d4d1550e7",
       "executable": false
     },
     "skills/reactive-presentation/references/marp-format-guide.md": {
@@ -17328,7 +17328,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/remarp-format-guide.md": {
-      "sha256": "8648fab01846969868dc1447330950a5b109b70dcf278dde677b708652374ce9",
+      "sha256": "ae548152c2293efa2ddf0b80a405fd8046a8608d5fd2e59c7d1d3e6dac645d32",
       "executable": false
     },
     "skills/reactive-presentation/references/slide-patterns.md": {
@@ -17364,11 +17364,11 @@
       "executable": true
     },
     "skills/reactive-presentation/scripts/measure_deck.py": {
-      "sha256": "b46a13201aaac1a2c1728cf8b64ab0c5c37dfbb5e80ed2a239147324f6921059",
+      "sha256": "787baaab75d8d35a9a9555a3abb7a97e5df72c4d311c8f97bafacca0ac9c022d",
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {
-      "sha256": "da18992a5a84e3d4f6923fa66ee62ece37ac508feb566a886c8c71d29d71eeb5",
+      "sha256": "ed7266b7c9197da03230e834787b395af9504f05f74ee05386541acc2eb5456e",
       "executable": false
     },
     "skills/slide-fix/SKILL.md": {

@@ -86,7 +86,13 @@ Multi-file project structure:
 └── common/                       # generated framework/assets
 ```
 
-Remarp features: `remarp: true` frontmatter, `@type`/`@layout`/`@transition` directives, `{.click}` fragments + `:::click` blocks, `:::canvas` DSL, `:::notes` speaker notes (`{timing:}`, `{cue:}` markers), `::: left`/`::: right` columns. Full syntax: `references/remarp-format-guide.md`.
+Remarp features: `remarp: true` frontmatter, `@type`/`@layout`/`@transition` directives, `{.click}` fragments + `:::click` blocks, `:::canvas` DSL, `:::notes` speaker notes (`{timing:}`, `{cue:}` markers), `::: left`/`::: right` columns, `[text]{tip="..."}` tooltips and `[text]{detail=ID}` references backed by a top-level `:::detail ID "Title"` block. Full syntax: `references/remarp-format-guide.md`.
+
+**Detail-first copy**: keep a card description to one claim line plus an optional
+one reason line. Put extra reasoning, caveats, code and operational guidance in
+`:::detail`. A first `tip:` line supplies the short tooltip. Without it, the
+detail title is used. Detail IDs are slide-scoped, and each reference must have
+one matching top-level block on that slide.
 
 **Choosing a slide form**: pick the representation that matches the content's complexity — simple flows use the `:::canvas` DSL, complex architectures use `:::html` + `:::css` (theme.css's `.flow-h`/`.flow-group`/`.flow-box`), and interactions requiring logic use `:::html` + `:::script`. Boundary values (e.g., canvas element count) are validated by `remarp_to_slides.py validate`, with `references/authoring-rules.md` as the canon — choosing the right form up front via the Slide Type Decision Guide below avoids cycling through the rejection loop.
 
@@ -108,7 +114,13 @@ python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py va
 - `⚠️ REVIEW/WARNING` → fix recommended — show the issue list to the user and confirm whether to fix.
 - `✅ PASS` → proceed to Phase 5 build.
 
-The list of validation rules (TYPE_MISMATCH, INTERACTIVE_FIRST, CANVAS_COMPLEXITY, CANVAS_OVERLAP, FRAGMENT_ORDER, MISSING_NOTES, STATIC_HTML) and each rule's criteria are owned by the script and `references/authoring-rules.md`.
+- `DETAIL_REF` is CRITICAL and must be fixed before build.
+- `EM_DASH` findings must be fixed in the authoring loop even though they are WARNING.
+- `AI_TONE` warnings require a copy review before build.
+- `SENTENCE_RUNON` comes from `measure_deck.py`; split the claim and reason or move the reason to `:::detail`.
+
+The complete validation rule list and each rule's criteria are owned by the
+script and `references/authoring-rules.md`.
 
 ### Phase 5: HTML Generation (after validation passes)
 
@@ -159,6 +171,10 @@ Confirm contracts that can't be self-derived from the build output:
 - First slide is the Session Cover (not the `.title-slide` class): PPTX present/absent → §0a/§0b; speaker present/absent → include/omit the speaker section
 - **Canvas proportional scaling**: every canvas animation follows the `ResizeObserver` + `BASE_W/BASE_H` + `ctx.scale()` pattern (FHD/4K responsive) — `setupCanvas()` alone breaks on resize
 - Last slide is Thank You + "← Back to Table of Contents" (`toc.html`; set `@toc: toc.html` in the closing Remarp slide) + "Next: Block N+1 →" (omitted for the final block)
+- Hover the top-right hot zone and verify agenda jumps in merged and single-block output.
+- Verify Cmd+K, Ctrl+K and `/` search titles, visible text and detail content without indexing speaker notes.
+- Hover and focus every `.rp-detail` term; click or press Enter on detail-backed terms and verify the panel closes on slide change.
+- Confirm agenda, search, tooltip and detail UI are absent from overview, measurement and export captures.
 - Use Playwright MCP to capture FHD (1920x1080) and 4K (3840x2160) screenshots to check canvas layout, step navigation, and text legibility — since content-review-agent's Visual Testing handles detailed rendering verification, catch only obvious breakage here
 
 ### Phase 12: Deploy

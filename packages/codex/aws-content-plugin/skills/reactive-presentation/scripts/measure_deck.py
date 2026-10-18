@@ -18,10 +18,11 @@ Checks per slide (per viewport, per theme, per canvas step):
   UNDERFILL     content fills < 55% of .slide-body height (WARN; cover/title/section/closing exempt)
   MIN_FONT      effective text size (font-size x CSS zoom) < 22px WARN, < 18px FAIL
   FIT_OVERFLOW  slide carries data-fit-overflow — content does not fit even at the minimum fit scale
+  SENTENCE_RUNON multiple sentences in one text block wrap across 3 or more lines (WARN)
   DECK_OFFSCREEN the scaled .slide-deck box is not fully inside the viewport (checked with the
                 sidebar as the deck loads it, and hidden) — part of every slide is cut off
 
-UNDERFILL / MIN_FONT / FIT_OVERFLOW are measured once per slide (canvas step 0)
+UNDERFILL / MIN_FONT / FIT_OVERFLOW / SENTENCE_RUNON are measured once per slide (canvas step 0)
 after `ReactiveFit.fitSlide(slide, {force:true})` and de-duplicated across
 viewports/themes — the fit engine works on the fixed canvas, so repeats are noise.
 
@@ -50,6 +51,7 @@ _PREPARE_JS = """
   style.textContent = `
     *, *::before, *::after { transition: none !important; animation: none !important; }
     .progress-bar, .slide-counter, .nav-hint, .slide-sidebar { display: none !important; }
+    .rp-overlay-ui { display:none !important } .rp-detail { text-decoration:none !important } .rp-detail::after { visibility:hidden !important }
   `;
   document.head.appendChild(style);
   document.body.classList.remove('sidebar-visible');
@@ -163,6 +165,35 @@ _DENSITY_JS = r"""
       el: sel(smallest),
       message: count + ' text element(s) below 22px (11pt); smallest ' +
         smallestPx.toFixed(1) + 'px (' + (smallestPx / 2).toFixed(1) + 'pt)' });
+  }
+
+  // --- SENTENCE_RUNON: multiple sentences in one leaf block span 3+ lines ---
+  const blockDisplays = new Set([
+    'block', 'flex', 'grid', 'flow-root', 'list-item', 'table', 'table-row',
+    'table-cell'
+  ]);
+  const candidates = slide.querySelectorAll(
+    'p, li, td, .card-desc, .on-surface-muted, .callout > div');
+  for (const el of candidates) {
+    if (inTemplate(el) || !shown(el)) continue;
+    const hasBlockChild = [...el.querySelectorAll('*')].some(
+      child => blockDisplays.has(getComputedStyle(child).display));
+    if (hasBlockChild) continue;
+
+    const text = el.textContent;
+    const boundaries = [...text.matchAll(/[.?!] +(?=\S)/g)];
+    if (boundaries.length < 1) continue;
+
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const lineTops = new Set(
+      [...range.getClientRects()]
+        .filter(rect => rect.width > 0 && rect.height > 0)
+        .map(rect => Math.round(rect.top * 2) / 2));
+    if (lineTops.size < 3) continue;
+
+    findings.push({ rule: 'SENTENCE_RUNON', severity: 'WARN', el: sel(el),
+      message: 'multiple sentences in one text block wrap across 3 or more lines; split into separate lines or move the reason to :::detail' });
   }
 
   return findings;
@@ -532,8 +563,8 @@ def measure(deck_dir: Path, blocks, viewports, themes, max_steps, shots_dir,
 
     # --- density rules: one finding per (file, slide, rule, severity) ---
     # Geometry is identical across viewports/themes on the fixed canvas, so
-    # repeats of UNDERFILL / MIN_FONT / FIT_OVERFLOW are noise. Keep the first.
-    _DENSITY_RULES = {'UNDERFILL', 'MIN_FONT', 'FIT_OVERFLOW'}
+    # Repeated density findings are noise. Keep the first.
+    _DENSITY_RULES = {'UNDERFILL', 'MIN_FONT', 'FIT_OVERFLOW', 'SENTENCE_RUNON'}
     seen = set()
     deduped = []
     for f in findings:

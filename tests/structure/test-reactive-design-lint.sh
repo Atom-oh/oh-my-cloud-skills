@@ -83,3 +83,41 @@ OUT="$(python3 "$SC" validate "$D" 2>&1 || true)"
 assert_grep_no_match "NOTE_STRUCTURE" "$OUT" "section-divider not flagged for missing [요약]"
 assert_grep_no_match "TITLE_LENGTH" "$OUT" "section-divider title length not flagged"
 rm -rf "$D"
+
+# --- reactive-nav-detail Task 6: detail layer, search and copy gates documented ---
+RP6="plugins/aws-content-plugin/skills/reactive-presentation"
+for f in "$RP6/REMARP.md" "$RP6/references/remarp-format-guide.md"; do
+  F6="$(cat "$f" 2>/dev/null || true)"
+  assert_contains "$F6" ":::detail" "$(basename "$f") documents :::detail"
+  assert_contains "$F6" "{tip=" "$(basename "$f") documents {tip=...}"
+done
+assert_contains "$(cat "$RP6/references/keyboard-shortcuts.md" 2>/dev/null)" "Ctrl+K" "keyboard-shortcuts.md lists Ctrl+K search"
+AR6="$(cat "$RP6/references/authoring-rules.md" 2>/dev/null || true)"
+for rule in EM_DASH AI_TONE SENTENCE_RUNON; do
+  assert_contains "$AR6" "$rule" "authoring-rules.md names the $rule rule"
+done
+assert_contains "$AR6" "one claim line" "authoring-rules.md states the one-claim-line card rule"
+AG6="$(cat plugins/aws-content-plugin/agents/reactive-presentation-agent.md 2>/dev/null || true)"
+assert_contains "$AG6" ":::detail" "reactive-presentation-agent prompt teaches :::detail"
+assert_grep_match "EM_DASH[^\n]*(must|fix)" "$AG6" "agent prompt makes EM_DASH findings must-fix"
+assert_contains "$(cat "$RP6/references/framework-guide.md" 2>/dev/null)" "deck-overlay.js" "framework-guide lists deck-overlay.js"
+assert_contains "$(cat "$RP6/references/framework-contract.md" 2>/dev/null)" "rp-detail" "framework-contract documents the rp-detail DOM contract"
+EX6="$(cat "$RP6/assets/example-deck/index.html" 2>/dev/null || true)"
+assert_contains "$EX6" "deck-overlay.css" "example deck links deck-overlay.css"
+assert_contains "$EX6" "data-detail=" "example deck has a detail-backed term"
+assert_contains "$EX6" "rp-detail-store" "example deck has a detail store"
+EX6_OV="$(grep -n 'deck-overlay.js' <<< "$EX6" | head -1 | cut -d: -f1)"
+EX6_FW="$(grep -n 'slide-framework.js' <<< "$EX6" | head -1 | cut -d: -f1)"
+EX6_ORDER="no"; [ -n "$EX6_OV" ] && [ -n "$EX6_FW" ] && [ "$EX6_OV" -lt "$EX6_FW" ] && EX6_ORDER="yes"
+assert_eq "yes" "$EX6_ORDER" "example deck loads deck-overlay.js before slide-framework.js"
+for f in doc-sites/docs/aws-content-plugin/skills/reactive-presentation.md \
+         doc-sites/i18n/ko/docusaurus-plugin-content-docs/current/aws-content-plugin/skills/reactive-presentation.md \
+         doc-sites/docs/aws-content-plugin/agents/reactive-presentation-agent.md \
+         doc-sites/i18n/ko/docusaurus-plugin-content-docs/current/aws-content-plugin/agents/reactive-presentation-agent.md; do
+  assert_contains "$(cat "$f" 2>/dev/null)" ":::detail" "$(echo "$f" | sed 's#.*/\(docs\|current\)/##') mentions :::detail"
+done
+for f in doc-sites/docs/aws-content-plugin/skills/reactive-presentation.md \
+         doc-sites/i18n/ko/docusaurus-plugin-content-docs/current/aws-content-plugin/skills/reactive-presentation.md; do
+  assert_contains "$(cat "$f" 2>/dev/null)" '<span id="keyboard-shortcuts" />' "$(basename "$(dirname "$f")")/$(basename "$f") keeps the keyboard-shortcuts anchor"
+done
+assert_contains "$(cat CHANGELOG.md)" "deck-overlay" "CHANGELOG mentions the deck overlay"

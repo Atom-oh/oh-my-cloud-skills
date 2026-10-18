@@ -30,6 +30,20 @@ from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
+AI_TONE_LABELS = ("한 줄 정리", "핵심 정리", "핵심:", "Key takeaway")
+AI_TONE_NOTE_CLICHES = ("꼭 기억해 두세요", "중요한 포인트는", "결론적으로")
+AI_TONE_MAX_ARROWS = 3
+AI_TONE_MAX_LABEL_REPEATS = 2
+
+_EM_DASH_PATTERN = re.compile(
+    r'\u2014|\u00b7|\u30fb|&mdash;|&#8212;|&#x2014;|&middot;|&#183;|&#xb7;',
+    re.IGNORECASE)
+_IDENTIFIER_ATTRIBUTE_PATTERN = re.compile(
+    r'(\b(?:id|class|href|src|style|data-detail|data-detail-id|data-block|'
+    r'data-fragment-index|data-goto)\s*=\s*)'
+    r'(?:"[^"]*"|\'[^\']*\'|[^\s>]+)',
+    re.IGNORECASE)
+
 # Try to import yaml, fall back to manual parsing
 try:
     import yaml
@@ -116,6 +130,18 @@ def _restore_code_spans(text: str, spans: List[str]) -> str:
             f'\x00CS{idx}\x00',
             f'<code>{html.escape(content, quote=False)}</code>')
     return text
+
+
+def _mask_authored_copy(text: str) -> str:
+    """Remove non-visible literals and identifiers before copy linting."""
+    text, _fences = _mask_code_fences(text)
+    text, _spans = _mask_code_spans(text)
+    text = re.sub(r'https?://\S+', '', text)
+    text = re.sub(
+        r'<(?:code|pre)\b[^>]*>.*?</(?:code|pre)\s*>',
+        '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
+    return _IDENTIFIER_ATTRIBUTE_PATTERN.sub(r'\1""', text)
 
 
 def _unescape_quoted(value: str) -> str:
@@ -5346,6 +5372,74 @@ def _validate_frontmatter_fit(config: Dict[str, Any], source_file: Path) -> List
     }]
 
 
+def _validate_deck_tone(
+        entries: List[Tuple[Slide, Path, str]]) -> List[Dict[str, Any]]:
+    """Validate authored copy after all deck files have been parsed."""
+    findings: List[Dict[str, Any]] = []
+    label_entries: Dict[str, List[Tuple[Slide, Path, str]]] = {
+        label: [] for label in AI_TONE_LABELS
+    }
+
+    def add(entry: Tuple[Slide, Path, str], rule: str, message: str, fix: str):
+        slide, md_file, block_name = entry
+        title_source, _fences = _mask_code_fences(slide.content)
+        title_match = re.match(r'^#+\s+(.+)', title_source)
+        title = title_match.group(1) if title_match else f'(slide {slide.index + 1})'
+        findings.append({
+            'file': str(md_file),
+            'block': block_name,
+            'slide': slide.index + 1,
+            'title': title,
+            'severity': 'WARNING',
+            'rule': rule,
+            'message': message,
+            'fix': fix,
+        })
+
+    for entry in entries:
+        slide = entry[0]
+        visible_parts = [_mask_authored_copy(slide.content)]
+        visible_parts.extend(_mask_authored_copy(block) for block in slide.html_blocks)
+        visible_text = '\n'.join(visible_parts)
+        note_text = _mask_authored_copy(
+            slide.notes.content if slide.notes else '')
+        detail_text = '\n'.join(
+            _mask_authored_copy(detail.get('body', ''))
+            for detail in slide.details)
+        authored_text = '\n'.join((visible_text, note_text, detail_text))
+
+        if _EM_DASH_PATTERN.search(authored_text):
+            add(entry, 'EM_DASH',
+                'Authored copy contains prohibited dash or middle-dot punctuation',
+                'Use a comma, colon, parentheses, or separate sentences')
+
+        arrow_count = visible_text.count('\u2192')
+        if arrow_count > AI_TONE_MAX_ARROWS:
+            add(entry, 'AI_TONE',
+                f'Visible copy uses {arrow_count} arrow symbols on one slide',
+                f'Use at most {AI_TONE_MAX_ARROWS} arrows, or restructure the flow')
+
+        matched_cliches = [
+            phrase for phrase in AI_TONE_NOTE_CLICHES if phrase in note_text
+        ]
+        if matched_cliches:
+            add(entry, 'AI_TONE',
+                f'Speaker notes use a formulaic phrase: {matched_cliches[0]}',
+                'Replace it with direct, topic-specific speaking guidance')
+
+        for label in AI_TONE_LABELS:
+            label_entries[label].extend([entry] * visible_text.count(label))
+
+    for label, occurrences in label_entries.items():
+        if len(occurrences) <= AI_TONE_MAX_LABEL_REPEATS:
+            continue
+        add(occurrences[AI_TONE_MAX_LABEL_REPEATS], 'AI_TONE',
+            f'Formulaic label "{label}" appears {len(occurrences)} times across the deck',
+            f'Use the label no more than {AI_TONE_MAX_LABEL_REPEATS} times')
+
+    return findings
+
+
 def validate_presentation(input_path: Path, json_output: bool = False) -> List[Dict[str, Any]]:
     """Validate Remarp source for quality issues.
 
@@ -5357,6 +5451,7 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
     5. Missing speaker notes
     6. Content overflow (too many items per slide)
     7. Missing @type directives on specialized slides
+    8. Prohibited punctuation and formulaic copy patterns
     """
     all_findings: List[Dict[str, Any]] = []
 
@@ -5391,6 +5486,7 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
 
     merged_canvas_ids = set()
     total_slides = 0
+    tone_entries: List[Tuple[Slide, Path, str]] = []
     for md_file in md_files:
         try:
             with open(md_file, 'r', encoding='utf-8') as f:
@@ -5402,6 +5498,7 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
             for block_name, slides in blocks.items():
                 for slide in slides:
                     all_findings.extend(_validate_slide(slide, md_file, block_name))
+                    tone_entries.append((slide, md_file, block_name))
                     if slide.slide_type == SlideType.CANVAS:
                         local_id = slide.params.get('canvas_id', f'canvas-{slide.index}')
                         merged_id = slide.params.get('canvas_id', f'canvas-{total_slides}')
@@ -5416,6 +5513,8 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
                 invalid(md_file, 'NO_SLIDES', 'Source has no slides')
         except (ValueError, TypeError, OSError, UnicodeError) as exc:
             invalid(md_file, 'INVALID_SOURCE', str(exc))
+
+    all_findings.extend(_validate_deck_tone(tone_entries))
 
     if json_output:
         import json as json_mod
