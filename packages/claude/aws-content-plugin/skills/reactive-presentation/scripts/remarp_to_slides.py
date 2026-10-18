@@ -5695,11 +5695,13 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
     detail_source = re.sub(
         r'(<(code|pre|script|style)\b[^>]*>).*?(</\2\s*>)', r'\1\3',
         detail_source, flags=re.IGNORECASE | re.DOTALL)
-    # URLs and entity-escaped tags render as text, not as terms. Both patterns stop
-    # at markup so they cannot swallow a closing tag or an adjacent term.
-    detail_source = re.sub(r'https?://[^\s<>\[\]{}]+', '', detail_source)
-    detail_source = re.sub(r'&lt;/?[A-Za-z][^&<>\n]*&gt;', '', detail_source)
+    # Inline terms compile wherever they appear, so extract them before the
+    # attribute-only text strips below.
     detail_refs = re.findall(r'\{detail=([^}]*)\}', detail_source)
+    # URLs and entity-escaped tags render as text, so their data-detail text is
+    # not a raw attribute. Both patterns stop at markup and term delimiters.
+    detail_source = re.sub(r'https?://[^\s<>\[\]{}]+', '', detail_source)
+    detail_source = re.sub(r'&lt;/?[A-Za-z][^&<>\[\]{}\n]*&gt;', '', detail_source)
     malformed_refs = {
         ref for ref in detail_refs
         if not re.fullmatch(r'[A-Za-z0-9_-]+', ref)

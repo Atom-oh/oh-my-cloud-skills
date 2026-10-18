@@ -409,7 +409,9 @@ class RemarpDetailContractTests(unittest.TestCase):
         in_pre = '## T\n\n:::html\n<pre>data-detail="p" https://example.com/x</pre>\n:::\n'
         self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(in_pre))})
         for src in ('## T\n\nhttps://example.com/[t]{detail=nope}\n',
-                    '## T\n\n&lt;b&gt;[t]{detail=nope}&lt;/b&gt;\n'):
+                    '## T\n\n&lt;b&gt;[t]{detail=nope}&lt;/b&gt;\n',
+                    '## T\n\nUse &lt;span [class]{detail=missing}&gt; in the example.\n',
+                    '## T\n\nSee https://example.com/?q=[t]{detail=nope2}\n'):
             with self.subTest(src=src):
                 self.assertIn(("CRITICAL", "DETAIL_REF"), self.rules(self.validate_text(src)))
 
