@@ -386,6 +386,18 @@ class RemarpDetailContractTests(unittest.TestCase):
         self.assertIsNotNone(m, html)
         self.assertIn(m.group(1), ("- a&#10;- b", "- a\n- b"))
 
+    def test_detail_data_text_keeps_code_identifiers(self):
+        src = (FRONT + '## T\n\n[x]{detail=d}\n\n:::detail d "t"\n'
+               '`SNAT_EXCLUDE_CIDRS` and *em*\n\n```\nfoo_bar_baz = 1\n```\n:::\n')
+        html = self.build_one(src)
+        m = re.search(r'data-detail-id="d"[^>]*data-text="([^"]*)"', html)
+        self.assertIsNotNone(m, html)
+        text = m.group(1)
+        self.assertIn("SNAT_EXCLUDE_CIDRS", text)
+        self.assertIn("foo_bar_baz = 1", text)
+        self.assertIn("em", text)
+        self.assertNotIn("*", text)
+
     def test_merged_index_marks_blocks(self):
         self.write("_presentation.md", "---\nremarp: true\ntitle: 덱\n---\n")
         self.write("01-a.md", "---\nremarp: true\ntitle: 개요\n---\n## S1\n")
@@ -457,6 +469,16 @@ class RemarpDetailContractTests(unittest.TestCase):
         src = ('## T\n\nbody\n\n:::script\ndocument.querySelector(\'[data-detail="x"]\');\n:::\n\n'
                ':::css\n[data-detail="y"] { outline: 0; }\n:::\n')
         self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(src))})
+
+    def test_detail_ref_ignores_html_comments_and_code_examples(self):
+        examples = ('<!-- <span data-detail="old">x</span> -->\n'
+                    '<code>&lt;span data-detail="ex"&gt;</code>\n'
+                    '<pre>data-detail="p"</pre>\n')
+        clean = '## T\n\n:::html\n' + examples + ':::\n'
+        self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(clean))})
+        real = ('## T\n\n:::html\n' + examples
+                + '<span class="rp-detail" data-detail="nope">y</span>\n:::\n')
+        self.assertIn(("CRITICAL", "DETAIL_REF"), self.rules(self.validate_text(real)))
 
     def test_single_file_blocks_get_their_own_titles(self):
         src = ("---\nremarp: true\ntitle: 덱\nblocks:\n  - name: a\n    title: \"A부\"\n  - name: b\n    title: \"B부\"\n---\n"

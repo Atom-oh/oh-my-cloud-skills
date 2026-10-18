@@ -240,7 +240,11 @@ def _detail_plain_text(markdown: str) -> str:
         line = source_line.strip()
         if not line:
             continue
-        if not in_fence and re.match(r'^\|.*\|$', line):
+        if in_fence:
+            output.append(line)
+            continue
+        line, code_spans = _mask_code_spans(line)
+        if re.match(r'^\|.*\|$', line):
             cells = [cell.strip() for cell in line.strip('|').split('|')]
             if all(re.fullmatch(r'[-:]+', cell) for cell in cells):
                 continue
@@ -255,7 +259,10 @@ def _detail_plain_text(markdown: str) -> str:
         line = re.sub(r'[*_~]+', '', line)
         line = re.sub(r'`+([^`]+)`+', r'\1', line)
         line = re.sub(r'<[^>]+>', '', line)
-        output.append(list_prefix + html.unescape(line).strip())
+        line = html.unescape(line)
+        for idx, content in enumerate(code_spans):
+            line = line.replace(f'\x00CS{idx}\x00', content)
+        output.append(list_prefix + line.strip())
     return '\n'.join(output)
 
 
@@ -5673,10 +5680,14 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
         if not re.fullmatch(r'[A-Za-z0-9_-]+', ref)
     }
 
+    raw_detail_source = re.sub(r'<!--.*?-->', '', detail_source, flags=re.DOTALL)
+    raw_detail_source = re.sub(
+        r'(<(code|pre)\b[^>]*>).*?(</\2\s*>)', r'\1\3',
+        raw_detail_source, flags=re.IGNORECASE | re.DOTALL)
     raw_detail_values: List[str] = []
     for match in re.finditer(
             r'\bdata-detail\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+)|(?=>))',
-            detail_source, re.IGNORECASE):
+            raw_detail_source, re.IGNORECASE):
         raw_detail_values.append(next(
             (value for value in match.groups() if value is not None), ''))
     malformed_refs.update(
