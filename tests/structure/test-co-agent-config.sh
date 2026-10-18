@@ -111,13 +111,15 @@ assert_eq "0" "$MV" "valid model accepted (exit 0)"
 
 # context-size guard: defaults Kiro/Claude/Codex 1M
 R3=$(mktemp -d "${TMPDIR:-/tmp}/coagentctx3.XXXXXX")
-assert_eq "1000000" "$(python3 "$CFG" context-limit codex --root "$R3" 2>&1)" "codex default context-limit 1000000"
+assert_eq "878000" "$(python3 "$CFG" context-limit codex --root "$R3" 2>&1)" "codex default context-limit 878000"
 assert_eq "1000000" "$(python3 "$CFG" context-limit kiro-cli --root "$R3" 2>&1)" "kiro-cli default context-limit 1000000"
 assert_eq "1000000" "$(python3 "$CFG" context-limit claude --host codex --root "$R3" 2>&1)" "Claude default context-limit 1000000"
 python3 "$CFG" fits codex 200000 --root "$R3" >/dev/null 2>&1 && F1=0 || F1=$?
 assert_eq "0" "$F1" "200K tokens fits codex window (exit 0)"
 python3 "$CFG" fits codex 1200000 --root "$R3" >/dev/null 2>&1 && F2=0 || F2=$?
-assert_eq "1" "$F2" "1.2M tokens exceeds codex 1M window (exit 1)"
+assert_eq "1" "$F2" "1.2M tokens exceeds codex 878K window (exit 1)"
+python3 "$CFG" fits codex 900000 --root "$R3" >/dev/null 2>&1 && F2B=0 || F2B=$?
+assert_eq "1" "$F2B" "900K tokens exceeds codex 878K window (exit 1)"
 python3 "$CFG" fits kiro-cli 812861 --root "$R3" >/dev/null 2>&1 && F3=0 || F3=$?
 assert_eq "0" "$F3" "812K tokens fits kiro-cli 1M window (exit 0)"
 python3 "$CFG" set codex context_limit 400000 --root "$R3" >/dev/null 2>&1

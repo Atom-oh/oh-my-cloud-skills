@@ -56,7 +56,7 @@
       "executable": false
     },
     "skills/co-agent/co-agent.defaults.json": {
-      "sha256": "049a79365a564be451dbb8bab01a386284fd50e2af9f7468b2b91e8a2fb41b48",
+      "sha256": "f2030816e38400c3d1b2dc00471876ef2dc6638085c0cb26692475dcb2acb8cc",
       "executable": false
     },
     "skills/co-agent/references/ai-cli-adapters.md": {
