@@ -5690,14 +5690,15 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
     detail_source, _detail_spans = _mask_code_spans(detail_source)
     # A reference inside an HTML comment never renders, so it cannot be dangling.
     detail_source = re.sub(r'<!--.*?-->', '', detail_source, flags=re.DOTALL)
-    # URLs and entity-escaped tags render as text, not as terms.
-    detail_source = re.sub(r'https?://\S+', '', detail_source)
-    detail_source = re.sub(r'&lt;[^\n]*?&gt;', '', detail_source)
     # Raw HTML <code>/<pre> bodies are examples and <script>/<style> bodies are
     # code; neither holds references.
     detail_source = re.sub(
         r'(<(code|pre|script|style)\b[^>]*>).*?(</\2\s*>)', r'\1\3',
         detail_source, flags=re.IGNORECASE | re.DOTALL)
+    # URLs and entity-escaped tags render as text, not as terms. Both patterns stop
+    # at markup so they cannot swallow a closing tag or an adjacent term.
+    detail_source = re.sub(r'https?://[^\s<>\[\]{}]+', '', detail_source)
+    detail_source = re.sub(r'&lt;/?[A-Za-z][^&<>\n]*&gt;', '', detail_source)
     detail_refs = re.findall(r'\{detail=([^}]*)\}', detail_source)
     malformed_refs = {
         ref for ref in detail_refs

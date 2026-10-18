@@ -405,6 +405,14 @@ class RemarpDetailContractTests(unittest.TestCase):
                '&lt;span data-detail="esc"&gt; in prose.\n')
         self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(src))})
 
+    def test_detail_ref_url_strip_keeps_code_exclusion_and_adjacent_terms(self):
+        in_pre = '## T\n\n:::html\n<pre>data-detail="p" https://example.com/x</pre>\n:::\n'
+        self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(in_pre))})
+        for src in ('## T\n\nhttps://example.com/[t]{detail=nope}\n',
+                    '## T\n\n&lt;b&gt;[t]{detail=nope}&lt;/b&gt;\n'):
+            with self.subTest(src=src):
+                self.assertIn(("CRITICAL", "DETAIL_REF"), self.rules(self.validate_text(src)))
+
     def test_title_slide_meta_skips_detail_placeholder(self):
         src = (FRONT + '@type: title\n# Deck\n\nPresenter Name\n\n'
                '[x]{detail=d}\n\n:::detail d "t"\nbody\n:::\n')

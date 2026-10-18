@@ -68,7 +68,7 @@ review runs. Older detail is in
   bare `Resource: "*"` pattern targeted by review-routing.md (PR #262).
 - Optional overlay/nav assets in check_deck.py remain advisory for legacy and hand-authored decks; verify the documented optional contract before requiring FAIL (PR #270).
 - Compiler-produced detail-store HTML is author-owned content; cloning it is not a new injection boundary without a claimed hosted untrusted build path (PR #271).
-- Search indexes direct slide children and rejects detail stores; template content and body-level thumbnail clones do not expose speaker notes (PR #272).
+- Search indexes direct slide children and rejects detail stores; template content and body-level thumbnail clones do not expose speaker notes (PR #269, PR #272).
 
 ## Panel-cell judgment quality (historical carry-forward)
 
