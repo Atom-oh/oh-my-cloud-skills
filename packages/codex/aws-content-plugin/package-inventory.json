@@ -475,6 +475,14 @@
       "sha256": "8502f07eb83733303c309f4fec5c68fbd859935d34cbe0f63788f7658194cf40",
       "executable": false
     },
+    "skills/reactive-presentation/assets/deck-nav.css": {
+      "sha256": "66fb00f378bd13d166a544f47a5b34d3f9fe14d6bfc5b5c020c0bcb22f1fcc26",
+      "executable": false
+    },
+    "skills/reactive-presentation/assets/deck-nav.js": {
+      "sha256": "5ab0538929302e0a664b6eef35e9fcfa972e85dfa5a9e047f83f2405e222c20c",
+      "executable": false
+    },
     "skills/reactive-presentation/assets/deck-overlay.css": {
       "sha256": "2b6ef0efe2989ed429c714ca631ea477f006d218a1d181c4c4ad0ac28b154397",
       "executable": false
@@ -496,7 +504,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/export-utils.js": {
-      "sha256": "3ee1b7c5e6f4e832dec50f234a60001ac337d9dbcced636d91e75c6900ec4f5f",
+      "sha256": "c1fcf12217c3588f9b75db11dd3e3d297f5c542695f511b42d41197b86726fcf",
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
