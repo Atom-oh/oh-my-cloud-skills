@@ -198,6 +198,7 @@ def _remove_remarp_blocks(text: str, block_types) -> str:
     selected = {str(block_type).lower() for block_type in block_types}
     output: List[str] = []
     skipped_colons: List[int] = []
+    skipped_lines: List[str] = []
     opener = re.compile(r'^(:{3,})\s*([\w][\w-]*)(?:\s.*)?$')
     closer = re.compile(r'^(:{3,})\s*$')
 
@@ -207,16 +208,23 @@ def _remove_remarp_blocks(text: str, block_types) -> str:
         close_match = closer.match(stripped)
 
         if skipped_colons:
+            skipped_lines.append(line)
             if close_match and len(close_match.group(1)) == skipped_colons[-1]:
                 skipped_colons.pop()
+                if not skipped_colons:
+                    skipped_lines.clear()
             elif open_match:
                 skipped_colons.append(len(open_match.group(1)))
             continue
 
         if open_match and open_match.group(2).lower() in selected:
             skipped_colons.append(len(open_match.group(1)))
+            skipped_lines.append(line)
             continue
         output.append(line)
+
+    if skipped_colons:
+        output.extend(skipped_lines)
 
     return ''.join(output)
 

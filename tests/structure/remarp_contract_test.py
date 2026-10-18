@@ -469,6 +469,10 @@ class RemarpDetailContractTests(unittest.TestCase):
             titles.update(re.findall(r'data-block-title="([^"]*)"', html_file.read_text(encoding="utf-8")))
         self.assertTrue({"A부", "B부"} <= titles, titles)
 
+    def test_unclosed_script_block_keeps_detail_ref_check(self):
+        src = "## T\n\n:::script\nlet a = 1;\n\n[x]{detail=nope}\n"
+        self.assertIn(("CRITICAL", "DETAIL_REF"), self.rules(self.validate_text(src)))
+
 
 if __name__ == "__main__":
     unittest.main()

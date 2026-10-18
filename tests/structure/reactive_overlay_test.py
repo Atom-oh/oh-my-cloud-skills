@@ -553,6 +553,13 @@ class DeckOverlayTests(unittest.TestCase):
         page.wait_for_timeout(150)
         self.assertTrue(page.evaluate("() => { const a = document.activeElement; return !!a && a.offsetParent !== null; }"))
 
+    def test_search_rows_keep_focus_on_combobox(self):
+        page = self.open()
+        self.open_search(page, "e")
+        idx = page.evaluate("() => Array.from(document.querySelectorAll('#rp-search-results .rp-search-row')).map(r => r.getAttribute('tabindex'))")
+        self.assertTrue(idx)
+        self.assertTrue(all(v == "-1" for v in idx), idx)
+
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result

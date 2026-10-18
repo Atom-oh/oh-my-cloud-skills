@@ -472,7 +472,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-overlay.js": {
-      "sha256": "53d6d56eaee42154ae371ca26ab810f16065545631addf205674fc0066e09f57",
+      "sha256": "72a0fd24d2046f2e175115f3c0b9cb751eedaad0813707853d2a860800f59e37",
       "executable": false
     },
     "skills/reactive-presentation/assets/design-tokens.css": {
@@ -17368,7 +17368,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {
-      "sha256": "5ddab8343e2490920fdff55aa8394dbc7a5fbc3ca8b3a77871d7ad996e1c4c0e",
+      "sha256": "813071700713dcdda4ed29d289642939216661bd23f53cf4ec8d29ac4c226971",
       "executable": false
     },
     "skills/slide-fix/SKILL.md": {
