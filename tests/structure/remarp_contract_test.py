@@ -400,6 +400,10 @@ class RemarpDetailContractTests(unittest.TestCase):
         self.assertIn("em", text)
         self.assertNotIn("*", text)
 
+    def test_detail_plain_text_tracks_opening_fence(self):
+        text = remarp._detail_plain_text("````\n```\n*keep_this*\n```\n````\nafter *em*")
+        self.assertEqual(text.split("\n"), ["```", "*keep_this*", "```", "after em"])
+
     def test_merged_index_marks_blocks(self):
         self.write("_presentation.md", "---\nremarp: true\ntitle: 덱\n---\n")
         self.write("01-a.md", "---\nremarp: true\ntitle: 개요\n---\n## S1\n")
@@ -500,7 +504,9 @@ class RemarpDetailContractTests(unittest.TestCase):
         examples = ('<!-- <span data-detail="old">x</span> -->\n'
                     '<code>&lt;span data-detail="ex"&gt;</code>\n'
                     '<pre>data-detail="p"</pre>\n'
-                    '<pre>[x]{detail=inpre}</pre>\n')
+                    '<pre>[x]{detail=inpre}</pre>\n'
+                    '<script>document.querySelector(\'[data-detail="js"]\')</script>\n'
+                    '<style>[data-detail="css"] { color: red; }</style>\n')
         clean = '## T\n\n:::html\n' + examples + ':::\n'
         self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(clean))})
         real = ('## T\n\n:::html\n' + examples
