@@ -63,6 +63,21 @@ class DeckDetailTests(DeckOverlayFixture):
         page.wait_for_timeout(200)
         self.assertTrue(self.has_body_class(page, "rp-detail-open"))
 
+    def test_space_on_term_and_close_button_keeps_slide(self):
+        page = self.open()
+        active = "() => Array.from(document.querySelectorAll('.slide-deck > .slide')).findIndex(s => s.classList.contains('active'))"
+        start = page.evaluate(active)
+        page.focus('.slide-deck > .slide .rp-detail[data-detail="vxlan"]')
+        page.keyboard.press(" ")
+        page.wait_for_timeout(200)
+        self.assertTrue(self.has_body_class(page, "rp-detail-open"))
+        self.assertEqual(start, page.evaluate(active))
+        page.focus("#rp-detail-panel button")
+        page.keyboard.press(" ")
+        page.wait_for_timeout(200)
+        self.assertFalse(self.has_body_class(page, "rp-detail-open"))
+        self.assertEqual(start, page.evaluate(active))
+
     def test_raw_html_term_becomes_focusable(self):
         page = self.open()
         self.assertEqual(
@@ -220,6 +235,6 @@ class DeckDetailTests(DeckOverlayFixture):
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result
-    if result.skipped and not result.testsRun - len(result.skipped):
+    if result.skipped and result.testsRun <= len(result.skipped):
         print("SKIPPED-ALL")
     sys.exit(0 if result.wasSuccessful() else 1)

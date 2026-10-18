@@ -206,6 +206,6 @@ class PresenterPreviewTests(unittest.TestCase):
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result
-    if result.skipped and not result.testsRun - len(result.skipped):
+    if result.skipped and result.testsRun <= len(result.skipped):
         print("SKIPPED-ALL")
     sys.exit(0 if result.wasSuccessful() else 1)
