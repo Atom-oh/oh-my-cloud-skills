@@ -400,6 +400,17 @@ class RemarpDetailContractTests(unittest.TestCase):
         self.assertIn("em", text)
         self.assertNotIn("*", text)
 
+    def test_detail_ref_ignores_urls_and_escaped_tags_in_prose(self):
+        src = ('## T\n\nSee https://example.com/?data-detail="u" and '
+               '&lt;span data-detail="esc"&gt; in prose.\n')
+        self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(src))})
+
+    def test_title_slide_meta_skips_detail_placeholder(self):
+        src = (FRONT + '@type: title\n# Deck\n\nPresenter Name\n\n'
+               '[x]{detail=d}\n\n:::detail d "t"\nbody\n:::\n')
+        html = self.build_one(src)
+        self.assertNotIn("__BLOCK:", html)
+
     def test_detail_plain_text_tracks_opening_fence(self):
         text = remarp._detail_plain_text("````\n```\n*keep_this*\n```\n````\nafter *em*")
         self.assertEqual(text.split("\n"), ["```", "*keep_this*", "```", "after em"])
