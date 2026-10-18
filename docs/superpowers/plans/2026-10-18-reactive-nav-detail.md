@@ -16,14 +16,17 @@
 - Vanilla JS/CSS only; no CDN, no new runtime dependency.
 - Theme tokens only (`var(--surface-*)`, `var(--accent)`, `var(--text-*)`, `var(--space-*)`, `var(--radius-*)`); no raw hex/rgba in new CSS; works under `.theme-light` and `.theme-dark`.
 - Overlay roots (agenda, hot zone, search modal, tooltip, detail panel) are children of `document.body`, never inside `.slide`, and carry class `rp-overlay-ui`.
-- Nothing is inserted into `.slide` at runtime. The "has panel" icon is a CSS `::after` pseudo-element on `.rp-detail[data-detail]`, absolutely positioned (`.rp-detail { position: relative }`), so it never changes inline layout or the ReactiveFit result.
-- Capture/measurement hide rule (used verbatim by `measure_deck.py` and `export_pptx.py`): `.rp-overlay-ui { display:none !important } .rp-detail { text-decoration:none !important } .rp-detail::after { display:none !important }`.
+- Nothing is inserted into `.slide` at runtime. The "has panel" icon is a CSS `::after` pseudo-element on `.rp-detail[data-detail]` (inline, in normal flow, small `margin-inline-start`), present from first paint because `deck-overlay.css` loads in `<head>`, so ReactiveFit fits with it already in place and nothing shifts later.
+- Capture/measurement hide rule (used verbatim by `measure_deck.py` and `export_pptx.py`): `.rp-overlay-ui { display:none !important } .rp-detail { text-decoration:none !important } .rp-detail::after { visibility:hidden !important }` (`visibility`, not `display`, so captured layout equals live layout). The browser-side capture paths in `export-utils.js` inject the same rule.
 - No decorative chrome in new UI: no gradients, glow, or left/top colour bars.
 - No em dash (U+2014) or middle dot (U+00B7, U+30FB) in any copy, docs or UI strings added by this plan.
 - Deck window is the only surface for agenda/search/detail; presenter window gets none of them. Jumps use `SlideFramework.goTo(index)`.
 - Search excludes speaker notes and framework clones (`.slide-sidebar`, presenter `.slide-scaler`, overview copies).
 - `EM_DASH` and `AI_TONE` are `WARNING` (build still passes on 0 CRITICAL). `DETAIL_REF` is `CRITICAL`.
-- Each task's own verification runs only that task's test files; the host runs the full `bash tests/run-all.sh` after each wave.
+- Each task's own verification runs only that task's test files (or `bash tests/run-all.sh <name-filter>`); the host runs the full `bash tests/run-all.sh` after each wave.
+- Browser tests skip without Playwright; their TAP wrappers then print `ok - <name> # SKIP <reason>`. The host must show at least one unskipped run of every browser test file (test counts in the log) before Task completion is accepted.
+- Slide indices in the runtime contract (`data-goto`, `goTo`, `buildIndex().index`) are 0-based. Prose "slide N" in fixtures is 1-based; tests assert 0-based values.
+- Every attribute value the compiler emits from author text (`data-tip`, `data-title`, `data-text`, `data-block-title`) goes through `html.escape(value, quote=True)`.
 - Never hand-edit `packages/*`; the host regenerates and commits them after Task 6.
 - Internal docs in English; public `doc-sites/` pages updated in EN and KO with matching anchors, then `npm run record:locales`.
 
@@ -50,7 +53,7 @@
 
 Root causes (spec G4): hard-coded 960×540 in `.slide-scaler` CSS and `_applyScale`; `html { font-size: 16px !important }`; `body { font-family … !important }` leaking into previews; `clone.className = 'slide active'`; deck classes / `data-fit` / `lang` not reproduced; presenter `<html lang="ko">` hard-coded.
 
-- [ ] **Step 1: Write the failing test** `reactive_presenter_test.py` (unittest; `skipTest` when `playwright` import or `chromium.launch()` fails). Fixture: copy `RP/assets/*.js|*.css` into a temp `common/`, write `index.html` with `<html lang="en">`, deck class `slide-deck preset-paper`, `data-fit="auto"`, three slides: slide 2 `class="slide theme-dark"` with a 4-column table of long Korean cells; slide 3 with two `.fragment` items. Serve via `http.server` on a free port, open at 1600×900, press `p`, capture the popup, call `window.__pvScaleUpdate()`.
+- [ ] **Step 1: Write the failing test** `reactive_presenter_test.py` (unittest; `skipTest` when `playwright` import or `chromium.launch()` fails). Fixture: copy `RP/assets/*.js|*.css` into a temp `common/`, write `index.html` with `<html lang="en">`, deck class `slide-deck preset-paper`, `data-fit="auto"`, three slides: slide 2 `class="slide theme-dark"` with a 4-column table of long Korean cells; slide 3 with two `.fragment` items. Serve via `http.server` on a free port, open at 1600×900, press `p`, capture the popup, wait 500ms (first render is deferred 300ms), then call `window.__pvScaleUpdate()` on the deck page (it is defined on the opener, `presenter-view.js:53`).
 
 ```python
 def test_preview_uses_deck_canvas(self):            # (w,h) of '#p-current .slide-scaler' == (1920,1080)
@@ -59,7 +62,7 @@ def test_preview_font_family_matches_deck(self):    # preview h2 fontFamily == d
 def test_preview_keeps_slide_and_deck_classes(self):# on slide 2: 'theme-dark' in preview slide class; preview .slide-deck has 'preset-paper' and data-fit="auto"; presenter documentElement.lang == "en"
 def test_preview_table_layout_matches_deck(self):   # per-row height / table height, deck vs preview, abs diff <= 0.02
 def test_next_preview_reveals_fragments(self):      # deck on slide 2: every '#p-next .fragment' has class visible
-def test_current_preview_keeps_reveal_state(self):  # deck on slide 3 with 1 fragment shown: '#p-current .fragment.visible' count == 1
+def test_current_preview_keeps_reveal_state(self):  # deck on slide 3, press ArrowRight once (1 fragment shown): within 500ms '#p-current .fragment.visible' count == 1
 def test_presenter_chrome_size_unchanged(self):     # '.presenter-timer' computed fontSize == "24px" (1.5rem at the old 16px base)
 ```
 
@@ -70,7 +73,7 @@ Expected: FAIL on canvas (960, 540), root font (16px), lang ("ko").
 
 - [ ] **Step 3: Implement in `presenter-view.js`**
 
-The presenter document's `html` font-size is set to the opener's computed root font-size, and `<html lang>` / class copy the opener's. All presenter-chrome CSS values currently in `rem` are converted to `px` at the old 16px base (1.5rem → 24px, etc.), so chrome size is unchanged. Keep the body column layout (`display:flex; flex-direction:column; align-items:stretch; justify-content:stretch`), but drop `font-family`/`font-size` from `body`; chrome font is set on `.presenter-topbar, .presenter-notes, .presenter-nav` (existing chrome containers) instead. `.slide-scaler` width/height come from `_canvasSize()` inline. The preview `.slide-deck` copies the live deck's `className` (minus `overview-mode`), `data-fit` and `lang`; the clone keeps `sourceSlide.className` plus `active`. "Next" clone: add `visible` to every `.fragment`. "Current" clone: unchanged reveal state.
+The presenter document's `html` font-size is set to the opener's computed root font-size, and `<html lang>` / class copy the opener's. All presenter-chrome CSS values currently in `rem` are converted to `px` at the old 16px base (1.5rem → 24px, etc.), so chrome size is unchanged. Keep the body column layout (`display:flex; flex-direction:column; align-items:stretch; justify-content:stretch`), but drop `font-family`/`font-size` from `body`; chrome font is set on `.presenter-topbar, .presenter-notes, .presenter-nav` (existing chrome containers) instead. `.slide-scaler` width/height come from `_canvasSize()` inline, and the existing `.slide-scaler .slide-deck { width: 960px !important; height: 540px !important }` rule is replaced by `width: 100% !important; height: 100% !important`. The preview `.slide-deck` copies the live deck's `className` (minus `overview-mode`), `data-fit` and `lang`; the clone keeps `sourceSlide.className` plus `active`. "Next" clone: add `visible` to every `.fragment`. "Current" clone: mirrors the live reveal state; because fragment reveals do not call the presenter (`slide-framework.js:114-153`), `PresenterView` attaches a `MutationObserver` (attribute `class`, subtree) to the live active slide and re-renders the current preview on change (debounced 50ms), re-attaching on slide change.
 
 - [ ] **Step 4: Run to verify pass**
 
@@ -105,10 +108,11 @@ git commit -m "fix(reactive-presentation): render presenter previews on the deck
   - Inline `[text]{detail=ID}` (ID = `[A-Za-z0-9_-]+`) → `<span class="rp-detail" tabindex="0" data-detail="ID" data-tip="TIP">text</span>`; TIP = the block's `tip:` line, else its title.
   - `:::detail ID "Title"` blocks are top-level slide blocks only. `RemarpParser` collects them into `Slide.details: List[Dict[str, str]]` with keys `id`, `title`, `tip`, `body` (raw Markdown), before any rendering, so references may precede definitions. A `:::detail` nested in a tab/column/click block is CRITICAL `DETAIL_REF`.
   - `RemarpHTMLGenerator` sets `self._detail_tips = {d['id']: d['tip'] or d['title'] for d in slide.details}` before converting a slide, and appends as the last child of `.slide`: `<div class="rp-detail-store" hidden><section data-detail-id="ID" data-title="Title">HTML</section>…</div>` (HTML = the generator's existing Markdown rendering of `body`).
+  - Each store `section` also carries `data-text`: the detail body Markdown with markup removed, one output line per source line (list markers kept as `- `, table rows as cells joined by ` | `), so export/search never concatenate adjacent `<li>`/`<td>` text.
   - Every built `.slide` carries `data-block="<block key>"` and `data-block-title="<title>"`. Title = the block file's own frontmatter `title` (block-only `config`, not `merged_config`), else its first `# ` heading, else the file stem. Single-block builds carry the same attributes.
-  - `wrap_html` adds `<link rel="stylesheet" href="./common/deck-overlay.css">` after `theme.css`, and `<script src="./common/deck-overlay.js"></script>` before `slide-framework.js`; both names added to the asset copy list (`remarp_to_slides.py:4696`) and to `check_deck.py` `FRAMEWORK_SCRIPTS` (js only).
-  - `validate`: CRITICAL `DETAIL_REF` for (a) `{detail=ID}` in masked slide Markdown or `data-detail="ID"` in `:::html` blocks with no matching `:::detail` on that slide, (b) duplicate `:::detail` id on a slide, (c) nested `:::detail`.
-  - `export_pptx.py`: `_details_to_text(details: List[Dict[str, str]], lang: str) -> str` returns `""` for no details, else a heading (`[디테일]` when `lang` starts with `ko`, else `[Details]`) followed by `- {title}: {text}` lines. The page side reads `document.documentElement.lang` and each `.rp-detail-store section` (`data-title`, `textContent`); text is appended to that slide's notes after a blank line. `export_pptx.py`'s `_PREPARE_JS` style gets the capture hide rule from Global Constraints.
+  - `wrap_html` adds `<link rel="stylesheet" href="./common/deck-overlay.css">` after `theme.css`, and `<script src="./common/deck-overlay.js"></script>` before `slide-framework.js`; both names added to the asset copy list (`remarp_to_slides.py:4696`) and to ``check_deck.py` gains a WARNING `MISSING_OVERLAY` only when the deck contains `class="rp-detail` but lacks `deck-overlay.js` or `deck-overlay.css`. `FRAMEWORK_SCRIPTS` is not changed, so existing decks keep passing.
+  - `validate`: CRITICAL `DETAIL_REF` for (a) `{detail=ID}` or `data-detail="ID"` anywhere in the slide's raw source (`slide.content`, which still holds nested tab/column/html children) after masking code fences/spans and removing `:::notes`, with no matching `:::detail` on that slide, (b) duplicate `:::detail` id on a slide, (c) nested `:::detail`.
+  - `export_pptx.py`: `_details_to_text(details: List[Dict[str, str]], lang: str) -> str` returns `""` for no details, else a heading (`[디테일]` when `lang` starts with `ko`, else `[Details]`) followed by `- {title}: {text}` lines. The page side reads `document.documentElement.lang` and each `.rp-detail-store section` (`data-title`, `data-text`); text is appended to that slide's notes after a blank line. `export_pptx.py`'s `_PREPARE_JS` style gets the capture hide rule from Global Constraints.
 
 - [ ] **Step 1: Write the failing tests** in `remarp_contract_test.py` (helpers `build_one(src) -> str` builds a single-file deck via the CLI and returns the HTML; `validate_text(src) -> list` calls `remarp.validate_presentation` on a temp file):
 
@@ -130,7 +134,10 @@ def test_detail_block_moves_to_store(self):
     self.assertNotIn(':::detail', html)
 def test_detail_reference_before_definition_gets_title_tip(self):  # no tip: line → data-tip == title
 def test_detail_in_table_cell(self):          # '| a | [x]{tip="t"} |' → '<td><span class="rp-detail"'
-def test_detail_ref_missing_is_critical(self):   # inline and raw '<span class="rp-detail" data-detail="nope">' in :::html
+def test_detail_ref_missing_is_critical(self):   # inline, raw '<span class="rp-detail" data-detail="nope">' in :::html, and inside a :::tab and a :::left column
+def test_detail_title_and_block_title_escaped(self):  # ':::detail d "a <b> & \"c\""' → data-title="a &lt;b&gt; &amp; &quot;c&quot;"; block title '<x>' → data-block-title="&lt;x&gt;"
+def test_detail_store_data_text_lines(self):  # body '- a\n- b' → data-text="- a\n- b" (newline kept, &#10; or literal)
+def test_check_deck_missing_overlay_warns(self): # html with rp-detail but no deck-overlay.js → WARNING MISSING_OVERLAY; html without rp-detail → no finding
 def test_detail_duplicate_and_nested_are_critical(self):
 def test_merged_index_marks_blocks(self):
     # _presentation.md title "덱", 01-a.md frontmatter title "개요", 02-b.md no title with "# 2부: 네트워킹", 03-c.md no title/heading
@@ -181,25 +188,28 @@ git commit -m "feat(remarp): detail terms, detail store, block markers and overl
   - `SlideFramework.init()`'s `DOMContentLoaded` handler calls `if (window.DeckOverlay) window.DeckOverlay.init(this)` after `this.slides` is set and after `createSidebar()` (sidebar clones exist, so the index can exclude them) and before the first `ReactiveFit.fitAll()`.
   - `showSlide(index)` dispatches `document.dispatchEvent(new CustomEvent('rp:slidechange', { detail: { index } }))`.
   - The framework keydown handler (`slide-framework.js:465`) returns early when the target is `INPUT`/`TEXTAREA`/`SELECT` or `isContentEditable`, or when `document.body.classList.contains('rp-search-open')`.
-  - Body classes: `rp-search-open`, `rp-agenda-open`, `rp-detail-open`. Element ids: `#rp-agenda`, `#rp-agenda-hotzone`, `#rp-search`, `#rp-search-input`, `#rp-search-results`, `#rp-tooltip`, `#rp-detail-panel`. Agenda rows: `.rp-agenda-block` (with `data-goto` of its first slide) containing rows `[data-goto]`; current row class `is-current`, current block `is-current-block`.
+  - Body classes: `rp-search-open`, `rp-agenda-open`, `rp-detail-open`. Element ids: `#rp-agenda`, `#rp-agenda-hotzone`, `#rp-search`, `#rp-search-input`, `#rp-search-results`, `#rp-tooltip`, `#rp-detail-panel`. Agenda: `.rp-agenda-block` groups, each with a header `.rp-agenda-block-title[data-goto]` (first slide index) and rows `.rp-agenda-row[data-goto]`; current row class `is-current`, current block `is-current-block`. Search rows: `.rp-search-row[data-goto]`.
   - `export-utils.js` `COMMON_FILES` includes `deck-overlay.js` and `deck-overlay.css`.
 
-Behaviour (spec G1-G3): hot zone 64×64px fixed top-right; open on `mouseenter`, close 300ms after leaving zone+panel. Agenda groups slides by `data-block` (none → one group titled `document.title`); all groups expanded; current block/slide highlighted; click block header or row → `goTo`. Search opens on `(e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k'` or `/` (not when typing in inputs/contenteditable), `Esc` closes, `ArrowUp/Down` move, `Enter` → `goTo` and close; arrow/space inside the modal never reach the framework. Index built once from `.slide-deck > .slide`: title = first `h1, h2`; text = `textContent` excluding `.rp-detail-store` and `template.notes`; detailText = store text plus every `data-tip`. Case-insensitive substring; rank title > text > detail, then slide order; cap 20; row = block title, slide number, slide title, snippet with `<mark>`. All overlay text (rows, tooltip, panel title) set with `textContent`/text nodes; panel body clones the store `section`'s child nodes (compiler-generated HTML). Tooltip on `mouseenter`/`focus` of `.rp-detail`, hidden on leave/blur; on touch (`pointerdown` with `pointerType === 'touch'`) a tip-only term toggles its tooltip. A term with `data-detail` opens the panel on click or `Enter`; tip-only terms ignore mouse click. The `::after` icon is CSS-only (Global Constraints). Panel: fixed right, overlays deck, closes on `Esc`, outside click, close button, `rp:slidechange`. Overview mode: CSS `body:has(.slide-deck.overview-mode) .rp-overlay-ui { display:none !important }` and hotkeys ignored while `.overview-mode` is present. Nav hint: `createNavHint` positions the hint so its rect never intersects `.slide-logo` (e.g. left offset = logo right edge + `var(--space-2)` when a logo is shown), with or without a footer.
+Behaviour (spec G1-G3): hot zone 64×64px fixed top-right; open on `mouseenter`, close 300ms after leaving zone+panel. Agenda groups slides by `data-block` (none → one group titled `document.title`); all groups expanded; current block/slide highlighted; click block header or row → `goTo`. Search opens on `(e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k'` or `/` (not when typing in inputs/contenteditable), `Esc` closes, `ArrowUp/Down` move, `Enter` → `goTo` and close; arrow/space inside the modal never reach the framework. Index built once from `.slide-deck > .slide`: title = first `h1, h2`; text = `textContent` excluding `.rp-detail-store` and `template.notes`; detailText = every store `section`'s `data-text` plus every `data-tip`. Case-insensitive substring; rank title > text > detail, then slide order; cap 20; row = block title, slide number, slide title, snippet with `<mark>`. All overlay text (rows, tooltip, panel title) set with `textContent`/text nodes; panel body clones the store `section`'s child nodes (compiler-generated HTML). Tooltip on `mouseenter`/`focus` of `.rp-detail`, hidden on leave/blur; on touch (`pointerdown` with `pointerType === 'touch'`) a tip-only term toggles its tooltip. A term with `data-detail` opens the panel on click or `Enter`; tip-only terms ignore mouse click. `init` sets `tabindex="0"` on any `.slide-deck > .slide .rp-detail` lacking it (raw-HTML terms). All term handlers are delegated from `.slide-deck` and only act on targets inside `.slide-deck > .slide`; terms inside sidebar thumbnails get `tabindex="-1"` so Tab skips them. The `::after` icon is CSS-only (Global Constraints). Panel: fixed right, overlays deck, closes on `Esc`, outside click, close button, `rp:slidechange`. Overview mode: CSS `body:has(.slide-deck.overview-mode) .rp-overlay-ui { display:none !important }` and hotkeys ignored while `.overview-mode` is present. Nav hint: new `SlideFramework.positionNavHint()` sets the hint's left offset to the visible logo's right edge + 16px (canvas px; logo hidden or absent: the CSS default). It runs after `createLogo()` in `init`, on the logo `<img>` `load` event, and at the end of `updateFooterVisibility()` (which hides the logo per slide). The existing inline `bottom: 2.2rem` for decks with a footer stays.
+
+`export-utils.js` capture paths that screenshot or print the live page (PPTX image export and direct print, `export-utils.js:378-410,514-520`) inject the capture hide rule from Global Constraints for the duration of the capture.
 
 - [ ] **Step 1: Write the failing tests** `reactive_overlay_test.py` (skip/serve pattern from Task 1; fixture A: two blocks × 3 slides; slide 1 has `UDP 8472` with `data-detail="vxlan"` plus a store section titled `UDP 8472가 필요한 이유`, and a tip-only term `data-tip="짧은 설명"`; slide 4 contains "VXLAN" only in body; slide 5 has `<input id="fixture-input">`; slide 6 has a notes template containing `notesonlyword`; one raw term `data-tip='<img src=x onerror="window.__xss=1">'` and store title the same; sidebar enabled; logo and footer configured. Fixture B: one block without `data-block`, 3 slides):
 
 ```python
-def test_agenda_opens_on_hover_and_jumps(self):      # 2 .rp-agenda-block; click '[data-goto="4"]' → active index 4; hover again: row 4 has is-current
-def test_agenda_block_header_jumps_to_first_slide(self):
-def test_agenda_single_block_lists_slides(self):    # fixture B: 3 '[data-goto]' rows
-def test_search_cmd_k_finds_body_text(self):        # Meta+K, type 'vxlan' → first row data-goto == '4'; Enter → index 4, rp-search-open removed
+def test_agenda_opens_on_hover_and_jumps(self):      # 2 .rp-agenda-block; click '.rp-agenda-row[data-goto="3"]' → active index 3; hover again: that row has is-current, its block is-current-block
+def test_agenda_block_header_jumps_to_first_slide(self):  # click second '.rp-agenda-block-title' → active index 3
+def test_agenda_single_block_lists_slides(self):    # fixture B: 3 '.rp-agenda-row' rows
+def test_search_cmd_k_finds_body_text(self):        # Meta+K, type 'vxlan' → first '.rp-search-row' data-goto == '3' (4th slide); Enter → index 3, rp-search-open removed
 def test_search_ctrl_k_and_slash_open(self):
 def test_search_indexes_tips(self):                 # '짧은 설명' → row for slide 1
 def test_search_excludes_notes_and_clones(self):    # 'notesonlyword' → 0 rows; 'VXLAN' → exactly 1 row with sidebar visible
 def test_search_ignores_typing_in_inputs(self):     # focus #fixture-input, type '/k' → search closed, index unchanged; in search box ArrowRight keeps index
 def test_tooltip_on_hover_tip_only(self):           # hover tip-only → '#rp-tooltip' text '짧은 설명'; click → panel stays closed
 def test_icon_only_on_detail_terms(self):           # getComputedStyle(el,'::after').content != 'none' for [data-detail], == 'none' for tip-only
-def test_icon_does_not_shift_layout(self):          # bounding rect of next sibling text identical with and without the deck-overlay.css link
+def test_icon_static_from_first_paint(self):        # data-fit-scale and term rect identical before and after hovering the term and opening/closing the panel
+def test_thumbnail_terms_inert(self):              # '.slide-sidebar .rp-detail' all tabindex -1; hovering a thumbnail shows no tooltip
 def test_click_term_with_detail_opens_panel(self):  # panel contains 'UDP 8472가 필요한 이유'
 def test_panel_closes_on_slide_change(self):        # open, ArrowRight → closed and index + 1
 def test_esc_closes_panel_and_search(self):
@@ -207,7 +217,7 @@ def test_tooltip_and_panel_title_are_text(self):    # hover/open the raw term: w
 def test_touch_tap_toggles_tip(self):               # context has_touch=True; tap tip-only twice → visible then hidden
 def test_overlay_hidden_in_overview(self):          # press 'o' → '#rp-agenda-hotzone' not visible; Meta+K does not open
 def test_overlay_outside_slides(self):              # '.slide .rp-overlay-ui' count 0
-def test_nav_hint_clear_of_logo(self):              # rects of .nav-hint and .slide-logo do not intersect (fixture A with footer, and a variant without footer)
+def test_nav_hint_clear_of_logo(self):              # after logo load, rects of .nav-hint and .slide-logo do not intersect (fixture A with footer, and a variant without footer)
 ```
 
 - [ ] **Step 2: Run to verify fail**
@@ -243,7 +253,7 @@ git commit -m "feat(reactive-presentation): hover agenda, cmd-k search and detai
 
 **Interfaces:**
 - Consumes: Task 2's `_mask_code_spans`, `Slide.details` (`body`), `_mask_code_fences`; `_validate_slide`'s `add(severity, rule, message, fix)`; `slide.notes`.
-- Produces: module constants `AI_TONE_LABELS = ("한 줄 정리", "핵심 정리", "핵심:", "Key takeaway")`, `AI_TONE_NOTE_CLICHES = ("꼭 기억해 두세요", "중요한 포인트는", "결론적으로")`, `AI_TONE_MAX_ARROWS = 3`, `AI_TONE_MAX_LABEL_REPEATS = 2`; `_validate_deck_tone(slides: List[Slide], md_file_of: Dict[int, Path]) -> List[Dict]` called once from `validate_presentation` after all files are parsed (label repeats are deck-wide); measure rule `SENTENCE_RUNON` (WARN) added to `_DENSITY_RULES` (`measure_deck.py:536`).
+- Produces: module constants `AI_TONE_LABELS = ("한 줄 정리", "핵심 정리", "핵심:", "Key takeaway")`, `AI_TONE_NOTE_CLICHES = ("꼭 기억해 두세요", "중요한 포인트는", "결론적으로")`, `AI_TONE_MAX_ARROWS = 3`, `AI_TONE_MAX_LABEL_REPEATS = 2`; `_validate_deck_tone(entries: List[Tuple[Slide, Path, str]]) -> List[Dict]` (slide, source file, block name; findings carry that file/block/slide like `_validate_slide`) called once from `validate_presentation` after all files are parsed (label repeats are deck-wide); measure rule `SENTENCE_RUNON` (WARN) added to `_DENSITY_RULES` (`measure_deck.py:536`).
 
 - [ ] **Step 1: Write failing tests** `remarp_copy_gates_test.py` (same import pattern as `remarp_contract_test.py`):
 
@@ -254,8 +264,9 @@ def test_em_dash_warns_in_body_notes_and_detail(self):
         self.assertIn(('WARNING', 'EM_DASH'), rules(validate_text(src)))
 def test_em_dash_skips_code_and_urls(self):
     for src in ("## T\n\n`a — b`\n", "## T\n\n```\na — b\n```\n", "## T\n\n[l](https://x.com/a—b)\n",
-                "## T\n\n:::html\n<code>&mdash;</code><pre>a — b</pre>\n:::\n", '## T\n\n:::html\n<div data-id="a·b">x</div>\n:::\n'):
+                "## T\n\n:::html\n<code>&mdash;</code><pre>a — b</pre>\n:::\n", '## T\n\n:::html\n<div id="a·b">x</div>\n:::\n'):
         self.assertNotIn('EM_DASH', rule_ids(validate_text(src)))
+def test_em_dash_scans_visible_attributes(self):  # '<span class="rp-detail" data-tip="a — b">x</span>' and title="a — b" → EM_DASH
 def test_ai_tone_arrows(self):        # 4 '→' → AI_TONE; 3 → none; '->' and '<!-- x -->' never count
 def test_ai_tone_label_repeats_deck_wide(self):  # "한 줄 정리" on 3 slides across 2 files → exactly one WARNING; on 2 → none
 def test_ai_tone_note_cliche(self):
@@ -274,7 +285,7 @@ def test_copy_gates_do_not_block_build(self):    # deck whose only findings are 
 Run: `python3 tests/structure/remarp_copy_gates_test.py -v; python3 tests/structure/measure_runon_test.py -v`
 Expected: new tests FAIL.
 
-- [ ] **Step 3: Implement.** `EM_DASH` pattern `—|·|・|&mdash;|&#8212;|&#x2014;|&middot;|&#183;|&#xb7;` over: slide Markdown after `_mask_code_fences` + `_mask_code_spans` + URL removal (`https?://\S+`); `:::html` blocks after removing `<code>…</code>`, `<pre>…</pre>`, HTML comments and all attribute values; notes; detail bodies. Arrows: count `→` in the same masked visible text only. `SENTENCE_RUNON` page-side: for each text block matching `p, li, td, .card-desc, .on-surface-muted, .callout > div` with no block-level children, ≥ 2 sentences (boundaries after `.`, `?`, `!` followed by a space) and ≥ 3 line boxes (distinct `top` of `Range.getClientRects()`), WARN when the first character after a boundary has `left > blockContentLeft + 1`. Add the Global Constraints capture hide rule to `_PREPARE_JS`. Update the module docstring check list.
+- [ ] **Step 3: Implement.** `EM_DASH` pattern `—|·|・|&mdash;|&#8212;|&#x2014;|&middot;|&#183;|&#xb7;` over: slide Markdown after `_mask_code_fences` + `_mask_code_spans` + URL removal (`https?://\S+`); `:::html` blocks after removing `<code>…</code>`, `<pre>…</pre>`, HTML comments and the values of identifier-like attributes only (`id`, `class`, `href`, `src`, `style`, `data-detail`, `data-detail-id`, `data-block`, `data-fragment-index`, `data-goto`); visible-text attributes (`title`, `alt`, `aria-label`, `data-tip`, `data-title`) are scanned; notes; detail bodies. Arrows: count `→` in the same masked visible text only. `SENTENCE_RUNON` page-side: for each text block matching `p, li, td, .card-desc, .on-surface-muted, .callout > div` with no block-level children, ≥ 2 sentences (boundaries after `.`, `?`, `!` followed by a space) and ≥ 3 line boxes (distinct `top` of `Range.getClientRects()`), WARN when the first character after a boundary has `left > blockContentLeft + 1`. Add the Global Constraints capture hide rule to `_PREPARE_JS`. Update the module docstring check list.
 
 - [ ] **Step 4: Run to verify pass**
 
@@ -312,7 +323,7 @@ assert_grep_match "\.callout\.callout-info\s*(:is\([^)]*\)|strong)" "$TC_FLAT" "
 
 - [ ] **Step 2: Run to verify fail**
 
-Run: `bash tests/run-all.sh > /tmp/rp-t5.log 2>&1; grep -E "accent bar|colour the border|role colour" /tmp/rp-t5.log`
+Run: `bash tests/run-all.sh design-tokens > /tmp/rp-t5.log 2>&1; grep -E "accent bar|colour the border|role colour" /tmp/rp-t5.log`
 Expected: `not ok` lines.
 
 - [ ] **Step 3: Implement** in `theme.css`; also remove any other decorative `border-left: Npx solid` / accent `border-top` bars on card-like primitives (keep 1px neutral dividers such as `border-top: 1px solid var(--border)`).
@@ -351,7 +362,7 @@ git commit -m "style(reactive-presentation): drop callout accent bars and colour
 - Produces: documentation; the example deck demonstrates the feature.
 
 - [ ] **Step 1: Write failing assertions** in `test-reactive-design-lint.sh`: `REMARP.md` and `remarp-format-guide.md` contain `:::detail` and `{tip=`; `keyboard-shortcuts.md` contains `Ctrl+K`; `authoring-rules.md` §2 rows name `EM_DASH`, `AI_TONE`, `SENTENCE_RUNON` and contain "one claim line"; the agent prompt contains `:::detail` and states that `EM_DASH` findings must be fixed in the authoring loop; `framework-guide.md` lists `deck-overlay.js`; the example deck links `deck-overlay.css`, loads `deck-overlay.js` before `slide-framework.js`, and has one `data-detail` term with its store section; all four doc-site pages contain `:::detail`, and the EN/KO skill pages share the `<span id="keyboard-shortcuts" />` anchor; the new doc sections contain no U+2014.
-- [ ] **Step 2: Run to verify fail**: `bash tests/run-all.sh > /tmp/rp-t6.log 2>&1; grep "not ok" /tmp/rp-t6.log`.
+- [ ] **Step 2: Run to verify fail**: `bash tests/run-all.sh design-lint > /tmp/rp-t6.log 2>&1; grep "not ok" /tmp/rp-t6.log`.
 - [ ] **Step 3: Write the docs.** `authoring-rules.md` §2: em dash row enforcement becomes `EM_DASH` (lint); add `AI_TONE` and `SENTENCE_RUNON` rows; add "card description = one claim line + optional one reason line; elaboration goes to `:::detail`". CHANGELOG `[Unreleased]` entries under `### Added`, `### Fixed`, `### Changed`. Then `cd doc-sites && npm run record:locales` after the KO pages are translated.
 - [ ] **Step 4: Run to verify pass**: same command, no `not ok` for the new assertions.
 - [ ] **Step 5: Commit**
@@ -368,4 +379,4 @@ git commit -m "docs(reactive-presentation): document detail layer, search and co
 - Wave 1: Task 1, Task 3, Task 5 (Task 3 creates the overlay assets Task 2 wires in)
 - Wave 2: Task 2
 - Wave 3: Task 4 (after Task 2: same `remarp_to_slides.py`), Task 6
-- Host after Wave 3 (not a delegated task): `python3 scripts/sync-codex-plugins.py`, then commit `packages/claude` and `packages/codex`; run the root `CLAUDE.md` validation commands, `bash tests/run-all.sh`, the doc-site build and link checks from `doc-sites/CLAUDE.md`; build the example deck and run content-review-agent on it (PASS required before completion).
+- Host after Wave 3 (not a delegated task): show an unskipped run of `reactive_presenter_test.py`, `reactive_overlay_test.py`, `measure_runon_test.py`; `python3 scripts/sync-codex-plugins.py`, then commit `packages/claude` and `packages/codex`; run the root `CLAUDE.md` validation commands, `bash tests/run-all.sh`, the doc-site build and link checks from `doc-sites/CLAUDE.md`; build the example deck and run content-review-agent on it (PASS required before completion).
