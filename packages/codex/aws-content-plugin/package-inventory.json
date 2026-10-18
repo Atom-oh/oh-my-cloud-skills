@@ -504,7 +504,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/export-utils.js": {
-      "sha256": "c1fcf12217c3588f9b75db11dd3e3d297f5c542695f511b42d41197b86726fcf",
+      "sha256": "721970862e7912b45251abfa321c12f635863ce128fafa5bb798100bece1eeec",
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
@@ -17356,7 +17356,7 @@
       "executable": true
     },
     "skills/reactive-presentation/scripts/check_deck.py": {
-      "sha256": "3279a0d3ee417d73567d213e7f38de20c46362d9fecdadf18fb82c7a9d96e7f7",
+      "sha256": "58f03c7c9a2d595f0f51c6e1143361d0f6b7b6eb3881a35c3cf285173e1907e2",
       "executable": false
     },
     "skills/reactive-presentation/scripts/convert_to_remarp.py": {
@@ -17364,7 +17364,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/export_pptx.py": {
-      "sha256": "7937949827009218ce7fbec77df96c8c82439bedb178f9f727cd54be56b53a46",
+      "sha256": "6a0cb724f97ba4a6c46f31be92be992f2fd9e3a2b8c042153235c46ad8b35aa2",
       "executable": false
     },
     "skills/reactive-presentation/scripts/extract_aws_icons.py": {
@@ -17384,7 +17384,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {
-      "sha256": "6a1dfc4e67dced3a3033dc0f344b65c844017412b7273b81266584c276c22b65",
+      "sha256": "ba550f1dd61fe5fedb95abc37c7c668aeaa56e4960f6f8304a65fc87f9c97d14",
       "executable": false
     },
     "skills/slide-fix/SKILL.md": {
