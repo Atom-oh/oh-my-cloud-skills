@@ -277,5 +277,173 @@ class RemarpContractTests(unittest.TestCase):
         self.assertNotEqual(0, self.cli("build", self.root, "--block", "absent").returncode)
 
 
+EXPORT_SCRIPT = ROOT / "plugins/aws-content-plugin/skills/reactive-presentation/scripts/export_pptx.py"
+CHECK_SCRIPT = ROOT / "plugins/aws-content-plugin/skills/reactive-presentation/scripts/check_deck.py"
+
+
+def _load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+export = _load("remarp_export_pptx", EXPORT_SCRIPT)
+
+
+class RemarpDetailContractTests(unittest.TestCase):
+    """Detail layer, block markers and overlay wiring (reactive-nav-detail Task 2)."""
+
+    setUp = RemarpContractTests.setUp
+    write = RemarpContractTests.write
+    cli = RemarpContractTests.cli
+
+    def build_one(self, text):
+        source = self.write("talk.md", text)
+        result = self.cli("build", source)
+        self.assertEqual(0, result.returncode, result.stderr + result.stdout)
+        return (self.root / "slides/default.html").read_text(encoding="utf-8")
+
+    def validate_text(self, text):
+        source = self.write("check.md", FRONT + text)
+        with patch("sys.stdout"):
+            return remarp.validate_presentation(source)
+
+    @staticmethod
+    def rules(findings):
+        return {(f["severity"], f["rule"]) for f in findings}
+
+    def test_tip_inline_renders_span(self):
+        html = self.build_one(FRONT + '## T\n\n표: [UDP 8472]{tip="Cilium VXLAN 포트"}\n')
+        self.assertIn('<span class="rp-detail" tabindex="0" data-tip="Cilium VXLAN 포트">UDP 8472</span>', html)
+
+    def test_tip_attribute_is_escaped(self):
+        html = self.build_one(FRONT + '## T\n\n[a]{tip="x \\"q\\" <b> & y"}\n')
+        self.assertIn('data-tip="x &quot;q&quot; &lt;b&gt; &amp; y"', html)
+
+    def test_tip_value_not_markdown_converted(self):
+        html = self.build_one(FRONT + '## T\n\n[a]{tip="**a** `b`"}\n')
+        self.assertIn('data-tip="**a** `b`"', html)
+
+    def test_tip_inside_code_span_is_literal(self):
+        html = self.build_one(FRONT + '## T\n\n`[a]{tip="x"}`\n')
+        self.assertIn('<code>[a]{tip=', html)
+        self.assertNotIn('<span class="rp-detail"', html)
+
+    def test_detail_block_moves_to_store(self):
+        src = (FRONT + '## T\n\n[UDP 8472]{detail=vxlan}\n\n'
+               ':::detail vxlan "UDP 8472가 필요한 이유"\ntip: hybrid 노드 간 VXLAN\n\n'
+               '- direct routing, Gateway 모두 필요\n:::\n')
+        html = self.build_one(src)
+        self.assertIn('data-detail="vxlan" data-tip="hybrid 노드 간 VXLAN"', html)
+        self.assertRegex(html, r'(?s)<div class="rp-detail-store" hidden><section data-detail-id="vxlan" '
+                               r'data-title="UDP 8472가 필요한 이유"[^>]*>.*<li>direct routing, Gateway 모두 필요</li>')
+        self.assertNotIn(':::detail', html)
+
+    def test_detail_reference_before_definition_gets_title_tip(self):
+        src = FRONT + '## T\n\n[x]{detail=d}\n\n:::detail d "제목만"\n본문\n:::\n'
+        self.assertIn('data-detail="d" data-tip="제목만"', self.build_one(src))
+
+    def test_detail_in_table_cell(self):
+        html = self.build_one(FRONT + '## T\n\n| a | b |\n|---|---|\n| 1 | [x]{tip="t"} |\n')
+        self.assertRegex(html, r'<td[^>]*><span class="rp-detail" tabindex="0" data-tip="t">x</span>')
+
+    def test_detail_ref_missing_is_critical(self):
+        cases = (
+            '## T\n\n[x]{detail=nope}\n',
+            '## T\n\n:::html\n<span class="rp-detail" data-detail="nope">x</span>\n:::\n',
+            '## T\n\n:::tab "A"\n[x]{detail=nope}\n:::\n',
+            '## T\n\n:::left\n[x]{detail=nope}\n:::\n\n:::right\ny\n:::\n',
+        )
+        for src in cases:
+            with self.subTest(src=src):
+                self.assertIn(("CRITICAL", "DETAIL_REF"), self.rules(self.validate_text(src)))
+
+    def test_detail_ref_ok_is_clean(self):
+        src = '## T\n\n[x]{detail=d}\n\n:::detail d "t"\nbody\n:::\n'
+        self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(src))})
+
+    def test_detail_duplicate_and_nested_are_critical(self):
+        dup = '## T\n\n[x]{detail=d}\n\n:::detail d "a"\n1\n:::\n\n:::detail d "b"\n2\n:::\n'
+        nested = '## T\n\n[x]{detail=d}\n\n:::tab "A"\n:::detail d "a"\n1\n:::\n:::\n'
+        for src in (dup, nested):
+            with self.subTest(src=src):
+                self.assertIn(("CRITICAL", "DETAIL_REF"), self.rules(self.validate_text(src)))
+
+    def test_detail_title_and_block_title_escaped(self):
+        html = self.build_one(FRONT + '## T\n\n[x]{detail=d}\n\n:::detail d "a <b> & \\"c\\""\nbody\n:::\n')
+        self.assertIn('data-title="a &lt;b&gt; &amp; &quot;c&quot;"', html)
+        self.write("_presentation.md", "---\nremarp: true\ntitle: Deck\n---\n")
+        self.write("01-x.md", "---\nremarp: true\ntitle: \"<x>\"\n---\n## S\n")
+        result = self.cli("build", self.root)
+        self.assertEqual(0, result.returncode, result.stderr + result.stdout)
+        self.assertIn('data-block-title="&lt;x&gt;"', (self.root / "index.html").read_text(encoding="utf-8"))
+
+    def test_detail_store_data_text_lines(self):
+        html = self.build_one(FRONT + '## T\n\n[x]{detail=d}\n\n:::detail d "t"\n- a\n- b\n:::\n')
+        m = re.search(r'data-detail-id="d"[^>]*data-text="([^"]*)"', html)
+        self.assertIsNotNone(m, html)
+        self.assertIn(m.group(1), ("- a&#10;- b", "- a\n- b"))
+
+    def test_merged_index_marks_blocks(self):
+        self.write("_presentation.md", "---\nremarp: true\ntitle: 덱\n---\n")
+        self.write("01-a.md", "---\nremarp: true\ntitle: 개요\n---\n## S1\n")
+        self.write("02-b.md", "---\nremarp: true\n---\n# 2부: 네트워킹\n\n---\n## S2\n")
+        self.write("03-c.md", "---\nremarp: true\n---\n## S3\n")
+        result = self.cli("build", self.root)
+        self.assertEqual(0, result.returncode, result.stderr + result.stdout)
+        index = (self.root / "index.html").read_text(encoding="utf-8")
+        self.assertIn('data-block="01-a" data-block-title="개요"', index)
+        self.assertIn('data-block-title="2부: 네트워킹"', index)
+        self.assertIn('data-block-title="03-c"', index)
+        self.assertNotIn('data-block-title="덱"', index)
+
+    def test_single_block_build_marks_block(self):
+        html = self.build_one("---\nremarp: true\ntitle: 단독\n---\n## S\n")
+        self.assertRegex(html, r'class="slide[^"]*"[^>]*data-block="[^"]+"')
+
+    def test_wrap_html_loads_overlay_assets(self):
+        html = self.build_one(FRONT + "## Title\n")
+        self.assertIn('href="./common/deck-overlay.css"', html)
+        self.assertIn('src="./common/deck-overlay.js"', html)
+        self.assertLess(html.index("deck-overlay.js"), html.index("slide-framework.js"))
+        self.assertLess(html.index("theme.css"), html.index("deck-overlay.css"))
+        output = self.root / "slides/default.html"
+        for asset in re.findall(r'(?:href|src)="(\./common/[^"]+)"', html):
+            self.assertTrue((output.parent / asset).is_file(), asset)
+
+    def test_export_details_to_text(self):
+        self.assertEqual(export._details_to_text([{"title": "A", "text": "b"}], "ko"), "[디테일]\n- A: b")
+        self.assertEqual(export._details_to_text([{"title": "A", "text": "b"}], "en"), "[Details]\n- A: b")
+        self.assertEqual(export._details_to_text([], "en"), "")
+
+    def test_export_prepare_hides_overlay(self):
+        self.assertIn(".rp-overlay-ui", export._PREPARE_JS)
+        self.assertIn(".rp-detail::after", export._PREPARE_JS)
+
+    def check_deck_findings(self, html):
+        deck = self.root / "deck"
+        deck.mkdir(exist_ok=True)
+        (deck / "index.html").write_text(html, encoding="utf-8")
+        result = subprocess.run([sys.executable, str(CHECK_SCRIPT), str(deck), "--json"],
+                                capture_output=True, text=True)
+        return json.loads(result.stdout or "[]")
+
+    def test_check_deck_missing_overlay_warns(self):
+        base = ('<html><head><link rel="stylesheet" href="./common/theme.css"></head><body>'
+                '<div class="slide-deck"><div class="slide"><h2>T</h2><p>{body}</p></div></div>'
+                '<script src="./common/animation-utils.js"></script><script src="./common/slide-framework.js"></script>'
+                '<script src="./common/quiz-component.js"></script><script src="./common/presenter-view.js"></script>'
+                '<script>const deck = new SlideFramework({{}});</script></body></html>')
+        with_term = self.check_deck_findings(base.format(body='<span class="rp-detail" data-tip="t">x</span>'))
+        findings = with_term if isinstance(with_term, list) else with_term.get("findings", [])
+        self.assertIn(("WARN", "MISSING_OVERLAY"),
+                      {(f.get("severity"), f.get("rule")) for f in findings})
+        plain = self.check_deck_findings(base.format(body="x"))
+        findings = plain if isinstance(plain, list) else plain.get("findings", [])
+        self.assertNotIn("MISSING_OVERLAY", {f.get("rule") for f in findings})
+
+
 if __name__ == "__main__":
     unittest.main()
