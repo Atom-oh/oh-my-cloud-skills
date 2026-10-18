@@ -753,7 +753,6 @@ body {
 .callout {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
-  border-left: 4px solid;
   font-size: var(--fs-card);
 }
 /* .callout-* role variants are defined AFTER the .callout primitive block
@@ -1035,10 +1034,9 @@ input[type="range"]::-webkit-slider-thumb {
   font-size: 1.2rem;
   font-style: italic;
   color: var(--yellow);
-  border-left: 3px solid var(--yellow);
   padding: var(--space-2) var(--space-3);
   background: var(--yellow-bg);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border-radius: var(--radius-md);
   margin: var(--space-2) 0;
 }
 
@@ -2146,13 +2144,24 @@ body.sidebar-visible .slide-deck {
   box-shadow: var(--shadow-2);
 }
 
-/* Callout role variants — bound to semantic role tokens and placed AFTER the
-   .callout primitive so they override its generic background/border by source
-   order. Specificity raised to (0,2,0) via .callout.callout-* for safety. */
-.callout.callout-info    { border-color: var(--info);    background: var(--info-subtle); }
-.callout.callout-success { border-color: var(--success); background: var(--success-subtle); }
-.callout.callout-warning { border-color: var(--warning); background: var(--warning-subtle); }
-.callout.callout-danger  { border-color: var(--danger);  background: var(--danger-subtle); }
+/* Callout role variants keep the primitive's neutral border. Role is conveyed
+   by the subtle background and title color. */
+.callout.callout-info    { background: var(--info-subtle); }
+.callout.callout-success { background: var(--success-subtle); }
+.callout.callout-warning { background: var(--warning-subtle); }
+.callout.callout-danger  { background: var(--danger-subtle); }
+.callout.callout-info :is(strong, h1:first-child, h2:first-child, h3:first-child, h4:first-child, h5:first-child, h6:first-child) {
+  color: var(--info);
+}
+.callout.callout-success :is(strong, h1:first-child, h2:first-child, h3:first-child, h4:first-child, h5:first-child, h6:first-child) {
+  color: var(--success);
+}
+.callout.callout-warning :is(strong, h1:first-child, h2:first-child, h3:first-child, h4:first-child, h5:first-child, h6:first-child) {
+  color: var(--warning);
+}
+.callout.callout-danger :is(strong, h1:first-child, h2:first-child, h3:first-child, h4:first-child, h5:first-child, h6:first-child) {
+  color: var(--danger);
+}
 
 /* Tab set */
 .tab-set {

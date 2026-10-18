@@ -53,8 +53,20 @@ const ExportUtils = {
   COMMON_FILES: [
     'design-tokens.css', 'theme.css', 'theme-override.css', 'slide-framework.js',
     'slide-renderer.js', 'presenter-view.js', 'animation-utils.js', 'quiz-component.js',
-    'export-utils.js'
+    'export-utils.js', 'deck-overlay.js', 'deck-overlay.css'
   ],
+
+  CAPTURE_HIDE_CSS: '.rp-overlay-ui { display:none !important } ' +
+    '.rp-detail { text-decoration:none !important } ' +
+    '.rp-detail::after { visibility:hidden !important }',
+
+  _installCaptureStyle: function(doc) {
+    if (!doc || doc.getElementById('rp-capture-hide')) return;
+    var style = doc.createElement('style');
+    style.id = 'rp-capture-hide';
+    style.textContent = this.CAPTURE_HIDE_CSS;
+    doc.head.appendChild(style);
+  },
 
   /** Discover block HTML files from .block-card anchor links on the current page */
   getBlockFiles: function() {
@@ -151,6 +163,7 @@ const ExportUtils = {
         '}\n' +
         '.canvas-controls { display: none !important; }\n' +
         '.progress-bar, .slide-counter, .nav-hint, .slide-logo, .slide-footer { display: none !important; }\n' +
+        this.CAPTURE_HIDE_CSS + '\n' +
         allStyles + '\n' +
         '</style>\n' +
         '</head>\n<body>\n' +
@@ -380,6 +393,8 @@ const ExportUtils = {
    * This puts every slide into its "finished" visual state.
    */
   _completeAllAnimations: function(doc) {
+    this._installCaptureStyle(doc);
+
     // 1. Reveal all fragments
     doc.querySelectorAll('.fragment').forEach(function(el) {
       el.classList.add('visible');
@@ -515,6 +530,7 @@ const ExportUtils = {
    * The html2canvas library must be loaded in the PARENT window.
    */
   _captureSlide: async function(slideEl, iframeWindow, scale) {
+    this._installCaptureStyle(slideEl.ownerDocument);
     // html2canvas is loaded in the parent window; we need to pass the element
     // html2canvas can work cross-frame if same-origin
     var canvas = await html2canvas(slideEl, {

@@ -12,6 +12,8 @@ class PresenterView {
     this.startTime = null;
     this.timerInterval = null;
     this.windowId = 'main';
+    this.fragmentObserver = null;
+    this.fragmentRenderTimer = null;
     this.setupSync();
   }
 
@@ -45,6 +47,15 @@ class PresenterView {
     this.presenterWindow.document.write(html);
     this.presenterWindow.document.close();
 
+    const presenterRoot = this.presenterWindow.document.documentElement;
+    presenterRoot.lang = document.documentElement.lang;
+    presenterRoot.className = document.documentElement.className;
+    presenterRoot.style.setProperty(
+      'font-size',
+      getComputedStyle(document.documentElement).fontSize,
+      'important'
+    );
+
     if (!this.startTime) {
       this.startTime = Date.now();
     }
@@ -75,18 +86,16 @@ class PresenterView {
     const baseHref = window.location.href.split('#')[0];
 
     return `<!DOCTYPE html>
-<html lang="ko"><head>
+<html><head>
 <meta charset="UTF-8">
 <base href="${baseHref}">
 <title>Presenter View - ${document.title}</title>
 ${styleSheets}
 <style>
   /* === Override theme.css globals for presenter window === */
-  html { font-size: 16px !important; }
   body {
     background: #1a1a2e !important;
     color: #e8eaf0 !important;
-    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     height: 100vh !important;
     width: auto !important;
     display: flex !important;
@@ -99,6 +108,12 @@ ${styleSheets}
   }
 
   /* === Presenter UI === */
+  .presenter-topbar,
+  .presenter-notes,
+  .presenter-nav {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px;
+  }
   .presenter-topbar {
     display: flex;
     justify-content: space-between;
@@ -110,16 +125,16 @@ ${styleSheets}
   }
   .presenter-timer {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 1.5rem;
+    font-size: 24px;
     color: var(--accent, #ec7211);
   }
   .presenter-counter {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 1.1rem;
+    font-size: 17.6px;
     color: #9ba1b8;
   }
   .presenter-title {
-    font-size: 1rem;
+    font-size: 16px;
     color: #6b7194;
     max-width: 400px;
     overflow: hidden;
@@ -156,7 +171,7 @@ ${styleSheets}
     position: absolute;
     top: 6px;
     left: 10px;
-    font-size: 0.7rem;
+    font-size: 11.2px;
     color: #6b7194;
     background: rgba(15, 17, 23, 0.9);
     padding: 2px 8px;
@@ -175,16 +190,14 @@ ${styleSheets}
     position: absolute;
     top: 0;
     left: 0;
-    width: 960px;
-    height: 540px;
     transform-origin: top left;
     overflow: hidden;
     background: var(--bg-primary, #0f1117);
     border-radius: 4px;
   }
   .slide-scaler .slide-deck {
-    width: 960px !important;
-    height: 540px !important;
+    width: 100% !important;
+    height: 100% !important;
     max-width: none !important;
     max-height: none !important;
     position: relative !important;
@@ -263,7 +276,7 @@ ${styleSheets}
     min-height: 80px;
   }
   .presenter-notes h3 {
-    font-size: 0.8rem;
+    font-size: 12.8px;
     color: #6b7194;
     margin-bottom: 8px;
     text-transform: uppercase;
@@ -283,12 +296,12 @@ ${styleSheets}
     background: var(--accent-subtle, rgba(236, 114, 17, 0.15));
     border: 1px solid var(--accent, #ec7211);
     border-radius: 12px;
-    font-size: 0.75rem;
+    font-size: 12px;
     color: var(--accent, #ec7211);
     font-family: 'JetBrains Mono', monospace;
   }
   .presenter-notes .notes-content {
-    font-size: 1.3rem;
+    font-size: 20.8px;
     line-height: 1.7;
     color: #dde0e8;
     word-break: keep-all;
@@ -321,7 +334,7 @@ ${styleSheets}
     gap: 6px;
     padding: 6px 12px;
     border-radius: 6px;
-    font-size: 0.8rem;
+    font-size: 12.8px;
     font-weight: 500;
   }
   .cue-marker.demo {
@@ -362,7 +375,7 @@ ${styleSheets}
     background: #232740;
     color: #e8eaf0;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 13.6px;
     transition: all 150ms ease;
   }
   .presenter-nav button:hover {
@@ -566,12 +579,13 @@ ${styleSheets}
 
     // Current slide
     const currentEl = doc.getElementById('p-current');
-    this._renderSlidePreview(doc, currentEl, slides[idx]);
+    this._renderSlidePreview(doc, currentEl, slides[idx], false);
+    this._observeCurrentSlide(slides[idx]);
 
     // Next slide
     const nextEl = doc.getElementById('p-next');
     if (idx + 1 < slides.length) {
-      this._renderSlidePreview(doc, nextEl, slides[idx + 1]);
+      this._renderSlidePreview(doc, nextEl, slides[idx + 1], true);
     } else {
       nextEl.innerHTML = '<div class="end-message">End of presentation</div>';
     }
@@ -681,17 +695,50 @@ ${styleSheets}
     });
   }
 
-  _renderSlidePreview(doc, container, sourceSlide) {
+  _canvasSize() {
+    const liveDeck = this.framework.getDeck();
+    const style = liveDeck ? getComputedStyle(liveDeck) : null;
+    const computedRatioW = parseFloat(style?.getPropertyValue('--slide-ratio-w'));
+    const computedRatioH = parseFloat(style?.getPropertyValue('--slide-ratio-h'));
+    const ratioW = computedRatioW > 0 ? computedRatioW : 16;
+    const ratioH = computedRatioH > 0 ? computedRatioH : 9;
+    const h = 1080;
+    return { w: Math.round(h * ratioW / ratioH), h: h };
+  }
+
+  _renderSlidePreview(doc, container, sourceSlide, revealAll) {
     container.innerHTML = '';
 
+    const canvas = this._canvasSize();
     const scaler = doc.createElement('div');
     scaler.className = 'slide-scaler';
+    scaler.style.width = `${canvas.w}px`;
+    scaler.style.height = `${canvas.h}px`;
 
     const deck = doc.createElement('div');
-    deck.className = 'slide-deck';
+    const liveDeck = sourceSlide.closest('.slide-deck') || this.framework.getDeck();
+    if (liveDeck) {
+      deck.className = Array.from(liveDeck.classList)
+        .filter(name => name !== 'overview-mode')
+        .join(' ');
+      if (liveDeck.hasAttribute('data-fit')) {
+        deck.setAttribute('data-fit', liveDeck.getAttribute('data-fit'));
+      }
+      if (liveDeck.hasAttribute('lang')) {
+        deck.lang = liveDeck.lang;
+      }
+    } else {
+      deck.className = 'slide-deck';
+    }
 
     const clone = sourceSlide.cloneNode(true);
-    clone.className = 'slide active';
+    clone.className = sourceSlide.className;
+    clone.classList.add('active');
+    if (revealAll) {
+      clone.querySelectorAll('.fragment').forEach(fragment => {
+        fragment.classList.add('visible');
+      });
+    }
 
     deck.appendChild(clone);
     scaler.appendChild(deck);
@@ -705,12 +752,38 @@ ${styleSheets}
   }
 
   _applyScale(scaler, containerW, containerH) {
-    const scale = Math.min(containerW / 960, containerH / 540);
-    const scaledW = 960 * scale;
-    const scaledH = 540 * scale;
+    const canvas = this._canvasSize();
+    const scale = Math.min(containerW / canvas.w, containerH / canvas.h);
+    const scaledW = canvas.w * scale;
+    const scaledH = canvas.h * scale;
     const offsetX = (containerW - scaledW) / 2;
     const offsetY = (containerH - scaledH) / 2;
     scaler.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+  }
+
+  _observeCurrentSlide(slide) {
+    if (this.fragmentObserver) {
+      this.fragmentObserver.disconnect();
+    }
+    clearTimeout(this.fragmentRenderTimer);
+    this.fragmentRenderTimer = null;
+    if (!slide) return;
+
+    this.fragmentObserver = new MutationObserver(() => {
+      clearTimeout(this.fragmentRenderTimer);
+      this.fragmentRenderTimer = setTimeout(() => {
+        if (!this.presenterWindow || this.presenterWindow.closed) return;
+        const currentEl = this.presenterWindow.document.getElementById('p-current');
+        if (currentEl && slide === this.framework.slides[this.framework.currentSlide]) {
+          this._renderSlidePreview(this.presenterWindow.document, currentEl, slide, false);
+        }
+      }, 50);
+    });
+    this.fragmentObserver.observe(slide, {
+      attributes: true,
+      attributeFilter: ['class'],
+      subtree: true
+    });
   }
 
   _updateAllScales() {
@@ -751,6 +824,12 @@ ${styleSheets}
   }
 
   destroy() {
+    if (this.fragmentObserver) {
+      this.fragmentObserver.disconnect();
+      this.fragmentObserver = null;
+    }
+    clearTimeout(this.fragmentRenderTimer);
+    this.fragmentRenderTimer = null;
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
