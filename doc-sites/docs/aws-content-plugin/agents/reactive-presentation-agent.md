@@ -32,6 +32,31 @@ navigation and interactions; run content review before publication. Use HTML/CSS
 for grouped or branching architectures and interactive calculators, and Canvas only
 for small linear flows.
 
+## Detail-first authoring {#detail-first-authoring}
+
+Keep cards and table cells concise. Add a short tooltip with `{tip="..."}`, or
+reference a slide-level `:::detail` block when the audience needs a longer
+explanation.
+
+```markdown
+[UDP 8472]{detail=vxlan-8472}
+
+:::detail vxlan-8472 "Why UDP 8472 is required"
+tip: Cilium VXLAN tunnel port between hybrid nodes
+
+The port carries VXLAN traffic between nodes.
+:::
+```
+
+Each detail reference needs one matching top-level block on the same slide.
+
+## Validation policy {#validation-policy}
+
+Build requires zero CRITICAL findings. `DETAIL_REF` is CRITICAL. `EM_DASH` and
+`AI_TONE` are warnings that the agent fixes during authoring.
+`SENTENCE_RUNON` is checked after rendering; split the claim and reason or move
+the reason to `:::detail`.
+
 ## Output and verification {#output-and-verification}
 
 Return the editable source, rendered output, relevant build commands, and verification evidence. The content-review gate applies before completion/publication; a successful file write alone is not a passing review.

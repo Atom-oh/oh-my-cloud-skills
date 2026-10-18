@@ -48,6 +48,42 @@ body { background: #000; }  /* black letterbox bars */
 
 All `rem`-based sizing scales automatically. Canvas elements need manual proportional handling (see slide-patterns.md §5).
 
+### deck-overlay.css
+
+Shared token-based overlay styles, scale variables and Korean keep-all rules.
+Overlay roots use `.rp-overlay-ui` and live under `document.body`. The stylesheet
+also hides the overlay in print and overview mode.
+
+### deck-detail.css and deck-nav.css
+
+`deck-detail.css` styles tooltips, the detail panel and the `.rp-detail` affordance.
+`deck-nav.css` styles the agenda hot zone, agenda panel and search modal.
+Load `deck-overlay.css`, `deck-detail.css` and `deck-nav.css` in that order after
+`theme.css`.
+
+### deck-overlay.js
+
+`DeckOverlay` owns module registration, shared helpers, scale and theme updates,
+slide-change wiring and a single keyboard dispatcher. Its public `openSearch`,
+`closeSearch`, `openDetail`, `closeDetail` and `buildIndex` methods delegate to
+registered modules. Search handles keys before detail.
+
+### deck-detail.js and deck-nav.js
+
+The optional modules register with `DeckOverlay.register(name, module)`:
+
+- `deck-detail.js`: tooltips for `.rp-detail[data-tip]`, the right detail panel
+  backed by `.rp-detail-store section[data-detail-id]`, term ARIA and focus
+- `deck-nav.js`: hover agenda grouped by `data-block` and `data-block-title`,
+  Cmd+K, Ctrl+K and `/` search across titles, visible content and detail text,
+  and slide jumps through `SlideFramework.goTo(index)`
+
+Load `deck-overlay.js`, `deck-detail.js` and `deck-nav.js` in that order before
+`slide-framework.js`. `SlideFramework` calls `DeckOverlay.init(this)` after it
+collects slides. Speaker notes and framework clones are excluded from search.
+Either module works with only the core and its own stylesheet. Cross-module
+focus restoration and agenda suppression use the core's optional delegates.
+
 ### slide-framework.js
 `SlideFramework` class — instantiate with `new SlideFramework({ onSlideChange: fn })`.
 
@@ -204,6 +240,9 @@ Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, corr
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Block Title</title>
   <link rel="stylesheet" href="../common/theme.css">
+  <link rel="stylesheet" href="../common/deck-overlay.css">
+  <link rel="stylesheet" href="../common/deck-detail.css">
+  <link rel="stylesheet" href="../common/deck-nav.css">
   <style>/* block-specific overrides */</style>
 </head>
 <body>
@@ -225,6 +264,9 @@ Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, corr
 </div>
 
 <script src="../common/animation-utils.js"></script>
+<script src="../common/deck-overlay.js"></script>
+<script src="../common/deck-detail.js"></script>
+<script src="../common/deck-nav.js"></script>
 <script src="../common/slide-framework.js"></script>
 <script src="../common/quiz-component.js"></script>
 <script>
@@ -371,6 +413,12 @@ export function init(canvasId, slideIndex, deck) {
 │   └── animations/
 └── common/                    # Framework (same as before)
     ├── theme.css
+    ├── deck-overlay.css
+    ├── deck-detail.css
+    ├── deck-nav.css
+    ├── deck-overlay.js
+    ├── deck-detail.js
+    ├── deck-nav.js
     ├── slide-framework.js
     ├── slide-renderer.js      # ← newly added
     ├── animation-utils.js

@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Add `EM_DASH` and `AI_TONE` source warnings plus the rendered
+  `SENTENCE_RUNON` warning to reactive-presentation guidance. Card descriptions
+  now use one claim line with an optional reason line, with longer explanations
+  moved to `:::detail`.
 - Move co-agent's default `codex` panel model to `openai.gpt-6.1-sol` with a
   878K `context_limit` (was `openai.gpt-5.6-sol`, 272K); pr-autofix's Codex
   escalation rung follows.
@@ -48,6 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add the reactive-presentation `deck-overlay.js` and `deck-overlay.css` shared
+  core, `deck-detail.js` and `deck-detail.css` for tooltips and a right detail panel,
+  and `deck-nav.js` and `deck-nav.css` for a hover agenda and Cmd+K or Ctrl+K search.
+  Remarp supports `[text]{tip="..."}`, `[text]{detail=ID}` and top-level
+  `:::detail ID "Title"` blocks with slide-scoped validation.
 - Add the `pr-dash` plugin, the marketplace's first Claude Code mod. `/pr-dash`
   opens a pane with a pull request's CI checks and AI review result (status, whether
   it covers the current head, Critical/Major/Minor findings), keeps a status line
@@ -59,6 +68,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Make reactive-presentation presenter previews use the deck canvas, fonts,
+  language, theme classes and fragment state. Keep the slide logo clear of the
+  navigation hint, hide overlay UI during capture and remove decorative accent
+  bars from callout primitives.
 - Scope the workshop-creator participant IAM policy template. S3 reads are limited
   to the assets bucket prefix and log reads to the workshop account's log groups.
   The `Resource: "*"` statement keeps only Describe/List actions; its
