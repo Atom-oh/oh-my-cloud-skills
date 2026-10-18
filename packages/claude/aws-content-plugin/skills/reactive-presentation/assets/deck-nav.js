@@ -41,7 +41,8 @@
     const walker = document.createTreeWalker(slide, NodeFilter.SHOW_TEXT, {
       acceptNode: node => {
         const parent = node.parentElement;
-        if (!parent || !normalizeText(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+        // Whitespace-only nodes stay: they separate adjacent inline words.
+        if (!parent || !node.nodeValue) return NodeFilter.FILTER_REJECT;
         if (heading && heading.contains(parent)) return NodeFilter.FILTER_REJECT;
         if (parent.closest('style, script, template, .rp-detail-store')) {
           return NodeFilter.FILTER_REJECT;
@@ -98,7 +99,8 @@
 
   function createAgenda() {
     const hotzone = makeOverlay('div', 'rp-agenda-hotzone');
-    hotzone.setAttribute('aria-label', 'Open agenda');
+    // Pointer-only hover target; keyboard users reach slides through search.
+    hotzone.setAttribute('aria-hidden', 'true');
 
     const agenda = makeOverlay('nav', 'rp-agenda');
     agenda.setAttribute('aria-label', 'Slide agenda');
