@@ -81,3 +81,10 @@ assert_grep_match "_copy_framework_assets" "$REMARP" "framework asset-copy routi
 assert_grep_match "['\"]design-tokens\.css['\"]" "$REMARP" "remarp copies design-tokens.css to common/"
 EXPORTJS="$(cat "$RP/assets/export-utils.js" 2>/dev/null || true)"
 assert_grep_match "design-tokens\.css" "$EXPORTJS" "export-utils ZIP bundles design-tokens.css"
+
+# --- callout/pain-quote accent bars removed (reactive-nav-detail Task 5) ---
+TC_FLAT="$(tr '\n' ' ' < "$RP/assets/theme.css" 2>/dev/null || true)"
+assert_grep_no_match "\.callout\s*\{[^}]*border-left" "$TC_FLAT" ".callout has no left accent bar"
+assert_grep_no_match "\.pain-quote\s*\{[^}]*border-left" "$TC_FLAT" ".pain-quote has no left accent bar"
+assert_grep_no_match "\.callout\.callout-[a-z]+\s*\{[^}]*border-color" "$TC_FLAT" "callout variants do not colour the border"
+assert_grep_match "\.callout\.callout-info\s*(:is\([^)]*\)|strong)" "$TC_FLAT" "callout variant title takes the role colour"

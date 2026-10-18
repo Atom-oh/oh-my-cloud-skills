@@ -484,7 +484,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
-      "sha256": "054006c75d529b0d8126f86839b772d49704629b98cfbc41485dd79a3e6b1039",
+      "sha256": "34334e30d3b4b9773c569285239cbd3720307ac7bf30089cbc54f745f3802da1",
       "executable": false
     },
     "skills/reactive-presentation/assets/quiz-component.js": {
@@ -504,7 +504,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/theme.css": {
-      "sha256": "a22cda737b6df9833ac19b602d8bad9183cb1d32c5be8f87680072661b3e68ea",
+      "sha256": "bf36fa5fb0f4c451d068d2711cb9e97ba5e7a16f78b57346de25ed4bd69143a7",
       "executable": false
     },
     "skills/reactive-presentation/icons/AgentCore/dark-blue/AI-Agent.png": {
