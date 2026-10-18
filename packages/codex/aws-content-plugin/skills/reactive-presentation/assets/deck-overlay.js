@@ -269,7 +269,17 @@
     const source = normalizeText(text);
     const lower = source.toLocaleLowerCase();
     const needle = query.toLocaleLowerCase();
-    const matchAt = lower.indexOf(needle);
+    let matchAt = -1;
+    if (lower.length !== source.length) {
+      for (let i = 0; i + query.length <= source.length; i += 1) {
+        if (source.substr(i, query.length).toLocaleLowerCase() === needle) {
+          matchAt = i;
+          break;
+        }
+      }
+    } else {
+      matchAt = lower.indexOf(needle);
+    }
     if (matchAt < 0) {
       container.textContent = source;
       return;
