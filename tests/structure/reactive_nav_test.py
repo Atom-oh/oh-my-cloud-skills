@@ -167,6 +167,28 @@ class DeckNavTests(DeckOverlayFixture):
         text = page.inner_text("#rp-search-results .rp-search-row")
         self.assertNotIn("OverlayCilium", text.replace("\n", ""))
 
+    def test_search_keeps_space_between_inline_words(self):
+        page = self.open()
+        self.open_search(page, "Amazon EKS")
+        self.assertEqual(page.locator("#rp-search-results .rp-search-row").first.get_attribute("data-goto"), "3")
+
+    def test_search_treats_br_as_word_boundary(self):
+        page = self.open()
+        self.open_search(page, "Karpenter NodePool")
+        self.assertEqual(page.locator("#rp-search-results .rp-search-row").first.get_attribute("data-goto"), "3")
+
+    def test_search_tab_keeps_focus_in_dialog(self):
+        page = self.open()
+        self.open_search(page, "vxlan")
+        for key in ("Shift+Tab", "Tab"):
+            page.keyboard.press(key)
+            self.assertEqual(page.evaluate("() => document.activeElement.id"), "rp-search-input")
+        self.assertFalse(self.has_body_class(page, "rp-detail-open"))
+
+    def test_hotzone_hidden_from_assistive_tech(self):
+        page = self.open()
+        self.assertEqual(page.get_attribute("#rp-agenda-hotzone", "aria-hidden"), "true")
+
     def test_panel_close_button_not_covered_by_hotzone(self):
         page = self.open()
         page.click('.slide-deck > .slide .rp-detail[data-detail="vxlan"]')
@@ -226,6 +248,6 @@ class DeckNavTests(DeckOverlayFixture):
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result
-    if result.skipped and not result.testsRun - len(result.skipped):
+    if result.skipped and result.testsRun <= len(result.skipped):
         print("SKIPPED-ALL")
     sys.exit(0 if result.wasSuccessful() else 1)

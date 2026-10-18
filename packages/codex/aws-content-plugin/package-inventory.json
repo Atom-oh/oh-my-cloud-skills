@@ -472,7 +472,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-detail.js": {
-      "sha256": "3de4c443e8ea675cfce0cb319142cad9e35ebb3c94df6482562a2da796680773",
+      "sha256": "8502f07eb83733303c309f4fec5c68fbd859935d34cbe0f63788f7658194cf40",
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-nav.css": {
@@ -480,7 +480,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-nav.js": {
-      "sha256": "5ab0538929302e0a664b6eef35e9fcfa972e85dfa5a9e047f83f2405e222c20c",
+      "sha256": "7ca6498a0cab525df06a19756c59e2f19b31432f9daf6f2c287dd21dfc6b75f7",
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-overlay.css": {
@@ -504,7 +504,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/export-utils.js": {
-      "sha256": "c1fcf12217c3588f9b75db11dd3e3d297f5c542695f511b42d41197b86726fcf",
+      "sha256": "af2eece6e4bdb22fd34f145ba88b7ad60b01baa4ef5f4333c9b70d18e5d85e02",
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
@@ -17356,7 +17356,7 @@
       "executable": true
     },
     "skills/reactive-presentation/scripts/check_deck.py": {
-      "sha256": "3279a0d3ee417d73567d213e7f38de20c46362d9fecdadf18fb82c7a9d96e7f7",
+      "sha256": "58f03c7c9a2d595f0f51c6e1143361d0f6b7b6eb3881a35c3cf285173e1907e2",
       "executable": false
     },
     "skills/reactive-presentation/scripts/convert_to_remarp.py": {
@@ -17364,7 +17364,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/export_pptx.py": {
-      "sha256": "7937949827009218ce7fbec77df96c8c82439bedb178f9f727cd54be56b53a46",
+      "sha256": "f6cffe3f09961df00cc3d08e1817f1b00cd5d74ddf2f72fb24bf7870add4a9a7",
       "executable": false
     },
     "skills/reactive-presentation/scripts/extract_aws_icons.py": {
@@ -17384,7 +17384,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {
-      "sha256": "6a1dfc4e67dced3a3033dc0f344b65c844017412b7273b81266584c276c22b65",
+      "sha256": "ba550f1dd61fe5fedb95abc37c7c668aeaa56e4960f6f8304a65fc87f9c97d14",
       "executable": false
     },
     "skills/slide-fix/SKILL.md": {

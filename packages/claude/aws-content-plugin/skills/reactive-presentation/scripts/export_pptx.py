@@ -270,7 +270,7 @@ _DETAILS_JS = """
   const details = slide
     ? Array.from(slide.querySelectorAll('.rp-detail-store section')).map(section => ({
         title: section.dataset.title || '',
-        text: section.dataset.text || ''
+        text: section.dataset.text || section.textContent || ''
       }))
     : [];
   return { lang, details };
@@ -300,11 +300,12 @@ def _details_to_text(details: List[Dict[str, str]], lang: str) -> str:
     if not details:
         return ''
     heading = '[디테일]' if str(lang).lower().startswith('ko') else '[Details]'
-    lines = [
-        f'- {detail.get("title", "")}: {detail.get("text", "")}'
-        for detail in details
-    ]
-    return '\n'.join([heading, *lines])
+    lines = []
+    for detail in details:
+        parts = [str(detail.get(key) or '').strip() for key in ('title', 'text')]
+        if any(parts):
+            lines.append('- ' + ': '.join(part for part in parts if part))
+    return '\n'.join([heading, *lines]) if lines else ''
 
 
 def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, scale: int,

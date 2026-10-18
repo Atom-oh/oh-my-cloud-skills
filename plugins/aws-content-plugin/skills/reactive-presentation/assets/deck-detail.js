@@ -205,8 +205,10 @@
     });
     deck.addEventListener('keydown', event => {
       const term = liveTerm(event.target);
-      if (!termIsAvailable(term) || !term.dataset.detail || event.key !== 'Enter') return;
+      if (!termIsAvailable(term) || !term.dataset.detail) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
       event.preventDefault();
+      event.stopPropagation();
       openDetail(term.closest('.slide'), term.dataset.detail, term);
     });
 
@@ -223,6 +225,12 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       closeDetail();
+      return true;
+    }
+    const panel = document.getElementById('rp-detail-panel');
+    if ((event.key === ' ' || event.key === 'Enter') && panel && panel.contains(event.target)) {
+      // Let a focused panel control activate natively instead of advancing the deck.
+      event.stopImmediatePropagation();
       return true;
     }
     if (navigationKeys.has(event.key)) closeDetail();

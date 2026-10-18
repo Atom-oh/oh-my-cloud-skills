@@ -38,10 +38,14 @@
   function visibleSlideText(slide) {
     const values = [];
     const heading = slide.querySelector('h1, h2');
-    const walker = document.createTreeWalker(slide, NodeFilter.SHOW_TEXT, {
+    const walker = document.createTreeWalker(slide, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
       acceptNode: node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          return node.tagName === 'BR' ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+        }
         const parent = node.parentElement;
-        if (!parent || !normalizeText(node.nodeValue)) return NodeFilter.FILTER_REJECT;
+        // Whitespace-only nodes stay: they separate adjacent inline words.
+        if (!parent || !node.nodeValue) return NodeFilter.FILTER_REJECT;
         if (heading && heading.contains(parent)) return NodeFilter.FILTER_REJECT;
         if (parent.closest('style, script, template, .rp-detail-store')) {
           return NodeFilter.FILTER_REJECT;
@@ -50,10 +54,14 @@
       }
     });
     // Inline-split words (e.g. <wbr>, <strong>) stay joined; only a block boundary
-    // between two text nodes becomes a space.
+    // or a <br> between two text nodes becomes a space.
     let previousBlock = null;
     while (walker.nextNode()) {
       const node = walker.currentNode;
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        values.push(' ');
+        continue;
+      }
       const block = nearestBlock(node.parentElement, slide);
       if (previousBlock && block !== previousBlock) values.push(' ');
       values.push(node.nodeValue);
@@ -98,7 +106,8 @@
 
   function createAgenda() {
     const hotzone = makeOverlay('div', 'rp-agenda-hotzone');
-    hotzone.setAttribute('aria-label', 'Open agenda');
+    // Pointer-only hover target; keyboard users reach slides through search.
+    hotzone.setAttribute('aria-hidden', 'true');
 
     const agenda = makeOverlay('nav', 'rp-agenda');
     agenda.setAttribute('aria-label', 'Slide agenda');
@@ -406,6 +415,11 @@
       } else if (event.key === 'Enter') {
         event.preventDefault();
         activateSearchSelection();
+      } else if (event.key === 'Tab') {
+        // aria-modal: keep focus in the dialog; the input is its only tab stop.
+        event.preventDefault();
+        const input = document.getElementById('rp-search-input');
+        if (input) input.focus();
       }
       return true;
     }
