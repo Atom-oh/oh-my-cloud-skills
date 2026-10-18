@@ -496,11 +496,11 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/example-deck/index.html": {
-      "sha256": "0e23a6e1e51f16fac00fce6c9af3f4aeef234ae4c43a0fd574fab9bde54187f8",
+      "sha256": "d914600e97d1aa2a50cadc03fc6c85ac89833ff24131541c1a6330c8399b0b34",
       "executable": false
     },
     "skills/reactive-presentation/assets/example-deck/toc.html": {
-      "sha256": "254f56581bc8863a43e1bc02bdada9193ef85a49367ad79a4c9df8f99de8f369",
+      "sha256": "22d76cf10d270a14e9c82f45453a4b4291506b8b1b9c4cce3cf0b34810db87dc",
       "executable": false
     },
     "skills/reactive-presentation/assets/export-utils.js": {
@@ -17380,7 +17380,7 @@
       "executable": true
     },
     "skills/reactive-presentation/scripts/measure_deck.py": {
-      "sha256": "b46a13201aaac1a2c1728cf8b64ab0c5c37dfbb5e80ed2a239147324f6921059",
+      "sha256": "433aba8e710e3d5cf5855b0402d2939355946991bb9e2caab9ed35b18ca3f5ee",
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {
