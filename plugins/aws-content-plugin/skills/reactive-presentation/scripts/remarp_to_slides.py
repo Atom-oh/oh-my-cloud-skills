@@ -25,9 +25,24 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from html import escape as _html_escape
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
+
+AI_TONE_LABELS = ("한 줄 정리", "핵심 정리", "핵심:", "Key takeaway")
+AI_TONE_NOTE_CLICHES = ("꼭 기억해 두세요", "중요한 포인트는", "결론적으로")
+AI_TONE_MAX_ARROWS = 3
+AI_TONE_MAX_LABEL_REPEATS = 2
+
+_EM_DASH_PATTERN = re.compile(
+    r'\u2014|\u00b7|\u30fb|&mdash;|&#8212;|&#x2014;|&middot;|&#183;|&#xb7;',
+    re.IGNORECASE)
+_IDENTIFIER_ATTRIBUTE_PATTERN = re.compile(
+    r'(\b(?:id|class|href|src|style|data-detail|data-detail-id|data-block|'
+    r'data-fragment-index|data-goto)\s*=\s*)'
+    r'(?:"[^"]*"|\'[^\']*\'|[^\s>]+)',
+    re.IGNORECASE)
 
 # Try to import yaml, fall back to manual parsing
 try:
@@ -93,6 +108,162 @@ def _restore_literals(text: str, literals: Dict[str, str]) -> str:
     for token, content in literals.items():
         text = text.replace(token, content.rstrip('\n'))
     return text
+
+
+def _mask_code_spans(text: str) -> Tuple[str, List[str]]:
+    """Protect inline code spans while applying other inline rules."""
+    spans: List[str] = []
+
+    def mask_line(line: str) -> str:
+        runs = list(re.finditer(r'`+', line))
+        if not runs:
+            return line
+        output = []
+        pos = 0
+        run_idx = 0
+        while run_idx < len(runs):
+            opener = runs[run_idx]
+            closer_idx = next(
+                (idx for idx in range(run_idx + 1, len(runs))
+                 if len(runs[idx].group(0)) == len(opener.group(0))),
+                None)
+            if closer_idx is None:
+                break
+            closer = runs[closer_idx]
+            output.append(line[pos:opener.start()])
+            token = f'\x00CS{len(spans)}\x00'
+            spans.append(line[opener.end():closer.start()])
+            output.append(token)
+            pos = closer.end()
+            run_idx = closer_idx + 1
+        output.append(line[pos:])
+        return ''.join(output)
+
+    masked = ''.join(mask_line(line) for line in text.splitlines(keepends=True))
+    return masked, spans
+
+
+def _restore_code_spans(text: str, spans: List[str]) -> str:
+    """Restore protected inline code spans as HTML code elements."""
+    for idx, content in enumerate(spans):
+        text = text.replace(
+            f'\x00CS{idx}\x00',
+            f'<code>{html.escape(content, quote=False)}</code>')
+    return text
+
+
+def _mask_authored_copy(text: str) -> str:
+    """Remove non-visible literals and identifiers before copy linting."""
+    text, _fences = _mask_code_fences(text)
+    text, _spans = _mask_code_spans(text)
+    text = re.sub(r'https?://\S+', '', text)
+    text = re.sub(
+        r'<(?:code|pre)\b[^>]*>.*?</(?:code|pre)\s*>',
+        '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
+    return _IDENTIFIER_ATTRIBUTE_PATTERN.sub(r'\1""', text)
+
+
+def _unescape_quoted(value: str) -> str:
+    """Unescape quotes and backslashes accepted by quoted Remarp values."""
+    return re.sub(r'\\(["\\])', r'\1', value)
+
+
+def _derive_block_title(config: Dict[str, Any], source: str, fallback: str) -> str:
+    """Choose a block title from local frontmatter, first H1, or filename."""
+    title = config.get('title') if isinstance(config, dict) else None
+    if title not in (None, ''):
+        return str(title)
+    masked, _literals = _mask_code_fences(source)
+    heading = re.search(r'^#(?!#)\s+(.+?)\s*$', masked, re.MULTILINE)
+    return heading.group(1).strip() if heading else fallback
+
+
+def _configured_block_title(config: Dict[str, Any], block_name: str) -> Optional[str]:
+    """Return the title for a named entry in the frontmatter blocks list."""
+    blocks = config.get('blocks', []) if isinstance(config, dict) else []
+    if not isinstance(blocks, list):
+        return None
+    for block in blocks:
+        if not isinstance(block, dict) or block.get('name') != block_name:
+            continue
+        title = block.get('title')
+        if title not in (None, ''):
+            return str(title)
+    return None
+
+
+def _remove_remarp_blocks(text: str, block_types) -> str:
+    """Remove selected colon-fenced Remarp blocks, including their bodies."""
+    selected = {str(block_type).lower() for block_type in block_types}
+    output: List[str] = []
+    skipped_colons: List[int] = []
+    skipped_lines: List[str] = []
+    opener = re.compile(r'^(:{3,})\s*([\w][\w-]*)(?:\s.*)?$')
+    closer = re.compile(r'^(:{3,})\s*$')
+
+    for line in text.splitlines(keepends=True):
+        stripped = line.rstrip('\r\n')
+        open_match = opener.match(stripped)
+        close_match = closer.match(stripped)
+
+        if skipped_colons:
+            skipped_lines.append(line)
+            if close_match and len(close_match.group(1)) == skipped_colons[-1]:
+                skipped_colons.pop()
+                if not skipped_colons:
+                    skipped_lines.clear()
+            elif open_match:
+                skipped_colons.append(len(open_match.group(1)))
+            continue
+
+        if open_match and open_match.group(2).lower() in selected:
+            skipped_colons.append(len(open_match.group(1)))
+            skipped_lines.append(line)
+            continue
+        output.append(line)
+
+    if skipped_colons:
+        output.extend(skipped_lines)
+
+    return ''.join(output)
+
+
+def _detail_plain_text(markdown: str) -> str:
+    """Convert detail Markdown to one searchable text line per source line."""
+    output = []
+    in_fence = False
+    for source_line in markdown.replace('\r\n', '\n').replace('\r', '\n').split('\n'):
+        if _fence_open(source_line):
+            in_fence = not in_fence
+            continue
+        line = source_line.strip()
+        if not line:
+            continue
+        if in_fence:
+            output.append(line)
+            continue
+        line, code_spans = _mask_code_spans(line)
+        if re.match(r'^\|.*\|$', line):
+            cells = [cell.strip() for cell in line.strip('|').split('|')]
+            if all(re.fullmatch(r'[-:]+', cell) for cell in cells):
+                continue
+            line = ' | '.join(cells)
+        list_prefix = ''
+        marker = re.match(r'^([-*]|\d+\.)\s+(.+)$', line)
+        if marker:
+            list_prefix = '- ' if marker.group(1) in ('-', '*') else marker.group(1) + ' '
+            line = marker.group(2)
+        line = re.sub(r'!\[([^\]]*)\]\([^)]+\)', r'\1', line)
+        line = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', line)
+        line = re.sub(r'[*_~]+', '', line)
+        line = re.sub(r'`+([^`]+)`+', r'\1', line)
+        line = re.sub(r'<[^>]+>', '', line)
+        line = html.unescape(line)
+        for idx, content in enumerate(code_spans):
+            line = line.replace(f'\x00CS{idx}\x00', content)
+        output.append(list_prefix + line.strip())
+    return '\n'.join(output)
 
 
 def _discover_sources(directory: Path) -> Dict[str, Path]:
@@ -350,6 +521,10 @@ class Slide:
     tab_blocks: List['ParsedBlock'] = field(default_factory=list)
     issues: List[str] = field(default_factory=list)
     archify_blocks: List[Dict[str, Any]] = field(default_factory=list)
+    details: List[Dict[str, str]] = field(default_factory=list)
+    detail_errors: List[str] = field(default_factory=list)
+    authored_copy_parts: List[str] = field(default_factory=list)
+    raw_source: str = ''
     source_index: Optional[int] = None
 
 
@@ -558,6 +733,7 @@ class RemarpParser:
         if not md_text.strip():
             return None
 
+        raw_source = md_text
         md_text, literals = _mask_code_fences(md_text)
 
         # Parse directives
@@ -597,7 +773,60 @@ class RemarpParser:
         if notes:
             notes.content = _restore_literals(notes.content, literals)
 
+        authored_copy_parts = [
+            re.sub(r'<!-- __BLOCK:[\w-]+:\d+__ -->', '', md_text)
+        ]
+
+        def collect_authored_copy(block):
+            if block.block_type in ('css', 'script', 'prompt', 'detail'):
+                return
+            if block.block_type == 'tab' and block.args:
+                authored_copy_parts.append(block.args)
+            own_content = re.sub(r'<!-- __CHILD:\d+__ -->', '', block.content)
+            if own_content.strip():
+                authored_copy_parts.append(own_content)
+            for child in block.children:
+                collect_authored_copy(child)
+
+        for blocks_of_type in all_blocks.values():
+            for block in blocks_of_type:
+                collect_authored_copy(block)
+
         # -- Distribute extracted blocks to their handlers --
+
+        detail_errors: List[str] = []
+        details: List[Dict[str, str]] = []
+        detail_arg = re.compile(
+            r'^([A-Za-z0-9_-]+)\s+"((?:[^"\\]|\\.)*)"\s*$')
+        for blk in all_blocks.get('detail', []):
+            match = detail_arg.match(blk.args)
+            if not match:
+                detail_errors.append('Invalid detail block declaration')
+                continue
+            detail_id = match.group(1)
+            title = _unescape_quoted(match.group(2))
+            body_lines = blk.content.split('\n')
+            tip = ''
+            if body_lines and re.match(r'^tip:\s*', body_lines[0]):
+                tip = re.sub(r'^tip:\s*', '', body_lines.pop(0)).strip()
+                while body_lines and not body_lines[0].strip():
+                    body_lines.pop(0)
+            details.append({
+                'id': detail_id,
+                'title': title,
+                'tip': tip,
+                'body': '\n'.join(body_lines).strip(),
+            })
+
+        def find_nested_detail(block):
+            for child in block.children:
+                if child.block_type == 'detail':
+                    detail_errors.append('Detail blocks must be top-level')
+                find_nested_detail(child)
+
+        for blocks_of_type in all_blocks.values():
+            for block in blocks_of_type:
+                find_nested_detail(block)
 
         # Fragments (:::click)
         fragments: List[Fragment] = []
@@ -716,8 +945,16 @@ class RemarpParser:
         references = REFERENCE_PATTERN.findall(md_text)
         md_text = REFERENCE_PATTERN.sub('', md_text)
 
+        # Detail labels are visible text, not checkbox or quiz syntax.
+        type_text = re.sub(
+            r'\[([^\]]+)\]\{tip="(?:[^"\\]|\\.)*"\}',
+            r'\1', md_text)
+        type_text = re.sub(
+            r'\[([^\]]+)\]\{detail=[A-Za-z0-9_-]+\}',
+            r'\1', type_text)
+
         # Detect slide type
-        slide_type = self.detect_slide_type(md_text, directives, canvas_elements)
+        slide_type = self.detect_slide_type(type_text, directives, canvas_elements)
         if (slide_type == SlideType.TITLE and not directives.get('type')
                 and not self.LEGACY_TYPE_PATTERN.search(md_text)
                 and any(token in md_text for token in literals)):
@@ -756,6 +993,10 @@ class RemarpParser:
             tab_blocks=tab_blocks,
             issues=issues,
             archify_blocks=archify_blocks,
+            details=details,
+            detail_errors=detail_errors,
+            authored_copy_parts=authored_copy_parts,
+            raw_source=raw_source,
         )
 
     def parse_directives(self, md_text: str) -> Dict[str, str]:
@@ -1588,6 +1829,9 @@ class RemarpHTMLGenerator:
         # Deck-wide fit default from frontmatter `fit:`; '' means unset.
         # Per-slide `@fit:` overrides it in slide_to_html.
         self.default_fit = ''
+        self.block_key = ''
+        self.block_title = ''
+        self._detail_tips: Dict[str, str] = {}
 
     @staticmethod
     def _strip_block_prefix(title: str) -> str:
@@ -1599,6 +1843,10 @@ class RemarpHTMLGenerator:
                        config: Dict[str, Any], source_file: str = '') -> str:
         """Generate complete HTML file for one block."""
         title = config.get('title', block_name)
+        if not self.block_key:
+            self.block_key = block_name
+        if not self.block_title:
+            self.block_title = str(config.get('title') or block_name)
 
         # Find block-specific title from blocks config
         blocks_config = config.get('blocks', [])
@@ -1663,6 +1911,10 @@ class RemarpHTMLGenerator:
 
     def slide_to_html(self, slide: Slide) -> str:
         """Convert parsed slide to HTML based on type."""
+        self._detail_tips = {
+            detail['id']: detail['tip'] or detail['title']
+            for detail in slide.details
+        }
         if slide.slide_type == SlideType.COVER:
             html = self._gen_cover_slide(slide)
         elif slide.slide_type == SlideType.TITLE:
@@ -1712,11 +1964,18 @@ class RemarpHTMLGenerator:
         if _fit_mode not in FIT_MODES:
             _fit_mode = self.default_fit
         _fit_attr = f' data-fit="{_fit_mode}"' if _fit_mode in FIT_MODES else ''
+        _block_attr = ''
+        if self.block_key:
+            _block_attr = (
+                f' data-block="{_html_escape(self.block_key, quote=True)}"'
+                f' data-block-title="{_html_escape(self.block_title, quote=True)}"')
         # Match the first slide div whether or not it carries extra classes
         # (e.g. `slide title-slide`), preserving them while prepending the theme class.
         html = re.sub(
             r'<div class="slide([^"]*)"',
-            lambda m: f'<div class="slide{_theme_cls}{m.group(1)}" data-remarp-id="s{slide.index}"{_fit_attr}',
+            lambda m: (
+                f'<div class="slide{_theme_cls}{m.group(1)}"'
+                f' data-remarp-id="s{slide.index}"{_fit_attr}{_block_attr}'),
             html, count=1)
 
         # Code examples remain literal even during HTML fragment post-processing.
@@ -1742,6 +2001,21 @@ class RemarpHTMLGenerator:
             last_close = html.rfind('</div>')
             if last_close != -1:
                 html = html[:last_close] + ref_html + '\n' + html[last_close:]
+
+        if slide.details:
+            sections = []
+            for detail in slide.details:
+                body_html = self._parse_body_content(detail['body'].split('\n'))
+                sections.append(
+                    '<section'
+                    f' data-detail-id="{_html_escape(detail["id"], quote=True)}"'
+                    f' data-title="{_html_escape(detail["title"], quote=True)}"'
+                    f' data-text="{_html_escape(_detail_plain_text(detail["body"]), quote=True)}">'
+                    f'{body_html}</section>')
+            store = '<div class="rp-detail-store" hidden>' + ''.join(sections) + '</div>'
+            last_close = html.rfind('</div>')
+            if last_close != -1:
+                html = html[:last_close] + store + '\n' + html[last_close:]
 
         # Append CSS overrides style tag if present
         css_style = self._gen_css_overrides(slide)
@@ -1992,14 +2266,45 @@ class RemarpHTMLGenerator:
 
     def _convert_markdown(self, text: str) -> str:
         """Convert basic markdown to HTML."""
+        text, code_spans = _mask_code_spans(text)
+        detail_spans: List[str] = []
+
+        def save_detail_span(markup: str) -> str:
+            token = f'\x00DT{len(detail_spans)}\x00'
+            detail_spans.append(markup)
+            return token
+
+        def convert_tip(match):
+            label = self._convert_markdown(match.group(1))
+            tip = match.group(2)
+            for idx, content in enumerate(code_spans):
+                tip = tip.replace(f'\x00CS{idx}\x00', f'`{content}`')
+            tip = _unescape_quoted(tip)
+            return save_detail_span(
+                '<span class="rp-detail" tabindex="0"'
+                f' data-tip="{html.escape(tip, quote=True)}">{label}</span>')
+
+        def convert_detail(match):
+            label = self._convert_markdown(match.group(1))
+            detail_id = match.group(2)
+            tip = self._detail_tips.get(detail_id, '')
+            return save_detail_span(
+                '<span class="rp-detail" tabindex="0"'
+                f' data-detail="{html.escape(detail_id, quote=True)}"'
+                f' data-tip="{html.escape(tip, quote=True)}">{label}</span>')
+
+        text = re.sub(
+            r'\[([^\]]+)\]\{tip="((?:[^"\\]|\\.)*)"\}',
+            convert_tip, text)
+        text = re.sub(
+            r'\[([^\]]+)\]\{detail=([A-Za-z0-9_-]+)\}',
+            convert_detail, text)
         # Normalize asset paths (../common/ → ./common/)
         text = re.sub(r'\.\./common/', './common/', text)
         # Bold
         text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
         # Italic
         text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
-        # Inline code
-        text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
         # Images — must come before links to avoid ![alt](url) being matched as link
         text = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', r'<img src="\2" alt="\1" class="slide-img" />', text)
         # Links — negative lookbehind ensures we don't match images
@@ -2017,7 +2322,9 @@ class RemarpHTMLGenerator:
                     size = p
             return f'<div style="text-align:{align}"><img src="{src}" class="slide-img" style="max-width:{size}" /></div>'
         text = re.sub(r'^@img:\s*(.+)$', _img_directive, text, flags=re.MULTILINE)
-        return text
+        for idx, markup in enumerate(detail_spans):
+            text = text.replace(f'\x00DT{idx}\x00', markup)
+        return _restore_code_spans(text, code_spans)
 
     def _parse_list(self, lines: List[str], start_idx: int = 0) -> Tuple[str, int]:
         """Parse a list (ordered or unordered) from lines."""
@@ -4299,6 +4606,9 @@ class RemarpHTMLGenerator:
   <title>{title}</title>
 {remarp_meta}
   <link rel="stylesheet" href="./common/theme.css">
+  <link rel="stylesheet" href="./common/deck-overlay.css">
+  <link rel="stylesheet" href="./common/deck-detail.css">
+  <link rel="stylesheet" href="./common/deck-nav.css">
   {theme_override}
   {global_style_tag}
   {mermaid_script}
@@ -4309,6 +4619,9 @@ class RemarpHTMLGenerator:
 {slides_html}
 </div>
 <script src="./common/animation-utils.js"></script>
+<script src="./common/deck-overlay.js"></script>
+<script src="./common/deck-detail.js"></script>
+<script src="./common/deck-nav.js"></script>
 <script src="./common/slide-framework.js"></script>
 <script src="./common/quiz-component.js"></script>
 <script src="./common/presenter-view.js"></script>
@@ -4693,7 +5006,9 @@ class RemarpProjectBuilder:
         dest.mkdir(parents=True, exist_ok=True)
 
         # Copy core framework files
-        for fname in ['design-tokens.css', 'theme.css', 'slide-framework.js', 'animation-utils.js',
+        for fname in ['design-tokens.css', 'theme.css', 'deck-overlay.css',
+                      'deck-detail.css', 'deck-nav.css', 'slide-framework.js',
+                      'animation-utils.js', 'deck-overlay.js', 'deck-detail.js', 'deck-nav.js',
                       'quiz-component.js', 'presenter-view.js', 'export-utils.js']:
             src = assets_dir / fname
             if src.exists():
@@ -4840,6 +5155,9 @@ class RemarpProjectBuilder:
                 html_gen.theme_dir = str(self.theme_dir)
             html_gen.archify_source_dir = str(block_path.parent)
             html_gen.archify_source_name = block_path.stem
+            html_gen.block_key = block_name
+            html_gen.block_title = _derive_block_title(
+                config, content, block_path.stem)
             # Deck-wide fit default (block frontmatter overrides _presentation.md).
             fm_fit = _normalize_fit(merged_config.get('fit'))
             html_gen.default_fit = fm_fit if fm_fit in FIT_MODES else ''
@@ -4935,6 +5253,9 @@ class RemarpProjectBuilder:
         html_gen = RemarpHTMLGenerator(lang=lang, output_dir=str(self.output_dir))
         html_gen.archify_source_dir = str(block_path.parent)
         html_gen.archify_source_name = block_path.stem
+        html_gen.block_key = block_name
+        html_gen.block_title = _derive_block_title(
+            config, content, block_path.stem)
 
         slides = [slide for group in blocks.values() for slide in group]
         if not slides:
@@ -5154,6 +5475,78 @@ def _validate_frontmatter_fit(config: Dict[str, Any], source_file: Path) -> List
     }]
 
 
+def _validate_deck_tone(
+        entries: List[Tuple[Slide, Path, str]]) -> List[Dict[str, Any]]:
+    """Validate authored copy after all deck files have been parsed."""
+    findings: List[Dict[str, Any]] = []
+    label_entries: Dict[str, List[Tuple[Slide, Path, str]]] = {
+        label: [] for label in AI_TONE_LABELS
+    }
+
+    def add(entry: Tuple[Slide, Path, str], rule: str, message: str, fix: str):
+        slide, md_file, block_name = entry
+        title_source, _fences = _mask_code_fences(slide.content)
+        title_match = re.match(r'^#+\s+(.+)', title_source)
+        title = title_match.group(1) if title_match else f'(slide {slide.index + 1})'
+        findings.append({
+            'file': str(md_file),
+            'block': block_name,
+            'slide': slide.index + 1,
+            'title': title,
+            'severity': 'WARNING',
+            'rule': rule,
+            'message': message,
+            'fix': fix,
+        })
+
+    for entry in entries:
+        slide = entry[0]
+        copy_parts = slide.authored_copy_parts or [slide.content]
+        visible_parts = [_mask_authored_copy(part) for part in copy_parts]
+        detail_parts = []
+        for detail in slide.details:
+            detail_parts.extend((
+                _mask_authored_copy(detail.get('title', '')),
+                _mask_authored_copy(detail.get('tip', '')),
+                _mask_authored_copy(detail.get('body', '')),
+            ))
+        visible_parts.extend(detail_parts)
+        visible_text = '\n'.join(visible_parts)
+        note_text = _mask_authored_copy(slide.notes.content if slide.notes else '')
+        authored_text = '\n'.join((visible_text, note_text))
+
+        if _EM_DASH_PATTERN.search(authored_text):
+            add(entry, 'EM_DASH',
+                'Authored copy contains prohibited dash or middle-dot punctuation',
+                'Use a comma, colon, parentheses, or separate sentences')
+
+        arrow_count = visible_text.count('\u2192')
+        if arrow_count > AI_TONE_MAX_ARROWS:
+            add(entry, 'AI_TONE',
+                f'Visible copy uses {arrow_count} arrow symbols on one slide',
+                f'Use at most {AI_TONE_MAX_ARROWS} arrows, or restructure the flow')
+
+        matched_cliches = [
+            phrase for phrase in AI_TONE_NOTE_CLICHES if phrase in note_text
+        ]
+        if matched_cliches:
+            add(entry, 'AI_TONE',
+                f'Speaker notes use a formulaic phrase: {matched_cliches[0]}',
+                'Replace it with direct, topic-specific speaking guidance')
+
+        for label in AI_TONE_LABELS:
+            label_entries[label].extend([entry] * visible_text.count(label))
+
+    for label, occurrences in label_entries.items():
+        if len(occurrences) <= AI_TONE_MAX_LABEL_REPEATS:
+            continue
+        add(occurrences[AI_TONE_MAX_LABEL_REPEATS], 'AI_TONE',
+            f'Formulaic label "{label}" appears {len(occurrences)} times across the deck',
+            f'Use the label no more than {AI_TONE_MAX_LABEL_REPEATS} times')
+
+    return findings
+
+
 def validate_presentation(input_path: Path, json_output: bool = False) -> List[Dict[str, Any]]:
     """Validate Remarp source for quality issues.
 
@@ -5165,6 +5558,7 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
     5. Missing speaker notes
     6. Content overflow (too many items per slide)
     7. Missing @type directives on specialized slides
+    8. Prohibited punctuation and formulaic copy patterns
     """
     all_findings: List[Dict[str, Any]] = []
 
@@ -5199,6 +5593,7 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
 
     merged_canvas_ids = set()
     total_slides = 0
+    tone_entries: List[Tuple[Slide, Path, str]] = []
     for md_file in md_files:
         try:
             with open(md_file, 'r', encoding='utf-8') as f:
@@ -5210,6 +5605,7 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
             for block_name, slides in blocks.items():
                 for slide in slides:
                     all_findings.extend(_validate_slide(slide, md_file, block_name))
+                    tone_entries.append((slide, md_file, block_name))
                     if slide.slide_type == SlideType.CANVAS:
                         local_id = slide.params.get('canvas_id', f'canvas-{slide.index}')
                         merged_id = slide.params.get('canvas_id', f'canvas-{total_slides}')
@@ -5224,6 +5620,8 @@ def validate_presentation(input_path: Path, json_output: bool = False) -> List[D
                 invalid(md_file, 'NO_SLIDES', 'Source has no slides')
         except (ValueError, TypeError, OSError, UnicodeError) as exc:
             invalid(md_file, 'INVALID_SOURCE', str(exc))
+
+    all_findings.extend(_validate_deck_tone(tone_entries))
 
     if json_output:
         import json as json_mod
@@ -5261,6 +5659,67 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
             add('WARNING', 'INVALID_FIT',
                 f'Unknown @fit value "{raw_fit}" — expected auto, shrink or off',
                 'Use @fit: auto|shrink|off')
+
+    detail_ids = [detail['id'] for detail in slide.details]
+    duplicates = sorted({
+        detail_id for detail_id in detail_ids
+        if detail_ids.count(detail_id) > 1
+    })
+    if duplicates:
+        add('CRITICAL', 'DETAIL_REF',
+            f'Duplicate detail id: {", ".join(duplicates)}',
+            'Use each detail id once per slide')
+    for error in slide.detail_errors:
+        add('CRITICAL', 'DETAIL_REF', error,
+            'Place each valid detail block at the top level of its slide')
+
+    detail_source = slide.raw_source or slide.content
+    detail_source, _detail_fences = _mask_code_fences(detail_source)
+    detail_source = _remove_remarp_blocks(
+        detail_source, ('script', 'css', 'notes'))
+    detail_source = RemarpParser.LEGACY_NOTES_PATTERN.sub('', detail_source)
+    detail_source, _detail_spans = _mask_code_spans(detail_source)
+    # A reference inside an HTML comment never renders, so it cannot be dangling.
+    detail_source = re.sub(r'<!--.*?-->', '', detail_source, flags=re.DOTALL)
+    # Raw HTML <code>/<pre> bodies are examples, not references.
+    detail_source = re.sub(
+        r'(<(code|pre)\b[^>]*>).*?(</\2\s*>)', r'\1\3',
+        detail_source, flags=re.IGNORECASE | re.DOTALL)
+    detail_refs = re.findall(r'\{detail=([^}]*)\}', detail_source)
+    malformed_refs = {
+        ref for ref in detail_refs
+        if not re.fullmatch(r'[A-Za-z0-9_-]+', ref)
+    }
+
+    raw_detail_values: List[str] = []
+    for match in re.finditer(
+            r'\bdata-detail\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+)|(?=>))',
+            detail_source, re.IGNORECASE):
+        raw_detail_values.append(next(
+            (value for value in match.groups() if value is not None), ''))
+    malformed_refs.update(
+        value for value in raw_detail_values
+        if not re.fullmatch(r'[A-Za-z0-9_-]+', value)
+    )
+    if malformed_refs:
+        shown_refs = ', '.join(
+            ref if ref else '(empty)' for ref in sorted(malformed_refs))
+        add('CRITICAL', 'DETAIL_REF',
+            f'Malformed detail id: {shown_refs}',
+            'Use only letters, numbers, underscores, and hyphens in detail ids')
+    referenced = {
+        ref for ref in detail_refs
+        if re.fullmatch(r'[A-Za-z0-9_-]+', ref)
+    }
+    referenced.update(
+        value for value in raw_detail_values
+        if re.fullmatch(r'[A-Za-z0-9_-]+', value)
+    )
+    missing = sorted(referenced - set(detail_ids))
+    if missing:
+        add('CRITICAL', 'DETAIL_REF',
+            f'Missing detail block for: {", ".join(missing)}',
+            'Add a matching top-level detail block on this slide')
 
     # --- Rule 1: Slide Type Mismatch Detection ---
     explicit_type = slide.directives.get('type', '')
@@ -5690,6 +6149,11 @@ def main():
 
                 built = []
                 for block_name, slides in blocks.items():
+                    html_gen.block_key = block_name
+                    html_gen.block_title = (
+                        _configured_block_title(config, block_name)
+                        or _derive_block_title(config, content, input_path.stem)
+                    )
                     html_content = html_gen.generate_block(block_name, slides, config,
                                                            source_file=input_path.name)
                     output_file = output_dir / f'{block_name}.html'

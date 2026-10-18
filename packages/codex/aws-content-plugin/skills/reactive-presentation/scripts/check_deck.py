@@ -34,7 +34,8 @@ FRAMEWORK_SCRIPTS = ('animation-utils.js', 'slide-framework.js',
 RULE_IDS = ('NO_THEME_CSS', 'MISSING_SCRIPT', 'FRAMEWORK_COUNT', 'MISSING_NOTES',
             'SHORT_NOTES', 'PRESENTER_KEYS', 'QUIZ_NO_ANSWER', 'CANVAS_WIRING',
             'FRAGMENT_GAPS', 'RAW_HEX', 'RAW_RGBA', 'INLINE_STYLE', 'OFF_SCALE',
-            'PX_FONT', 'TITLE_LENGTH', 'BROKEN_REF', 'THEME_DUP', 'STALE_COMMON')
+            'PX_FONT', 'TITLE_LENGTH', 'BROKEN_REF', 'THEME_DUP', 'STALE_COMMON',
+            'MISSING_OVERLAY')
 
 
 def discover(target: Path):
@@ -199,6 +200,18 @@ def check_file(deck_dir, name, skill_selectors, findings):
     if n_fw != 1:
         add('FAIL', 'FRAMEWORK_COUNT',
             f'new SlideFramework( appears {n_fw} time(s), expected exactly 1')
+    if re.search(r'class=["\'][^"\']*\brp-detail\b', text):
+        missing_overlay = []
+        for asset in ('deck-overlay', 'deck-detail'):
+            if not re.search(
+                    r'<script[^>]*src="[^"]*' + re.escape(asset) + r'\.js"', text):
+                missing_overlay.append(asset + '.js')
+            if not re.search(
+                    r'<link[^>]*href="[^"]*' + re.escape(asset) + r'\.css"', text):
+                missing_overlay.append(asset + '.css')
+        if missing_overlay:
+            add('WARN', 'MISSING_OVERLAY',
+                f'detail terms require overlay assets: {", ".join(missing_overlay)}')
 
     # --- NOTES: <template class="notes"> per slide OR a presenterNotes object.
     # Both real shapes must be accepted: a top-level `const presenterNotes = {` and

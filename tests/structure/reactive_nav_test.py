@@ -172,6 +172,19 @@ class DeckNavTests(DeckOverlayFixture):
         self.open_search(page, "Amazon EKS")
         self.assertEqual(page.locator("#rp-search-results .rp-search-row").first.get_attribute("data-goto"), "3")
 
+    def test_search_treats_br_as_word_boundary(self):
+        page = self.open()
+        self.open_search(page, "Karpenter NodePool")
+        self.assertEqual(page.locator("#rp-search-results .rp-search-row").first.get_attribute("data-goto"), "3")
+
+    def test_search_tab_keeps_focus_in_dialog(self):
+        page = self.open()
+        self.open_search(page, "vxlan")
+        for key in ("Shift+Tab", "Tab"):
+            page.keyboard.press(key)
+            self.assertEqual(page.evaluate("() => document.activeElement.id"), "rp-search-input")
+        self.assertFalse(self.has_body_class(page, "rp-detail-open"))
+
     def test_hotzone_hidden_from_assistive_tech(self):
         page = self.open()
         self.assertEqual(page.get_attribute("#rp-agenda-hotzone", "aria-hidden"), "true")

@@ -45,6 +45,7 @@ import tempfile
 import threading
 import urllib.parse
 from pathlib import Path
+from typing import Dict, List
 
 
 def _die(msg: str, code: int = 1):
@@ -110,6 +111,7 @@ _PREPARE_JS = """
   style.textContent = `
     *, *::before, *::after { transition: none !important; animation: none !important; }
     .progress-bar, .slide-counter, .nav-hint, .canvas-controls, .slide-sidebar { display: none !important; }
+    .rp-overlay-ui { display:none !important } .rp-detail { text-decoration:none !important } .rp-detail::after { visibility:hidden !important }
   `;
   document.head.appendChild(style);
   try {
@@ -261,6 +263,20 @@ _NOTES_JS = """
 }
 """
 
+_DETAILS_JS = """
+(idx) => {
+  const slide = document.querySelectorAll('.slide-deck .slide')[idx];
+  const lang = document.documentElement.lang || '';
+  const details = slide
+    ? Array.from(slide.querySelectorAll('.rp-detail-store section')).map(section => ({
+        title: section.dataset.title || '',
+        text: section.dataset.text || section.textContent || ''
+      }))
+    : [];
+  return { lang, details };
+}
+"""
+
 
 def _notes_to_text(text: str) -> str:
     """Presenter notes → PPTX notes text.
@@ -277,6 +293,19 @@ def _notes_to_text(text: str) -> str:
     text = str(text).replace('\r\n', '\n').replace('\r', '\n')
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
+
+
+def _details_to_text(details: List[Dict[str, str]], lang: str) -> str:
+    """Convert detail entries to a localized speaker-note section."""
+    if not details:
+        return ''
+    heading = '[디테일]' if str(lang).lower().startswith('ko') else '[Details]'
+    lines = []
+    for detail in details:
+        parts = [str(detail.get(key) or '').strip() for key in ('title', 'text')]
+        if any(parts):
+            lines.append('- ' + ': '.join(part for part in parts if part))
+    return '\n'.join([heading, *lines]) if lines else ''
 
 
 def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, scale: int,
@@ -379,6 +408,12 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
                         note_text = f"{title}\n\n{note_text}"
                     elif title:
                         note_text = title
+                    detail_data = page.evaluate(_DETAILS_JS, i) or {}
+                    detail_text = _details_to_text(
+                        detail_data.get('details', []),
+                        detail_data.get('lang', ''))
+                    if detail_text:
+                        note_text = f'{note_text}\n\n{detail_text}' if note_text else detail_text
 
                     # Interactive diagram URLs go LAST, after the presenter's
                     # own note text (ADR-020 Decision 4).
