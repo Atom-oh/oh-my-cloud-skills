@@ -1,0 +1,38 @@
+/**
+ * Reactive Presentation shared overlay styles.
+ * All overlay roots are attached directly to document.body.
+ */
+
+.rp-overlay-ui {
+  box-sizing: border-box;
+  color: var(--on-surface);
+  font-family: var(--font-main);
+  font-size: var(--rp-ui-rem, 1rem);
+}
+
+.rp-overlay-ui:lang(ko),
+.rp-overlay-ui:lang(ko) * {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.rp-agenda-block-title,
+.rp-agenda-row,
+.rp-search-row,
+.rp-detail-close {
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+body:has(.slide-deck.overview-mode) .rp-overlay-ui {
+  display: none !important;
+}
+
+@media print {
+  .rp-overlay-ui {
+    display: none !important;
+  }
+}

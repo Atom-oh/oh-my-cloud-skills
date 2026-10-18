@@ -75,12 +75,14 @@ class SlideFramework {
           this.showSidebar();
         }
       }
+      if (window.DeckOverlay) window.DeckOverlay.init(this);
       this.bindKeys();
       this.bindTouch();
       this.handleHash();
       this.bindDeckScale();
       if (this.footer) this.createFooter();
       if (this.logoSrc) this.createLogo();
+      this.positionNavHint();
       this.initFragments(this.currentSlide);
       this.showSlide(this.currentSlide, false);
       if (window.ReactiveFit) {
@@ -397,6 +399,7 @@ class SlideFramework {
     if (slideNum) slideNum.style.display = hide ? 'none' : '';
     const slideRef = deck.querySelector('.slide-ref');
     if (slideRef) slideRef.style.display = hide ? 'none' : '';
+    this.positionNavHint();
   }
 
   createFooter() {
@@ -411,7 +414,19 @@ class SlideFramework {
     logo.className = 'slide-logo';
     logo.src = this.logoSrc;
     logo.alt = 'Logo';
+    logo.addEventListener('load', () => this.positionNavHint());
     (this.getDeck() || document.body).appendChild(logo);
+  }
+
+  positionNavHint() {
+    if (!this.navHint) return;
+    const deck = this.getDeck() || document.body;
+    const logo = deck.querySelector('.slide-logo');
+    if (!logo || getComputedStyle(logo).display === 'none' || !logo.offsetWidth) {
+      this.navHint.style.removeProperty('left');
+      return;
+    }
+    this.navHint.style.left = (logo.offsetLeft + logo.offsetWidth + 16) + 'px';
   }
 
   openPresenterView() {
@@ -464,7 +479,10 @@ class SlideFramework {
   bindKeys() {
     document.addEventListener('keydown', (e) => {
       // Don't navigate if user is typing in an input
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      const tag = e.target && e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
+          (e.target && e.target.isContentEditable) ||
+          document.body.classList.contains('rp-search-open')) return;
 
       const action = this.getKeyAction(e.key);
       if (!action) return;
@@ -623,6 +641,7 @@ class SlideFramework {
     this.updateFooterVisibility(next);
     this.updateRefs(next);
     window.location.hash = index + 1;
+    document.dispatchEvent(new CustomEvent('rp:slidechange', { detail: { index: index } }));
 
     if (this.onSlideChange) {
       this.onSlideChange(index, next);
