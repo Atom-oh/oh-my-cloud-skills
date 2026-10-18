@@ -229,14 +229,14 @@ body.rp-search-open #rp-search {
 #rp-tooltip {
   position: fixed;
   z-index: var(--z-toast);
-  max-width: min(24em, calc(100vw - var(--space-6)));
+  max-width: min(calc(var(--rp-ui-rem, 1rem) * 22), calc(100vw - var(--space-6)));
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-1);
   box-shadow: var(--shadow-2);
   color: var(--on-surface);
-  font-size: .917em;
+  font-size: calc(var(--rp-ui-rem, 1rem) * .917);
   line-height: var(--leading-normal);
   opacity: 0;
   visibility: hidden;

@@ -482,6 +482,77 @@ class DeckOverlayTests(unittest.TestCase):
             sizes.append(page.evaluate("() => parseFloat(getComputedStyle(document.querySelector('#rp-detail-panel li')).fontSize)"))
         self.assertGreater(sizes[1], sizes[0] * 1.5, sizes)
 
+    # --- content review R5 / code gate round 2 regressions -----------------------
+    def test_close_click_does_not_reopen_agenda(self):
+        page = self.open()
+        page.click('.slide-deck > .slide .rp-detail[data-detail="vxlan"]')
+        page.wait_for_timeout(200)
+        page.click("#rp-detail-panel button")
+        page.wait_for_timeout(500)
+        self.assertFalse(page.is_visible("#rp-agenda"))
+
+    def test_no_stray_tooltip_after_panel_close(self):
+        page = self.open()
+        page.click('.slide-deck > .slide .rp-detail[data-detail="vxlan"]')
+        page.wait_for_timeout(200)
+        page.mouse.move(800, 800)
+        page.click("#rp-detail-panel button")
+        page.wait_for_timeout(300)
+        self.assertFalse(page.is_visible("#rp-tooltip"))
+        page.click('.slide-deck > .slide .rp-detail[data-detail="vxlan"]')
+        page.wait_for_timeout(200)
+        page.mouse.move(800, 800)
+        page.keyboard.press("ArrowRight")
+        page.wait_for_timeout(300)
+        self.assertFalse(page.is_visible("#rp-tooltip"))
+
+    def test_tooltip_scales_with_deck(self):
+        sizes = []
+        for vp in ({"width": 1920, "height": 1080}, {"width": 3840, "height": 2160}):
+            page = self.open()
+            page.set_viewport_size(vp)
+            page.wait_for_timeout(400)
+            page.hover('.slide-deck > .slide .rp-detail:not([data-detail])')
+            page.wait_for_timeout(200)
+            sizes.append(page.evaluate("() => parseFloat(getComputedStyle(document.getElementById('rp-tooltip')).fontSize)"))
+        self.assertGreater(sizes[1], sizes[0] * 1.5, sizes)
+
+    def test_search_combobox_semantics(self):
+        page = self.open()
+        self.open_search(page, "a")
+        roles = page.evaluate("() => Array.from(document.querySelectorAll('#rp-search-results .rp-search-row')).map(r => r.getAttribute('role'))")
+        self.assertTrue(roles)
+        self.assertTrue(all(r == "option" for r in roles), roles)
+        self.assertEqual(page.get_attribute("#rp-search-input", "aria-controls"), "rp-search-results")
+        first = page.get_attribute("#rp-search-input", "aria-activedescendant")
+        page.keyboard.press("ArrowDown")
+        page.wait_for_timeout(100)
+        second = page.get_attribute("#rp-search-input", "aria-activedescendant")
+        self.assertTrue(second)
+        self.assertNotEqual(first, second)
+        self.assertIsNotNone(page.query_selector("#" + second))
+
+    def test_overview_term_enter_does_not_open_panel(self):
+        page = self.open()
+        page.keyboard.press("o")
+        page.wait_for_timeout(300)
+        page.evaluate("() => document.querySelector('.slide-deck > .slide .rp-detail[data-detail=vxlan]').focus()")
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(200)
+        self.assertFalse(self.has_body_class(page, "rp-detail-open"))
+
+    def test_search_from_panel_returns_focus_to_term(self):
+        page = self.open()
+        sel = '.slide-deck > .slide .rp-detail[data-detail="vxlan"]'
+        page.focus(sel)
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(200)
+        page.keyboard.press("Control+K")
+        page.wait_for_timeout(150)
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(150)
+        self.assertTrue(page.evaluate("() => { const a = document.activeElement; return !!a && a.offsetParent !== null; }"))
+
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result

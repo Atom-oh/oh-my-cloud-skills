@@ -23,6 +23,7 @@ DECK = f"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <title>Presenter fixture</title>
 <link rel="stylesheet" href="./common/theme.css">
+<link rel="stylesheet" href="./common/deck-overlay.css">
 </head>
 <body>
 <div class="slide-deck preset-paper" data-fit="auto">
@@ -38,8 +39,12 @@ DECK = f"""<!DOCTYPE html>
   <div class="slide"><div class="slide-header"><h2>Fragments</h2></div>
     <div class="slide-body"><p class="fragment" data-fragment-index="1">One</p>
       <p class="fragment" data-fragment-index="2">Two</p></div></div>
+  <div class="slide"><div class="slide-header"><h2>Detail</h2></div>
+    <div class="slide-body"><p>port <span class="rp-detail" tabindex="0" data-detail="d" data-tip="t">UDP 8472</span></p></div>
+    <div class="rp-detail-store" hidden><section data-detail-id="d" data-title="T" data-text="x"><p>x</p></section></div></div>
 </div>
 <script src="./common/animation-utils.js"></script>
+<script src="./common/deck-overlay.js"></script>
 <script src="./common/slide-framework.js"></script>
 <script src="./common/presenter-view.js"></script>
 <script>const deck = new SlideFramework({{ sidebar: false }});</script>
@@ -185,6 +190,14 @@ class PresenterPreviewTests(unittest.TestCase):
         for bad in ("leaving", "entering", "transition-"):
             self.assertNotIn(bad, cls)
         self.assertEqual(self.pv.evaluate("() => getComputedStyle(document.querySelector('#p-next .slide')).opacity"), "1")
+
+    def test_preview_hides_detail_affordances(self):
+        self.goto(3)
+        res = self.pv.evaluate(
+            "() => { const t = document.querySelector('#p-current .rp-detail'); const a = getComputedStyle(t, '::after');"
+            " return [getComputedStyle(t).textDecorationLine, a.visibility, a.content]; }")
+        self.assertEqual(res[0], "none")
+        self.assertTrue(res[1] == "hidden" or res[2] in ("none", "normal"), res)
 
 
 if __name__ == "__main__":

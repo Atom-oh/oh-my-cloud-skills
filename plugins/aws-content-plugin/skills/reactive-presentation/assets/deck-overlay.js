@@ -16,8 +16,16 @@
   let detailOpener = null;
   let uiScale = 1;
   let ignoreMouseUntil = 0;
+  let agendaHotzoneBlocked = false;
+  let pointerX = null;
+  let pointerY = null;
+  let suppressedFocusTerm = null;
 
   const overlayRoots = [];
+  const navigationKeys = new Set([
+    'ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', ' ',
+    'PageUp', 'PageDown', 'Home', 'End'
+  ]);
 
   function isTypingTarget(target) {
     if (!target) return false;
@@ -28,6 +36,25 @@
 
   function isOverview() {
     return Boolean(deck && deck.classList.contains('overview-mode'));
+  }
+
+  function pointerIsInAgendaHotzone() {
+    const hotzone = document.getElementById('rp-agenda-hotzone');
+    if (!hotzone || pointerX === null || pointerY === null) return false;
+    const rect = hotzone.getBoundingClientRect();
+    return pointerX >= rect.left && pointerX <= rect.right &&
+      pointerY >= rect.top && pointerY <= rect.bottom;
+  }
+
+  function blockAgendaUnderPointer() {
+    agendaHotzoneBlocked = pointerIsInAgendaHotzone();
+  }
+
+  function restoreFocusWithoutTooltip(target) {
+    if (!target || !target.isConnected || !target.focus) return;
+    suppressedFocusTerm = liveTerm(target);
+    target.focus();
+    suppressedFocusTerm = null;
   }
 
   function liveTerm(target) {
@@ -109,7 +136,8 @@
   }
 
   function termIsAvailable(term) {
-    return Boolean(term && liveTerm(term) && !term.closest('.fragment:not(.visible)'));
+    return Boolean(term && liveTerm(term) && !isOverview() &&
+      !term.closest('.fragment:not(.visible)'));
   }
 
   function updateTermState(term) {
@@ -193,6 +221,9 @@
     });
 
     const open = () => {
+      if (agendaHotzoneBlocked || isOverview() ||
+          document.body.classList.contains('rp-detail-open') ||
+          document.body.classList.contains('rp-search-open')) return;
       clearTimeout(agendaCloseTimer);
       updateAgenda();
       document.body.classList.add('rp-agenda-open');
@@ -203,7 +234,10 @@
     };
 
     hotzone.addEventListener('mouseenter', open);
-    hotzone.addEventListener('mouseleave', scheduleClose);
+    hotzone.addEventListener('mouseleave', () => {
+      agendaHotzoneBlocked = false;
+      scheduleClose();
+    });
     agenda.addEventListener('mouseenter', () => clearTimeout(agendaCloseTimer));
     agenda.addEventListener('mouseleave', scheduleClose);
     agenda.addEventListener('click', event => {
@@ -237,13 +271,12 @@
     const needle = query.toLocaleLowerCase();
     const matchAt = lower.indexOf(needle);
     if (matchAt < 0) {
-      container.textContent = ': ' + source;
+      container.textContent = source;
       return;
     }
 
     const start = Math.max(0, matchAt - 42);
     const end = Math.min(source.length, matchAt + query.length + 68);
-    container.appendChild(document.createTextNode(': '));
     if (start > 0) container.appendChild(document.createTextNode('...'));
     container.appendChild(document.createTextNode(source.slice(start, matchAt)));
     const mark = document.createElement('mark');
@@ -270,6 +303,25 @@
     ).slice(0, 20);
   }
 
+  function updateSearchSelection(index, scroll = true) {
+    const rows = Array.from(document.querySelectorAll('#rp-search-results .rp-search-row'));
+    const input = document.getElementById('rp-search-input');
+    if (!rows.length) {
+      selectedResult = 0;
+      if (input) input.removeAttribute('aria-activedescendant');
+      return;
+    }
+
+    selectedResult = Math.max(0, Math.min(index, rows.length - 1));
+    rows.forEach((row, rowIndex) => {
+      const selected = rowIndex === selectedResult;
+      row.classList.toggle('is-selected', selected);
+      row.setAttribute('aria-selected', selected ? 'true' : 'false');
+    });
+    if (input) input.setAttribute('aria-activedescendant', rows[selectedResult].id);
+    if (scroll) rows[selectedResult].scrollIntoView({ block: 'nearest' });
+  }
+
   function renderSearch() {
     const input = document.getElementById('rp-search-input');
     const resultsEl = document.getElementById('rp-search-results');
@@ -277,41 +329,40 @@
     const query = input.value.trim();
     resultsEl.replaceChildren();
     selectedResult = 0;
-    if (!query) return;
+    if (!query) {
+      input.removeAttribute('aria-activedescendant');
+      return;
+    }
 
     const results = matchingResults(query);
     results.forEach((result, index) => {
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'rp-search-row';
+      row.id = 'rp-search-option-' + result.item.index;
       row.dataset.goto = result.item.index;
-      row.classList.toggle('is-selected', index === selectedResult);
-      row.setAttribute('aria-selected', index === selectedResult ? 'true' : 'false');
+      row.setAttribute('role', 'option');
+      row.setAttribute('aria-selected', 'false');
 
       const meta = document.createElement('span');
       meta.className = 'rp-search-meta';
       meta.textContent = result.item.blockTitle + ' / ' + (result.item.index + 1);
       const title = document.createElement('strong');
       title.className = 'rp-search-title';
-      title.textContent = result.item.title;
+      title.textContent = result.item.title + ':';
       const snippet = document.createElement('span');
       snippet.className = 'rp-search-snippet';
       appendHighlightedText(snippet, result.source, query);
       row.append(meta, title, snippet);
       resultsEl.appendChild(row);
     });
+    updateSearchSelection(0, false);
   }
 
   function moveSearchSelection(delta) {
     const rows = Array.from(document.querySelectorAll('#rp-search-results .rp-search-row'));
     if (!rows.length) return;
-    selectedResult = (selectedResult + delta + rows.length) % rows.length;
-    rows.forEach((row, index) => {
-      const selected = index === selectedResult;
-      row.classList.toggle('is-selected', selected);
-      row.setAttribute('aria-selected', selected ? 'true' : 'false');
-    });
-    rows[selectedResult].scrollIntoView({ block: 'nearest' });
+    updateSearchSelection((selectedResult + delta + rows.length) % rows.length);
   }
 
   function activateSearchSelection() {
@@ -319,7 +370,7 @@
     const row = rows[selectedResult];
     if (!row) return;
     const index = Number(row.dataset.goto);
-    closeSearch();
+    closeSearch(false);
     framework.goTo(index);
   }
 
@@ -336,6 +387,10 @@
     input.type = 'search';
     input.autocomplete = 'off';
     input.placeholder = 'Search slides';
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-controls', 'rp-search-results');
+    input.setAttribute('aria-autocomplete', 'list');
     const results = document.createElement('div');
     results.id = 'rp-search-results';
     results.setAttribute('role', 'listbox');
@@ -343,10 +398,16 @@
     root.appendChild(dialog);
 
     input.addEventListener('input', renderSearch);
+    results.addEventListener('mouseover', event => {
+      const row = event.target.closest('.rp-search-row');
+      if (!row) return;
+      const rows = Array.from(results.querySelectorAll('.rp-search-row'));
+      updateSearchSelection(rows.indexOf(row), false);
+    });
     results.addEventListener('click', event => {
       const row = event.target.closest('.rp-search-row');
       if (!row) return;
-      closeSearch();
+      closeSearch(false);
       framework.goTo(Number(row.dataset.goto));
     });
     root.addEventListener('pointerdown', event => {
@@ -358,21 +419,27 @@
     if (isOverview()) return;
     const input = document.getElementById('rp-search-input');
     if (!input) return;
-    previousFocus = document.activeElement;
+    previousFocus = document.body.classList.contains('rp-detail-open') &&
+      termIsAvailable(detailOpener) ? detailOpener : document.activeElement;
     closeAgenda();
-    closeDetail();
+    closeDetail(false);
     document.body.classList.add('rp-search-open');
+    input.setAttribute('aria-expanded', 'true');
     input.value = '';
     renderSearch();
     input.focus();
   }
 
-  function closeSearch() {
+  function closeSearch(restoreFocus = true) {
     if (!document.body.classList.contains('rp-search-open')) return;
     document.body.classList.remove('rp-search-open');
-    if (previousFocus && previousFocus.isConnected && previousFocus.focus) {
-      previousFocus.focus();
+    const input = document.getElementById('rp-search-input');
+    if (input) {
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
     }
+    blockAgendaUnderPointer();
+    if (restoreFocus) restoreFocusWithoutTooltip(previousFocus);
     previousFocus = null;
   }
 
@@ -493,7 +560,10 @@
     }
     const opener = detailOpener;
     detailOpener = null;
-    if (wasOpen && restoreFocus && termIsAvailable(opener)) opener.focus();
+    if (wasOpen) blockAgendaUnderPointer();
+    if (wasOpen && restoreFocus && termIsAvailable(opener)) {
+      restoreFocusWithoutTooltip(opener);
+    }
   }
 
   function bindDetailEvents() {
@@ -509,6 +579,10 @@
     });
     deck.addEventListener('focusin', event => {
       const term = liveTerm(event.target);
+      if (term && term === suppressedFocusTerm) {
+        hideTooltip();
+        return;
+      }
       if (termIsAvailable(term)) showTooltip(term);
     });
     deck.addEventListener('focusout', event => {
@@ -549,6 +623,7 @@
 
   function handleGlobalKeydown(event) {
     if (event.isComposing || event.keyCode === 229) return;
+    if (navigationKeys.has(event.key)) hideTooltip();
 
     if (document.body.classList.contains('rp-search-open')) {
       if (event.key === 'Escape') {
@@ -575,8 +650,7 @@
         closeDetail();
         return;
       }
-      if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', ' ', 'PageUp', 'PageDown']
-        .includes(event.key)) {
+      if (navigationKeys.has(event.key)) {
         closeDetail();
       }
     }
@@ -608,6 +682,17 @@
     updateAllTermStates();
     updateOverlayScale();
     bindDetailEvents();
+    document.addEventListener('pointermove', event => {
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      if (agendaHotzoneBlocked && !pointerIsInAgendaHotzone()) {
+        agendaHotzoneBlocked = false;
+      }
+    });
+    document.addEventListener('pointerdown', event => {
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+    }, true);
     document.addEventListener('keydown', handleGlobalKeydown);
     document.addEventListener('rp:slidechange', () => {
       closeDetail();

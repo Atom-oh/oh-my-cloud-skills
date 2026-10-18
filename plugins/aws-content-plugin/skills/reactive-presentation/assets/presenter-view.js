@@ -220,6 +220,12 @@ ${styleSheets}
   .slide-scaler .nav-hint {
     display: none !important;
   }
+  .slide-scaler .rp-detail {
+    text-decoration: none !important;
+  }
+  .slide-scaler .rp-detail::after {
+    visibility: hidden !important;
+  }
 
   /* === Splitters === */
   .splitter-v {

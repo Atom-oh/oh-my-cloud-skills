@@ -453,6 +453,22 @@ class RemarpDetailContractTests(unittest.TestCase):
         src = "## T\n\nan unpaired ` backtick\n\nthen [x]{detail=nope} and `code`\n"
         self.assertIn(("CRITICAL", "DETAIL_REF"), self.rules(self.validate_text(src)))
 
+    def test_detail_ref_ignores_script_and_css_bodies(self):
+        src = ('## T\n\nbody\n\n:::script\ndocument.querySelector(\'[data-detail="x"]\');\n:::\n\n'
+               ':::css\n[data-detail="y"] { outline: 0; }\n:::\n')
+        self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(src))})
+
+    def test_single_file_blocks_get_their_own_titles(self):
+        src = ("---\nremarp: true\ntitle: 덱\nblocks:\n  - name: a\n    title: \"A부\"\n  - name: b\n    title: \"B부\"\n---\n"
+               "<!-- block: a -->\n## S1\n\n---\n<!-- block: b -->\n## S2\n")
+        source = self.write("multi.md", src)
+        result = self.cli("build", source)
+        self.assertEqual(0, result.returncode, result.stderr + result.stdout)
+        titles = set()
+        for html_file in self.root.rglob("*.html"):
+            titles.update(re.findall(r'data-block-title="([^"]*)"', html_file.read_text(encoding="utf-8")))
+        self.assertTrue({"A부", "B부"} <= titles, titles)
+
 
 if __name__ == "__main__":
     unittest.main()

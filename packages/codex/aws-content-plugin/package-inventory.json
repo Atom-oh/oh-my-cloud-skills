@@ -468,11 +468,11 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-overlay.css": {
-      "sha256": "252ca1ce777e832d9068b88f683122b74fec31af6fcd85d2bfa0aceedbc58ef7",
+      "sha256": "4ca51c4536dba17c648deb1a2c86f92ac2c1bd4d55bbf71fc4a6872bc74267ee",
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-overlay.js": {
-      "sha256": "b37fe5b795f880fc7216ee4d537267b39cae903827cafb67065d1937b6879ba8",
+      "sha256": "53d6d56eaee42154ae371ca26ab810f16065545631addf205674fc0066e09f57",
       "executable": false
     },
     "skills/reactive-presentation/assets/design-tokens.css": {
@@ -492,7 +492,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
-      "sha256": "0b18a1facc60b3bc965370f1745a18e00737841bff992fdc98ecf0efd23b53c1",
+      "sha256": "34334e30d3b4b9773c569285239cbd3720307ac7bf30089cbc54f745f3802da1",
       "executable": false
     },
     "skills/reactive-presentation/assets/quiz-component.js": {
@@ -17368,7 +17368,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {
-      "sha256": "739c568e2fb4d8fc07a81d96a3163dc1721b2b4849efdaedcbd8b4f5aa23553b",
+      "sha256": "5ddab8343e2490920fdff55aa8394dbc7a5fbc3ca8b3a77871d7ad996e1c4c0e",
       "executable": false
     },
     "skills/slide-fix/SKILL.md": {

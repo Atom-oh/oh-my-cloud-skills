@@ -179,6 +179,48 @@ def _derive_block_title(config: Dict[str, Any], source: str, fallback: str) -> s
     return heading.group(1).strip() if heading else fallback
 
 
+def _configured_block_title(config: Dict[str, Any], block_name: str) -> Optional[str]:
+    """Return the title for a named entry in the frontmatter blocks list."""
+    blocks = config.get('blocks', []) if isinstance(config, dict) else []
+    if not isinstance(blocks, list):
+        return None
+    for block in blocks:
+        if not isinstance(block, dict) or block.get('name') != block_name:
+            continue
+        title = block.get('title')
+        if title not in (None, ''):
+            return str(title)
+    return None
+
+
+def _remove_remarp_blocks(text: str, block_types) -> str:
+    """Remove selected colon-fenced Remarp blocks, including their bodies."""
+    selected = {str(block_type).lower() for block_type in block_types}
+    output: List[str] = []
+    skipped_colons: List[int] = []
+    opener = re.compile(r'^(:{3,})\s*([\w][\w-]*)(?:\s.*)?$')
+    closer = re.compile(r'^(:{3,})\s*$')
+
+    for line in text.splitlines(keepends=True):
+        stripped = line.rstrip('\r\n')
+        open_match = opener.match(stripped)
+        close_match = closer.match(stripped)
+
+        if skipped_colons:
+            if close_match and len(close_match.group(1)) == skipped_colons[-1]:
+                skipped_colons.pop()
+            elif open_match:
+                skipped_colons.append(len(open_match.group(1)))
+            continue
+
+        if open_match and open_match.group(2).lower() in selected:
+            skipped_colons.append(len(open_match.group(1)))
+            continue
+        output.append(line)
+
+    return ''.join(output)
+
+
 def _detail_plain_text(markdown: str) -> str:
     """Convert detail Markdown to one searchable text line per source line."""
     output = []
@@ -5613,16 +5655,29 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
 
     detail_source = slide.raw_source or slide.content
     detail_source, _detail_fences = _mask_code_fences(detail_source)
-    detail_source = RemarpParser.NOTES_PATTERN.sub('', detail_source)
+    detail_source = _remove_remarp_blocks(
+        detail_source, ('script', 'css', 'notes'))
     detail_source = RemarpParser.LEGACY_NOTES_PATTERN.sub('', detail_source)
     detail_source, _detail_spans = _mask_code_spans(detail_source)
     detail_refs = re.findall(r'\{detail=([^}]*)\}', detail_source)
-    malformed_refs = sorted({
+    malformed_refs = {
         ref for ref in detail_refs
         if not re.fullmatch(r'[A-Za-z0-9_-]+', ref)
-    })
+    }
+
+    raw_detail_values: List[str] = []
+    for match in re.finditer(
+            r'\bdata-detail\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+)|(?=>))',
+            detail_source, re.IGNORECASE):
+        raw_detail_values.append(next(
+            (value for value in match.groups() if value is not None), ''))
+    malformed_refs.update(
+        value for value in raw_detail_values
+        if not re.fullmatch(r'[A-Za-z0-9_-]+', value)
+    )
     if malformed_refs:
-        shown_refs = ', '.join(ref if ref else '(empty)' for ref in malformed_refs)
+        shown_refs = ', '.join(
+            ref if ref else '(empty)' for ref in sorted(malformed_refs))
         add('CRITICAL', 'DETAIL_REF',
             f'Malformed detail id: {shown_refs}',
             'Use only letters, numbers, underscores, and hyphens in detail ids')
@@ -5630,9 +5685,10 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
         ref for ref in detail_refs
         if re.fullmatch(r'[A-Za-z0-9_-]+', ref)
     }
-    referenced.update(re.findall(
-        r'\bdata-detail\s*=\s*["\']([A-Za-z0-9_-]+)["\']',
-        detail_source))
+    referenced.update(
+        value for value in raw_detail_values
+        if re.fullmatch(r'[A-Za-z0-9_-]+', value)
+    )
     missing = sorted(referenced - set(detail_ids))
     if missing:
         add('CRITICAL', 'DETAIL_REF',
@@ -6068,8 +6124,10 @@ def main():
                 built = []
                 for block_name, slides in blocks.items():
                     html_gen.block_key = block_name
-                    html_gen.block_title = _derive_block_title(
-                        config, content, input_path.stem)
+                    html_gen.block_title = (
+                        _configured_block_title(config, block_name)
+                        or _derive_block_title(config, content, input_path.stem)
+                    )
                     html_content = html_gen.generate_block(block_name, slides, config,
                                                            source_file=input_path.name)
                     output_file = output_dir / f'{block_name}.html'
