@@ -53,8 +53,21 @@ const ExportUtils = {
   COMMON_FILES: [
     'design-tokens.css', 'theme.css', 'theme-override.css', 'slide-framework.js',
     'slide-renderer.js', 'presenter-view.js', 'animation-utils.js', 'quiz-component.js',
-    'export-utils.js'
+    'export-utils.js', 'deck-overlay.js', 'deck-overlay.css',
+    'deck-detail.js', 'deck-detail.css', 'deck-nav.js', 'deck-nav.css'
   ],
+
+  CAPTURE_HIDE_CSS: '.rp-overlay-ui { display:none !important } ' +
+    '.rp-detail { text-decoration:none !important } ' +
+    '.rp-detail::after { visibility:hidden !important }',
+
+  _installCaptureStyle: function(doc) {
+    if (!doc || doc.getElementById('rp-capture-hide')) return;
+    var style = doc.createElement('style');
+    style.id = 'rp-capture-hide';
+    style.textContent = this.CAPTURE_HIDE_CSS;
+    doc.head.appendChild(style);
+  },
 
   /** Discover block HTML files from .block-card anchor links on the current page */
   getBlockFiles: function() {
@@ -126,6 +139,9 @@ const ExportUtils = {
         '<title>' + this._escapeHTML(title) + ' - PDF Export</title>\n' +
         '<link rel="stylesheet" href="' + commonPath + 'theme.css">\n' +
         '<link rel="stylesheet" href="' + commonPath + 'theme-override.css">\n' +
+        '<link rel="stylesheet" href="' + commonPath + 'deck-overlay.css">\n' +
+        '<link rel="stylesheet" href="' + commonPath + 'deck-detail.css">\n' +
+        '<link rel="stylesheet" href="' + commonPath + 'deck-nav.css">\n' +
         '<style>\n' +
         '@page { size: 16in 9in landscape; margin: 0; }\n' +
         'html, body { margin: 0; padding: 0; background: #000; overflow: visible !important; display: block !important; height: auto !important; }\n' +
@@ -151,6 +167,7 @@ const ExportUtils = {
         '}\n' +
         '.canvas-controls { display: none !important; }\n' +
         '.progress-bar, .slide-counter, .nav-hint, .slide-logo, .slide-footer { display: none !important; }\n' +
+        this.CAPTURE_HIDE_CSS + '\n' +
         allStyles + '\n' +
         '</style>\n' +
         '</head>\n<body>\n' +
@@ -380,6 +397,8 @@ const ExportUtils = {
    * This puts every slide into its "finished" visual state.
    */
   _completeAllAnimations: function(doc) {
+    this._installCaptureStyle(doc);
+
     // 1. Reveal all fragments
     doc.querySelectorAll('.fragment').forEach(function(el) {
       el.classList.add('visible');
@@ -465,6 +484,21 @@ const ExportUtils = {
       .trim();
   },
 
+  _detailNotesFromSlide: function(slide, lang) {
+    var entries = [];
+    slide.querySelectorAll('.rp-detail-store section').forEach(function(section) {
+      var title = String(section.getAttribute('data-title') || '').trim();
+      var text = String(section.getAttribute('data-text') || '').trim();
+      if (!title && !text) return;
+      entries.push([title, text].filter(Boolean).join('\n'));
+    });
+    if (!entries.length) return '';
+    var heading = String(lang || '').toLowerCase().split('-')[0] === 'ko'
+      ? '[디테일]'
+      : '[Details]';
+    return heading + '\n' + entries.join('\n\n');
+  },
+
   /**
    * Extract theme info from a block HTML for PPTX metadata.
    * Reads __remarpTheme and CSS custom properties.
@@ -515,6 +549,7 @@ const ExportUtils = {
    * The html2canvas library must be loaded in the PARENT window.
    */
   _captureSlide: async function(slideEl, iframeWindow, scale) {
+    this._installCaptureStyle(slideEl.ownerDocument);
     // html2canvas is loaded in the parent window; we need to pass the element
     // html2canvas can work cross-frame if same-origin
     var canvas = await html2canvas(slideEl, {
@@ -600,6 +635,17 @@ const ExportUtils = {
 
           var pptxSlide = pres.addSlide();
           var slideHeading = slideEl.querySelector('h1, h2');
+          var noteRaw = blockNotes[j + 1] || blockNotes[String(j + 1)] || '';
+          var noteText = noteRaw ? self._notesToPlainText(noteRaw) : '';
+          var headingText = slideHeading ? slideHeading.textContent.trim() : '';
+          var detailText = self._detailNotesFromSlide(
+            slideEl,
+            iframeDoc.documentElement.lang
+          );
+          var combined = headingText && noteText
+            ? headingText + '\n\n' + noteText
+            : (noteText || headingText);
+          if (detailText) combined = combined ? combined + '\n\n' + detailText : detailText;
 
           try {
             var dataUrl = await self._captureSlide(slideEl, iframe.contentWindow, options.scale);
@@ -609,17 +655,6 @@ const ExportUtils = {
               x: 0, y: 0,
               w: '100%', h: '100%'
             });
-
-            // Speaker notes: presenter notes first, heading as fallback/prefix
-            var noteRaw = blockNotes[j + 1] || blockNotes[String(j + 1)] || '';
-            var noteText = noteRaw ? self._notesToPlainText(noteRaw) : '';
-            var headingText = slideHeading ? slideHeading.textContent.trim() : '';
-            var combined = headingText && noteText
-              ? headingText + '\n\n' + noteText
-              : (noteText || headingText);
-            if (combined) {
-              pptxSlide.addNotes(combined);
-            }
           } catch (captureErr) {
             console.warn('Capture failed for slide ' + totalSlides + ', using text fallback:', captureErr);
             // Fallback: text-based slide
@@ -630,6 +665,7 @@ const ExportUtils = {
             }
             pptxSlide.background = { color: '0F1B2A' };
           }
+          if (combined) pptxSlide.addNotes(combined);
         }
 
         // Clean up iframe
