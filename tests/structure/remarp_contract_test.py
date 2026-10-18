@@ -400,6 +400,31 @@ class RemarpDetailContractTests(unittest.TestCase):
         self.assertIn("em", text)
         self.assertNotIn("*", text)
 
+    def test_detail_ref_ignores_urls_and_escaped_tags_in_prose(self):
+        src = ('## T\n\nSee https://example.com/?data-detail="u" and '
+               '&lt;span data-detail="esc"&gt; in prose.\n')
+        self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(src))})
+
+    def test_detail_ref_url_strip_keeps_code_exclusion_and_adjacent_terms(self):
+        in_pre = '## T\n\n:::html\n<pre>data-detail="p" https://example.com/x</pre>\n:::\n'
+        self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(in_pre))})
+        for src in ('## T\n\nhttps://example.com/[t]{detail=nope}\n',
+                    '## T\n\n&lt;b&gt;[t]{detail=nope}&lt;/b&gt;\n',
+                    '## T\n\nUse &lt;span [class]{detail=missing}&gt; in the example.\n',
+                    '## T\n\nSee https://example.com/?q=[t]{detail=nope2}\n'):
+            with self.subTest(src=src):
+                self.assertIn(("CRITICAL", "DETAIL_REF"), self.rules(self.validate_text(src)))
+
+    def test_title_slide_meta_skips_detail_placeholder(self):
+        src = (FRONT + '@type: title\n# Deck\n\nPresenter Name\n\n'
+               '[x]{detail=d}\n\n:::detail d "t"\nbody\n:::\n')
+        html = self.build_one(src)
+        self.assertNotIn("__BLOCK:", html)
+
+    def test_detail_plain_text_tracks_opening_fence(self):
+        text = remarp._detail_plain_text("````\n```\n*keep_this*\n```\n````\nafter *em*")
+        self.assertEqual(text.split("\n"), ["```", "*keep_this*", "```", "after em"])
+
     def test_merged_index_marks_blocks(self):
         self.write("_presentation.md", "---\nremarp: true\ntitle: 덱\n---\n")
         self.write("01-a.md", "---\nremarp: true\ntitle: 개요\n---\n## S1\n")
@@ -500,7 +525,9 @@ class RemarpDetailContractTests(unittest.TestCase):
         examples = ('<!-- <span data-detail="old">x</span> -->\n'
                     '<code>&lt;span data-detail="ex"&gt;</code>\n'
                     '<pre>data-detail="p"</pre>\n'
-                    '<pre>[x]{detail=inpre}</pre>\n')
+                    '<pre>[x]{detail=inpre}</pre>\n'
+                    '<script>document.querySelector(\'[data-detail="js"]\')</script>\n'
+                    '<style>[data-detail="css"] { color: red; }</style>\n')
         clean = '## T\n\n:::html\n' + examples + ':::\n'
         self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(clean))})
         real = ('## T\n\n:::html\n' + examples

@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-18-reactive-nav-detail-design.md`
 
+> **Status note (2026-10-18, after implementation):** the single `deck-overlay.js` / `deck-overlay.css` pair described below shipped as three module pairs: `deck-overlay` (core, `window.DeckOverlay` and module registry), `deck-detail` (tooltip and side panel) and `deck-nav` (agenda and search). `reactive_overlay_test.py` became `reactive_overlay_fixture.py` plus `reactive_detail_test.py` and `reactive_nav_test.py`. The tasks below record the original intent.
+
 ## Global Constraints
 
 - Skill root: `plugins/aws-content-plugin/skills/reactive-presentation` (written `RP/` in prose; file lists use full paths).

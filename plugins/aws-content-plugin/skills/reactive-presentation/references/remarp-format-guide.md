@@ -3235,6 +3235,10 @@ paragraphs, lists, code and tables.
 nested detail declarations, and references without a matching block. Detail IDs
 are slide-scoped, so the same ID may be reused on another slide.
 
+Detail content is hidden on the slide but not private. PPTX export appends each
+slide's details to its speaker notes under a `[Details]` (or `[디테일]`) heading,
+one `- Title: text` line per block, so keep it fit for a distributed file.
+
 Inside `:::html`, use the compiled term form directly and keep the detail block
 outside the HTML block:
 

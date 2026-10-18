@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `SENTENCE_RUNON` warning to reactive-presentation guidance. Card descriptions
   now use one claim line with an optional reason line, with longer explanations
   moved to `:::detail`.
+- Remarp now HTML-escapes inline code bodies, so an inline code span containing
+  an angle-bracketed word no longer breaks markup. A deck that hand-wrote an
+  HTML entity inside inline code now shows the entity literally.
 - Move co-agent's default `codex` panel model to `openai.gpt-6.1-sol` with a
   878K `context_limit` (was `openai.gpt-5.6-sol`, 272K); pr-autofix's Codex
   escalation rung follows.

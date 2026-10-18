@@ -181,7 +181,7 @@ _DENSITY_JS = r"""
     if (hasBlockChild) continue;
 
     const text = el.textContent;
-    const boundaries = [...text.matchAll(/[.?!] +(?=\S)/g)];
+    const boundaries = [...text.matchAll(/[.?!]\s+(?=\S)/g)];
     if (boundaries.length < 1) continue;
 
     const rects = [];

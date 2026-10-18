@@ -90,6 +90,11 @@ class SentenceRunonTests(unittest.TestCase):
         self.assertEqual({1, 2}, {h["slide"] for h in hits}, hits)
         self.assertTrue(all(h["severity"] == "WARN" for h in hits))
 
+    def test_runon_counts_newline_separated_sentences(self):
+        body = RUNON_2.replace("합집합입니다. ", "합집합입니다.\n")
+        hits = self.runon([slide("A", f'<div class="card-desc" style="width:560px">{body}</div>')])
+        self.assertEqual({1}, {h["slide"] for h in hits}, hits)
+
     def test_runon_ignores_split_lines_and_single_sentence(self):
         self.assertEqual([], self.runon([slide("A", SPLIT), slide("B", ONE_SENTENCE)]))
 
