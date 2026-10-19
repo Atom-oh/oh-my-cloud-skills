@@ -117,6 +117,7 @@ python3 {plugin-dir}/skills/reactive-presentation/scripts/remarp_to_slides.py va
 - `DETAIL_REF` is CRITICAL and must be fixed before build.
 - `EM_DASH` findings must be fixed in the authoring loop even though they are WARNING.
 - `AI_TONE` warnings require a copy review before build.
+- `AUDIENCE_TONE` findings must be removed: never tell the audience when they may not ask questions.
 - `SENTENCE_RUNON` comes from `measure_deck.py`; split the claim and reason or move the reason to `:::detail`.
 
 The complete validation rule list and each rule's criteria are owned by the

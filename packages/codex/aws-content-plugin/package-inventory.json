@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "aws-content-plugin",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "5e9cba0245253c77903bd01cccdb9a5675ff0571c45f7355c6666a2fd7b49721",
+      "sha256": "acea5da9984eef8827c17248fc5afa07083ead9636fea6f2d7bd8f8652e51a3e",
       "executable": false
     },
     "CLAUDE.md": {
@@ -24,7 +24,7 @@
       "executable": false
     },
     "agents/content-review-agent.md": {
-      "sha256": "4c76cf55fb706f094f6950746567b1c9c5d30ed7e4e9aef7978807c2002e97f3",
+      "sha256": "e0d87033f6968888b17999c91bff5385f44e06ac7114dba7cce8c50a20471a98",
       "executable": false
     },
     "agents/document-agent.md": {
@@ -40,7 +40,7 @@
       "executable": false
     },
     "agents/reactive-presentation-agent.md": {
-      "sha256": "1cd65c29515d9c8159c874ea8330de1e2cbb5ce40a89da1413f0c88a24b98074",
+      "sha256": "f53e57f211c90e946eb03bfc7f8f1a03877357782de4a28de0c54215c3b0423a",
       "executable": false
     },
     "agents/workshop-agent.md": {
@@ -17292,7 +17292,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/authoring-rules.md": {
-      "sha256": "661c4e5daf635e7718cd6360faea9a53ceedd394f9906e51f6a4136c905ce46f",
+      "sha256": "82a2f8f56483ab97d7638fc449b33a714bfe71aadd2283963d2338d9815c0682",
       "executable": false
     },
     "skills/reactive-presentation/references/aws-icons-guide.md": {
@@ -17344,11 +17344,11 @@
       "executable": false
     },
     "skills/reactive-presentation/references/remarp-format-guide.md": {
-      "sha256": "424120c80ddb07ea4e93283b239745380332e09ab0a7533c9b1805167afa9f03",
+      "sha256": "93cbb6988581b52268d0adb60ffb97292681e3b2b6664171947054047f28285c",
       "executable": false
     },
     "skills/reactive-presentation/references/slide-patterns.md": {
-      "sha256": "3966cd9206305e095816401fc9e4f7bf8135659a7c6ed97411025cc2f7c3db78",
+      "sha256": "e0395cfc05bcdaa8f2f3e989a3be9f9998fb6fe0f9db1bcf7205caf41f05817a",
       "executable": false
     },
     "skills/reactive-presentation/scripts/archify_icons.py": {
@@ -17384,7 +17384,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {
-      "sha256": "d916bff0d4f882cefbdcfed32dd11addb61b51d18c24f4d178609034115ee75a",
+      "sha256": "9052a77aab1a092b8038dd208894af18da8b930ec43b6b6e4e740c555bce0237",
       "executable": false
     },
     "skills/slide-fix/SKILL.md": {

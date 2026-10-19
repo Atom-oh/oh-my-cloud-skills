@@ -91,7 +91,7 @@ The port carries VXLAN traffic between nodes.
 
 ## 문장 품질 검사 {#copy-gates}
 
-`EM_DASH`와 `AI_TONE`은 소스 검증 경고이며 작성 단계에서 반드시
+`EM_DASH`, `AI_TONE`, `AUDIENCE_TONE`은 소스 검증 경고이며 작성 단계에서 반드시
 수정합니다. `SENTENCE_RUNON`은 렌더링 측정 경고입니다. 카드 설명은 주장
 한 줄과 선택적인 이유 한 줄로 제한하고 추가 설명은 `:::detail`에 둡니다.
 

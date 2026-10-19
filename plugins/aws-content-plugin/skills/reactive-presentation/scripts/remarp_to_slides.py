@@ -34,6 +34,11 @@ AI_TONE_LABELS = ("한 줄 정리", "핵심 정리", "핵심:", "Key takeaway")
 AI_TONE_NOTE_CLICHES = ("꼭 기억해 두세요", "중요한 포인트는", "결론적으로")
 AI_TONE_MAX_ARROWS = 3
 AI_TONE_MAX_LABEL_REPEATS = 2
+# Curt instructions that police when the audience may ask questions.
+AUDIENCE_TONE_PATTERN = re.compile(
+    r'질문[은을]\s*(?:[^.]{0,20}(?:마지막|나중|끝|종료|이후|후에)[^.]{0,20}받겠|받지\s*않|삼가|자제)'
+    r"|(?<!\bnot\s)(?<!n't\s)\b(?:hold|save)\s+(?:all\s+|your\s+)*questions\b",
+    re.IGNORECASE)
 
 _EM_DASH_PATTERN = re.compile(
     r'\u2014|\u00b7|\u30fb|&mdash;|&#8212;|&#x2014;|&middot;|&#183;|&#xb7;',
@@ -5528,6 +5533,12 @@ def _validate_deck_tone(
             add(entry, 'EM_DASH',
                 'Authored copy contains prohibited dash or middle-dot punctuation',
                 'Use a comma, colon, parentheses, or separate sentences')
+
+        audience_match = AUDIENCE_TONE_PATTERN.search(authored_text)
+        if audience_match:
+            add(entry, 'AUDIENCE_TONE',
+                f'Copy tells the audience when not to ask: {audience_match.group(0)}',
+                'Drop the line, or invite questions warmly (e.g. a Q&A slot in the agenda)')
 
         arrow_count = visible_text.count('\u2192')
         if arrow_count > AI_TONE_MAX_ARROWS:

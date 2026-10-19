@@ -110,6 +110,7 @@ Finding consolidation (still a finding — just recorded once, not once per occu
 ### 8. Readability Analysis
 - Can one key message per slide/section be grasped within a few seconds — deduct points for walls of text, overcrowded bullets, or a title that swallows the body
 - Are sentences a length that can be read in one pass (flag long compound Korean sentences and English run-ons)
+- Do sibling cards or callouts listing parallel items share one color? Different success/warning/info colors on options with no stated category imply a ranking; flag as a Warning
 
 ### 9. Accessibility Check (WCAG 2.1)
 - Color contrast ≥4.5:1 (AA standard)

@@ -1,10 +1,10 @@
 {
   "host": "claude",
   "plugin": "kiro",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "5d15e2cf82ad2a3c82ff85e59858bd7e0cf8c35efddc4869eeb32ce4a4a38ddd",
+      "sha256": "6bb9abeab2e1ae2af805562ac89ad17e483b37f9c6a7a5178b167b905b365fb2",
       "executable": false
     },
     "CLAUDE.md": {

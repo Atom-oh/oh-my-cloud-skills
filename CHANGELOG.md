@@ -13,6 +13,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.4] - 2026-10-19
+
+### Added
+
+- Add the Remarp `AUDIENCE_TONE` warning for slide copy or speaker notes that
+  tell the audience when not to ask questions, such as
+  `질문은 마지막에 한 번에 받겠습니다` or `hold your questions`. The agenda
+  examples in the format guide and slide patterns no longer model that line; they
+  announce a Q&A slot instead.
+- Add a reactive-presentation color rule: sibling cards or callouts that list
+  parallel items share one variant, because a success, warning or info color on
+  one option reads as a verdict. Distinct variants are kept for a category the
+  card title states. The authoring-rules tab template no longer mixes variants
+  on parallel items, and content-review-agent flags the pattern under
+  Readability.
+
+### Changed
+
+- Bump all plugin manifests and both marketplaces to 3.0.4.
+
+## [3.0.3] - 2026-10-18
+
 ### Changed
 
 - Add `EM_DASH` and `AI_TONE` source warnings plus the rendered
@@ -592,7 +614,10 @@ migration of configurations that selected it. All eight plugins share this versi
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.4...HEAD
+[3.0.4]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.3...v3.0.4
+[3.0.3]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.0...v3.0.3
+[3.0.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.17.0...v2.0.0
 [1.17.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v1.15.0...v1.16.0

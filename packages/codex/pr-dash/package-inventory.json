@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "pr-dash",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "1763410d6e35ac56f5634681738acdbbf5fe353435c1d4a0fa3fa3f8d048ffdb",
+      "sha256": "77f1c914d529f6365656bd3b1e7c32b27b86649db6cfe1141c57f2266944285c",
       "executable": false
     },
     ".gitignore": {

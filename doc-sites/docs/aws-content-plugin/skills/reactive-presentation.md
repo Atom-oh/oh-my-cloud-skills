@@ -89,7 +89,7 @@ click or Enter and closes with Esc, an outside click, or a slide change.
 
 ## Copy gates {#copy-gates}
 
-`EM_DASH` and `AI_TONE` are source validation warnings that must be resolved in
+`EM_DASH`, `AI_TONE` and `AUDIENCE_TONE` are source validation warnings that must be resolved in
 the authoring loop. `SENTENCE_RUNON` is a rendered measurement warning. Keep each
 card description to one claim line plus an optional reason line, then put
 additional explanation in `:::detail`.

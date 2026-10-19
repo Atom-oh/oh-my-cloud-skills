@@ -338,7 +338,7 @@ Session agenda with numbered dots, horizontal timeline, time labels, and break m
 - Break (5분)
 3. 구현 전략과 Best Practices (30분)
 
-> 질문은 각 Block 종료 시에 받겠습니다.
+> 각 Block이 끝날 때마다 Q&A 시간이 있습니다.
 ```
 
 **Rules:**
