@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `질문은 마지막에 한 번에 받겠습니다` or `hold your questions`. The agenda
   examples in the format guide and slide patterns no longer model that line; they
   announce a Q&A slot instead.
+- Add a reactive-presentation color rule: sibling cards or callouts that list
+  parallel items share one variant, because a success, warning or info color on
+  one option reads as a verdict. Distinct variants are kept for a category the
+  card title states. The authoring-rules tab template no longer mixes variants
+  on parallel items, and content-review-agent flags the pattern under
+  Readability.
 
 ### Changed
 

@@ -24,7 +24,7 @@
       "executable": false
     },
     "agents/content-review-agent.md": {
-      "sha256": "2e15b8fb4c4189e5cd3241af01db90ff27eeb66f484d2ab866041e70e344eb3d",
+      "sha256": "35f69ca2f5e8218b90120f6a983a82e117462fd219fa9152e3c93157b08f11df",
       "executable": false
     },
     "agents/document-agent.md": {
@@ -17292,7 +17292,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/authoring-rules.md": {
-      "sha256": "ac78d4c25b102fca027ddc6d41692bb004877a67a60b74e002142d0bbc397835",
+      "sha256": "82a2f8f56483ab97d7638fc449b33a714bfe71aadd2283963d2338d9815c0682",
       "executable": false
     },
     "skills/reactive-presentation/references/aws-icons-guide.md": {

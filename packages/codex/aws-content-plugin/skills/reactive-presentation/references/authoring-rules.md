@@ -87,6 +87,7 @@ Each tell is enforced by a **lint rule id** (machine-detected) or by the review 
 | More than three arrows on one slide, repeated formula labels, or note cliches | Repeats predictable AI writing patterns instead of making a specific claim | Use descriptive labels, direct claims and natural transitions | `AI_TONE` (lint) |
 | Telling the audience when they may not ask (`질문은 마지막에 한 번에 받겠습니다`) | Reads as curt and gatekeeping toward the audience | Omit it, or show Q&A as a scheduled slot and invite questions | `AUDIENCE_TONE` (lint) |
 | Multiple sentences wrapped into one long card description | Hides the claim and creates awkward sentence starts inside a rendered line | Use one claim line plus one reason line, or move elaboration to the detail layer | `SENTENCE_RUNON` (measure_deck) |
+| Parallel cards or callouts in one row with different colors (`.callout-success`, `-warning`, `-info` for three options) | Color implies a ranking or category that the content does not state | One shared variant for parallel items; distinct variants only for a stated category | content-review-agent (Readability) |
 | Hardcoded hex (raw 6-digit color values) | Ignores theme tokens, locks the deck to a single theme | Semantic role tokens like `var(--accent)` | `RAW_HEX` (lint) |
 | Inline color/spacing style (color/padding written directly in `style=`) | Bypasses the token system, breaks consistency | Token classes (`.card-grid`, `.metric-card`) + `:::css` | `INLINE_STYLE` (lint) |
 | Raw rgba color functions | Cannot adapt to theme, hardcoded shadows/overlays | `var(--surface-*)`, `color-mix()` tokens | `RAW_RGBA` (lint) |
@@ -158,13 +159,13 @@ Works without slide-framework.js. Colors are handled by theme.css's `.tab-set`/`
 <div class="tc" hidden>
   <div class="card-grid">
     <div class="callout callout-info"><strong class="text-info">item-1</strong>: Description</div>
-    <div class="callout callout-warning"><strong class="text-warning">item-2</strong>: Description</div>
+    <div class="callout callout-info"><strong class="text-info">item-2</strong>: Description</div>
   </div>
 </div>
 <div class="tc" hidden>
   <div class="card-grid">
-    <div class="callout callout-success"><strong class="text-success">Type A</strong><div class="on-surface-muted">Details here</div></div>
-    <div class="callout callout-info"><strong class="text-accent">Type B</strong><div class="on-surface-muted">Details here</div></div>
+    <div class="callout callout-info"><strong class="text-info">Type A</strong><div class="on-surface-muted">Details here</div></div>
+    <div class="callout callout-info"><strong class="text-info">Type B</strong><div class="on-surface-muted">Details here</div></div>
   </div>
 </div>
 :::
@@ -190,6 +191,15 @@ Works without slide-framework.js. Colors are handled by theme.css's `.tab-set`/`
 | danger | `var(--danger)` | `var(--danger-subtle)` | `.callout-danger` | Error/risk/alert |
 
 Surfaces/text use `var(--surface-1/2/3)`, `var(--on-surface)`, `var(--on-surface-muted)`. Full reference: [colors-reference.md](colors-reference.md).
+
+**Color must carry meaning.** Sibling cards or callouts that list parallel items
+(options, steps, features or choices with no category between them) share one
+variant, for example all `.callout-info` or all `.metric-card` with `.text-accent`.
+A success, warning or info color on one option reads as a verdict (green is the
+answer, yellow is risky) even when the text weighs them equally. Use different
+variants only when the color states a category the audience should read, such as
+recommended versus caution or before versus after, and say that category in the
+card title as well.
 
 ### Bullet List → Card Conversion
 
