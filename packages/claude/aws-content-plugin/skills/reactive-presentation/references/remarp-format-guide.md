@@ -1656,7 +1656,7 @@ Session agenda with numbered dots, time labels, connectors, and optional break m
 - Break (5분)
 4. 고급 패턴 & 전략적 가치 (10분)
 
-> 질문은 각 Block 종료 시에 받겠습니다.
+> 각 Block이 끝날 때마다 Q&A 시간이 있습니다.
 ```
 
 **Rules:**

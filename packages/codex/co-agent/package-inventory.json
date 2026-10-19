@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "co-agent",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "360520d72e68baf25153216ab07dbb066775787991ce745d0efc2655bbe6a656",
+      "sha256": "8143e802325a1aab9adb0108efb1d9e1ebe73533d5ad445b7af0f50b4cd18bcb",
       "executable": false
     },
     "CLAUDE.md": {

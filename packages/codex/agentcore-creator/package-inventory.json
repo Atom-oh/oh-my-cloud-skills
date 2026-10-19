@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "agentcore-creator",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "9d277c5e9c5a7d62f476f7121be5ad947f084f8378766b3685f004e62de4fbf4",
+      "sha256": "3e3813d8c1735fd42c7765fc29bb1655a93d1a95b09280366ce2e0bb46b19028",
       "executable": false
     },
     "CLAUDE.md": {

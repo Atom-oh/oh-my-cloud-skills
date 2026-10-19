@@ -53,7 +53,7 @@ The port carries VXLAN traffic between nodes.
 ## 검증 정책 {#validation-policy}
 
 빌드하려면 CRITICAL 진단이 없어야 합니다. `DETAIL_REF`는 CRITICAL입니다.
-`EM_DASH`와 `AI_TONE`은 작성 단계에서 에이전트가 수정하는 경고입니다.
+`EM_DASH`, `AI_TONE`, `AUDIENCE_TONE`은 작성 단계에서 에이전트가 수정하는 경고입니다.
 `SENTENCE_RUNON`은 렌더링 뒤 검사합니다. 주장과 이유를 나누거나 이유를
 `:::detail`로 옮깁니다.
 

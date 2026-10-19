@@ -1,10 +1,10 @@
 {
   "host": "claude",
   "plugin": "token-saver",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "c22210ac7db8f980ad6cd97e55d3a111d7816959709cc728d8eda821d020329b",
+      "sha256": "c0cf06ebc2579f6a82b3ee6c07771d4e678100d69035a26a5ab6d3af0f7f64cc",
       "executable": false
     },
     "CLAUDE.md": {

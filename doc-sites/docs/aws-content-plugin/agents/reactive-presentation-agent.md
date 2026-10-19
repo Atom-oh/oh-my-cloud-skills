@@ -52,8 +52,8 @@ Each detail reference needs one matching top-level block on the same slide.
 
 ## Validation policy {#validation-policy}
 
-Build requires zero CRITICAL findings. `DETAIL_REF` is CRITICAL. `EM_DASH` and
-`AI_TONE` are warnings that the agent fixes during authoring.
+Build requires zero CRITICAL findings. `DETAIL_REF` is CRITICAL. `EM_DASH`,
+`AI_TONE` and `AUDIENCE_TONE` are warnings that the agent fixes during authoring.
 `SENTENCE_RUNON` is checked after rendering; split the claim and reason or move
 the reason to `:::detail`.
 

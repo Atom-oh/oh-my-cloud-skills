@@ -32,6 +32,7 @@ python3 {skill-dir}/scripts/remarp_to_slides.py validate {repo}/{slug}/
 | `INVALID_FIT` | WARNING | `@fit:` directive or frontmatter `fit:` is not `auto`, `shrink` or `off` | Use `@fit: auto\|shrink\|off` (or drop it — `auto` is the default) |
 | `EM_DASH` | WARNING | Authored prose contains an em dash, middle dot or matching HTML entity | Rewrite with a sentence, comma, colon, parentheses or line break |
 | `AI_TONE` | WARNING | A slide overuses arrows, repeated formulaic labels or note cliches | Rewrite the copy with specific claims and natural transitions |
+| `AUDIENCE_TONE` | WARNING | Copy or notes tell the audience when not to ask questions (`질문은 마지막에 받겠습니다`, `hold your questions`) | Drop the line, or schedule Q&A as an agenda item |
 | `DETAIL_REF` | CRITICAL | A detail ID is duplicated, malformed, nested or referenced without a matching slide-level block | Add one valid top-level `:::detail` block for each slide-scoped reference |
 
 `validate --json` emits an array of diagnostics and exits nonzero for CRITICAL
@@ -84,6 +85,7 @@ Each tell is enforced by a **lint rule id** (machine-detected) or by the review 
 |--------------------------|----------------|------|--------------------------|
 | Em dashes (U+2014) or middle dots (U+00B7/U+30FB) in authored text | Formulaic sentence breaks and decorative separators | Natural sentences, commas, colons, parentheses or separate lines | `EM_DASH` (lint) |
 | More than three arrows on one slide, repeated formula labels, or note cliches | Repeats predictable AI writing patterns instead of making a specific claim | Use descriptive labels, direct claims and natural transitions | `AI_TONE` (lint) |
+| Telling the audience when they may not ask (`질문은 마지막에 한 번에 받겠습니다`) | Reads as curt and gatekeeping toward the audience | Omit it, or show Q&A as a scheduled slot and invite questions | `AUDIENCE_TONE` (lint) |
 | Multiple sentences wrapped into one long card description | Hides the claim and creates awkward sentence starts inside a rendered line | Use one claim line plus one reason line, or move elaboration to the detail layer | `SENTENCE_RUNON` (measure_deck) |
 | Hardcoded hex (raw 6-digit color values) | Ignores theme tokens, locks the deck to a single theme | Semantic role tokens like `var(--accent)` | `RAW_HEX` (lint) |
 | Inline color/spacing style (color/padding written directly in `style=`) | Bypasses the token system, breaks consistency | Token classes (`.card-grid`, `.metric-card`) + `:::css` | `INLINE_STYLE` (lint) |
@@ -108,7 +110,7 @@ required; the rule governs authored prose and decorative separators.
 
 Card description rule: use one claim line plus an optional one reason line.
 Put additional reasoning, caveats and operational detail in `:::detail`. Treat
-`EM_DASH` and `AI_TONE` warnings as must-fix items in the authoring loop even
+`EM_DASH`, `AI_TONE` and `AUDIENCE_TONE` warnings as must-fix items in the authoring loop even
 though WARNING findings do not block the compiler.
 
 ---
