@@ -111,6 +111,7 @@ class CopyGateTests(unittest.TestCase):
             "## Agenda\n\n> 질문은 각 Block 종료 시에 받겠습니다.\n",
             "## T\n\n본문\n\n:::notes\n{timing: 1min}\n[요약]\n- 질문은 받지 않습니다.\n:::\n",
             "## T\n\nPlease hold your questions until the end.\n",
+            "## T\n\n질문은 마지막에\n한 번에 받겠습니다.\n",
         )
         for src in cases:
             with self.subTest(src=src):
@@ -119,6 +120,8 @@ class CopyGateTests(unittest.TestCase):
             "## T\n\n궁금한 점은 언제든 편하게 질문해 주세요.\n",
             '## T\n\n질문은 "클라우드 노드에 무엇을 쓸까"입니다.\n',
             "## T\n\n`질문은 마지막에 받겠습니다`\n",
+            "## T\n\nDo not hold your questions; ask whenever you like.\n",
+            "## T\n\n본문\n\n:::notes\n{timing: 1min}\n[요약]\n- If there are no questions, continue to the demo.\n:::\n",
         ):
             with self.subTest(src=src):
                 self.assertNotIn("AUDIENCE_TONE", self.rule_ids(self.validate_text(src)))

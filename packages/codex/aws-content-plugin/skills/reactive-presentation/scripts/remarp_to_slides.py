@@ -36,9 +36,8 @@ AI_TONE_MAX_ARROWS = 3
 AI_TONE_MAX_LABEL_REPEATS = 2
 # Curt instructions that police when the audience may ask questions.
 AUDIENCE_TONE_PATTERN = re.compile(
-    r'질문[은을]\s*(?:[^.\n]{0,20}(?:마지막|나중|끝|종료|이후|후에)[^.\n]{0,20}받겠|받지\s*않|삼가|자제)'
-    r'|\b(?:hold|save)\s+(?:all\s+|your\s+)*questions\b'
-    r'|\bno\s+questions\b',
+    r'질문[은을]\s*(?:[^.]{0,20}(?:마지막|나중|끝|종료|이후|후에)[^.]{0,20}받겠|받지\s*않|삼가|자제)'
+    r"|(?<!\bnot\s)(?<!n't\s)\b(?:hold|save)\s+(?:all\s+|your\s+)*questions\b",
     re.IGNORECASE)
 
 _EM_DASH_PATTERN = re.compile(
