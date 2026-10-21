@@ -70,5 +70,9 @@
   "link.item.label.pr-dash": {
     "message": "pr-dash",
     "description": "The label of footer link with label=pr-dash linking to /docs/pr-dash/overview"
+  },
+  "link.item.label.agent-dash": {
+    "message": "agent-dash",
+    "description": "The label of footer link with label=agent-dash linking to /docs/agent-dash/overview"
   }
 }

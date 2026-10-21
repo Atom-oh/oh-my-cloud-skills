@@ -62,5 +62,9 @@
   "item.label.pr-dash": {
     "message": "pr-dash",
     "description": "Navbar item with label pr-dash"
+  },
+  "item.label.agent-dash": {
+    "message": "agent-dash",
+    "description": "Navbar item with label agent-dash"
   }
 }

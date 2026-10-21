@@ -15,6 +15,10 @@ const sidebars: SidebarsConfig = {
     'pr-dash/overview',
   ],
 
+  agentDash: [
+    'agent-dash/overview',
+  ],
+
   awsContent: [
     'aws-content-plugin/overview',
     'aws-content-plugin/usage-guide',

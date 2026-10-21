@@ -13,6 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `agent-dash` plugin, the marketplace's second Claude Code mod. It shows the
+  session's agents (subagents, teammates and workflow agents) as a delegation tree
+  in a pane, a one-line band above the prompt and a status line, with notices when an
+  agent finishes or fails or a wait runs long, and a row button that opens that agent's
+  conversation. A wait is an estimate inferred from spawn and message events and is
+  labeled `est.`. An opt-in `agent.spawn` model policy (`modelPolicyEnabled`, off by
+  default) maps a subagent type to `opus`, `sonnet` or `haiku` only when the call names
+  no model; a model forced for the session still wins. The mod needs Claude Code
+  2.1.300 or later. The Codex package carries only the read-only `agent-status` skill.
+
 ## [3.0.4] - 2026-10-19
 
 ### Added

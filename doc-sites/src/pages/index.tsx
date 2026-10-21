@@ -55,6 +55,11 @@ const plugins = [
     title: "pr-dash",
     description: translate({id: "home.plugin.pr-dash.description", message: "A Claude Code pane for pull request checks and AI review status."}),
     link: "/docs/pr-dash/overview",
+  },
+  {
+    title: "agent-dash",
+    description: translate({id: "home.plugin.agent-dash.description", message: "A Claude Code pane for the session's agents, who delegated to whom and who is waiting."}),
+    link: "/docs/agent-dash/overview",
   }
 ];
 

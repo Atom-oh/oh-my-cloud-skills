@@ -718,7 +718,7 @@ def main():
     project_root = Path(args.root).resolve() if args.root else Path(__file__).parent.parent.resolve()
     plugins_dir = project_root / 'plugins'
 
-    plugins = ["aws-content-plugin", "aws-ops-plugin", "kiro-power-converter", "co-agent", "agentcore-creator", "project-init", "kiro", "token-saver", "pr-dash"]
+    plugins = ["aws-content-plugin", "aws-ops-plugin", "kiro-power-converter", "co-agent", "agentcore-creator", "project-init", "kiro", "token-saver", "pr-dash", "agent-dash"]
     catalog_path = project_root / "hosts/catalog.json"
     if catalog_path.is_file():
         try:

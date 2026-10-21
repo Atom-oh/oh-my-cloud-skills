@@ -36,7 +36,11 @@
       "executable": false
     },
     "skills/agent-status/SKILL.md": {
-      "sha256": "9b45976c9102ddfb8b25c92951af061235c2a391da515f87e99993876c51dd90",
+      "sha256": "f8943e455d25a80a3920c1d9f8aa4be75903352d883af010b6d8cc485f73537f",
+      "executable": false
+    },
+    "skills/agent-status/references/roster-format.md": {
+      "sha256": "e5776a9e0509f6e060b7a7d4d400369e670df29b1df7caebe5af9fe9b3f36997",
       "executable": false
     },
     "tests/fixtures/agents.ts": {

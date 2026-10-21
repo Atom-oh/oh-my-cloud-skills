@@ -19,7 +19,7 @@ title: "시작하기"
 
 # 시작하기
 
-이 마켓플레이스는 Claude Code와 Codex용 플러그인 9개를 제공합니다. 플러그인 정의와 도우미 스크립트가 제품이며, 이 사이트는 해당 워크플로를 안내합니다.
+이 마켓플레이스는 Claude Code와 Codex용 플러그인 10개를 제공합니다. 플러그인 정의와 도우미 스크립트가 제품이며, 이 사이트는 해당 워크플로를 안내합니다.
 
 현재 릴리스는 **v2.0.0**입니다. Antigravity를 선택했던 기존 co-agent 설정을
 업데이트하기 전에 [릴리스 노트 및 마이그레이션 가이드](/docs/releases/v2.0.0)를 읽습니다.
@@ -39,6 +39,7 @@ title: "시작하기"
 | [agentcore-creator](/docs/agentcore-creator/overview) | 에이전트를 로컬에서 설계·테스트한 뒤 AgentCore harness 설정 또는 생성된 Runtime 애플리케이션을 준비합니다. |
 | [token-saver](/docs/token-saver/overview) | 짧은 답변을 위한 지침을 적용하면서 추론, 검증, 완성된 산출물과 필수 보고 형식을 유지합니다. |
 | [pr-dash](/docs/pr-dash/overview) | 풀 리퀘스트의 CI 검사와 AI 리뷰를 Claude Code 패널에서, Codex에서는 텍스트로 확인합니다. |
+| [agent-dash](/docs/agent-dash/overview) | 어떤 에이전트가 일하고 있는지, 누가 누구에게 일을 맡겼는지, 누가 기다리는지를 Claude Code 패널에서, Codex에서는 명단으로 확인합니다. |
 
 <span id="quick-install" />
 

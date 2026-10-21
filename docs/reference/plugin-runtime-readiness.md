@@ -18,6 +18,7 @@ a passing result.
 | kiro-power-converter | Standard-library Python; POSIX no-follow directory descriptors and /proc/self/fd or /dev/fd; Git for GitHub inputs | Target write permissions; Kiro activation is separate | Valid metadata/MCP output and an explicit per-hook report; conversion does not prove activation |
 | token-saver | Python | SessionStart hook trust for automatic loading | Exact shared policy supplied once per session; manual skill use does not prove a hook ran |
 | pr-dash | Claude Code 2.1.287+ for the mod; authenticated `gh` for both mod and skill | Mod hooks load with the plugin (no settings-hook trust prompt); `--safe-mode` or `disableAllHooks` stop them | A pane or status line in the terminal/Desktop app, or command text where nothing draws; Codex gets only the text skill |
+| agent-dash | Claude Code 2.1.300+ for the mod; none for the skill, which reads agent-team roster files under `~/.claude/` | Mod hooks load with the plugin (no settings-hook trust prompt); `--safe-mode` or `disableAllHooks` stop them; a managed `allowManagedModsOnly` blocks mods from non-managed marketplaces | Agent rows from `$.agent.list()` in a pane, band or status line, or command text where nothing draws; a wait is an estimate, and a teammate in its own terminal pane may show a stale status; the opt-in model policy is off unless enabled and never overrides a model the call or session names |
 
 The marketplace's source agents become specialist procedures in Codex. Source
 model/effort, tool restrictions and persistent memory are not automatically supplied
