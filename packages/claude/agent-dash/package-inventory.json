@@ -4,7 +4,7 @@
   "version": "3.0.4",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "9d8687c506ff60e6345ce5b613e5c170c73eb2ff065b7b34627653175afc2767",
+      "sha256": "935fdafe731e5a39dec70e117b998836320cbf47564ee29d0abc1d034c3960a6",
       "executable": false
     },
     ".gitignore": {
@@ -32,7 +32,7 @@
       "executable": false
     },
     "hooks/register.ts": {
-      "sha256": "8a15439b544398bf3685361938587a489aafeecd2fde53bbcb396063ce8e770d",
+      "sha256": "22719bc8ba0d5e99f5be47e88370a6aafd4ecee1249040229776bfc2b45ee3f3",
       "executable": false
     },
     "skills/agent-status/SKILL.md": {
@@ -45,6 +45,10 @@
     },
     "tests/model.test.ts": {
       "sha256": "38e089cb67da8cb00f1f8c80188b809ca77d75d8653966a42b3b074e6435e7c1",
+      "executable": false
+    },
+    "tests/register.test.ts": {
+      "sha256": "a6bae390c509088f372868c5fa7038b08702d3c486940464331118856069e1bd",
       "executable": false
     },
     "tests/view.test.ts": {
