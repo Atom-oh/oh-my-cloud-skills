@@ -60,6 +60,12 @@
       "version": "3.0.4",
       "source": "./packages/claude/pr-dash",
       "description": "Pull request CI and AI review status in a Claude Code pane, with a read-only text skill for Codex."
+    },
+    {
+      "name": "agent-dash",
+      "version": "3.0.4",
+      "source": "./packages/claude/agent-dash",
+      "description": "Live agent tree, waits and opt-in subagent model policy in a Claude Code pane, status line and notices; Claude-only."
     }
   ]
 }

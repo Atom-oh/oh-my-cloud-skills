@@ -1,0 +1,12 @@
+{
+  "plugin": "agent-dash",
+  "skills": [
+    {
+      "name": "agent-status",
+      "path": ".codex-plugin/skills/agent-status/SKILL.md",
+      "sources": [
+        "skills/agent-status/SKILL.md"
+      ]
+    }
+  ]
+}
