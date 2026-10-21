@@ -128,10 +128,10 @@ export function inferWaits(rows: AgentRow[], sends: SendRecord[], _nowMs: number
 
 /**
  * Whether a reply addressed to `to` reaches the original sender. `null` is the main loop,
- * which a row reaches as `main` or `lead` only when no listed row carries that name.
+ * which a row reaches as `main`, `lead` or `team-lead` only when no listed row carries that name.
  */
 function senderIs(rows: AgentRow[], to: string, sender: string | null): boolean {
-  if (sender === null) return (to === 'main' || to === 'lead') && findTarget(rows, to) === undefined
+  if (sender === null) return (to === 'main' || to === 'lead' || to === 'team-lead') && findTarget(rows, to) === undefined
   const r = findTarget(rows, to)
   return r !== undefined && r.id === sender
 }

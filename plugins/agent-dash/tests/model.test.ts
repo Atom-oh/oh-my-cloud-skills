@@ -89,8 +89,10 @@ describe('inferWaits', () => {
     expect(inferWaits(rows, [asked, { fromId: 'F1', to: 'nobody', atMs: 1300 }], NOW)).toContainEqual(mainWait)
     // `lead` names row L in the fixture, so a reply to it is not a reply to the main loop.
     expect(inferWaits(rows, [asked, { fromId: 'F1', to: 'lead', atMs: 1300 }], NOW)).toContainEqual(mainWait)
-    const back = inferWaits(rows, [asked, { fromId: 'F1', to: 'main', atMs: 1300 }], NOW)
-    expect(back.filter((w) => w.reason === 'message' && w.from === 'main')).toEqual([])
+    for (const name of ['main', 'team-lead']) {
+      const back = inferWaits(rows, [asked, { fromId: 'F1', to: name, atMs: 1300 }], NOW)
+      expect(back.filter((w) => w.reason === 'message' && w.from === 'main')).toEqual([])
+    }
   })
 })
 

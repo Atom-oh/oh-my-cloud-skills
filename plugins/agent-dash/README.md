@@ -12,8 +12,9 @@ Code 2.1.300 or later.
 
 - `/agent-dash` opens the pane; `/agent-dash stop` stops watching and clears the status line. A notice already shown stays.
 - The pane lists agents as a delegation tree with status, elapsed time and, when one is
-  waiting, `waits on <agent> (est.)`. Pressing a row's button opens that agent's
-  conversation.
+  waiting, `waits on <agent> (est.)`. A foreground agent started by the main loop shows
+  as `main waits on <agent> (est.)` above the tree and counts in the waiting total.
+  Pressing a row's button opens that agent's conversation.
 - Notices appear when an agent finishes or fails and when a wait lasts longer than
   `longWaitMs` (120000 by default).
 
