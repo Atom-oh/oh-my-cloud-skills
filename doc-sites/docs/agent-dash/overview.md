@@ -39,9 +39,11 @@ returns the summary as text.
 An opt-in policy can choose the model of a subagent spawn. It is off by default. When
 `modelPolicyEnabled` is on, a spawn that names no model gets the alias that
 `modelPolicyMap` (a JSON object of subagent type to `opus`, `sonnet` or `haiku`)
-gives its type; an empty map uses a built-in one that follows the repository's role
-tiers. A model named on the call, and a model the session forces for every subagent,
-always win over the policy. This is the only place agent-dash changes anything.
+gives its type. An empty setting uses a built-in map that follows the repository's
+role tiers; an empty object (`{}`) disables every mapping; a value that is not a JSON
+object is ignored and the built-in map stays. A model named on the call, and a model
+the session forces for every subagent, always win over the policy. This is the only
+place agent-dash changes anything.
 
 ## Limits {#limits}
 

@@ -35,12 +35,14 @@ describe('buildPane', () => {
     expect(lines.some((l) => l.includes('lead'))).toBe(true)
     expect(lines).toContain('waits on scout (est.)')
     expect(lines.some((l) => l.includes('failed'))).toBe(true)
-    expect(lines.some((l) => l.includes('3 running · 1 waiting (est.) · 2 done'))).toBe(true)
+    expect(lines.some((l) => l.includes('4 running · 2 waiting (est.) · 2 done'))).toBe(true)
+    expect(lines).toContain('main waits on helper (est.)')
+    expect(lines.filter((l) => l.startsWith('waits on '))).toEqual(['waits on scout (est.)'])
   })
 
   test('rows beyond maxRows collapse into "+N more"', () => {
     const lines = texts(buildPane(els, tree, waits, { ...base, maxRows: 2 }))
-    expect(lines).toContain('+4 more')
+    expect(lines).toContain('+5 more')
   })
 
   test('an empty tree says there are no agents yet', () => {

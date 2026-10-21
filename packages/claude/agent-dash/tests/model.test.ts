@@ -12,7 +12,7 @@ function ids(nodes: TreeNode[]): string[] {
 describe('buildTree', () => {
   test('nests children under parentId and orders siblings by sinceMs', () => {
     const tree = buildTree(rows)
-    expect(tree.map((n) => n.row.id)).toEqual(['L'])
+    expect(tree.map((n) => n.row.id)).toEqual(['L', 'H'])
     expect(tree[0].children.map((n) => n.row.id)).toEqual(['F1', 'F2', 'B', 'M'])
     expect(tree[0].children[3].children.map((n) => n.row.id)).toEqual(['X'])
   })
@@ -33,9 +33,22 @@ describe('buildTree', () => {
 })
 
 describe('inferWaits', () => {
-  test('a parent waits on a running foreground child, not on a background one', () => {
+  test('a parent waits on a running foreground child, not on a background one; a row without parentId is waited on by main', () => {
     const waits = inferWaits(rows, [], NOW)
-    expect(waits).toEqual([{ from: 'L', to: 'F1', sinceMs: 200, reason: 'child' }])
+    expect(waits).toEqual([
+      { from: 'L', to: 'F1', sinceMs: 200, reason: 'child' },
+      { from: 'main', to: 'H', sinceMs: 700, reason: 'child' },
+    ])
+  })
+
+  test('a row without parentId is a main-loop spawn: foreground waits, background or unknown does not', () => {
+    expect(inferWaits([row({ id: 'H', background: false, sinceMs: 700 })], [], NOW)).toEqual([{ from: 'main', to: 'H', sinceMs: 700, reason: 'child' }])
+    expect(inferWaits([row({ id: 'P', background: false, status: 'pending', sinceMs: 700 })], [], NOW)).toEqual([{ from: 'main', to: 'P', sinceMs: 700, reason: 'child' }])
+    expect(inferWaits([row({ id: 'G', background: true })], [], NOW)).toEqual([])
+    expect(inferWaits([row({ id: 'U' })], [], NOW)).toEqual([])
+    expect(inferWaits([row({ id: 'D', background: false, status: 'completed' })], [], NOW)).toEqual([])
+    // A parentId that names no listed row is not the main loop.
+    expect(inferWaits([row({ id: 'Z', parentId: 'gone', background: false })], [], NOW)).toEqual([])
   })
 
   test('a message with no reply yet is a wait; main loop sends read as "main"', () => {
@@ -64,11 +77,31 @@ describe('inferWaits', () => {
   test('a stale teammate status never becomes a wait by itself', () => {
     expect(inferWaits([row({ id: 'T', type: 'teammate', status: 'idle' })], [], NOW)).toEqual([])
   })
+
+  test('a send from a finished or unlisted sender is not a wait', () => {
+    const waits = inferWaits(rows, [{ fromId: 'F2', to: 'scout', atMs: 1000 }, { fromId: 'gone', to: 'scout', atMs: 1000 }], NOW)
+    expect(waits.filter((w) => w.reason === 'message')).toEqual([])
+  })
+
+  test('only a reply addressed to the main loop ends its wait', () => {
+    const asked = { fromId: null, to: 'scout', atMs: 1200 }
+    const mainWait = { from: 'main', to: 'F1', sinceMs: 1200, reason: 'message' as const }
+    expect(inferWaits(rows, [asked, { fromId: 'F1', to: 'nobody', atMs: 1300 }], NOW)).toContainEqual(mainWait)
+    // `lead` names row L in the fixture, so a reply to it is not a reply to the main loop.
+    expect(inferWaits(rows, [asked, { fromId: 'F1', to: 'lead', atMs: 1300 }], NOW)).toContainEqual(mainWait)
+    const back = inferWaits(rows, [asked, { fromId: 'F1', to: 'main', atMs: 1300 }], NOW)
+    expect(back.filter((w) => w.reason === 'message' && w.from === 'main')).toEqual([])
+  })
 })
 
 describe('summaryLine', () => {
   test('counts running (not waiting), waiting and finished agents', () => {
-    expect(summaryLine(rows, inferWaits(rows, [], NOW))).toBe('3 running · 1 waiting (est.) · 2 done')
+    expect(summaryLine(rows, inferWaits(rows, [], NOW))).toBe('4 running · 2 waiting (est.) · 2 done')
+  })
+
+  test('the main loop counts as a waiter without being a row', () => {
+    const h = [row({ id: 'H', background: false })]
+    expect(summaryLine(h, inferWaits(h, [], NOW))).toBe('1 running · 1 waiting (est.) · 0 done')
   })
 
   test('no agents', () => {
@@ -103,6 +136,11 @@ describe('diffNotices', () => {
   test('a wait under the threshold is not reported', () => {
     const waits = [{ from: 'L', to: 'F1', sinceMs: 9_000, reason: 'child' as const }]
     expect(diffNotices(rows, rows, waits, 5_000, NOW, new Set())).toEqual([])
+  })
+
+  test('a long wait by the main loop names it "main"', () => {
+    const waits = [{ from: 'main', to: 'H', sinceMs: 1_000, reason: 'child' as const }]
+    expect(diffNotices(rows, rows, waits, 5_000, NOW, new Set())).toEqual(['main has waited 9s on helper (est.)'])
   })
 })
 

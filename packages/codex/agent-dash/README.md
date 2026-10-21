@@ -10,7 +10,7 @@ Codex and `claude -p`, the `agent-status` skill reports the agent-team roster as
 Install `agent-dash@oh-my-cloud-skills` and start a new session. The mod needs Claude
 Code 2.1.300 or later.
 
-- `/agent-dash` opens the pane; `/agent-dash stop` clears the status line and the notices.
+- `/agent-dash` opens the pane; `/agent-dash stop` stops watching and clears the status line. A notice already shown stays.
 - The pane lists agents as a delegation tree with status, elapsed time and, when one is
   waiting, `waits on <agent> (est.)`. Pressing a row's button opens that agent's
   conversation.

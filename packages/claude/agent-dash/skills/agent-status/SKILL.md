@@ -21,10 +21,12 @@ run nothing that starts, stops or messages an agent, and do not read mailbox fil
 
 A running team has a directory under `~/.claude/teams/`. Claude Code removes it when
 the session ends, so a missing or empty directory means no team is running: say so
-and stop. With several teams, take the most recently modified one and name the others.
+and stop. With several teams, take the one whose `config.json` was modified most recently (the
+directory's own time does not change when the roster is rewritten) and name the others.
+Each path printed below names its team directory.
 
 ```bash
-ls -t "$HOME/.claude/teams" 2>/dev/null
+ls -t "$HOME"/.claude/teams/*/config.json 2>/dev/null
 ```
 
 ### Step 2: Read the roster
@@ -43,10 +45,9 @@ terminal pane identifiers.
 ### Step 3: Read the task files
 
 Tasks live in `~/.claude/tasks/<team>/`. This directory stays on disk after the
-session ends, so label tasks from an ended session as historical. The file format is
-not documented: read each file and report only the fields you can see (a title or
-subject, a status of pending, in progress or completed, an owner, what blocks it).
-Say so when a field is absent.
+session ends, so label tasks from an ended session as historical. The file format is not documented. Read each file and report only these fields: title or
+subject, status (pending, in progress or completed), owner, and blocked by. Say so when one
+is absent, and do not print any other field, even when present.
 
 ```bash
 ls -l "$HOME/.claude/tasks/<team>/"

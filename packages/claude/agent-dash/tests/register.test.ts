@@ -4,6 +4,8 @@ const SESSION = { surface: 'terminal', isInteractive: true, cwd: '/work' }
 
 const LEAD = { id: 'L', name: 'lead', type: 'team-lead', description: 'lead', status: 'running' }
 const SCOUT = { id: 'F1', name: 'scout', type: 'Explore', description: 'scout', status: 'running', parentId: 'L' }
+// No parentId: `$.agent.list()` reports a main-loop spawn this way.
+const HELPER = { id: 'N1', name: 'helper', type: 'Explore', description: 'helper', status: 'running' }
 const PANE = {
   plugin: 'agent-dash',
   component: 'Pane',
@@ -24,8 +26,12 @@ function stubs(on, opts: StubOpts = {}) {
   const views: unknown[] = []
   const spawns: any[] = []
   const sends: any[] = []
+  const lists = { n: 0 }
 
-  on('agent.list', () => ({ value: state.list }))
+  on('agent.list', () => {
+    lists.n += 1
+    return { value: state.list }
+  })
   on('command.register', () => ({ value: undefined }))
   on('session.surfaces', () => ({ value: opts.surfaces ?? ['terminal'] }))
   on('ui.status', ($, e) => {
@@ -55,7 +61,7 @@ function stubs(on, opts: StubOpts = {}) {
   })
   on('session.start', () => ({ cwd: '/work' }))
 
-  return { state, lines, notices, opens, views, spawns, sends }
+  return { state, lines, notices, opens, views, spawns, sends, lists }
 }
 
 test('/agent-dash opens the pane and sets the summary status line', async ($, on) => {
@@ -172,4 +178,65 @@ test('the pane lists agents and its open button switches the view', async ($, on
   await ui.press({ key: 'open:F1' })
   expect(views).toEqual([{ agentId: 'F1' }])
   await ui.unmount()
+})
+
+test('a foreground spawn from the main loop is an estimated wait in the status line; a background one is not', async ($, on) => {
+  const { state, lines } = stubs(on)
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  state.list = [LEAD, SCOUT, HELPER]
+  await $.agent.spawn({ prompt: 'x', subagentType: 'Explore', background: true })
+  await clock.settle()
+  expect(lines[lines.length - 1]).toBe('3 running · 0 waiting (est.) · 0 done')
+
+  await $.agent.spawn({ prompt: 'x', subagentType: 'Explore', background: false })
+  await clock.settle()
+  expect(lines[lines.length - 1]).toBe('3 running · 1 waiting (est.) · 0 done')
+})
+
+test('a spawn recorded before its row is listed still becomes a wait', async ($, on) => {
+  const { state, lines } = stubs(on)
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  await $.agent.spawn({ prompt: 'x', subagentType: 'Explore', background: false })
+  await clock.settle()
+  state.list = [LEAD, SCOUT, HELPER]
+  await clock.advance(5_000)
+
+  expect(lines[lines.length - 1]).toBe('3 running · 1 waiting (est.) · 0 done')
+})
+
+test('a row that leaves the list is forgotten, including its spawn flags', async ($, on) => {
+  const { state, lines } = stubs(on)
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  state.list = [LEAD, SCOUT, HELPER]
+  await $.agent.spawn({ prompt: 'x', subagentType: 'Explore', background: false })
+  await clock.settle()
+  expect(lines[lines.length - 1]).toBe('3 running · 1 waiting (est.) · 0 done')
+
+  state.list = [LEAD, SCOUT]
+  await clock.advance(5_000)
+  state.list = [LEAD, SCOUT, HELPER]
+  await clock.advance(5_000)
+  expect(lines[lines.length - 1]).toBe('3 running · 0 waiting (est.) · 0 done')
+})
+
+test('/agent-dash stop stops the tick from listing agents; /agent-dash starts it again', async ($, on) => {
+  const { lists } = stubs(on)
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  await $.command.run({ command: 'agent-dash', args: 'stop' })
+  const stopped = lists.n
+  await clock.advance(10_000)
+  expect(lists.n).toBe(stopped)
+
+  await $.command.run({ command: 'agent-dash', args: '' })
+  const resumed = lists.n
+  await clock.advance(5_000)
+  expect(lists.n).toBe(resumed + 1)
 })

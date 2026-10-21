@@ -10,6 +10,7 @@ export type AgentRow = {
   type: string
   description: string
   status: AgentStatus
+  /** Absent when the main loop did the spawn; the main loop is never a row. */
   parentId?: string
   teammateId?: string
   spawnedBy?: string
@@ -81,9 +82,10 @@ function findTarget(rows: AgentRow[], to: string): AgentRow | undefined {
 }
 
 /**
- * Estimates who waits on whom: a parent on its running foreground child, and a sender
- * on a message target that has neither changed state nor sent back since the send.
- * Both are inferences from events, not facts the engine reports.
+ * Estimates who waits on whom: a parent on its running foreground child (the main loop,
+ * for a row without `parentId`), and a live sender on a message target that has neither
+ * changed state nor sent back since the send. Both are inferences from events, not facts
+ * the engine reports.
  */
 export function inferWaits(rows: AgentRow[], sends: SendRecord[], _nowMs: number): WaitEdge[] {
   const out: WaitEdge[] = []
@@ -91,15 +93,22 @@ export function inferWaits(rows: AgentRow[], sends: SendRecord[], _nowMs: number
   for (const r of rows) byId.set(r.id, r)
 
   for (const child of rows) {
-    const parent = child.parentId === undefined ? undefined : byId.get(child.parentId)
-    if (parent === undefined || isFinished(parent)) continue
-    if (child.background === false && LIVE.includes(child.status)) {
-      out.push({ from: parent.id, to: child.id, sinceMs: child.sinceMs, reason: 'child' })
+    if (child.background !== false || !LIVE.includes(child.status)) continue
+    if (child.parentId === undefined) {
+      out.push({ from: 'main', to: child.id, sinceMs: child.sinceMs, reason: 'child' })
+      continue
     }
+    const parent = byId.get(child.parentId)
+    if (parent === undefined || isFinished(parent)) continue
+    out.push({ from: parent.id, to: child.id, sinceMs: child.sinceMs, reason: 'child' })
   }
 
   const latest = new Map<string, WaitEdge>()
   for (const s of sends) {
+    if (s.fromId !== null) {
+      const sender = byId.get(s.fromId)
+      if (sender === undefined || isFinished(sender)) continue
+    }
     const target = findTarget(rows, s.to)
     if (target === undefined || isFinished(target)) continue
     const from = s.fromId ?? 'main'
@@ -117,9 +126,12 @@ export function inferWaits(rows: AgentRow[], sends: SendRecord[], _nowMs: number
   return out
 }
 
-/** Whether a reply addressed to `to` reaches the original sender (`null` = the main loop). */
+/**
+ * Whether a reply addressed to `to` reaches the original sender. `null` is the main loop,
+ * which a row reaches as `main` or `lead` only when no listed row carries that name.
+ */
 function senderIs(rows: AgentRow[], to: string, sender: string | null): boolean {
-  if (sender === null) return to === 'main' || to === 'lead' || findTarget(rows, to) === undefined
+  if (sender === null) return (to === 'main' || to === 'lead') && findTarget(rows, to) === undefined
   const r = findTarget(rows, to)
   return r !== undefined && r.id === sender
 }

@@ -41,6 +41,18 @@ function longWaitFrom(options: any): number {
   return typeof n === 'number' && n > 0 ? n : 120_000
 }
 
+function startTimer($, longWaitMs: number) {
+  if (timer) timer.cancel()
+  timer = $.clock.every(REFRESH_MS, () => {
+    void refresh($, longWaitMs)
+  })
+}
+
+function stopTimer() {
+  if (timer) timer.cancel()
+  timer = null
+}
+
 /** Maps `$.agent.list()` entries to rows, keeping when each status was first seen. */
 function toRows(list: any[], now: number): AgentRow[] {
   const out: AgentRow[] = []
@@ -65,7 +77,13 @@ function toRows(list: any[], now: number): AgentRow[] {
       sinceMs,
     })
   }
-  for (const id of [...firstSeen.keys()]) if (!ids.has(id)) firstSeen.delete(id)
+  // Prune through firstSeen so a spawn recorded while a listing was in flight keeps its
+  // flags until its row appears.
+  for (const id of [...firstSeen.keys()]) {
+    if (ids.has(id)) continue
+    firstSeen.delete(id)
+    spawnInfo.delete(id)
+  }
   return out
 }
 
@@ -133,10 +151,7 @@ export function register(on, options) {
         immediate: true,
       })
     } catch {}
-    if (timer) timer.cancel()
-    timer = $.clock.every(REFRESH_MS, () => {
-      void refresh($, longWaitMs)
-    })
+    startTimer($, longWaitMs)
     return next(e)
   })
 
@@ -146,10 +161,12 @@ export function register(on, options) {
       watching = false
       generation += 1
       rerun = false
+      stopTimer()
       $.ui.status(undefined)
       return { text: 'agent-dash stopped' }
     }
     watching = true
+    if (timer === null) startTimer($, longWaitMs)
     await refresh($, longWaitMs)
     const surfaces = await $.session.surfaces()
     if (!surfaces.some((x) => x === 'terminal' || x === 'desktop' || x === 'vscode')) return { text: summary() }

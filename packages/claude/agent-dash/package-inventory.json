@@ -16,7 +16,7 @@
       "executable": false
     },
     "README.md": {
-      "sha256": "1019c7d0233bce0e341ed86315c54018b7d0c38ade838ca7d1951b31e97b3f0c",
+      "sha256": "2d23b9df41aa346d685a8d4389ac91585bf7bca9f4c2d39ed12864d622d0f3d5",
       "executable": false
     },
     "hooks/hooks.json": {
@@ -24,7 +24,7 @@
       "executable": false
     },
     "hooks/lib/model.ts": {
-      "sha256": "948d622b941270bf5756c8beee3db7f5a1b358bbf9aab4d9a1b7f7cc04df9e55",
+      "sha256": "f0a9fb3ac91cb6ab18fbf0505394c8ae222e780c8e2de8cf608d23eb13904ade",
       "executable": false
     },
     "hooks/lib/view.ts": {
@@ -32,11 +32,11 @@
       "executable": false
     },
     "hooks/register.ts": {
-      "sha256": "22719bc8ba0d5e99f5be47e88370a6aafd4ecee1249040229776bfc2b45ee3f3",
+      "sha256": "e11e57e6b7e6b411ab29748b01daf5fe804b3ce8adbe48787506d7658fae7a1e",
       "executable": false
     },
     "skills/agent-status/SKILL.md": {
-      "sha256": "f8943e455d25a80a3920c1d9f8aa4be75903352d883af010b6d8cc485f73537f",
+      "sha256": "da93b094489704779e8615fdb4cc330aa93c2cc3bb1ae6aff51b6fcc7f5456c2",
       "executable": false
     },
     "skills/agent-status/references/roster-format.md": {
@@ -44,19 +44,19 @@
       "executable": false
     },
     "tests/fixtures/agents.ts": {
-      "sha256": "9ea3b1985c017dbf889f2720d14cc185cc31e5755aadc33139afae7b34c7ce1a",
+      "sha256": "1cdf3c5c268ed5c7cd5d946d9d805ce8dff32dc04f0998cbd23442b7ddfb0f42",
       "executable": false
     },
     "tests/model.test.ts": {
-      "sha256": "38e089cb67da8cb00f1f8c80188b809ca77d75d8653966a42b3b074e6435e7c1",
+      "sha256": "38ee08036878aec93eaae491d7a9db982702ea6c895a8960b1dc14d629a30ed8",
       "executable": false
     },
     "tests/register.test.ts": {
-      "sha256": "a6bae390c509088f372868c5fa7038b08702d3c486940464331118856069e1bd",
+      "sha256": "01ba0f06e5f80de4212f344ed3d9c90b34037bbb9ed112d0cb22e19c4d62d355",
       "executable": false
     },
     "tests/view.test.ts": {
-      "sha256": "82fbed06db9a5615cd2a013aa48f5af130aa6b7c113e9ae8f3c966133d4acf6c",
+      "sha256": "1102e647676317ac94529505e3b5fa2598a7bf6a6e662bc704a2d1d4a9d7f2c5",
       "executable": false
     }
   }

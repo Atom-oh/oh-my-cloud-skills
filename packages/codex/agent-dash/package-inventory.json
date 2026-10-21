@@ -16,11 +16,11 @@
       "executable": false
     },
     "README.md": {
-      "sha256": "1019c7d0233bce0e341ed86315c54018b7d0c38ade838ca7d1951b31e97b3f0c",
+      "sha256": "2d23b9df41aa346d685a8d4389ac91585bf7bca9f4c2d39ed12864d622d0f3d5",
       "executable": false
     },
     "skills/agent-status/SKILL.md": {
-      "sha256": "f8943e455d25a80a3920c1d9f8aa4be75903352d883af010b6d8cc485f73537f",
+      "sha256": "da93b094489704779e8615fdb4cc330aa93c2cc3bb1ae6aff51b6fcc7f5456c2",
       "executable": false
     },
     "skills/agent-status/references/roster-format.md": {
