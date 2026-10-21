@@ -1,0 +1,22 @@
+{
+  "name": "agent-dash",
+  "version": "3.0.4",
+  "description": "Claude Code mod that shows which agents are working, who delegated to whom and who is waiting, with an opt-in subagent model policy.",
+  "author": {
+    "name": "atomoh"
+  },
+  "skills": "./.codex-plugin/skills/",
+  "interface": {
+    "displayName": "Agent Dash",
+    "shortDescription": "Agent status and delegation view.",
+    "longDescription": "The live agent tree, waits and model policy are a Claude Code mod and are not part of the Codex package.",
+    "developerName": "atomoh",
+    "category": "Productivity",
+    "capabilities": [
+      "Skills"
+    ],
+    "defaultPrompt": [
+      "Explain what agent-dash shows in Claude Code."
+    ]
+  }
+}

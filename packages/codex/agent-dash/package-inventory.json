@@ -1,0 +1,47 @@
+{
+  "host": "codex",
+  "plugin": "agent-dash",
+  "version": "3.0.4",
+  "files": {
+    ".codex-plugin/plugin.json": {
+      "sha256": "bc03ca8ff4eb371110cb3d382e52bf7c1bf46bdabea427fd2d1045c797e12be9",
+      "executable": false
+    },
+    ".gitignore": {
+      "sha256": "3a83d802deb0fe3531da196e03f4c98abf1004d18f3de377747100cab9ad68d9",
+      "executable": false
+    },
+    "CLAUDE.md": {
+      "sha256": "423f93b137bffd62df60d509f41002fd721941b110613be7bcf37a7131f779e8",
+      "executable": false
+    },
+    "README.md": {
+      "sha256": "979d7495c7329a9be66fa6a6b37dcbc552ed432b1364f7bddc9f3f4241a7a9c9",
+      "executable": false
+    },
+    "skills/agent-status/SKILL.md": {
+      "sha256": "da93b094489704779e8615fdb4cc330aa93c2cc3bb1ae6aff51b6fcc7f5456c2",
+      "executable": false
+    },
+    "skills/agent-status/references/roster-format.md": {
+      "sha256": "e5776a9e0509f6e060b7a7d4d400369e670df29b1df7caebe5af9fe9b3f36997",
+      "executable": false
+    },
+    ".codex-plugin/skills/agent-status/SKILL.md": {
+      "sha256": "b8cccffca3a6ffadb83704528a6e939bfb72cef8267dfc2c0b640f137d9c018a",
+      "executable": false
+    },
+    ".codex-plugin/inventory.json": {
+      "sha256": "cd405e3dbb7c7c906271074988cd6fa9631f3d3ed319834a98a224bd7ccb326e",
+      "executable": false
+    },
+    ".codex-plugin/runtime.md": {
+      "sha256": "abc2183e07ac4b1450796f9db45e9d434fd5dd42b65625c770feeab3055f9ba8",
+      "executable": false
+    },
+    ".codex-plugin/run.py": {
+      "sha256": "53d259a9e0bc0393586ed5fa709695e4c00d4d46403c3a4dc19454b4cc86faf2",
+      "executable": false
+    }
+  }
+}

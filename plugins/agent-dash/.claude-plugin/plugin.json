@@ -1,0 +1,33 @@
+{
+  "name": "agent-dash",
+  "version": "3.0.4",
+  "description": "Claude Code mod that shows which agents are working, who delegated to whom and who is waiting, with an opt-in subagent model policy.",
+  "author": {
+    "name": "atomoh"
+  },
+  "agents": [],
+  "skills": [
+    "./skills/agent-status"
+  ],
+  "commands": [],
+  "userConfig": {
+    "longWaitMs": {
+      "type": "number",
+      "title": "Long wait threshold (ms)",
+      "description": "Report a wait as long once it lasts this many milliseconds.",
+      "default": 120000,
+      "min": 1000
+    },
+    "modelPolicyEnabled": {
+      "type": "boolean",
+      "title": "Apply the subagent model policy",
+      "description": "Rewrite the model of a subagent spawn that names none, by subagent type. Off by default.",
+      "default": false
+    },
+    "modelPolicyMap": {
+      "type": "string",
+      "title": "Model policy map (JSON)",
+      "description": "JSON object mapping a subagent type to opus, sonnet or haiku. Empty uses the built-in map."
+    }
+  }
+}

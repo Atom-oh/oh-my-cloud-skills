@@ -1,9 +1,9 @@
 # oh-my-cloud-skills
 
-Eight plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and
+Ten plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and
 [Codex](https://developers.openai.com/codex/plugins): cloud content, AWS operations,
 agent and plugin conversion, peer review, implementation delegation, project documentation,
-and concise response delivery.
+concise response delivery, and PR and agent status views.
 
 [Documentation](https://www.atomai.click/oh-my-cloud-skills/) ·
 [Changelog](CHANGELOG.md) ·
@@ -25,6 +25,7 @@ and concise response delivery.
 | [kiro](plugins/kiro/) | Delegate implementation to Kiro CLI, with host verification and optional commit/push review and web search |
 | [token-saver](plugins/token-saver/) | Concise response guidance with full reasoning, verification, complete artifacts, and required report formats |
 | [pr-dash](plugins/pr-dash/) | A Claude Code pane and status line for a pull request's CI checks and AI review, plus a read-only status skill for Codex |
+| [agent-dash](plugins/agent-dash/) | A Claude Code pane and status line for the session's agents, who delegated to whom and who is waiting, with an opt-in subagent model policy, plus a read-only roster skill for Codex |
 
 Both [Claude](.claude-plugin/marketplace.json) and
 [Codex](.agents/plugins/marketplace.json) marketplaces contain these plugins.

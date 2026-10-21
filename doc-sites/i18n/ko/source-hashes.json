@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "files": {
+    "agent-dash/overview.md": "e2ac4b2ba556dddb34e766f2711a174385f6d58d4615b4d44c871e3604159fd1",
     "agentcore-creator/agents/agentcore-creator-agent.md": "d666938c462ffdf8ea6169daa5c69daf230a011e0864817bba77fe090c446e94",
     "agentcore-creator/installation.md": "eb94d72538bd540b7ebc6ef52458545733aef42757f7f481234fdc6d0deeebdc",
     "agentcore-creator/overview.md": "322afdb42911d8a8057d5a489ee3f0d31c8904e4a687532bb00514045bcc11f8",
@@ -68,7 +69,7 @@
     "co-agent/skills/decision-reconcile.md": "ec9884ddb9a11782a0b02bbd297d7d1f5f695bf12f8547f653b57990597c20d4",
     "co-agent/skills/pr-autofix.md": "e2bd1eddd7e76fa6167aae6a460778af3f6dd52feee127bcf354d5fd257a1836",
     "co-agent/usage-guide.md": "7e540c570311aa3b8759617912adb446076783fc0c8f67d04617d3772774843d",
-    "intro.md": "522d7b705f5115049b8cf0c58c354218e2330b68313c78283e7ce23fe875919a",
+    "intro.md": "d32bc5f8cb6b43c8d8ac591331f9ed9a990afd0002718f3722d4d2b04b94aa3e",
     "kiro-power-converter/agents/kiro-converter-agent.md": "a8492c2d8739ba3b8e862d5bd33e06b66f01a2c9f2eb24cc6d56d2915bd41818",
     "kiro-power-converter/demos/conversion-example.md": "04f0cf22bf130e69052478bbbbbeb40e0fd9cb292d9cc0ae6f4c7df31c9d2131",
     "kiro-power-converter/installation.md": "af19d98958830bbe86cf4109e6958e189a8a9dc43805dfad3db4fc459282037c",
@@ -125,6 +126,7 @@
       "demo.workflow": "4affbe02c0f428af19d1dd54d8da392c8f95ff975f80eafedb168ae30e41c633",
       "home.getStarted": "3f4ea04f7eccb4dff77406d6ebe5cb4b2fe35e05bd562b7142bef752ddcde5fd",
       "home.hosts": "fef5847d55428a7413d4b7d53f847b7b86f45f2ee588a3dc76e7b2a0f9d91344",
+      "home.plugin.agent-dash.description": "c69d3f204dab116047882da8958b59f3eff01c4058a2e566cebc6e1b27343f96",
       "home.plugin.agentcore-creator.description": "07cbead79984e4c6fceed72bdbfbf54fc107106f8abff7a15c148dc3342cbfa7",
       "home.plugin.aws-content-plugin.description": "790d6291c8373e7285d0a8adb0144df12bc1463020863741aa7d08d1a11bb241",
       "home.plugin.aws-ops-plugin.description": "60c3ae4f9b3187ef7e22fb9afe20a36d8daa21c428f7110812b50b73a24fc614",
@@ -156,6 +158,7 @@
       "version.label": "33a29717503eb32deb26bf9416cd3048fb480a2a30aaae7abac4e8237de6ea16"
     },
     "docusaurus-theme-classic/navbar.json": {
+      "item.label.agent-dash": "1a257a1331f1d687f1b19b86c3a67219985ec1de796ff95798bc2b415fa445b9",
       "item.label.agentcore-creator": "99fae085601766e7f8eef4b15c5a74e3ff9643df71d8c83cbc55444359dfddbc",
       "item.label.aws-content-plugin": "61d7a26e3554980f159b2cd120cfa557204a278f1be7497d31b24faf8f608927",
       "item.label.aws-ops-plugin": "785b51e02806c6c8f2582ba406992b11ce144094c6bcf6166613ad75d4380195",
@@ -175,6 +178,7 @@
     },
     "docusaurus-theme-classic/footer.json": {
       "copyright": "ac4660c52833b7e465474807635b91368c5c400350b7f2ced4cb450a4524f4ab",
+      "link.item.label.agent-dash": "1a257a1331f1d687f1b19b86c3a67219985ec1de796ff95798bc2b415fa445b9",
       "link.item.label.agentcore-creator": "99fae085601766e7f8eef4b15c5a74e3ff9643df71d8c83cbc55444359dfddbc",
       "link.item.label.aws-content-plugin": "61d7a26e3554980f159b2cd120cfa557204a278f1be7497d31b24faf8f608927",
       "link.item.label.aws-ops-plugin": "785b51e02806c6c8f2582ba406992b11ce144094c6bcf6166613ad75d4380195",

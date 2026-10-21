@@ -43,9 +43,11 @@ procedure documents as references; their Claude frontmatter is not native Codex
 agent registration. All generated files are recorded with hashes and executable flags
 in `package-inventory.json`.
 
-The Claude-only `pr-dash` mod is shipped in its Claude package. Its Codex package
-excludes `hooks/` and mod tests, including the automatically discovered
-`hooks/hooks.json` module declaration, and exposes only the read-only skill.
+The Claude-only `pr-dash` and `agent-dash` mods are shipped in their Claude packages.
+Their Codex packages exclude `hooks/` and mod tests, including the automatically
+discovered `hooks/hooks.json` module declaration, and expose only a read-only skill.
+A mod's `userConfig` belongs in `hosts/claude/<plugin>/plugin.json`: the generator
+rewrites `plugins/<plugin>/.claude-plugin/plugin.json` from the catalog and that file.
 
 ## Development and distribution
 

@@ -388,5 +388,8 @@
   },
   "home.plugin.pr-dash.description": {
     "message": "풀 리퀘스트 검사와 AI 리뷰 상태를 보여 주는 Claude Code 패널입니다."
+  },
+  "home.plugin.agent-dash.description": {
+    "message": "세션의 에이전트, 위임 관계, 대기 상태를 보여 주는 Claude Code 패널입니다."
   }
 }

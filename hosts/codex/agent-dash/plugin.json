@@ -1,0 +1,16 @@
+{
+  "skills": "./.codex-plugin/skills/",
+  "interface": {
+    "displayName": "Agent Dash",
+    "shortDescription": "Agent status and delegation view.",
+    "longDescription": "The live agent tree, waits and model policy are a Claude Code mod and are not part of the Codex package.",
+    "developerName": "atomoh",
+    "category": "Productivity",
+    "capabilities": [
+      "Skills"
+    ],
+    "defaultPrompt": [
+      "Explain what agent-dash shows in Claude Code."
+    ]
+  }
+}

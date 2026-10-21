@@ -107,6 +107,7 @@ const config: Config = {
             {label: 'agentcore-creator', to: '/docs/agentcore-creator/overview'},
             {label: 'token-saver', to: '/docs/token-saver/overview'},
             {label: 'pr-dash', to: '/docs/pr-dash/overview'},
+            {label: 'agent-dash', to: '/docs/agent-dash/overview'},
           ],
         },
         {
@@ -146,6 +147,7 @@ const config: Config = {
             {label: 'agentcore-creator', to: '/docs/agentcore-creator/overview'},
             {label: 'token-saver', to: '/docs/token-saver/overview'},
             {label: 'pr-dash', to: '/docs/pr-dash/overview'},
+            {label: 'agent-dash', to: '/docs/agent-dash/overview'},
           ],
         },
         {
