@@ -132,3 +132,74 @@ export function summaryLine(rows: AgentRow[], waits: WaitEdge[]): string {
   const done = rows.filter(isFinished).length
   return `${running} running · ${waiting.size} waiting (est.) · ${done} done`
 }
+
+function labelFor(rows: AgentRow[], id: string): string {
+  if (id === 'main') return 'main'
+  const r = rows.find((x) => x.id === id)
+  return r === undefined ? id : labelOf(r)
+}
+
+/**
+ * Notices for what changed between two snapshots: an agent that finished, failed or was
+ * stopped, and a wait that reached `longWaitMs`. `seen` holds the `from:to` keys of
+ * long waits already reported; the call adds new ones and drops those no longer waiting.
+ */
+export function diffNotices(
+  prev: AgentRow[],
+  next: AgentRow[],
+  waits: WaitEdge[],
+  longWaitMs: number,
+  nowMs: number,
+  seen: Set<string>,
+): string[] {
+  const out: string[] = []
+  const before = new Map<string, AgentRow>()
+  for (const r of prev) before.set(r.id, r)
+  for (const r of next) {
+    const was = before.get(r.id)
+    if (was === undefined || isFinished(was) || !isFinished(r)) continue
+    if (r.status === 'completed') out.push(labelOf(r) + ' finished')
+    else if (r.status === 'failed') out.push(labelOf(r) + ' failed')
+    else out.push(labelOf(r) + ' stopped')
+  }
+  const live = new Set<string>()
+  for (const w of waits) {
+    const key = w.from + ':' + w.to
+    live.add(key)
+    const ms = nowMs - w.sinceMs
+    if (ms < longWaitMs || seen.has(key)) continue
+    seen.add(key)
+    out.push(`${labelFor(next, w.from)} has waited ${Math.floor(ms / 1000)}s on ${labelFor(next, w.to)} (est.)`)
+  }
+  for (const key of [...seen]) if (!live.has(key)) seen.delete(key)
+  return out
+}
+
+export type ModelPolicy = { enabled: boolean; map: Record<string, string> }
+
+const ALIASES = ['opus', 'sonnet', 'haiku']
+
+// Roles from the repository's model/effort tier table (root CLAUDE.md): judgment and
+// synthesis gates on opus, the presentation format dispatcher on sonnet.
+export const DEFAULT_POLICY: ModelPolicy = {
+  enabled: false,
+  map: {
+    'co-agent:gate-chair': 'opus',
+    'co-agent:pr-autofix-planner': 'opus',
+    'co-agent:pr-autofix-implementer': 'opus',
+    'aws-content-plugin:content-review-agent': 'opus',
+    'aws-content-plugin:presentation-agent': 'sonnet',
+  },
+}
+
+/**
+ * The model alias to give a subagent spawn, or undefined to leave it to the engine:
+ * off, a model already named on the call, an unmapped type and a value that is not an
+ * alias all return undefined.
+ */
+export function resolveModel(policy: ModelPolicy, subagentType: string, requested: string | undefined): string | undefined {
+  if (!policy.enabled) return undefined
+  if (requested !== undefined) return requested
+  const alias = policy.map[subagentType]
+  return alias !== undefined && ALIASES.includes(alias) ? alias : undefined
+}

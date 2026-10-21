@@ -24,7 +24,7 @@
       "executable": false
     },
     "hooks/lib/model.ts": {
-      "sha256": "d504cc954ad8df60f7cec840c730c4706a13fbd041672c691df413c9d5c57603",
+      "sha256": "948d622b941270bf5756c8beee3db7f5a1b358bbf9aab4d9a1b7f7cc04df9e55",
       "executable": false
     },
     "hooks/register.ts": {
@@ -40,7 +40,7 @@
       "executable": false
     },
     "tests/model.test.ts": {
-      "sha256": "c9d34df7cfd03825464523e5131456caca82f9245ed145b2b415b005365c5923",
+      "sha256": "38e089cb67da8cb00f1f8c80188b809ca77d75d8653966a42b3b074e6435e7c1",
       "executable": false
     }
   }
