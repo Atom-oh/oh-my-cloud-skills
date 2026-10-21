@@ -8,7 +8,7 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "5221df5cafededd3cfe884a3b110ad7116b0fafa2e4703248d3e0a42786f146f",
+      "sha256": "98dc3105c15468ee722f047bfc4dbd110e00dc361e66d5b53e405d51536146fd",
       "executable": false
     },
     "agents/co-agent.md": {
@@ -144,7 +144,7 @@
       "executable": true
     },
     "skills/decision-reconcile/SKILL.md": {
-      "sha256": "d6798d38699a0867fca582b5f1ecc7f0e11687ac7263ceabdca7fb292ae971c8",
+      "sha256": "eb3c7870b4356bfaaf1e28f02ef39e0452f5c6e1041ced9e3d141b5db0e83b09",
       "executable": false
     },
     "skills/decision-reconcile/references/contradiction-taxonomy.md": {
@@ -153,6 +153,10 @@
     },
     "skills/decision-reconcile/scripts/collect_adrs.py": {
       "sha256": "2fdff7a43b57173aa058e93d7ca65eddc074e87b89e57369f7a2b480b6633047",
+      "executable": true
+    },
+    "skills/decision-reconcile/scripts/verify_quotes.py": {
+      "sha256": "03ef5ac5ea6c47e97c379e591bf907b94500c9ddb0c539740ca6c705aaef1564",
       "executable": true
     },
     "skills/pr-autofix/SKILL.md": {

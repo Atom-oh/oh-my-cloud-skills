@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add the `decision-reconcile-panel` dynamic workflow to co-agent (Claude Code only;
+  run it with the Workflow tool and `args.pluginRoot`). It runs ADR collection, the four
+  decision-reconcile lenses on the skill's model tiers, quote verification with the new
+  `verify_quotes.py` and a consensus and dissent synthesis as one background run, and
+  returns a report with a recommended resolution per contradiction. It writes no ADR and
+  uses no external AI CLI. The Codex package excludes `workflows/`; the Markdown
+  procedure is unchanged.
 - Add the `agent-dash` plugin, the marketplace's second Claude Code mod. It shows the
   session's agents (subagents, teammates and workflow agents) as a delegation tree
   in a pane, a one-line band above the prompt and a status line, with notices when an
