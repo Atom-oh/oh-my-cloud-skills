@@ -23,8 +23,24 @@
       "sha256": "8b55332efc3f591e2e091c4f0913f1b93725fc1142e1c80e6855c914d09ba95d",
       "executable": false
     },
+    "hooks/lib/model.ts": {
+      "sha256": "d504cc954ad8df60f7cec840c730c4706a13fbd041672c691df413c9d5c57603",
+      "executable": false
+    },
+    "hooks/register.ts": {
+      "sha256": "8a15439b544398bf3685361938587a489aafeecd2fde53bbcb396063ce8e770d",
+      "executable": false
+    },
     "skills/agent-status/SKILL.md": {
       "sha256": "9b45976c9102ddfb8b25c92951af061235c2a391da515f87e99993876c51dd90",
+      "executable": false
+    },
+    "tests/fixtures/agents.ts": {
+      "sha256": "9ea3b1985c017dbf889f2720d14cc185cc31e5755aadc33139afae7b34c7ce1a",
+      "executable": false
+    },
+    "tests/model.test.ts": {
+      "sha256": "c9d34df7cfd03825464523e5131456caca82f9245ed145b2b415b005365c5923",
       "executable": false
     }
   }
