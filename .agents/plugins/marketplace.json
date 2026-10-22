@@ -15,7 +15,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Content Creation",
-      "version": "3.0.4"
+      "version": "3.0.5"
     },
     {
       "name": "aws-ops-plugin",
@@ -28,7 +28,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Cloud Operations",
-      "version": "3.0.4"
+      "version": "3.0.5"
     },
     {
       "name": "kiro-power-converter",
@@ -41,7 +41,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Conversion",
-      "version": "3.0.4"
+      "version": "3.0.5"
     },
     {
       "name": "co-agent",
@@ -54,7 +54,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Collaboration",
-      "version": "3.0.4"
+      "version": "3.0.5"
     },
     {
       "name": "agentcore-creator",
@@ -67,7 +67,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Conversion",
-      "version": "3.0.4"
+      "version": "3.0.5"
     },
     {
       "name": "kiro",
@@ -80,7 +80,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Collaboration",
-      "version": "3.0.4"
+      "version": "3.0.5"
     },
     {
       "name": "project-init",
@@ -93,7 +93,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Development",
-      "version": "3.0.4"
+      "version": "3.0.5"
     },
     {
       "name": "token-saver",
@@ -106,7 +106,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity",
-      "version": "3.0.4"
+      "version": "3.0.5"
     },
     {
       "name": "pr-dash",
@@ -119,7 +119,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity",
-      "version": "3.0.4"
+      "version": "3.0.5"
     },
     {
       "name": "agent-dash",
@@ -132,7 +132,7 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity",
-      "version": "3.0.4"
+      "version": "3.0.5"
     }
   ]
 }

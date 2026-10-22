@@ -1,6 +1,6 @@
 {
   "name": "pr-dash",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "description": "Claude Code mod that shows a pull request's CI checks and AI review result in a pane, status line and toasts; actions only hand prompts to Claude.",
   "author": {
     "name": "atomoh"

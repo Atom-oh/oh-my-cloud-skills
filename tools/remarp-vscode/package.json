@@ -2,7 +2,7 @@
   "name": "remarp-vscode",
   "displayName": "Remarp Slides",
   "description": "Author reactive presentations with the remarp markdown format",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "aws-cloud-skills",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -50,6 +50,11 @@
       }
     ],
     "commands": [
+      {
+        "command": "remarp.studio",
+        "title": "Remarp: Open Design Studio",
+        "category": "Remarp"
+      },
       {
         "command": "remarp.preview",
         "title": "Remarp: Approximate Text Preview",
@@ -133,6 +138,11 @@
     "menus": {
       "editor/title": [
         {
+          "command": "remarp.studio",
+          "when": "editorLangId == remarp",
+          "group": "navigation"
+        },
+        {
           "command": "remarp.preview",
           "when": "editorLangId == remarp",
           "group": "navigation"
@@ -149,6 +159,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "test": "npm run compile && node --test test/*.test.cjs",
+    "test:browser": "npm run compile && python3 test/studio-browser.py",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts"
   },

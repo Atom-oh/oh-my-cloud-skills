@@ -127,6 +127,20 @@ class PresenterPreviewTests(unittest.TestCase):
         self.page.evaluate(f"() => deck.goTo({index})")
         self.settle()
 
+    def assert_slide_sync(self, index):
+        self.assertEqual(self.page.evaluate("() => deck.currentSlide"), index)
+        self.page.wait_for_function("() => !deck.transitioning", timeout=5000)
+        self.pv.wait_for_function(
+            "index => document.getElementById('p-counter').textContent === `${index + 1} / 4`",
+            arg=index, timeout=5000)
+
+    def assert_fragment_sync(self, count):
+        self.assert_slide_sync(2)
+        self.assertEqual(self.page.locator(".slide.active .fragment.visible").count(), count)
+        self.pv.wait_for_function(
+            "count => document.querySelectorAll('#p-current .fragment.visible').length === count",
+            arg=count, timeout=5000)
+
     def test_preview_uses_deck_canvas(self):
         size = self.pv.evaluate(
             "() => { const s = document.querySelector('#p-current .slide-scaler');"
@@ -181,6 +195,185 @@ class PresenterPreviewTests(unittest.TestCase):
         self.pv.wait_for_timeout(500)
         shown = self.pv.evaluate("() => document.querySelectorAll('#p-current .fragment.visible').length")
         self.assertEqual(shown, 1)
+
+    def test_presenter_vertical_keys_reveal_reverse_and_leave_at_start(self):
+        self.goto(2)
+        self.assert_fragment_sync(0)
+        for key, count in (("ArrowDown", 1), ("ArrowDown", 2),
+                           ("ArrowUp", 1), ("ArrowUp", 0)):
+            self.pv.keyboard.press(key)
+            self.assert_fragment_sync(count)
+        self.pv.keyboard.press("ArrowUp")
+        self.assert_slide_sync(1)
+
+    def test_presenter_vertical_keys_leave_only_after_last_fragment(self):
+        self.goto(2)
+        for count in (1, 2):
+            self.pv.keyboard.press("ArrowDown")
+            self.assert_fragment_sync(count)
+        self.pv.keyboard.press("ArrowDown")
+        self.assert_slide_sync(3)
+
+    def test_presenter_vertical_keys_dispatch_canvas_steps(self):
+        self.goto(1)
+        self.page.evaluate("""() => {
+            window.canvasCalls = [];
+            window.canvasConsumes = true;
+            deck.slides[1].__canvasStep = direction => {
+                window.canvasCalls.push(direction);
+                return window.canvasConsumes;
+            };
+        }""")
+        for key in ("ArrowDown", "ArrowUp"):
+            self.pv.keyboard.press(key)
+            self.assert_slide_sync(1)
+        self.assertEqual(self.page.evaluate("() => window.canvasCalls"), ["next", "prev"])
+        self.page.evaluate("() => { window.canvasConsumes = false; }")
+        self.pv.keyboard.press("ArrowDown")
+        self.assert_slide_sync(2)
+        self.assertEqual(self.page.evaluate("() => window.canvasCalls"), ["next", "prev", "next"])
+
+    def test_presenter_slide_actions_take_precedence_and_allow_fallback(self):
+        self.goto(1)
+        self.page.evaluate("""() => {
+            window.actionCalls = [];
+            window.actionConsumes = true;
+            deck.slides[1].__canvasStep = () => {
+                window.actionCalls.push('canvas');
+                return true;
+            };
+            deck.registerSlideAction(1, {
+                down: () => {
+                    window.actionCalls.push('down');
+                    return window.actionConsumes ? undefined : false;
+                },
+                up: () => {
+                    window.actionCalls.push('up');
+                    return window.actionConsumes;
+                }
+            });
+        }""")
+        for key in ("ArrowDown", "ArrowUp"):
+            self.pv.keyboard.press(key)
+            self.assert_slide_sync(1)
+        self.assertEqual(self.page.evaluate("() => window.actionCalls"), ["down", "up"])
+        self.page.evaluate("() => { window.actionConsumes = false; }")
+        self.pv.keyboard.press("ArrowDown")
+        self.assert_slide_sync(2)
+        self.goto(1)
+        self.pv.keyboard.press("ArrowUp")
+        self.assert_slide_sync(0)
+        self.assertEqual(self.page.evaluate("() => window.actionCalls"), ["down", "up", "down", "up"])
+
+    def test_presenter_vertical_keys_refresh_inline_style_tabs(self):
+        self.goto(1)
+        self.page.evaluate("""() => {
+            const body = deck.slides[1].querySelector('.slide-body');
+            body.innerHTML = '<div class="tab-bar"><button class="tab-btn">First</button>'
+                + '<button class="tab-btn">Second</button></div>'
+                + '<p data-tab-panel="0">First tab content</p>'
+                + '<p data-tab-panel="1">Second tab content</p>';
+            const buttons = body.querySelectorAll('.tab-btn');
+            const panels = body.querySelectorAll('[data-tab-panel]');
+            const select = index => {
+                buttons.forEach((button, i) => button.style.background = i === index ? 'var(--accent)' : 'transparent');
+                panels.forEach((panel, i) => panel.style.display = i === index ? 'block' : 'none');
+            };
+            buttons.forEach((button, index) => button.onclick = () => select(index));
+            select(0);
+            deck.presenterView.updatePresenterView();
+        }""")
+        for key, selected in (("ArrowDown", 1), ("ArrowUp", 0)):
+            self.pv.keyboard.press(key)
+            self.assert_slide_sync(1)
+            for page, root in ((self.page, ".slide.active"), (self.pv, "#p-current")):
+                page.wait_for_function("""([root, selected]) => {
+                    const panels = document.querySelectorAll(root + ' [data-tab-panel]');
+                    return panels.length === 2 && Array.from(panels).every(
+                        (panel, i) => panel.style.display === (i === selected ? 'block' : 'none'));
+                }""", arg=[root, selected], timeout=5000)
+
+    def test_presenter_vertical_keys_cycle_compare_and_refresh_preview(self):
+        self.goto(1)
+        self.page.evaluate("""() => {
+            const body = deck.slides[1].querySelector('.slide-body');
+            body.innerHTML = '<div class="compare-toggle"><button class="compare-btn active">Before</button>'
+                + '<button class="compare-btn">After</button></div><p data-compare-content>Before details</p>';
+            const buttons = body.querySelectorAll('.compare-btn');
+            buttons.forEach(button => button.onclick = () => {
+                buttons.forEach(other => other.classList.toggle('active', other === button));
+                body.querySelector('[data-compare-content]').textContent = button.textContent + ' details';
+            });
+            deck.presenterView.updatePresenterView();
+        }""")
+        for key, label in (("ArrowDown", "After"), ("ArrowUp", "Before")):
+            self.pv.keyboard.press(key)
+            self.assert_slide_sync(1)
+            for page, root in ((self.page, ".slide.active"), (self.pv, "#p-current")):
+                page.wait_for_function("""([root, label]) => {
+                    const active = document.querySelector(root + ' .compare-btn.active');
+                    const details = document.querySelector(root + ' [data-compare-content]');
+                    return active.textContent === label && details.textContent === label + ' details';
+                }""", arg=[root, label], timeout=5000)
+
+    def test_presenter_respects_remapped_navigation_keys(self):
+        self.goto(2)
+        self.page.evaluate("() => { deck.keyMappings.j = 'down'; deck.keyMappings.k = 'up'; }")
+        self.pv.keyboard.press("j")
+        self.assert_fragment_sync(1)
+        self.pv.keyboard.press("k")
+        self.assert_fragment_sync(0)
+        self.page.evaluate("() => { deck.keyMappings.ArrowDown = 'prev'; }")
+        self.pv.keyboard.press("ArrowDown")
+        self.assert_slide_sync(1)
+
+    def test_presenter_step_closes_main_search_and_reveals_fragment(self):
+        self.goto(2)
+        self.page.keyboard.press("Control+K")
+        self.page.wait_for_function("() => document.body.classList.contains('rp-search-open')")
+        self.pv.keyboard.press("ArrowDown")
+        self.assert_fragment_sync(1)
+        self.assertFalse(self.page.evaluate("() => document.body.classList.contains('rp-search-open')"))
+
+    def test_presenter_step_closes_main_detail_and_runs_slide_action(self):
+        self.goto(3)
+        self.page.evaluate("""() => {
+            deck.registerSlideAction(3, {
+                down: () => { deck.slides[3].querySelector('h2').textContent = 'Detail advanced'; }
+            });
+        }""")
+        self.page.click('.slide.active .rp-detail')
+        self.page.wait_for_function("() => document.body.classList.contains('rp-detail-open')")
+        self.pv.keyboard.press("ArrowDown")
+        self.assert_slide_sync(3)
+        self.assertFalse(self.page.evaluate("() => document.body.classList.contains('rp-detail-open')"))
+        self.assertEqual(self.page.locator('.slide.active h2').text_content(), 'Detail advanced')
+        self.pv.wait_for_function(
+            "() => document.querySelector('#p-current h2').textContent === 'Detail advanced'", timeout=5000)
+
+    def test_presenter_right_space_and_left_preserve_fragments(self):
+        self.goto(2)
+        for key, count in (("ArrowRight", 1), ("Space", 2),
+                           ("ArrowLeft", 1), ("ArrowLeft", 0)):
+            self.pv.keyboard.press(key)
+            self.assert_fragment_sync(count)
+
+    def test_presenter_editable_controls_do_not_navigate(self):
+        self.goto(2)
+        self.pv.evaluate("""() => {
+            const controls = document.createElement('div');
+            controls.innerHTML = '<input id="keyboard-input">'
+                + '<textarea id="keyboard-textarea"></textarea>'
+                + '<select id="keyboard-select"><option>One</option><option>Two</option></select>'
+                + '<div id="keyboard-editable" contenteditable="true">Editable notes</div>';
+            document.body.appendChild(controls);
+        }""")
+        for selector in ("#keyboard-input", "#keyboard-textarea", "#keyboard-select", "#keyboard-editable"):
+            with self.subTest(control=selector):
+                self.pv.focus(selector)
+                for key in ("ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft", "Space"):
+                    self.pv.keyboard.press(key)
+                    self.assert_fragment_sync(0)
 
     def test_presenter_chrome_size_unchanged(self):
         fs = self.pv.evaluate("() => getComputedStyle(document.querySelector('.presenter-timer')).fontSize")

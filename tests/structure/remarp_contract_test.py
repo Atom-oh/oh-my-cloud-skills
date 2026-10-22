@@ -195,7 +195,8 @@ class RemarpContractTests(unittest.TestCase):
         result = self.cli('build', source)
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         output = (self.root / 'slides/default.html').read_text()
-        for content in ('<canvas', 'Frontend', 'Backend', 'Feature 1', 'Feature 4'):
+        for content in ('<canvas', 'API', 'Service', 'First option', 'Second option',
+                        'data-remarp-id="s0-card-0"', 'Presenter guidance.'):
             self.assertIn(content, output)
 
     def test_language_override_applies_to_each_project_output(self):

@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted (2026-09-14)
+Accepted (2026-09-14). Partially superseded by
+[ADR-028](ADR-028-remarp-design-studio.md): saved-source-only preview and
+unsupported visual-writeback clauses. Source-first authoring and the prohibition
+on a general-purpose layout DSL remain in force.
 
 ## Context
 

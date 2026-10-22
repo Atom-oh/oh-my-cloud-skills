@@ -1,0 +1,38 @@
+import * as vscode from 'vscode';
+export declare function registerStudio(context: vscode.ExtensionContext, compilerFor: (doc: vscode.TextDocument) => string | null): void;
+export declare class StudioSession implements vscode.Disposable {
+    private extension;
+    private entry;
+    private compiler;
+    readonly panel: vscode.WebviewPanel;
+    private readonly root;
+    private readonly temporary;
+    private readonly project;
+    private readonly disposables;
+    private timer?;
+    private process?;
+    private requested;
+    private building;
+    private disposed;
+    private ready;
+    private current?;
+    private proposal?;
+    private stages;
+    private diffKeys;
+    private messages;
+    constructor(extension: vscode.Uri, entry: vscode.TextDocument, compiler: string);
+    private isSource;
+    private snapshot;
+    private unchanged;
+    private post;
+    private error;
+    private pruneStages;
+    private schedule;
+    private compile;
+    private rebuild;
+    private valid;
+    private apply;
+    private showDiff;
+    private receive;
+    dispose(): void;
+}

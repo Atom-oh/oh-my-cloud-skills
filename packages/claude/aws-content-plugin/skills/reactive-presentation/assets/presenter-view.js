@@ -551,18 +551,27 @@ ${styleSheets}
     };
 
     doc.addEventListener('keydown', (e) => {
-      switch (e.key) {
-        case 'ArrowRight':
-        case ' ':
+      const tag = e.target && e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
+          (e.target && e.target.isContentEditable)) return;
+
+      const action = this.framework.getKeyAction(e.key);
+      switch (action) {
+        case 'next':
+        case 'prev':
+        case 'down':
+        case 'up':
+        case 'first':
+        case 'last':
           e.preventDefault();
-          this.framework.next();
-          this.broadcastSlideChange(this.framework.currentSlide);
-          this.updatePresenterView();
-          break;
-        case 'ArrowLeft':
-          e.preventDefault();
-          this.framework.prev();
-          this.broadcastSlideChange(this.framework.currentSlide);
+          // Remote steps do not pass through the deck's overlay key listeners.
+          // Dismiss blocking panels without moving focus out of this window.
+          if (window.DeckOverlay) {
+            window.DeckOverlay.closeSearch(false);
+            window.DeckOverlay.closeDetail(false);
+          }
+          this.framework.handleNavigationAction(action);
+          // Steps may change the current slide without triggering showSlide().
           this.updatePresenterView();
           break;
       }

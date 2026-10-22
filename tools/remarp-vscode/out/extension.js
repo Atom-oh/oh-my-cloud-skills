@@ -47,6 +47,7 @@ const completions_1 = require("./completions");
 const child_process_1 = require("child_process");
 const compiledPreview_1 = require("./compiledPreview");
 const source_1 = require("./source");
+const studio_1 = require("./studio");
 const presentationFiles = ['_presentation.md', '_presentation.remarp.md', 'remarp.yaml', 'remarp.yml'];
 let savingForBuild = false;
 let buildQueue = Promise.resolve();
@@ -116,6 +117,7 @@ async function setRemarpLanguageIfNeeded(document) {
 }
 function activate(context) {
     console.log('Remarp extension is now active');
+    (0, studio_1.registerStudio)(context, findBuildScript);
     // Check all open markdown files for remarp: true
     vscode.workspace.textDocuments.forEach(doc => {
         setRemarpLanguageIfNeeded(doc);

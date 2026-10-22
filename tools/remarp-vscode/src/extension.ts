@@ -7,6 +7,7 @@ import { RemarpCompletionProvider } from './completions';
 import { execFile } from 'child_process';
 import { CompiledPreviewRenderer } from './compiledPreview';
 import { slideStarts } from './source';
+import { registerStudio } from './studio';
 
 const presentationFiles = ['_presentation.md', '_presentation.remarp.md', 'remarp.yaml', 'remarp.yml'];
 let savingForBuild = false;
@@ -83,6 +84,7 @@ async function setRemarpLanguageIfNeeded(document: vscode.TextDocument): Promise
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Remarp extension is now active');
+    registerStudio(context, findBuildScript);
 
     // Check all open markdown files for remarp: true
     vscode.workspace.textDocuments.forEach(doc => {
