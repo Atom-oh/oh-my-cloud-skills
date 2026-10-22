@@ -67,14 +67,14 @@ Use distinct models/providers only where the current host actually supports them
 different lenses are useful even when every worker runs the same model.
 
 **Claude Code with dynamic workflows — one run for Steps 1, 3 and 4.** Call the Workflow
-tool with `name: "decision-reconcile-panel"` and `args: {"pluginRoot": "${CLAUDE_PLUGIN_ROOT}",
+tool with `name: "co-agent:decision-reconcile-panel"` (the bare name is not found) and `args: {"pluginRoot": "${CLAUDE_PLUGIN_ROOT}",
 "decisionsDir": "docs/decisions"}`. The run collects the ADRs, runs the four lenses below
 as host subagents on the tiers in the table, verifies every quote with
 `scripts/verify_quotes.py`, clusters the surviving findings by ADR set and returns
 `clusters` (consensus or dissent, severity, `severitySplit` when the lenses rated it
 differently, recommended resolution), `dropped`,
 `overflagged`, `panel.missing`, a ready-to-present `markdown` report and a `scratch`
-directory to remove afterwards. It writes no ADR, cannot ask for consent and therefore
+directory to remove afterwards (an error result carries `scratch` too, when one was made). It writes no ADR, cannot ask for consent and therefore
 sends nothing to external AI CLIs; add their findings by hand through the optional path
 below if the user opted in. Present `markdown`, then continue at Step 5. When workflows
 are unavailable (disabled, Codex, or `claude -p` without a `Workflow` allow rule), use the
@@ -130,7 +130,9 @@ Follow the [Synthesis](references/contradiction-taxonomy.md) section:
 
 1. **Verify every finding against the ADR JSON** — drop any whose quotes don't appear in
    the cited ADR. Quote-verification, not vote-counting, is what confirms a finding.
-   `scripts/verify_quotes.py ADRS_JSON FINDINGS_JSON` does this deterministically; the
+   `scripts/verify_quotes.py ADRS_JSON FINDINGS_JSON --decisions-dir docs/decisions` does
+   this deterministically (the flag adds the full ADR files, because collect_adrs.py clips
+   long decisions at 600 characters); the
    workflow already ran it, so its `clusters` carry only verified quotes. Still read each
    CRITICAL/MAJOR quote against the ADR before presenting it.
 2. Cluster by the ADR set touched; mark **consensus** (≥2 agents) vs **dissent** (one

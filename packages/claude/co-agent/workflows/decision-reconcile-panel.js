@@ -10,11 +10,21 @@ export const meta = {
   ],
 }
 
+// These paths are pasted inside double quotes into Bash lines a subagent runs, so a value
+// that could close the quote or start a substitution is refused.
+const UNSAFE = /["`$\\\n\r]/
+
 if (!args || typeof args.pluginRoot !== 'string' || args.pluginRoot === '') {
   throw new Error('decision-reconcile-panel needs args.pluginRoot: the co-agent plugin root the skill renders')
 }
+if (UNSAFE.test(args.pluginRoot)) {
+  throw new Error('args.pluginRoot must not contain a double quote, backtick, dollar sign, backslash or line break')
+}
 const ROOT = args.pluginRoot.replace(/\/+$/, '')
 const DIR = typeof args.decisionsDir === 'string' && args.decisionsDir !== '' ? args.decisionsDir : 'docs/decisions'
+if (UNSAFE.test(DIR)) {
+  throw new Error('args.decisionsDir must not contain a double quote, backtick, dollar sign, backslash or line break')
+}
 const SKILL = ROOT + '/skills/decision-reconcile'
 const TAXONOMY = SKILL + '/references/contradiction-taxonomy.md'
 
@@ -26,8 +36,8 @@ const RESOLUTION_ORDER = ['C1', 'C2', 'C4', 'C5', 'C3', 'C6']
 
 const COLLECT_SCHEMA = {
   type: 'object',
-  properties: { path: { type: 'string' }, adrCount: { type: 'integer' }, warningCount: { type: 'integer' } },
-  required: ['path', 'adrCount', 'warningCount'],
+  properties: { scratch: { type: 'string' }, path: { type: 'string' }, adrCount: { type: 'integer' }, warningCount: { type: 'integer' } },
+  required: ['scratch', 'path', 'adrCount', 'warningCount'],
 }
 const FINDINGS_SCHEMA = {
   type: 'object',
@@ -82,9 +92,9 @@ function lensPrompt(lens, adrsPath) {
     'Rules: copy each quote exactly from the cited ADR title, status, decision or context, with its ADR number; a claim you cannot quote is not a finding. Flag conflicts between active ADRs (Accepted or Proposed); a Superseded or Deprecated ADR contradicting an Accepted one is expected. Use NOT-A-CONFLICT only for a pair you considered and ruled out. Return an empty findings list when you find none.',
   ]
   if (lens.id === 'L3') {
-    lines.push('You may Read, Grep and Glob the repository to compare each Accepted ADR with reality.')
+    lines.push('You may Read, Grep and Glob the repository to compare each Accepted ADR with reality. Skip dotenv, credential and key files, and never copy a secret value into a finding or its evidence.')
   } else {
-    lines.push('Read only the two files named above; do not read other repository files.')
+    lines.push('The JSON clips each decision and context at 600 characters. When a long ADR matters for your lens, Read its file in ' + DIR + ' (the file field names it; use the base name). Do not read other repository files.')
   }
   return lines.join('\n')
 }
@@ -132,17 +142,19 @@ phase('Collect')
 const collected = await agent(
   [
     'Collect the ADRs deterministically. Do not summarize, edit or reorder them. Run these with Bash:',
-    '1. SCRATCH=$(mktemp -d "${TMPDIR:-$HOME/.tmp}/decision-reconcile.XXXXXX")',
+    '1. SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/decision-reconcile.XXXXXX")',
     '2. python3 -I "' + SKILL + '/scripts/collect_adrs.py" "' + DIR + '" > "$SCRATCH/adrs.json"',
     '3. python3 -I -c \'import json,sys; d=json.load(open(sys.argv[1])); print(len(d["adrs"]), len(d["warnings"]))\' "$SCRATCH/adrs.json"',
-    'Return the absolute path of "$SCRATCH/adrs.json" as path, the first number as adrCount and the second as warningCount. If any step fails, return an empty path and zero counts.',
+    'Return the absolute value of "$SCRATCH" as scratch, the absolute path of "$SCRATCH/adrs.json" as path, the first number as adrCount and the second as warningCount. If any step fails, return an empty path and zero counts, and still return scratch when step 1 succeeded.',
   ].join('\n'),
-  { label: 'collect', phase: 'Collect', model: 'haiku', schema: COLLECT_SCHEMA },
+  { label: 'collect', phase: 'Collect', model: 'haiku', effort: 'low', schema: COLLECT_SCHEMA },
 )
-if (!collected || !collected.path) {
-  return { error: 'collect failed: collect_adrs.py produced no ADR file', clusters: [] }
+const safeScratch = collected && typeof collected.scratch === 'string' && collected.scratch !== '' && !UNSAFE.test(collected.scratch) ? collected.scratch : undefined
+const pathOk = !!collected && typeof collected.path === 'string' && !UNSAFE.test(collected.path) && /^\/.+\/adrs\.json$/.test(collected.path)
+if (!pathOk) {
+  return { error: 'collect failed: collect_adrs.py produced no usable ADR file', scratch: safeScratch, clusters: [] }
 }
-const scratch = collected.path.replace(/\/[^/]*$/, '')
+const scratch = safeScratch || collected.path.replace(/\/[^/]*$/, '')
 const base = { adrCount: collected.adrCount, warningCount: collected.warningCount, scratch }
 if (collected.adrCount < 2) {
   return { ...base, skipped: 'fewer than 2 ADRs; nothing to reconcile', clusters: [] }
@@ -186,13 +198,13 @@ if (candidates.length > 0) {
     [
       'Check quotes with the bundled script. Do not judge the findings yourself and do not change the script output.',
       '1. Take the JSON array between FINDINGS_JSON_BEGIN and FINDINGS_JSON_END and write it unchanged to a file named findings.json in the directory that holds ' + collected.path + ' (use a quoted heredoc).',
-      '2. Run: python3 -I "' + SKILL + '/scripts/verify_quotes.py" "' + collected.path + '" "<that directory>/findings.json"',
+      '2. Run: python3 -I "' + SKILL + '/scripts/verify_quotes.py" "' + collected.path + '" "<that directory>/findings.json" --decisions-dir "' + DIR + '"',
       '3. Return its JSON output as verified (the list of indexes) and dropped (the list of index and reason). If the script cannot run, return both lists empty.',
       'FINDINGS_JSON_BEGIN',
       JSON.stringify(candidates),
       'FINDINGS_JSON_END',
     ].join('\n'),
-    { label: 'verify', phase: 'Verify', model: 'haiku', schema: VERIFY_SCHEMA },
+    { label: 'verify', phase: 'Verify', model: 'haiku', effort: 'low', schema: VERIFY_SCHEMA },
   )
   const inRange = (n) => Number.isInteger(n) && n >= 0 && n < candidates.length
   const indexes = verdict && Array.isArray(verdict.verified) && Array.isArray(verdict.dropped)

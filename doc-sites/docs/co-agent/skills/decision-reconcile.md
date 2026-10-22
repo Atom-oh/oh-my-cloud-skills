@@ -31,7 +31,7 @@ Collect ADRs and their status; trace referenced code and configuration; ask the 
 
 A superseding ADR identifies the replaced decision, explains the new evidence, records alternatives and consequences, and links both directions. Preserve historical ADRs instead of silently rewriting the record. Do not execute migrations merely because an ADR proposes one.
 
-On Claude Code with dynamic workflows enabled, the `decision-reconcile-panel` workflow runs the collection, the four lenses, quote verification and clustering as one background run and returns a consensus and dissent report with a recommended resolution for each contradiction. It only reports: superseding ADRs and status edits stay with the host and need your approval, and the workflow uses no external AI services, so it needs no external-peer consent. Without workflows (Codex, or when they are disabled) the manual procedure applies unchanged.
+On Claude Code with dynamic workflows enabled, the `co-agent:decision-reconcile-panel` workflow runs the collection, the four lenses, quote verification and clustering as one background run and returns a consensus and dissent report with a recommended resolution for each contradiction. It only reports: superseding ADRs and status edits stay with the host and need your approval, and the workflow uses no external AI services, so it needs no external-peer consent. Without workflows (Codex, or when they are disabled) the manual procedure applies unchanged.
 
 ## Tooling and boundaries {#tooling-and-boundaries}
 

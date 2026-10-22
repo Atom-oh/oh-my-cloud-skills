@@ -12,7 +12,7 @@ const SRC = fs.readFileSync(FILE, 'utf8')
 const META_RE = /^export const meta = (\{[\s\S]*?\n\})\n/m
 
 const ARGS = { pluginRoot: '/plugins/co-agent', decisionsDir: 'docs/decisions' }
-const COLLECT = { path: '/scratch/dr.AbC123/adrs.json', adrCount: 28, warningCount: 4 }
+const COLLECT = { scratch: '/scratch/dr.AbC123', path: '/scratch/dr.AbC123/adrs.json', adrCount: 28, warningCount: 4 }
 
 function quote(adr, text) {
   return { adr, text }
@@ -110,8 +110,8 @@ test('prompts point agents at the plugin scripts and the shared ADR file, read-o
   const { calls } = await run(ARGS)
   const by = Object.fromEntries(calls.map((c) => [c.opts.label, c.prompt]))
   assert.match(by.collect, /\/plugins\/co-agent\/skills\/decision-reconcile\/scripts\/collect_adrs\.py/)
-  assert.match(by.collect, /mktemp -d/)
-  assert.doesNotMatch(by.collect, /\/tmp\//)
+  assert.ok(by.collect.includes('mktemp -d "${TMPDIR:-/tmp}/decision-reconcile.XXXXXX"'), 'TMPDIR with the repository /tmp fallback')
+  assert.doesNotMatch(by.collect, /\.tmp/)
   for (const lens of ['L1', 'L2', 'L3', 'L4']) {
     const p = by[`lens:${lens}`]
     assert.ok(p.includes(COLLECT.path), `${lens} reads the shared ADR file`)
@@ -119,9 +119,36 @@ test('prompts point agents at the plugin scripts and the shared ADR file, read-o
     assert.match(p, /read-only/i)
     assert.match(p, new RegExp(`\\b${lens}\\b`))
   }
+  for (const lens of ['L1', 'L2', 'L4']) assert.match(by[`lens:${lens}`], /clips each decision and context at 600 characters[\s\S]*docs\/decisions/)
   assert.match(by['lens:L3'], /CLAUDE\.md/)
+  assert.match(by['lens:L3'], /credential/i)
   assert.match(by.verify, /\/plugins\/co-agent\/skills\/decision-reconcile\/scripts\/verify_quotes\.py/)
   assert.ok(by.verify.includes(COLLECT.path))
+  assert.ok(by.verify.includes('--decisions-dir "docs/decisions"'), 'quotes are checked against the full ADR files')
+})
+
+test('the two mechanical stages run at low effort', async () => {
+  const { calls } = await run(ARGS)
+  const effort = Object.fromEntries(calls.map((c) => [c.opts.label, c.opts.effort]))
+  assert.equal(effort.collect, 'low')
+  assert.equal(effort.verify, 'low')
+  assert.equal(effort['lens:L1'], undefined)
+})
+
+test('a path that could close the shell quote is refused before any agent runs', async () => {
+  await assert.rejects(() => run({ pluginRoot: '/plugins/co-agent"; touch /x; echo "' }), /pluginRoot/)
+  await assert.rejects(() => run({ pluginRoot: '/plugins/$(id)' }), /pluginRoot/)
+  await assert.rejects(() => run({ pluginRoot: '/plugins/co-agent', decisionsDir: 'docs/`id`' }), /decisionsDir/)
+  await assert.rejects(() => run({ pluginRoot: '/plugins/co-agent', decisionsDir: 'docs\\decisions' }), /decisionsDir/)
+})
+
+test('a collected path that is not an adrs.json under one directory is an error that keeps the scratch handle', async () => {
+  for (const path of ['/scratch/dr.AbC123/other.json', 'relative/adrs.json', '/scratch/$(id)/adrs.json', '']) {
+    const { result, calls } = await run(ARGS, { collect: { ...COLLECT, path } })
+    assert.match(result.error, /collect failed/)
+    assert.equal(calls.length, 1)
+    assert.equal(result.scratch, '/scratch/dr.AbC123')
+  }
 })
 
 test('findings cluster by ADR set: consensus needs two lenses, dissent names the lens', async () => {
@@ -170,7 +197,14 @@ test('fewer than two ADRs stops before the panel', async () => {
 test('a failed collector is an error, not an empty report', async () => {
   const { result, calls } = await run(ARGS, { collect: null })
   assert.match(result.error, /collect/i)
+  assert.equal(result.scratch, undefined)
   assert.equal(calls.length, 1)
+})
+
+test('a failed collection still reports the scratch directory the first step created', async () => {
+  const { result } = await run(ARGS, { collect: { scratch: '/scratch/dr.Zz9', path: '', adrCount: 0, warningCount: 0 } })
+  assert.match(result.error, /collect/i)
+  assert.equal(result.scratch, '/scratch/dr.Zz9')
 })
 
 test('a lens that returns nothing is listed as missing and the rest still report', async () => {
