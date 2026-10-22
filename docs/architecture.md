@@ -69,6 +69,9 @@ flowchart LR
   `agent.spawn` model rewrite that a model named on the call or forced for the
   session overrides. Validate a mod with `claude plugin validate` and
   `claude plugin test` from its plugin directory.
+- co-agent also ships one Claude-only dynamic workflow, `workflows/decision-reconcile-panel.js`,
+  behind decision-reconcile's fast path. It is not counted as a skill, command or agent, and
+  its Codex package excludes `workflows/`.
 
 ## Artifact and review boundaries
 

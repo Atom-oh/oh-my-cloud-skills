@@ -55,6 +55,10 @@ not waive a required CI check.
 - Tests use Bash, standard CLI tools (`grep`, `jq`, `python3`) and Python's standard
   library, without third-party test packages. Workflow JavaScript fixtures also use
   Node.js, an existing prerequisite checked by `scripts/setup.sh`; no npm packages are needed.
+- A dynamic workflow script (a plugin's `workflows/*.js`) has no imports or file access, so
+  test it with a `node:vm` harness: `tests/structure/decision_reconcile_workflow_test.cjs`
+  supplies `agent`, `parallel`, `phase`, `log` and `args`, answers each agent by its `label`,
+  and compares the JSON-normalised result. Copy it and the `.sh` wrapper for the next one.
 - Secret-pattern tests are the safety net for the `secret-scan.sh` PreToolUse hook: every new
   detection pattern needs a true-positive fixture in `secret-samples.txt` **and** a
   false-positive guard in `false-positives.txt`.

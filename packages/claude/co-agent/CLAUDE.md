@@ -33,6 +33,10 @@ workflow; the six modes then route by the requested task.
 `setup` is a separate readiness command, not a seventh mode. The five source commands
 are `setup`, `configure`, `sync-context`, `consensus` and `harness`.
 The three source skills are `co-agent`, `decision-reconcile` and `pr-autofix`.
+`workflows/decision-reconcile-panel.js` is a Claude-only dynamic workflow behind the
+`decision-reconcile` fast path; it is not a skill, command or agent, the Codex package
+excludes `workflows/`, and `tests/structure/test-decision-reconcile-workflow.sh` runs it
+against canned agent answers.
 Source modes, command files and generated Codex entry skills are different inventories.
 
 ## Readiness and acceptance
