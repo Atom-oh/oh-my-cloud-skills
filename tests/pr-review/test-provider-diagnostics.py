@@ -84,7 +84,9 @@ class ProviderDiagnostics(unittest.TestCase):
                'PANEL_TIMEOUT':'3','KIRO_PANEL_TIMEOUT':'3','KIRO_PREFLIGHT_TIMEOUT':'3',
                'PANEL_KILL_AFTER':'0.1s','CHAIR_TIMEOUT':'3','CHAIR_KILL_AFTER':'0.1s',
                'CHAIR_FALLBACK_TIMEOUT':'3','KIRO_API_KEY':'fixture-only',
-               'PR_REVIEW_CONFIG_ROOT':str(config)}
+               'PR_REVIEW_CONFIG_ROOT':str(config),
+               # The shipped defaults enable codex only; these tests exercise the Kiro cells.
+               'PR_REVIEW_DEFAULTS_PATH':str(ROOT/'tests/fixtures/pr-review/defaults-kiro-enabled.json')}
         return root,env
 
     def panel(self, plan):

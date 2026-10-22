@@ -1,0 +1,9 @@
+{
+  "_comment": "Test fixture: the three-cell CI roster shipped before the Kiro cells were disabled by default. Tests that exercise the Kiro paths of run-panel.sh and panel_config.py point $PR_REVIEW_DEFAULTS_PATH here; the shipped defaults file keeps only codex enabled.",
+  "panel": {
+    "codex":     { "enabled": true },
+    "kiro-opus": { "enabled": true, "model": "claude-opus-5.5" },
+    "kiro-gpt":  { "enabled": true, "model": "gpt-5.6-sol" },
+    "kiro-glm":  { "enabled": false, "model": "glm-5" }
+  }
+}

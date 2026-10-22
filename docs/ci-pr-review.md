@@ -42,6 +42,9 @@ GitHub configuration; do not infer its current state from this document.
 
 ## Kiro startup and failure diagnostics
 
+This section applies only while a Kiro cell is enabled. The committed defaults enable
+Codex alone (see Configuration and bounds), so no Kiro CLI preflight or review runs.
+
 Kiro cells use the validated `pr-review-notools` agent with no tools, resources or
 MCP servers. A fixed canary request tests each configured model before any Kiro
 cell receives PR input. Every model must return exactly `NO_TOOLS` with successful
@@ -135,8 +138,10 @@ The production workflow requires exactly one FULL input; legacy helper tests may
 use multiple lenses without `ROLE_REVIEW=1`.
 Do not infer active membership from old ADR examples or a fixed model-count label.
 Codex explicitly requests `global.openai.gpt-6-astra` while retaining the runner's
-existing provider configuration. The default Kiro GPT cell requests `gpt-5.6-sol`;
-Kiro model IDs come from the validated panel configuration. Provider catalogs are
+existing provider configuration. The committed defaults enable Codex only: the Kiro Opus, Kiro GPT and Kiro GLM cells
+stay defined and disabled, so re-enabling one is a reviewed change to the defaults. A
+re-enabled Kiro GPT cell requests `gpt-5.6-sol`; Kiro model IDs come from the
+validated panel configuration. Provider catalogs are
 independent and their strings need not match.
 
 The workflow's region/endpoint and chair configuration, `run-panel.sh` deadline/input
@@ -150,7 +155,8 @@ merely to make a degraded panel look complete. Every enabled required reviewer i
 still expected to finish; a reviewer that doesn't is reported to the chair (ADR-026)
 as fact, not silently hidden, even though it no longer mechanically fails the check.
 Intentional roster changes need owner-approved configuration review; do not drop Kiro
-Opus or another cell just to avoid a finding. A single remaining vendor triggers
+Opus or another cell just to avoid a finding. The Kiro cells were disabled by default at
+the repository owner's request, not because of a finding. A single remaining vendor triggers
 `coverage-severe.flag`, reported to the chair the same way, when a configured vendor
 fails. Intentionally disabled cells are excluded from the expected roster. Specialist
 mode's family-diversity check (`specialist_roles.py gate`) sets the same
@@ -164,14 +170,16 @@ family — but as with the rest of this check, falling short is a reported gap, 
 an automatic block.
 A failed family check is reported to the chair as a coverage gap (ADR-026); the
 chair's informed verdict, not this flag by itself, decides PASS or FAIL.
+With Codex as the only enabled cell the panel is a single model family, so every
+high-risk diff reports this gap to the chair; the chair's own model is not a panel cell.
 
 ## Specialist assignments
 
 | Configured cell | Role |
 | --- | --- |
 | Codex | Correctness: code/data flow, edge cases, regression tests |
-| Kiro Opus | AWS and security: IAM, networking, secrets, privacy boundaries |
-| Kiro GPT | Operations: deployment, recovery, observability, budgets |
+| Kiro Opus, only if enabled | AWS and security: IAM, networking, secrets, privacy boundaries |
+| Kiro GPT, only if enabled | Operations: deployment, recovery, observability, budgets |
 | Kiro GLM, only if enabled | Contracts: API/schema/configuration and documentation promises |
 
 The adapter does not add providers or override `panel_config.py`. Every enabled

@@ -10,6 +10,10 @@
 # 끝나는 경로는 전부 if 로 감싼다 — bare 호출은 스위트 전체를 조기 중단시킨다.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT="$(cd "$HERE/../../scripts/pr-review" && pwd)/run-panel.sh"
+# The shipped defaults enable only codex; scenarios (a)-(t) exercise the Kiro cells, so they select
+# the three-cell fixture roster. Scenario (u) runs against the shipped defaults.
+PRRP_FIXTURE_DEFAULTS="$(cd "$HERE/../fixtures/pr-review" && pwd)/defaults-kiro-enabled.json"
+export PR_REVIEW_DEFAULTS_PATH="$PRRP_FIXTURE_DEFAULTS"
 
 # standalone 실행 시 harness 의 pass/fail 가 없으므로 폴백 정의 + 종료코드 추적.
 if ! declare -F pass >/dev/null 2>&1; then
@@ -554,6 +558,34 @@ grep -q "integer expression expected" "$LOG" \
   && fail "run-panel (t) no 'integer expression expected' noise on a healthy run" "$(cat "$LOG")" \
   || pass "run-panel (t) no 'integer expression expected' noise on a healthy run"
 rm -f "$LOG"
+
+# (u) The shipped defaults keep only codex enabled: the panel runs the codex cells and never starts
+# kiro-cli (no preflight, no review), and the expected roster lists codex alone.
+setup; mkfake codex 0 "codex-finding"
+cat > "$BIN/kiro-cli" <<EOF2
+#!/usr/bin/env bash
+touch "$WORK/kiro-called"
+exit 1
+EOF2
+chmod +x "$BIN/kiro-cli"
+if env -u PR_REVIEW_DEFAULTS_PATH "$SCRIPT" "$WORK/diff.txt" "$WORK/lenses" "$WORK" >/dev/null 2>&1; then
+  pass "run-panel (u) shipped defaults: the panel exits 0 without Kiro cells"
+else
+  fail "run-panel (u) shipped defaults: the panel exits 0 without Kiro cells" "exited non-zero"
+fi
+[ "$(grep -c '^codex/' "$WORK/responded.txt" 2>/dev/null)" = 2 ] \
+  && pass "run-panel (u) shipped defaults: codex answered for both lenses" \
+  || fail "run-panel (u) shipped defaults: codex answered for both lenses" "codex cell(s) missing"
+[ ! -e "$WORK/kiro-called" ] \
+  && pass "run-panel (u) shipped defaults: kiro-cli is never started (no preflight, no review)" \
+  || fail "run-panel (u) shipped defaults: kiro-cli is never started (no preflight, no review)" "kiro-cli was invoked"
+if grep -q kiro "$WORK/expected.txt" 2>/dev/null; then
+  fail "run-panel (u) shipped defaults: the expected roster lists codex only" "$(cat "$WORK/expected.txt")"
+else
+  pass "run-panel (u) shipped defaults: the expected roster lists codex only"
+fi
+
+unset PR_REVIEW_DEFAULTS_PATH PRRP_FIXTURE_DEFAULTS
 
 # standalone 종료코드 (harness 에서는 _t_fail 미정의라 건너뜀)
 if [ "${_t_fail+set}" = set ]; then

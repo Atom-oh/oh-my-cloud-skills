@@ -5,12 +5,33 @@
 
 CFG="scripts/pr-review/panel_config.py"
 DEF="scripts/pr-review/pr-review.defaults.json"
+# Most assertions below test panel_config.py mechanics on a three-cell roster, so they use the fixture
+# roster. The shipped defaults (codex only) are asserted separately and the variable is unset at the end.
+PRC_FIXTURE_DEFAULTS="$PWD/tests/fixtures/pr-review/defaults-kiro-enabled.json"
+export PR_REVIEW_DEFAULTS_PATH="$PRC_FIXTURE_DEFAULTS"
 
 assert_file_exists "$CFG" "panel_config.py exists"
 assert_file_executable "$CFG" "panel_config.py is executable"
 assert_json_valid "$DEF" "pr-review.defaults.json is valid JSON"
 
 R=$(mktemp -d "${TMPDIR:-/tmp}/prreviewcfg.XXXXXX")
+
+# The shipped defaults enable codex only; the Kiro cells stay defined (and disabled) so a local
+# override or a later decision can turn them back on.
+SHIPPED_SHOW=$(env -u PR_REVIEW_DEFAULTS_PATH python3 "$CFG" show --root "$R" 2>&1)
+assert_grep_match 'codex +True' "$SHIPPED_SHOW" "shipped defaults: codex is enabled"
+for cell in kiro-opus kiro-gpt kiro-glm; do
+  assert_grep_match "$cell +False" "$SHIPPED_SHOW" "shipped defaults: $cell is disabled"
+done
+assert_eq "" "$(env -u PR_REVIEW_DEFAULTS_PATH python3 "$CFG" kiro-cells --root "$R" 2>&1)" "shipped defaults: kiro-cells lists nothing"
+if env -u PR_REVIEW_DEFAULTS_PATH python3 "$CFG" codex-enabled --root "$R" >/dev/null 2>&1; then
+  pass "shipped defaults: codex-enabled exits 0"
+else
+  fail "shipped defaults: codex-enabled exits 0"
+fi
+SHIPPED_ON=$(env -u PR_REVIEW_DEFAULTS_PATH python3 "$CFG" set kiro-opus enabled true --root "$R" >/dev/null 2>&1 && env -u PR_REVIEW_DEFAULTS_PATH python3 "$CFG" kiro-cells --root "$R" 2>&1)
+assert_eq "claude-opus-5.5:kiro-opus" "$SHIPPED_ON" "a Kiro cell can be turned back on with a local override"
+rm -f "$R/.claude/pr-review.local.json"
 
 # (a) fresh --root → 2 enabled kiro cells (kiro-opus, kiro-gpt) + codex enabled by
 # default; kiro-glm (glm-5) is disabled by default (false-positive rate — see
@@ -207,3 +228,4 @@ assert_eq "1" "$RC" "kiro-cells fails closed when a known cell (kiro-glm) is mis
 rm -rf "$MISSING_CELL_DEFAULTS" "$R11"
 
 rm -rf "$R" "$R2" "$R3" "$R4" "$R5" "$R6" "$R7" "$R8" "$R9"
+unset PR_REVIEW_DEFAULTS_PATH PRC_FIXTURE_DEFAULTS
