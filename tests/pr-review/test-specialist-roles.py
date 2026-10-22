@@ -51,6 +51,7 @@ print(json.dumps({'prompt':prompt,'stdin':sys.stdin.read()}))
             fk = 'fixture' + '-only'
             env = dict(os.environ, PATH=str(binary)+os.pathsep+os.environ['PATH'],
                        ROLE_REVIEW='1', PR_REVIEW_CONFIG_ROOT=str(config),
+                       PR_REVIEW_DEFAULTS_PATH=str(ROOT/'tests/fixtures/pr-review/defaults-kiro-enabled.json'),
                        KIRO_API_KEY=fk, PANEL_TIMEOUT='2', PANEL_RETRIES='1',
                        KIRO_PREFLIGHT_TIMEOUT='2')
             result = subprocess.run(['bash', str(ROOT/'scripts/pr-review/run-panel.sh'),
@@ -110,6 +111,36 @@ print(json.dumps({'prompt':prompt,'stdin':sys.stdin.read()}))
             same_family=True, diff_text='diff --git a/README.md b/README.md\n+Clarify a sentence.\n')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(severe)
+
+class ShippedRosterTests(unittest.TestCase):
+    """The committed defaults enable codex only, so the roster is a single model family."""
+
+    def gate(self, diff_text):
+        script = ROOT / 'scripts/pr-review/specialist_roles.py'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = root / 'roles.json'
+            made = subprocess.run(['python3', str(script), 'manifest', '1'], input='', text=True,
+                                  capture_output=True, check=True)
+            manifest.write_text(made.stdout)
+            diff = root / 'diff'
+            diff.write_text(diff_text)
+            result = subprocess.run(['python3', str(script), 'gate', str(diff), str(manifest)],
+                                    text=True, capture_output=True)
+        return json.loads(made.stdout), result
+
+    def test_codex_alone_is_one_openai_correctness_role(self):
+        roles, _ = self.gate('+ docs\n')
+        self.assertEqual([(r['tag'], r['family']) for r in roles], [('codex', 'openai')])
+
+    def test_a_high_risk_diff_reports_the_single_family_gap(self):
+        _, result = self.gate('diff --git a/.github/workflows/x.yml b/.github/workflows/x.yml\n+ permissions: write-all\n')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('at least two configured model families', result.stderr)
+
+    def test_ordinary_documentation_passes_with_one_family(self):
+        _, result = self.gate('diff --git a/docs/notes.md b/docs/notes.md\n+ A plain sentence about layout.\n')
+        self.assertEqual(result.returncode, 0)
 
 if __name__ == '__main__':
     unittest.main()

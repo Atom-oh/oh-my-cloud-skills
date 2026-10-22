@@ -30,6 +30,8 @@ class PanelTimeBudgetTests(unittest.TestCase):
             **os.environ,
             "PATH": str(self.bin) + os.pathsep + os.environ["PATH"],
             "PR_REVIEW_CONFIG_ROOT": str(self.root),
+            # The shipped defaults enable codex only; these tests exercise the Kiro cells.
+            "PR_REVIEW_DEFAULTS_PATH": str(ROOT / "tests/fixtures/pr-review/defaults-kiro-enabled.json"),
             "PYTHONDONTWRITEBYTECODE": "1",
             "DIFF": str(self.diff),
             "SLOT": str(self.root / "cell.md"),

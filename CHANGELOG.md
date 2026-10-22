@@ -32,6 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no model; a model forced for the session still wins. The mod needs Claude Code
   2.1.300 or later. The Codex package carries only the read-only `agent-status` skill.
 
+### Changed
+
+- Disable the Kiro cells (`kiro-opus`, `kiro-gpt`) in the CI AI-review panel defaults at the
+  repository owner's request, leaving Codex as the only enabled cell. The cells and their
+  mechanism stay defined and tested and can be re-enabled in `pr-review.defaults.json`.
+  `run-panel.sh` now logs the `kiro-cli` version only when a Kiro cell is enabled. A
+  high-risk diff now reports the single-model-family gap to the chair on every run. The
+  Kiro-path tests select a three-cell fixture roster through `$PR_REVIEW_DEFAULTS_PATH`.
+
 ## [3.0.4] - 2026-10-19
 
 ### Added

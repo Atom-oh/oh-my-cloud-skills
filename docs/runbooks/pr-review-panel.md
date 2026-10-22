@@ -1,5 +1,9 @@
 # Runbook: AI PR-Review Panel — Kiro cells (no-tools agent, quota, agent fallback)
 
+The committed defaults currently enable Codex alone, so none of this runs in CI until a
+Kiro cell is re-enabled in `scripts/pr-review/pr-review.defaults.json`; the mechanism and its
+tests stay shipped for that day.
+
 Covers the startup verification and the non-transient failures of the Kiro half of the
 lens x model panel (`scripts/pr-review/run-panel.sh`, `.github/workflows/pr-review.yml`)
 and what to do about each. Failure details appear in the panel log and recorded
@@ -20,7 +24,7 @@ Related: ADR-013 (argv embed, `--trust-tools=` at the time), ADR-012 (`--v3` dro
 
 ## Startup verification (preflight)
 
-Before any Kiro review starts, each configured model (`pr-review.defaults.json`, default
+Before any Kiro review starts, each enabled Kiro model (`pr-review.defaults.json`; formerly
 `kiro-opus` + `kiro-gpt`) receives a fixed canary prompt in its own empty working
 directory, with the same zero-tool agent as the review
 (`scripts/pr-review/agents/pr-review-notools.json`, copied to
