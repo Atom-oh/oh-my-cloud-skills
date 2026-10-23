@@ -94,6 +94,14 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(node['geometry']['canvasWidth'], 960)
         self.assertIn('drawBox(ctx, 80, 180, 120, 50', html)
 
+    def test_a_label_that_contains_the_word_step_does_not_hijack_the_step_field(self):
+        text = HEADER + '@type: canvas\n## Request flow\n:::canvas\nbox a "Run step 1" at 80,180 size 120,50 color accent step 2\nbox b "Wait step 7" at 380,180 size 120,50 color blue\n:::\n'
+        manifest, _ = self.build(text)
+        a, b = [n for n in manifest['slides'][0]['nodes'] if n['kind'] == 'box']
+        self.assertEqual(text_at(text, a['step']), '2')
+        self.assertEqual(a['step']['value'], 2)
+        self.assertNotIn('step', b)
+
     def test_heading_matches_the_generator_not_an_earlier_block_heading(self):
         text = HEADER + '@type: cards\n# Block label\n' + CARDS.replace('@type: cards\n', '')
         manifest, html = self.build(text)

@@ -17384,7 +17384,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_studio.py": {
-      "sha256": "0217601f3a073bc3f9a82f6a56bdedf4ac0be9570d9bf41a4a347ec7dc4a9d91",
+      "sha256": "c8729826d56cfd67bf94a6bf5f5469bf82e7b2253d1ea168d64b0f2de4cdee17",
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {

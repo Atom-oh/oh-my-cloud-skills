@@ -178,7 +178,9 @@ def slide_map(compiler, source, slide, start, end, index, filename, handles):
             node.pop('text')
         if not re.fullmatch(r'\s*(?:box\s+\w+\s+"[^"]+"\s+at\s+\d+,\d+\s+size\s+\d+,\d+\s+color\s+[#\w]+|icon\s+\w+\s+"[^"]+"\s+at\s+\d+,\d+\s+size\s+\d+)(?:\s+step\s+\d+)?\s*', line):
             node.pop('lineEnd')
-        step = re.search(r'\sstep\s+(\d+)', line)
+        # The fullmatch above allows `step N` only as the last token, so anchor to the line end:
+        # an unanchored search would match the word inside a quoted label first.
+        step = re.search(r'\sstep\s+(\d+)\s*$', line)
         if step:
             node['step'] = field(offset + step.start(1), offset + step.end(1), value=int(step[1]))
         result['nodes'].append(node)
