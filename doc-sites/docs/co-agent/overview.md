@@ -52,11 +52,28 @@ the supported peers and implementation choices.
 
 ## Components {#components}
 
-The Claude package declares `co-agent`, `gate-chair`, `harness-analyst`, `pr-autofix-planner`, and `pr-autofix-implementer`; its skills are `co-agent`, `pr-autofix`, and `decision-reconcile`. The planner and implementer are internal PR workers that require prepared inputs. Codex exposes these workflows through generated overlays, including command wrappers.
+The canonical `co-agent` skill runs in the current host instead of a duplicate
+orchestrator agent. The Claude package has three agents: `gate-chair`,
+`pr-autofix-planner`, and `pr-autofix-implementer`. Their judgment, read-only planning,
+and edit-only implementation boundaries remain separate. Its three source skills
+are `co-agent`, `pr-autofix`, and `decision-reconcile`; five source commands complete
+the workflows. Codex exposes 11 generated entry skills, including command wrappers
+and agent procedures, not native agent registrations.
+
+The old `co-agent:co-agent` persona and `harness-analyst` are retired. Use `/co-agent`
+for orchestration and `/co-agent:configure analyze [session-dir]` for advisory run
+analysis. See [roles and migration](/docs/co-agent/agents/co-agent) for the retained
+workers and model/memory behavior. Decision reconcile's four dynamic review lenses
+are unchanged; they are not additional registered agents.
 
 ## Configuration and gates {#configuration-and-gates}
 
 Use `/co-agent:configure` to inspect merged configuration, its source, and host-specific peer availability. The defaults file defines profiles, model lists, effort, timeouts, context limits, call budgets, and retry bounds. A deep profile can use multiple models per peer; a default profile uses the single model setting. Do not infer a provider's supported model catalog from a configured string.
+
+`/co-agent:configure analyze [session-dir]` reads harness/consensus records and
+proposes evidence-backed configuration changes without applying them. It reports
+observations only when fewer than three runs are recorded. Applying a proposal is
+a separate, authorized configuration change.
 
 [Canonical defaults](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/co-agent/co-agent.defaults.json)
 

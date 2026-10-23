@@ -34,6 +34,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Reduce co-agent's registered agents from five to three. The canonical `co-agent`
+  skill replaces the duplicate orchestrator persona; `/co-agent:configure analyze
+  [session-dir]` replaces `harness-analyst` with host-run, advisory analysis that
+  never applies configuration. Preserve the separate judgment, read-only planning
+  and edit-only implementation boundaries of `gate-chair`, `pr-autofix-planner`
+  and `pr-autofix-implementer`. The Codex `co-agent` entry remains; the retired
+  analyst entry is removed, reducing co-agent's generated entries from 12 to 11.
+  Retired model/effort overrides are not imposed on the host skill, and existing
+  agent memory is not moved, imported or deleted. Decision reconcile's four dynamic
+  review lenses remain unchanged.
+
 - Disable the Kiro cells (`kiro-opus`, `kiro-gpt`) in the CI AI-review panel defaults at the
   repository owner's request, leaving Codex as the only enabled cell. The cells and their
   mechanism stay defined and tested and can be re-enabled in `pr-review.defaults.json`.

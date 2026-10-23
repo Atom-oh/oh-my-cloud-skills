@@ -4,23 +4,15 @@
   "version": "3.0.4",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "a7db5f5696f8b4bf88ecd016e9d2ec557c3f870366cab6d2ada4cb5060f8d273",
+      "sha256": "be37134674b4f786f12517b616f6ffed25df6d00dcd1b688be2a7d53ff814327",
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "98dc3105c15468ee722f047bfc4dbd110e00dc361e66d5b53e405d51536146fd",
-      "executable": false
-    },
-    "agents/co-agent.md": {
-      "sha256": "bbd28e79242510d2695f3ddf652b8d66230d6bb546035ddd6d608b653c63eafd",
+      "sha256": "154dd70869f838d31adccd82531c4fc0baeaf7f7c152355151754df9693db65b",
       "executable": false
     },
     "agents/gate-chair.md": {
       "sha256": "883aea449edef0b059c22877894d34de65a84646d1c1b6d7cb870434a8a0d0c0",
-      "executable": false
-    },
-    "agents/harness-analyst.md": {
-      "sha256": "eb58f2a3074c1449e92f12b91ce500d9612dc04977a4043fa361e1230799073e",
       "executable": false
     },
     "agents/pr-autofix-implementer.md": {
@@ -32,7 +24,7 @@
       "executable": false
     },
     "commands/configure.md": {
-      "sha256": "50c2c610e405e8800bad7549c8a4415b9dec8305c4c682a3f93ef20d580e397c",
+      "sha256": "4e2f38b557a07453577323df596f43b1b670bbe81c07b8d343ef806168e28560",
       "executable": false
     },
     "commands/consensus.md": {
@@ -40,7 +32,7 @@
       "executable": false
     },
     "commands/harness.md": {
-      "sha256": "fc13e1ac3f3a8f257c8b77a076399ed96edbde514f41f0eaa5d175a9a951ee18",
+      "sha256": "acb332646dc351de77ac508dcbd9d63618015d6dd03dd2584f3f76ba8f781a90",
       "executable": false
     },
     "commands/setup.md": {
@@ -81,6 +73,10 @@
     },
     "skills/co-agent/references/delegated-implement.md": {
       "sha256": "0f432db9c5ceb0e78765b7559982891a1d1daa307f509ae7e8273699e2a7ad5a",
+      "executable": false
+    },
+    "skills/co-agent/references/harness-analysis.md": {
+      "sha256": "dca896a32839d52a4d2deff55df1cf3074708c9728b92e17b42a56d1993ee643",
       "executable": false
     },
     "skills/co-agent/references/hybrid-gate.md": {

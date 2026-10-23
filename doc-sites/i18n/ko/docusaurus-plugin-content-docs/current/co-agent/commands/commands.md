@@ -16,11 +16,18 @@ title: "co-agent 명령어"
 
 ```text
 /co-agent:configure
+/co-agent:configure analyze
 /co-agent:configure set autosync on
 /co-agent:configure set pr_autofix max_iterations 5
 ```
 
 [기본 설정 및 정확한 키](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/co-agent/co-agent.defaults.json)
+
+`/co-agent:configure analyze [session-dir]`로 호스트에서 harness/consensus 기록의
+자문 분석을 실행합니다. 선택적 경로는 분석할 기록을 지정하며, 기본값은 호출한
+저장소의 `.claude/co-agent-consensus/`입니다. 분석은 설정을 적용하거나 외부 AI를
+호출하지 않으며 기록된 실행이 세 번 미만이면 관찰 결과만 보고합니다.
+[분석 계약](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/co-agent/references/harness-analysis.md)을 참고합니다.
 
 선택적 훅 게이트는 기본적으로 꺼져 있으며 필수 CI와 브랜치 보호는 별도로 유지됩니다.
 `pr_gate` 또는 `push_gate`를 켜면 검토할 diff를 외부 AI 서비스로 전송하는 데 동의합니다.

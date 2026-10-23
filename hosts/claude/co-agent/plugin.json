@@ -1,8 +1,6 @@
 {
   "agents": [
-    "./agents/co-agent.md",
     "./agents/gate-chair.md",
-    "./agents/harness-analyst.md",
     "./agents/pr-autofix-planner.md",
     "./agents/pr-autofix-implementer.md"
   ],

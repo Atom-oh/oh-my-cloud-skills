@@ -12,6 +12,5 @@ Read [Codex runtime guidance](../../runtime.md) first — unless already read ea
 Apply [this plugin's Codex workflow](../../workflow.md).
 
 - [skills/co-agent/SKILL.md](../../../skills/co-agent/SKILL.md)
-- [agents/co-agent.md](../../../agents/co-agent.md)
 
 Codex reasoning intent: xhigh. This is advisory; the skill runs with the current session's model and reasoning effort. Select a model or delegate explicitly when the task requires a different configuration.

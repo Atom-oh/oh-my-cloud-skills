@@ -1,7 +1,7 @@
 ---
-description: Configure the co-agent panel — host-aware peer AI model, effort, enable/disable, and timeout
+description: Configure the co-agent panel — host-aware peer AI model, effort, enable/disable, and timeout; analyze harness run records without applying changes
 allowed-tools: Bash(python3:*), Read
-argument-hint: "show | set <ai> <key> <value> | set timeout <seconds>  (host: claude|codex; use show for supported peers)"
+argument-hint: "show | analyze [session-dir] | set <ai> <key> <value> | set timeout <seconds>  (host: claude|codex; use show for supported peers)"
 ---
 
 # co-agent: configure
@@ -12,6 +12,8 @@ a layered config that the fan-out (`references/ai-cli-adapters.md`) reads live v
 `co_agent_config.py`, so a change here changes the very next panel call (e.g.
 `enabled false` drops that AI from the panel). Excellent means the user leaves seeing the
 effective merged config and never believes a dead setting took effect.
+`analyze` is a read-only retrospective: the current host proposes settings from
+recorded runs; it neither changes settings nor starts a panel.
 
 Settings are **layered** like Claude Code's own settings — precedence low→high:
 
@@ -46,10 +48,28 @@ Host controls panel membership:
 - `matrix --host <host>` shows the configured model pairs and call budget.
   Candidate membership does not prove a reviewer ran; consult setup readiness.
 
+## Dispatch before helper calls
+
+Argument: `$ARGUMENTS`
+
+Handle **`analyze [session-dir]` first**, before the normal helper dispatch below.
+The current host reads and follows
+`skills/co-agent/references/harness-analysis.md`, then returns its observations and
+proposals. The optional path selects the telemetry directory; by default use
+`<repo>/.claude/co-agent-consensus/`. Quote it as one argument when it contains spaces.
+This branch does not spawn an agent, fan out to peers, write config or apply a
+proposal. It may use only the read-only config queries listed in that reference.
+**`co_agent_config.py` has no `analyze` subcommand: never forward `analyze` or raw
+`$ARGUMENTS` to that helper.** Finish the analysis branch without falling through to
+`set`, model enumeration or the normal completion step. Applying a proposal needs a
+separate, explicit user-authorized `set` request.
+
 ## Helper
 
-All operations go through `skills/co-agent/scripts/co_agent_config.py` (run with the
-plugin path; `--root` defaults to the cwd / repo root):
+Configuration queries and writes go through
+`skills/co-agent/scripts/co_agent_config.py` (run with the plugin path; `--root`
+defaults to the cwd / repo root). The host-owned `analyze` branch above is not a
+helper operation.
 
 ```bash
 H="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/co_agent_config.py"
@@ -58,7 +78,7 @@ HOST=$(python3 "$H" host) || exit 1
 
 ## Behaviour
 
-Argument: `$ARGUMENTS`
+For arguments other than `analyze`, dispatch explicitly:
 
 1. **No args or `show`** → print the effective merged config:
    ```bash
@@ -152,7 +172,7 @@ placement points:
 | **Chair** (triage/synthesis/final verdict) | narrow and strong | Host model: `/model opusplan` (plan=Opus·execute=Sonnet), or spawn the `gate-chair` subagent (`agents/gate-chair.md`, `model: opus`) | Keep a strong judgment model here — economizing here weakens the entire gate |
 | **Find panel** (hybrid gate F phase) | wide and cheap | `profile deep` + a low-cost model in each AI's `models` list (e.g. kiro `minimax-m2.5`) | Discovery is driven by diversity of perspective — model count matters more than per-model cost |
 | **Verify panel** (V phase) | narrow and strong | The gate automatically uses `pairs --profile default` — each AI's single `model` becomes the verify model | Set `model` to each AI's strongest tier |
-| **Implementer** (harness write path) | generation-focused | `set harness implementer <ai>` + `implementer_model <m>` / `implementer_effort <e>` (falls back to the panel's `model`/`effort` if unset) | For a subscription (flat-rate) CLI (the default assumption), use **that CLI's strongest generation model** — fewer fix rounds directly saves wall-clock time. Only lower to a cheaper model when metered billing applies, and use the review gate as a backstop |
+| **Implementer** (harness write path) | generation-focused | `set harness implementer <ai>` + `implementer_model <m>` / `implementer_effort <e>` (falls back to the panel's `model`/`effort` if unset) | For a peer with confirmed included subscription access, use **that CLI's strongest generation model** — fewer fix rounds directly saves wall-clock time. Only lower to a cheaper model when metered billing applies, and use the review gate as a backstop |
 
 - **`effort` is not phase-split** (easy to trip on silently): the panel `effort` (codex)
   applies identically to review calls in **both** find and verify — `--profile` only
@@ -183,5 +203,6 @@ placement points:
   is that peer's `model`/`models` list. CLI access alone does not imply unlimited
   usage: API charges and overage limits still apply when configured.
 
-Finish by echoing the effective config (`python3 "$H" show --host "$HOST"`) so the user
-sees exactly what the panel will use.
+Finish normal configuration inspection or mutation by echoing the effective config
+(`python3 "$H" show --host "$HOST"`) so the user sees exactly what the panel will use.
+The `analyze` branch instead ends with its read-only analysis output contract.
