@@ -111,7 +111,15 @@ def slide_map(compiler, source, slide, start, end, index, filename, handles):
                 if k == 'content' and not s and re.match(r'^(#{1,3})[ \t]+(.+)$', l)]
     heading_levels = (1, 2) if slide.slide_type.value == 'content' else ((1,) if slide.slide_type.value in ('cover', 'title') else (2,))
     eligible = [(o, m) for o, m in headings if len(m[1]) in heading_levels]
-    first = eligible[-1] if eligible else None
+    # Generators render the last level-two heading, except a tabs slide with parsed `:::tab` blocks,
+    # which takes the first one and stops. Follow the renderer, never guess: an edit must rewrite the
+    # heading the user sees.
+    block_tabs = slide.slide_type.value == 'tabs' and bool(slide.tab_blocks)
+    first = (eligible[0] if block_tabs else eligible[-1]) if eligible else None
+    if block_tabs and first:
+        rendered = next((line[3:].strip() for line in slide.content.splitlines() if line.startswith('## ')), None)
+        if rendered is None or first[1][2].strip() != rendered:
+            first = None
     if slide.slide_type.value == 'cards':
         rendered_headings = [line[3:].strip() for line in slide.content.splitlines() if line.startswith('## ')]
         if first and (not rendered_headings or first[1][2].strip() != rendered_headings[-1]):
@@ -267,11 +275,14 @@ def export_studio(compiler, target, output):
         cursor = len(source.text) - len(compiler.RemarpParser(source.text)._strip_frontmatter())
         locations = {}
         for slide in sorted(flattened, key=lambda s: s.source_index):
-            position = source.text.find(slide.raw_source, cursor)
+            # A slide that ends in a code fence gains a newline when the compiler restores the fence;
+            # the file may not contain it (end of file), and the slide does not own it either way.
+            raw_source = slide.raw_source.rstrip('\n')
+            position = source.text.find(raw_source, cursor)
             if position < 0:
                 raise compiler.RemarpInputError(f'Cannot safely map source slide in {filename}')
-            locations[slide.source_index] = (position, position + len(slide.raw_source))
-            cursor = position + len(slide.raw_source)
+            locations[slide.source_index] = (position, position + len(raw_source))
+            cursor = position + len(raw_source)
         for slide in flattened:
             start, end = locations[slide.source_index]
             mapped = slide_map(compiler, source, slide, start, end, index, filename, handles)

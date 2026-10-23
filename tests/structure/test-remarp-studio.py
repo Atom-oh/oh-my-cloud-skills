@@ -124,6 +124,37 @@ class StudioTests(unittest.TestCase):
         self.assertNotIn('body', cards[2])
         self.assertEqual([text_at(text, c['text']) for c in cards], ['First option', 'Second option', 'Last option'])
 
+    def heading_nodes(self, manifest):
+        return [n for n in manifest['slides'][0]['nodes'] if n['kind'] == 'heading']
+
+    def test_the_heading_node_follows_the_heading_each_slide_type_renders(self):
+        # A tabs slide with parsed :::tab blocks renders its first level-two heading; tabs without blocks
+        # and compare render the last one. The node must point at the rendered heading.
+        block_tabs = HEADER + '@type: tabs\n## First title\n## Second title\n\n:::tab "A"\nBody A\n:::\n:::tab "B"\nBody B\n:::\n'
+        plain_tabs = HEADER + '@type: tabs\n## First title\n## Second title\n### Tab A\nA\n### Tab B\nB\n'
+        compare = HEADER + '@type: compare\n## First title\n## Second title\n\n:::left\n### Left\nL\n:::\n:::right\n### Right\nR\n:::\n'
+        for text, rendered in ((block_tabs, 'First title'), (plain_tabs, 'Second title'), (compare, 'Second title')):
+            manifest, html = self.build(text)
+            nodes = self.heading_nodes(manifest)
+            self.assertEqual(len(nodes), 1, text)
+            self.assertEqual(text_at(text, nodes[0]['text']), rendered, text)
+            self.assertIn('<h2>' + rendered + '</h2>', html, text)
+
+    def test_tabs_and_compare_with_one_heading_stay_editable(self):
+        tabs = HEADER + '@type: tabs\n## Only title\n\n:::tab "A"\nBody A\n:::\n:::tab "B"\nBody B\n:::\n'
+        manifest, _ = self.build(tabs)
+        heading = self.heading_nodes(manifest)
+        self.assertEqual(len(heading), 1)
+        self.assertEqual(text_at(tabs, heading[0]['text']), 'Only title')
+
+    def test_a_last_slide_that_ends_in_a_code_fence_maps_without_a_trailing_newline(self):
+        # The compiler restores a fence with a newline the file may not contain.
+        text = HEADER + '@type: content\n## Code sample\n\n```python\nprint(1)\n```'
+        manifest, _ = self.build(text)
+        slide = manifest['slides'][0]
+        self.assertEqual(text_at(text, next(n for n in slide['nodes'] if n['kind'] == 'heading')['text']), 'Code sample')
+        self.assertLessEqual(slide['range']['end'], len(text.encode('utf-16-le')) // 2)
+
     def test_heading_matches_the_generator_not_an_earlier_block_heading(self):
         text = HEADER + '@type: cards\n# Block label\n' + CARDS.replace('@type: cards\n', '')
         manifest, html = self.build(text)
