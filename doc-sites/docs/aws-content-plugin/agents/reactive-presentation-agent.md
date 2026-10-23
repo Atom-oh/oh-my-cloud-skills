@@ -50,6 +50,11 @@ The port carries VXLAN traffic between nodes.
 
 Each detail reference needs one matching top-level block on the same slide.
 
+Explain first-use terms and acronyms for the audience, with fuller plain-language
+teaching for L100–200. Chart captions need reading guidance; quotations need
+attribution and context. Follow the [audience-aware explanation rules](/docs/aws-content-plugin/skills/reactive-presentation#audience-aware-explanations)
+and verify hover, keyboard, and touch access during content review.
+
 ## Validation policy {#validation-policy}
 
 Build requires zero CRITICAL findings. `DETAIL_REF` is CRITICAL. `EM_DASH`,

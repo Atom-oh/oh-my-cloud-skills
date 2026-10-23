@@ -1,80 +1,81 @@
 <!-- SECTION INDEX (auto) — large file. Don't read the whole thing — offset-read only the ## section you need.
-     Line numbers are exact (74 sections). E.g. Read(file, offset=L, limit=nextSectionL−L). If a section references another §/##, read that one too. -->
+     Line numbers are exact (75 sections). E.g. Read(file, offset=L, limit=nextSectionL−L). If a section references another §/##, read that one too. -->
 <!--
-  L84    File Convention
-  L109   Global Frontmatter
-  L239   Block File Format
-  L254   Why Cloud Computing?
-  L262   AWS Global Infrastructure
-  L293   오늘의 내용
-  L397   My Tabbed Slide
-  L582   Slide Directives
-  L600   Slide Title
-  L642   AWS AIOps Service Map
-  L678   Column and Grid Layouts
-  L688   Feature Comparison
-  L711   Service Options
-  L741   AWS Pillars
-  L771   Architecture Overview
-  L783   Element Animations (Fragments)
-  L792   Build Process
-  L806   Deployment Stages
-  L835   Out of Order Reveal
-  L898   Animation Showcase
-  L1039  AIOps 아키텍처
-  L1073  Roadmap
-  L1079  Roadmap
-  L1104  Canvas DSL
-  L1179  Simple Architecture
-  L1283  Data Pipeline
-  L1363  Speaker Notes
-  L1370  Slide Title
-  L1495  Interactive Slide Types
-  L1505  Knowledge Check
-  L1534  EC2 vs Lambda
-  L1557  Configuration Examples
-  L1598  Project Milestones
-  L1622  Upgrade Steps
-  L1651  Agenda
-  L1691  이번 세션에서 다룰 내용
-  L1709  Agenda
-  L1725  Process Flow
-  L1751  Deployment Checklist
-  L1776  Data Visualization in Remarp
-  L1950  Code Blocks
-  L2045  Backward Compatibility
-  L2077  Options
-  L2111  Options
-  L2130  Complete Example: Multi-Block Presentation
-  L2183  What is Serverless?
-  L2199  Serverless vs Traditional
-  L2221  Lambda Execution Model
-  L2241  Quick Check
-  L2268  Common Patterns
-  L2288  API Backend Pattern
-  L2305  Code Examples
-  L2350  Evolution of Serverless
-  L2393  Lab Prerequisites
-  L2403  Step 1: Create Lambda Function
-  L2427  Step 2: Deploy
-  L2455  Final Architecture
-  L2472  Lab Complete!
-  L2497  CLI Usage
-  L2518  Quick Reference
-  L2568  Theme Frontmatter Schema
-  L2618  Canvas DSL Preset Specification
-  L2660  Canvas DSL Icon Specification
-  L2817  Mermaid Block Specification
-  L2852  @ref Directive Specification
-  L2864  Slide Content
-  L2885  Animations Field Schema
-  L2932  Architecture Flow
-  L2941  Remarp Component Examples
-  L2953  System Health
-  L2994  Weekly Trends
-  L3046  Migration Status
-  L3097  Instance Comparison
-  L3154  Cost Breakdown
+  L85    File Convention
+  L110   Global Frontmatter
+  L240   Block File Format
+  L255   Why Cloud Computing?
+  L263   AWS Global Infrastructure
+  L294   오늘의 내용
+  L398   My Tabbed Slide
+  L583   Slide Directives
+  L601   Slide Title
+  L643   AWS AIOps Service Map
+  L679   Column and Grid Layouts
+  L689   Feature Comparison
+  L712   Service Options
+  L742   AWS Pillars
+  L772   Architecture Overview
+  L784   Element Animations (Fragments)
+  L793   Build Process
+  L807   Deployment Stages
+  L836   Out of Order Reveal
+  L899   Animation Showcase
+  L1040  AIOps 아키텍처
+  L1074  Roadmap
+  L1080  Roadmap
+  L1105  Canvas DSL
+  L1180  Simple Architecture
+  L1284  Data Pipeline
+  L1364  Speaker Notes
+  L1371  Slide Title
+  L1497  Interactive Slide Types
+  L1507  Knowledge Check
+  L1536  EC2 vs Lambda
+  L1559  Configuration Examples
+  L1600  Project Milestones
+  L1624  Upgrade Steps
+  L1653  Agenda
+  L1693  이번 세션에서 다룰 내용
+  L1711  Agenda
+  L1727  Process Flow
+  L1753  Deployment Checklist
+  L1778  Data Visualization in Remarp
+  L1952  Code Blocks
+  L2047  Backward Compatibility
+  L2079  Options
+  L2113  Options
+  L2132  Complete Example: Multi-Block Presentation
+  L2185  What is Serverless?
+  L2201  Serverless vs Traditional
+  L2223  Lambda Execution Model
+  L2243  Quick Check
+  L2270  Common Patterns
+  L2290  API Backend Pattern
+  L2307  Code Examples
+  L2352  Evolution of Serverless
+  L2395  Lab Prerequisites
+  L2405  Step 1: Create Lambda Function
+  L2429  Step 2: Deploy
+  L2457  Final Architecture
+  L2474  Lab Complete!
+  L2499  CLI Usage
+  L2520  Quick Reference
+  L2570  Theme Frontmatter Schema
+  L2620  Canvas DSL Preset Specification
+  L2662  Canvas DSL Icon Specification
+  L2819  Mermaid Block Specification
+  L2854  @ref Directive Specification
+  L2866  Slide Content
+  L2887  Animations Field Schema
+  L2934  Architecture Flow
+  L2943  Remarp Component Examples
+  L2955  System Health
+  L2996  Weekly Trends
+  L3048  Migration Status
+  L3099  Instance Comparison
+  L3156  Cost Breakdown
+  L3204  Detail Layer and Deck Navigation
 -->
 
 # Remarp Format Guide
@@ -1454,9 +1455,10 @@ preamble; the content layers are `[요약]` → spoken → `[약어]` → `[출�
    slide's notes omit this `[요약]` layer.
 3. **Spoken script** — the actual talk track in 존댓말 (polite conversational Korean),
    with inline `{cue: ...}` markers where you want to pause, ask, or transition.
-4. **`[약어]`** — domain-specific abbreviations only (omit the block entirely if there
-   are none). Skip AWS / IT-common terms like API, JSON, EKS, S3 — only gloss
-   abbreviations the audience may genuinely not know.
+4. **`[약어]`** — abbreviations the stated audience may not know (omit the block
+   if there are none). Use `audience` and `level`, not a blanket exemption for
+   API, JSON, EKS or S3. These presenter notes supplement the audience-facing
+   explanations required by [Audience-aware explanations](authoring-rules.md#audience-aware-explanations).
 5. **`[출처]`** — **conditional**: include only on slides that cite numbers, benchmarks,
    or vendor claims. Omit otherwise.
 6. **`[변경이력]`** — optional and lightweight; git history is the canonical record, so
@@ -3201,6 +3203,11 @@ For complex interactive patterns (simulators, dashboards, YAML builders), see [i
 
 ## Detail Layer and Deck Navigation
 
+Apply [Audience-aware explanations](authoring-rules.md#audience-aware-explanations)
+when selecting first-use terms, chart explanations and quotation context for the
+declared audience/level. The following syntax supplies the interaction; authors
+and reviewers decide whether the explanations are sufficient.
+
 Use the detail layer to keep visible slide copy compact. A short tooltip needs
 only an inline attribute:
 
@@ -3253,6 +3260,90 @@ outside the HTML block:
 The port carries VXLAN traffic between nodes.
 :::
 ```
+
+### First-use term (L100/L200)
+
+A brief definition can use only a tip:
+
+```markdown
+Submit the order through an [API]{tip="Application programming interface: the defined way our checkout sends an order to another program."}.
+```
+
+For a fuller explanation, retain the claim on the slide and add a short summary
+with a richer detail body. Place each block at the top level of that same slide:
+
+```markdown
+Our reliability target ([SLO]{detail=checkout-slo}) is 99.9% successful checkout requests per month.
+
+:::detail checkout-slo "Checkout reliability target"
+tip: Service level objective: the reliability target for checkout requests
+
+A service level objective (SLO) states how reliable a service should be over a
+defined period. It helps the team compare actual reliability with an agreed target.
+
+For an illustrative month with 10,000 checkout requests, a 99.9% success target
+means at least 9,990 requests succeed.
+:::
+```
+
+### Chart caption
+
+Keep axes, units, scope and the takeaway visible. Put the text trigger in the
+caption **outside** the graphic's `role="img"` element so assistive technology can
+reach it. This self-contained chart uses synthetic data:
+
+```markdown
+:::html
+<figure>
+  <svg viewBox="0 0 480 200" role="img" fill="currentColor" aria-label="Illustrative checkout median response time: Week 1, 240 ms; Week 2, 200 ms; Week 3, 160 ms.">
+    <text x="12" y="16">Median response time (ms)</text>
+    <path d="M70 30V150H410" fill="none" stroke="currentColor" />
+    <text x="20" y="35">240</text><text x="20" y="95">120</text><text x="40" y="155">0</text>
+    <polyline points="70,30 240,50 410,70" fill="none" stroke="currentColor" stroke-width="3" />
+    <text x="50" y="180">Week 1</text><text x="220" y="180">Week 2</text><text x="390" y="180">Week 3</text>
+  </svg>
+  <figcaption>
+    Illustrative checkout data: 1,000 requests per week. Median response time fell from 240 ms in Week 1 to 160 ms in Week 3.
+    <button type="button" class="rp-detail" data-detail="checkout-latency" data-tip="The middle response time fell by 80 ms compared with Week 1.">Read this chart</button>
+  </figcaption>
+</figure>
+:::
+
+:::detail checkout-latency "Reading checkout response time"
+tip: The middle response time fell by 80 ms compared with Week 1.
+
+The horizontal axis shows Weeks 1 through 3. The vertical axis is median response
+time in milliseconds: half the requests finish at or below that time.
+
+Each week contains 1,000 checkout requests. Week 1 (240 ms) is the comparison
+baseline; Week 3 (160 ms) is 80 ms lower.
+
+Source: synthetic teaching data, not production measurements. The median hides
+the slowest requests, and this trend alone cannot show what caused the improvement.
+:::
+```
+
+### Quotation context
+
+Keep attribution and any illustrative/unverified label visible. Use detail for
+interpretation without turning a quotation into unsupported evidence:
+
+```markdown
+> "We cannot tell whether a retry created a second order."
+
+Illustrative quote: fictional checkout support team, retry-handling exercise.
+[Interpret this quote]{detail=retry-quote}
+
+:::detail retry-quote "What the support question means"
+tip: The team needs a way to check whether repeated requests created one order or two.
+
+In this fictional exercise, a retry sends the same order request again after an
+uncertain response. The quote raises a question about duplicate orders; it does
+not establish that duplicates occurred or measure their frequency.
+:::
+```
+
+### Deck navigation
 
 The built deck provides two navigation layers:
 

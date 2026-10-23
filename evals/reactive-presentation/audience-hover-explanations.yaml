@@ -1,0 +1,94 @@
+name: audience-hover-explanations
+description: "L100/L200 explanations for unfamiliar terms, chart interpretation and quotation context"
+skill: reactive-presentation
+plugin: aws-content-plugin
+timeout: 240
+
+prompt: |
+  Create two independent introductory blocks about reliability for people who
+  operate an online shop but have not studied reliability engineering.
+  Name the Remarp source blocks 01-foundations.md and 02-practice.md, with shared
+  _presentation.md metadata. Produce two slides per block, without title slides.
+
+  Block 1: level 100, beginner audience.
+  - Slide 1: Explain service level objective (SLO), error budget and tail latency.
+    Show why each matters to checkout customers, using a simple example.
+  - Slide 2: Show a small chart of failed checkout requests per 1,000 requests:
+    week 1 = 12, week 2 = 8, week 3 = 5. These are invented training data.
+    Include a visible caption and explain how to read the axes and units, the
+    population and timeframe, the zero baseline, the trend and practical takeaway.
+    Do not imply the illustration proves what caused the change.
+
+  Block 2: level 200, intermediate audience, independently understandable.
+  - Slide 1: Reintroduce SLO and error budget for this block's audience, then use
+    them to reason about a release decision. Explain unfamiliar terminology with
+    enough context for someone who missed Block 1.
+  - Slide 2: Preserve this quotation exactly: "Measure the wait before you add another lane."
+    Attribute it to "Example operations coach (fictional training quote)".
+    Explain its checkout-line analogy, why it supports measuring before choosing
+    a fix, and the limits of treating an analogy as evidence. Keep the attribution
+    visible and distinguish the interpretation from the quoted words.
+
+  Apply the skill's audience-aware explanation guidance. Keep essential meaning
+  visible when hover is unavailable, with concise explanations and useful deeper
+  context where appropriate. Keep any chart image's accessible image semantics
+  and attach its interactive explanation to a separate textual caption or label.
+  Output the source and built HTML to ./output/. Validate before building.
+  Use the default theme and skip interactive questions by using defaults.
+
+scorers:
+  - type: file_exists
+    files:
+      - "output/_presentation.md"
+      - "output/01-foundations.md"
+      - "output/02-practice.md"
+      - "output/01-foundations.html"
+      - "output/02-practice.html"
+      - "output/common/deck-detail.js"
+      - "output/common/deck-detail.css"
+
+  # These checks prove artifact wiring, not the quality or placement of explanations.
+  - type: html_check
+    target: "output/01-foundations.html"
+    contains:
+      - "rp-detail"
+      - "data-tip="
+      - "data-detail="
+      - "data-detail-id="
+      - 'tabindex="0"'
+      - "SLO"
+    not_contains:
+      - ":::detail"
+      - "{detail="
+      - "{tip="
+
+  - type: html_check
+    target: "output/02-practice.html"
+    contains:
+      - "rp-detail"
+      - "data-tip="
+      - "data-detail="
+      - "data-detail-id="
+      - 'tabindex="0"'
+      - "Measure the wait before you add another lane."
+      - "fictional training quote"
+    not_contains:
+      - ":::detail"
+      - "{detail="
+      - "{tip="
+
+  - type: build_check
+    project_dir: "output/"
+
+  # Opt-in semantic review. The existing judge reads truncated HTML excerpts;
+  # inspect omitted slides manually before claiming complete audience coverage.
+  - type: llm_judge
+    enabled: false
+    criteria:
+      - "At first meaningful use in each independent block, unfamiliar terminology is explained for that audience; SLO is expanded and given a plain-language meaning, not only its full name."
+      - "Level 100 and 200 explanations give useful beginner/intermediate context, why a concept matters or a simple example, without annotating every repeated word."
+      - "Short hover explanations are informative; longer explanations use same-slide details with meaningful hover summaries, and essential meaning remains visible without hover or presenter notes."
+      - "The chart explanation identifies axes, units, checkout-request population, three-week timeframe, zero baseline, falling values, a practical takeaway and invented-data limitations without claiming causation."
+      - "The chart explanation trigger is a separate textual caption or label; it does not replace the chart's accessible image role with a button role."
+      - "The quotation remains verbatim with visible fictional attribution; separate context explains the analogy, its relevance and its evidentiary limits without inventing a real source."
+    max_score: 100

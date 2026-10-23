@@ -50,6 +50,11 @@ The port carries VXLAN traffic between nodes.
 각 상세 정보 참조에는 같은 슬라이드의 최상위에 일치하는 블록이 하나
 있어야 합니다.
 
+처음 나오는 용어와 약자는 청중에 맞게 풀어 주며, L100–200에는 쉬운 말로
+더 자세히 설명합니다. 차트 캡션에는 읽는 법을, 인용문에는 출처와 맥락을
+제공합니다. [청중 수준에 맞는 설명 규칙](/docs/aws-content-plugin/skills/reactive-presentation#audience-aware-explanations)을
+따르고 콘텐츠 리뷰에서 호버, 키보드와 터치 접근을 확인합니다.
+
 ## 검증 정책 {#validation-policy}
 
 빌드하려면 CRITICAL 진단이 없어야 합니다. `DETAIL_REF`는 CRITICAL입니다.

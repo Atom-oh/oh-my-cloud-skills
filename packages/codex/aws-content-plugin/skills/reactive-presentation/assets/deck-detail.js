@@ -14,6 +14,36 @@
   let tooltipTerm = null;
   let detailOpener = null;
   let ignoreMouseUntil = 0;
+  let tooltipHideTimer = null;
+  let dismissedPointerPosition = null;
+  let pointerPosition = null;
+
+  function isDismissedPointer(event) {
+    // Mouse events discard the subpixel precision retained by pointer events.
+    return dismissedPointerPosition && Math.trunc(event.clientX) === dismissedPointerPosition.x &&
+      Math.trunc(event.clientY) === dismissedPointerPosition.y;
+  }
+
+  function tooltipIsBlocked() {
+    return isOverview() || document.body.matches('.rp-detail-open, .rp-search-open, .rp-agenda-open');
+  }
+
+  function cancelTooltipHide() {
+    clearTimeout(tooltipHideTimer);
+    tooltipHideTimer = null;
+  }
+
+  function scheduleTooltipHide() {
+    cancelTooltipHide();
+    if (!tooltipTerm) return;
+    tooltipHideTimer = setTimeout(() => {
+      tooltipHideTimer = null;
+      const tooltip = document.getElementById('rp-tooltip');
+      if (tooltipTerm && (tooltipTerm.contains(document.activeElement) ||
+          tooltipTerm.matches(':hover') || (tooltip && tooltip.matches(':hover')))) return;
+      hideTooltip();
+    }, 200);
+  }
 
   function termIsAvailable(term) {
     // fade-out fragments are the reverse case: visible until revealed, hidden after.
@@ -43,12 +73,15 @@
     const tooltip = makeOverlay('div', 'rp-tooltip');
     tooltip.setAttribute('role', 'tooltip');
     tooltip.setAttribute('aria-hidden', 'true');
+    tooltip.addEventListener('mouseenter', cancelTooltipHide);
+    tooltip.addEventListener('mouseleave', scheduleTooltipHide);
   }
 
   function showTooltip(term) {
     const tooltip = document.getElementById('rp-tooltip');
     const tip = term && term.dataset.tip;
-    if (!tooltip || !tip || !termIsAvailable(term)) return;
+    if (!tooltip || !tip || !termIsAvailable(term) || tooltipIsBlocked()) return;
+    cancelTooltipHide();
     if (tooltipTerm && tooltipTerm !== term) {
       const ids = (tooltipTerm.getAttribute('aria-describedby') || '')
         .split(/\s+/).filter(id => id && id !== tooltip.id);
@@ -73,15 +106,27 @@
       window.innerWidth - box.width - gap
     ));
     let top = anchor.top - box.height - gap;
-    if (top < gap) top = anchor.bottom + gap;
+    const below = top < gap;
+    if (below) top = anchor.bottom + gap;
     tooltip.style.left = left + 'px';
     tooltip.style.top = top + 'px';
+    tooltip.dataset.placement = below ? 'below' : 'above';
+    // Bridge only the horizontal overlap with the trigger, not nearby controls.
+    const bridgeLeft = Math.max(anchor.left, left);
+    tooltip.style.setProperty('--rp-tooltip-gap', gap + 'px');
+    tooltip.style.setProperty('--rp-tooltip-bridge-left', (bridgeLeft - left) + 'px');
+    tooltip.style.setProperty('--rp-tooltip-bridge-width',
+      Math.max(0, Math.min(anchor.right, left + box.width) - bridgeLeft) + 'px');
   }
 
   function hideTooltip() {
+    cancelTooltipHide();
     const tooltip = document.getElementById('rp-tooltip');
     if (!tooltip) return;
     if (tooltipTerm) {
+      // Closing an overlay can synthesize mouseover without a pointer move.
+      // Ignore that stationary pointer even if focus had shown a different term.
+      dismissedPointerPosition = pointerPosition;
       const ids = (tooltipTerm.getAttribute('aria-describedby') || '')
         .split(/\s+/).filter(id => id && id !== tooltip.id);
       if (ids.length) tooltipTerm.setAttribute('aria-describedby', ids.join(' '));
@@ -163,15 +208,25 @@
   }
 
   function bindDetailEvents() {
+    document.addEventListener('pointermove', event => {
+      pointerPosition = { x: Math.trunc(event.clientX), y: Math.trunc(event.clientY) };
+      if (!isDismissedPointer(event)) dismissedPointerPosition = null;
+    });
+    document.addEventListener('pointerout', event => {
+      if (event.relatedTarget) return;
+      pointerPosition = null;
+      dismissedPointerPosition = null;
+    });
     deck.addEventListener('mouseover', event => {
       if (Date.now() < ignoreMouseUntil) return;
       const term = liveTerm(event.target);
+      if (!term || isDismissedPointer(event) || term.contains(event.relatedTarget)) return;
       if (termIsAvailable(term)) showTooltip(term);
     });
     deck.addEventListener('mouseout', event => {
       const term = liveTerm(event.target);
-      if (!term || term.contains(event.relatedTarget)) return;
-      hideTooltip();
+      if (!term || term !== tooltipTerm || term.contains(event.relatedTarget)) return;
+      scheduleTooltipHide();
     });
     deck.addEventListener('focusin', event => {
       const term = liveTerm(event.target);
@@ -183,8 +238,8 @@
     });
     deck.addEventListener('focusout', event => {
       const term = liveTerm(event.target);
-      if (!term || term.contains(event.relatedTarget)) return;
-      hideTooltip();
+      if (!term || term !== tooltipTerm || term.contains(event.relatedTarget)) return;
+      scheduleTooltipHide();
     });
     deck.addEventListener('pointerdown', event => {
       const term = liveTerm(event.target);
@@ -220,13 +275,15 @@
   }
 
   function handleKeydown(event) {
-    if (!document.body.classList.contains('rp-detail-open')) return false;
-    if (event.key === 'Escape') {
+    const detailOpen = document.body.classList.contains('rp-detail-open');
+    if (event.key === 'Escape' && (detailOpen || tooltipTerm)) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      closeDetail();
+      if (detailOpen) closeDetail();
+      hideTooltip();
       return true;
     }
+    if (!detailOpen) return false;
     const panel = document.getElementById('rp-detail-panel');
     if ((event.key === ' ' || event.key === 'Enter') && panel && panel.contains(event.target)) {
       // Let a focused panel control activate natively instead of advancing the deck.
@@ -246,6 +303,9 @@
     createDetailPanel();
     updateAllTermStates();
     bindDetailEvents();
+    new MutationObserver(() => {
+      if (tooltipIsBlocked()) hideTooltip();
+    }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   }
 
   overlay.register('detail', {

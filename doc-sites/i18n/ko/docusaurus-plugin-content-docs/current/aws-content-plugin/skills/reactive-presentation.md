@@ -85,9 +85,51 @@ The port carries VXLAN traffic between nodes.
 ```
 
 상세 정보 블록은 같은 슬라이드의 최상위에 있어야 합니다. ID가 중복되거나
-참조할 블록이 없으면 CRITICAL `DETAIL_REF` 진단이 발생합니다. 상세 정보
-패널은 클릭이나 Enter로 열고 Esc, 바깥 영역 클릭 또는 슬라이드 변경으로
-닫습니다.
+참조할 블록이 없으면 CRITICAL `DETAIL_REF` 진단이 발생합니다. 툴팁은 마우스
+호버와 키보드 포커스로 표시되며, 툴팁만 있는 용어는 터치도 지원합니다.
+툴팁 위로 마우스를 옮기면 계속 읽을 수 있고 Esc로 닫을 수 있습니다.
+상세 정보 패널은 클릭, Enter 또는 Space로 열고 Esc, 바깥 영역 클릭 또는
+슬라이드 변경으로 닫습니다.
+
+## 청중 수준에 맞는 설명 {#audience-aware-explanations}
+
+독립적으로 열어 볼 수 있는 각 블록에서 낯선 용어, 업계 용어와 약자가
+처음 의미 있게 등장할 때 설명을 붙입니다. API, JSON, EKS, S3처럼 업계에서
+흔히 쓴다는 이유만으로 청중도 안다고 가정하지 않습니다. 모든 반복에
+설명을 붙이기보다는, 한참 뒤 다시 나와 맥락을 잃기 쉬울 때 보충합니다.
+
+**L100–200**(`level: 100`/`200` 또는 `beginner`/`intermediate`)에는 약자의
+전체 이름, 쉬운 뜻, 실용적인 예시나 중요한 이유를 제공합니다. 호버에는
+짧고 유용한 요약을 넣고 여러 문장으로 가르쳐야 하는 내용은 상세 정보
+패널에 둡니다. L300–400은 더 간결하게 설명하되 낯선 전문 용어는 여전히
+풀어 줍니다. 발표자 노트만으로 청중이 직접 볼 수 있는 설명을 대신할 수는
+없습니다.
+
+```markdown
+[API]{detail=api}
+
+:::detail api "How an API connects applications"
+tip: API (Application Programming Interface): an agreed way for programs to request data or actions.
+
+An API defines which requests a program accepts and what it returns.
+For example, a weather app requests a forecast instead of collecting sensor data itself.
+:::
+```
+
+- **차트:** 가까운 곳에 ‘차트 읽는 법’ 설명을 붙여 축, 단위, 대상과 기간,
+  비교 기준, 핵심 해석, 한계나 출처 중 해당 차트와 데이터에 맞는 항목을
+  안내합니다. 차트 이미지 자체가 아니라 접근 가능한 텍스트 캡션을 상세 정보
+  열기 요소로 사용합니다.
+- **인용문:** 인용한 문장을 보존하고 발언자나 출처를 표시합니다. ‘인용 맥락’
+  설명에는 출처·배경과 이 인용이 중요한 이유를 넣습니다. 예시이거나 확인되지
+  않은 인용은 명확히 표시하며 출처를 지어내지 않습니다.
+- **정적 내보내기:** 핵심 주장, 차트 레이블과 단위, 핵심 해석, 인용 출처는
+  화면에 남겨 둡니다. 호버와 상세 정보 계층은 내보낸 슬라이드 이미지에
+  포함되지 않습니다.
+
+콘텐츠 리뷰에서 설명의 누락 여부와 청중 수준 적합성을 확인합니다.
+컴파일러는 주석 구조를 검사하며, 전문 용어를 식별하거나 사실의 정확성을
+판단하지는 않습니다.
 
 ## 문장 품질 검사 {#copy-gates}
 

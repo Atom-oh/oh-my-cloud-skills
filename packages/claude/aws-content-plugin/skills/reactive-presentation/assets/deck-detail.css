@@ -61,6 +61,22 @@
 #rp-tooltip.is-visible {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
+}
+
+/* Keep the gap hoverable without extending over adjacent slide content. */
+#rp-tooltip::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: var(--rp-tooltip-bridge-left, 0px);
+  width: var(--rp-tooltip-bridge-width, 0px);
+  height: calc(var(--rp-tooltip-gap, 0px) + 1px);
+}
+
+#rp-tooltip[data-placement="below"]::before {
+  top: auto;
+  bottom: 100%;
 }
 
 #rp-detail-panel {

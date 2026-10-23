@@ -94,6 +94,14 @@ one reason line. Put extra reasoning, caveats, code and operational guidance in
 detail title is used. Detail IDs are slide-scoped, and each reference must have
 one matching top-level block on that slide.
 
+**Audience explanations**: apply the canonical
+[Audience-aware explanations policy](../skills/reactive-presentation/references/authoring-rules.md#audience-aware-explanations)
+to first-use terms/acronyms, charts and quotations. Match depth to the declared
+audience/level, especially L100/L200; keep summaries readable, richer explanations
+reachable by focus/tap/click, and essential meaning visible in static exports.
+Speaker notes alone do not meet this requirement. Review semantic coverage before
+handoff; `DETAIL_REF` checks wiring only.
+
 **Choosing a slide form**: pick the representation that matches the content's complexity — simple flows use the `:::canvas` DSL, complex architectures use `:::html` + `:::css` (theme.css's `.flow-h`/`.flow-group`/`.flow-box`), and interactions requiring logic use `:::html` + `:::script`. Boundary values (e.g., canvas element count) are validated by `remarp_to_slides.py validate`, with `references/authoring-rules.md` as the canon — choosing the right form up front via the Slide Type Decision Guide below avoids cycling through the rejection loop.
 
 **Speaker notes**: every slide gets `:::notes`. The goal is enough content for the presenter to speak to that slide for 1-3 minutes from the notes alone — not a repeat of the slide text, but conversational elaboration on why it matters, practical application, and common mistakes, opening with `{timing:}` and closing with `{cue: transition}` plus a bridge into the next slide.
