@@ -90,7 +90,7 @@ the supporting records and a supported setting for the current host/peer.
 | Waves repeatedly collapse to one task because files overlap | `set harness parallel_tasks 1` for an inherently sequential plan |
 | Plan gates repeatedly have empty first-round digests | Consider trimming find models with no surviving findings, not removing required reviewers or gates; empty digests already skip hybrid verify |
 | Code gates repeatedly need multiple rounds | Keep hybrid verification and name recurring finding categories for H1 to address |
-| One peer repeatedly times out or is skipped by `fits` | For timeouts, consider `set timeout <seconds>` (shared across peers, not a per-peer override); for context pressure, consider a narrower supported `models` list. Disabling a peer must not leave consensus/harness without required READY external reviewers |
+| One peer repeatedly times out or is skipped by `fits` | For timeouts, consider `set timeout <seconds>` (shared across peers, not a per-peer override). `fits` compares supplied tokens with the peer's `context_limit`; reduce the supplied context or correct `set <ai> context_limit <tokens>` only against verified model capacity. Trimming the `models` list does not change that threshold. Disabling a peer must not leave consensus/harness without required READY external reviewers |
 
 Check the effective config and its real supported knobs before showing a command.
 Emit exact `/co-agent:configure set ...` commands, including the intended scope and

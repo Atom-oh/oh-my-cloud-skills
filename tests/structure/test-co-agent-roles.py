@@ -207,6 +207,8 @@ class HostAnalysisProcedureTests(unittest.TestCase):
         )
         self.assertIn("`set timeout <seconds>`", self.analysis)
         self.assertNotIn("set <ai> timeout", self.analysis)
+        self.assertIn("`set <ai> context_limit <tokens>` only against verified model capacity", self.analysis)
+        self.assertIn("Trimming the `models` list does not change that threshold", self.analysis)
 
     def test_analysis_retains_per_peer_billing_and_memory_caveats(self):
         self.assert_analysis_phrases(
