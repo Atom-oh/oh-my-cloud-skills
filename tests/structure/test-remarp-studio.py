@@ -140,6 +140,22 @@ class StudioTests(unittest.TestCase):
             self.assertEqual(text_at(text, nodes[0]['text']), rendered, text)
             self.assertIn('<h2>' + rendered + '</h2>', html, text)
 
+    def test_a_heading_inside_a_click_block_that_the_renderer_shows_is_not_mapped_to_the_outer_one(self):
+        # The compiler re-injects :::click content into the slide and renders the last heading line,
+        # even one inside the block; Studio sees the outer line only, so it must not offer it.
+        text = HEADER + '@type: content\n## Outer heading Studio maps\n\n:::click\n## Inner heading the deck actually shows\nBody text\n:::\n'
+        manifest, html = self.build(text)
+        self.assertIn('<h2>Inner heading the deck actually shows</h2>', html)
+        self.assertEqual(self.heading_nodes(manifest), [])
+
+    def test_a_tab_separated_heading_is_not_a_rendered_heading(self):
+        # The generators only treat "## " followed by one space as a heading.
+        text = HEADER + '@type: content\n## Real heading\n##\tTab separated\nBody\n'
+        manifest, html = self.build(text)
+        nodes = self.heading_nodes(manifest)
+        self.assertEqual([text_at(text, n['text']) for n in nodes], ['Real heading'])
+        self.assertIn('<h2>Real heading</h2>', html)
+
     def test_tabs_and_compare_with_one_heading_stay_editable(self):
         tabs = HEADER + '@type: tabs\n## Only title\n\n:::tab "A"\nBody A\n:::\n:::tab "B"\nBody B\n:::\n'
         manifest, _ = self.build(tabs)

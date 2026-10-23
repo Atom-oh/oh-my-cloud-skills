@@ -107,8 +107,9 @@ def slide_map(compiler, source, slide, start, end, index, filename, handles):
             else:
                 result['directives'][name] = record
 
-    headings = [(o, re.match(r'^(#{1,3})[ \t]+(.+)$', l)) for o, l, k, s in lines
-                if k == 'content' and not s and re.match(r'^(#{1,3})[ \t]+(.+)$', l)]
+    # The generators treat only `#` marks followed by exactly one space as a heading.
+    headings = [(o, re.match(r'^(#{1,3}) (.+)$', l)) for o, l, k, s in lines
+                if k == 'content' and not s and re.match(r'^(#{1,3}) (.+)$', l)]
     heading_levels = (1, 2) if slide.slide_type.value == 'content' else ((1,) if slide.slide_type.value in ('cover', 'title') else (2,))
     eligible = [(o, m) for o, m in headings if len(m[1]) in heading_levels]
     # Generators render the last level-two heading, except a tabs slide with parsed `:::tab` blocks,
@@ -116,8 +117,15 @@ def slide_map(compiler, source, slide, start, end, index, filename, handles):
     # heading the user sees.
     block_tabs = slide.slide_type.value == 'tabs' and bool(slide.tab_blocks)
     first = (eligible[0] if block_tabs else eligible[-1]) if eligible else None
-    if block_tabs and first:
-        rendered = next((line[3:].strip() for line in slide.content.splitlines() if line.startswith('## ')), None)
+    if first and slide.slide_type.value != 'cards':
+        # Cross-check against what the compiler renders: heading lines of the slide's own level in its
+        # code-fence-masked content, including text a top-level `:::click` block re-injected (Studio
+        # skips lines inside any `:::` block). A different heading means Studio would offer an edit
+        # to a line the user cannot see, so there is no heading node.
+        masked, _ = compiler._mask_code_fences(slide.content)
+        shown = [m[2].strip() for m in (re.match(r'^(#{1,3}) (.+)$', l) for l in masked.split('\n'))
+                 if m and len(m[1]) in heading_levels]
+        rendered = (shown[0] if block_tabs else shown[-1]) if shown else None
         if rendered is None or first[1][2].strip() != rendered:
             first = None
     if slide.slide_type.value == 'cards':
