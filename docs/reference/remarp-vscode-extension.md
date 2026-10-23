@@ -49,7 +49,9 @@ and trust before one `WorkspaceEdit`. Failed compilation keeps a last-good stale
 preview with edits disabled. Source-only islands remain accessible through Reveal.
 
 Mapped heading/card text, first safe card body spans, allowlisted CSS/directives and
-simple Canvas box/icon geometry/reveal steps are editable. Icon names, arrows,
+simple Canvas box/icon geometry/reveal steps are editable. A card without body text has
+no body span, because an empty span could only be filled by gluing text onto a heading line;
+edit it in source. Icon names, arrows,
 complex domain-specific language (DSL) and arbitrary DOM/layout operations are not. CSS indexed card targets
 resolve to actual hyphenated renderer IDs. Canvas drags account for both editor and
 Canvas scales; pointer release commits once and Escape cancels.

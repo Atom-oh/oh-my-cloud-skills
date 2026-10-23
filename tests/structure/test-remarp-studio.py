@@ -102,6 +102,28 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(a['step']['value'], 2)
         self.assertNotIn('step', b)
 
+    def test_slide_spans_never_land_in_the_frontmatter(self):
+        # The compiler strips the frontmatter before it splits slides; a one-line slide whose text
+        # also appears in a YAML comment must map to the slide, not to the comment.
+        front = '---\nremarp: true\nratio: "16:9"\nlang: en\ntitle: Studio Test\n# Agenda\n---\n'
+        text = front + '# Agenda\n'
+        manifest, _ = self.build(text)
+        heading = next(n for n in manifest['slides'][0]['nodes'] if n['kind'] == 'heading')
+        self.assertEqual(text_at(text, heading['text']), 'Agenda')
+        self.assertGreaterEqual(heading['text']['start'], len(front))
+
+    def test_a_card_without_body_text_has_no_body_span(self):
+        # An empty span would sit at the start of the next heading line, or at the end of the last
+        # heading, so a plain replacement would glue body text onto a heading.
+        text = HEADER + '@type: cards\n## Compare options\n### First option\n### Second option\nSecond body\n### Last option\n'
+        manifest, _ = self.build(text)
+        cards = [n for n in manifest['slides'][0]['nodes'] if n['kind'] == 'card']
+        self.assertEqual(len(cards), 3)
+        self.assertNotIn('body', cards[0])
+        self.assertEqual(text_at(text, cards[1]['body']), 'Second body')
+        self.assertNotIn('body', cards[2])
+        self.assertEqual([text_at(text, c['text']) for c in cards], ['First option', 'Second option', 'Last option'])
+
     def test_heading_matches_the_generator_not_an_earlier_block_heading(self):
         text = HEADER + '@type: cards\n# Block label\n' + CARDS.replace('@type: cards\n', '')
         manifest, html = self.build(text)

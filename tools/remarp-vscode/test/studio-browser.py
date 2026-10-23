@@ -183,9 +183,15 @@ const file=path.join(p.root,'shell.html');fs.writeFileSync(file,shell);process.s
         self.assertGreater(self.page.locator('#overlay .hit').count(), 0)
         self.page.get_by_role('button', name='2. Request flow', exact=True).click()
         self.page.wait_for_function("() => Array.from(document.querySelectorAll('#overlay .hit')).some(e=>e.getAttribute('aria-label')==='Select API')")
+        # The Canvas runtime accepts only the strings 'next' and 'prev'. Design shows every reveal step, so
+        # one more 'next' stays on the last step (the fixture has steps 1 to 3).
+        self.assertEqual(self.renderer().evaluate("() => { const s = document.querySelectorAll('.slide-deck > .slide')[1]; return [Number(s.dataset.canvasMaxStep), s.__canvasStep('next')]; }"), [3, 3], 'Design must reveal every Canvas step')
         self.page.get_by_role('button', name='1. Compare options', exact=True).click()
         self.page.locator('#play').click()
-        self.assertFalse(self.renderer().evaluate("() => document.querySelectorAll('.slide-deck > .slide')[1].__canvasStep(-1)"), 'Design must restore previously visited Canvas steps when entering Play')
+        # Back in Play the Canvas starts from its first step again, so 'next' lands on step 1, not on the last.
+        # The mode change reaches the renderer as a message, so wait for it; a Canvas that is never
+        # restored keeps answering 3 and this wait times out.
+        self.renderer().wait_for_function("() => document.querySelectorAll('.slide-deck > .slide')[1].__canvasStep('next') === 1", timeout=3000)
         self.assertEqual(self.errors, [])
 
     def test_candidate_diff_apply_reject_and_stale_draft(self):

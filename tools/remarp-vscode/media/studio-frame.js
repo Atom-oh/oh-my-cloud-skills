@@ -21,10 +21,12 @@
         const slide = slides()[active()];
         if (!slide) return;
         document.documentElement.classList.toggle('studio-design', mode === 'design');
-        if (mode === 'design' && typeof slide.__canvasStep === 'function') {
-            let count = revealAdvance.get(slide) || 0;
-            for (let n = 0; n < 256 && slide.__canvasStep(1); n++) count++;
-            revealAdvance.set(slide, count);
+        if (mode === 'design' && typeof slide.__canvasStep === 'function' && !revealAdvance.has(slide)) {
+            // The Canvas runtime accepts only the strings 'next' and 'prev', and the slide states its own
+            // last step. Walk to it once; Play walks back the same distance.
+            const last = Number(slide.dataset.canvasMaxStep) || 0;
+            for (let n = 0; n < last; n++) slide.__canvasStep('next');
+            revealAdvance.set(slide, last);
         }
     }
     const style = document.createElement('style');
@@ -69,7 +71,7 @@
         }
         if (data.mode === 'play' && mode === 'design') {
             for (const [slide, count] of revealAdvance) {
-                for (let n = 0; n < count; n++) slide.__canvasStep?.(-1);
+                for (let n = 0; n < count; n++) slide.__canvasStep?.('prev');
             }
             revealAdvance.clear();
         }

@@ -144,10 +144,15 @@ def slide_map(compiler, source, slide, start, end, index, filename, handles):
             if island:
                 body_end = body_start + island.start()
             body_end = body_start + len(raw[body_start:body_end].rstrip())
-            result['nodes'].append({'id': render_id, 'kind': 'card', 'label': heading[2],
+            node = {'id': render_id, 'kind': 'card', 'label': heading[2],
                 'renderId': render_id, 'cssTarget': f'card:{n}',
-                'text': field(offset + heading.start(2), offset + heading.end(2), value=heading[2]),
-                'body': field(body_start, body_end, value=raw[body_start:body_end].replace('\n', source.eol))})
+                'text': field(offset + heading.start(2), offset + heading.end(2), value=heading[2])}
+            # A card without body text has no safe insertion point: an empty span would sit at the
+            # start of the next heading line (or the end of the last heading), so a plain replacement
+            # would glue body text onto a heading. Leave `body` out; the card stays source-editable.
+            if body_end > body_start:
+                node['body'] = field(body_start, body_end, value=raw[body_start:body_end].replace('\n', source.eol))
+            result['nodes'].append(node)
 
     canvas_lines = [(o, l) for o, l, k, s in lines if k == 'content' and s == ((3, 'canvas'),)]
     if sum(1 for _, l, k, _ in lines if k == 'delimiter' and re.match(r'^:::canvas(?:\s|$)', l)) != 1:
@@ -257,7 +262,10 @@ def export_studio(compiler, target, output):
         parser = compiler.RemarpParser(source.original)
         _, blocks = parser.parse()
         flattened = [s for group in blocks.values() for s in group]
-        locations, cursor = {}, 0
+        # The compiler strips the frontmatter before it splits slides, so slide text can only start
+        # after it; a search from offset 0 could match the same words inside the YAML.
+        cursor = len(source.text) - len(compiler.RemarpParser(source.text)._strip_frontmatter())
+        locations = {}
         for slide in sorted(flattened, key=lambda s: s.source_index):
             position = source.text.find(slide.raw_source, cursor)
             if position < 0:
