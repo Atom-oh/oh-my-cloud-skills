@@ -24,7 +24,7 @@
       "executable": false
     },
     "agents/content-review-agent.md": {
-      "sha256": "35f69ca2f5e8218b90120f6a983a82e117462fd219fa9152e3c93157b08f11df",
+      "sha256": "774bdaada9a0e9ef506f0e9dfacf0ae889e971313aa0269edc0b98c7c2fe9aba",
       "executable": false
     },
     "agents/document-agent.md": {
@@ -40,7 +40,7 @@
       "executable": false
     },
     "agents/reactive-presentation-agent.md": {
-      "sha256": "29001bf580d042f414f660aee714927548f9fe012a07e9e66678cfabe0e35df0",
+      "sha256": "f62d81df13d0dfed0777145c291c8e1e9f79f8bead0b19c5051e0141a19ca42b",
       "executable": false
     },
     "agents/workshop-agent.md": {
@@ -456,7 +456,7 @@
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
-      "sha256": "b3e831bc60adb9b3828e059de6be26641f56e9fb711c2da7390ef30f27c2116b",
+      "sha256": "efbf6bf33bd64d93dd271316438cfa06162d0cbb080ff961a8f99eb33f448394",
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
@@ -468,11 +468,11 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-detail.css": {
-      "sha256": "cc9449d09ee3ad333ac0d9fb8298872e2815ec27aae761a6fba06bfc122cf87a",
+      "sha256": "b3243879b388b9575b5ae793003fe8184f08906f5b8b6a8dd498c16ae6e5405c",
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-detail.js": {
-      "sha256": "8502f07eb83733303c309f4fec5c68fbd859935d34cbe0f63788f7658194cf40",
+      "sha256": "8adbaa3801f03115c6c6fb1f04c664391dff82c2da766d971fa349557e72f3c1",
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-nav.css": {
@@ -17292,7 +17292,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/authoring-rules.md": {
-      "sha256": "82a2f8f56483ab97d7638fc449b33a714bfe71aadd2283963d2338d9815c0682",
+      "sha256": "8b4e6e80c5660bfb7acaea9004e74553ca3e2bd91fe0f16912fa977f7eb90ede",
       "executable": false
     },
     "skills/reactive-presentation/references/aws-icons-guide.md": {
@@ -17344,7 +17344,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/remarp-format-guide.md": {
-      "sha256": "93cbb6988581b52268d0adb60ffb97292681e3b2b6664171947054047f28285c",
+      "sha256": "862403f281d8bbef55d1a4023164c39fc713454ae2da3d270d72c4e5d807f213",
       "executable": false
     },
     "skills/reactive-presentation/references/slide-patterns.md": {

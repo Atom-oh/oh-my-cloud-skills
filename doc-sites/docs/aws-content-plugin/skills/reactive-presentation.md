@@ -84,8 +84,50 @@ The port carries VXLAN traffic between nodes.
 ```
 
 The detail block must be at the top level of the same slide. Duplicate IDs and
-missing references are CRITICAL `DETAIL_REF` findings. The detail panel opens by
-click or Enter and closes with Esc, an outside click, or a slide change.
+missing references are CRITICAL `DETAIL_REF` findings. Tooltips work on hover and
+keyboard focus; tip-only terms also support touch. Move onto the tooltip to keep
+reading, or press Esc to dismiss it. The detail panel opens by click, Enter, or
+Space and closes with Esc, an outside click, or a slide change.
+
+## Audience-aware explanations {#audience-aware-explanations}
+
+Explain unfamiliar terminology, industry jargon, and acronyms at their first
+meaningful use in each independently viewable block. Do not assume API, JSON,
+EKS, or S3 is familiar just because it is common in the industry. Repeat an
+explanation after a long gap when readers would otherwise lose context, rather
+than annotating every occurrence.
+
+For **L100–200** (`level: 100`/`200`, or `beginner`/`intermediate`), give the full
+name, a plain-language meaning, and a practical example or reason it matters.
+Use a short, useful hover summary and put multi-sentence teaching in a detail
+panel. L300–400 can be more concise but still needs explanations for unfamiliar
+domain-specific terms. Speaker notes are not a substitute for these audience-facing
+explanations.
+
+```markdown
+[API]{detail=api}
+
+:::detail api "How an API connects applications"
+tip: API (Application Programming Interface): an agreed way for programs to request data or actions.
+
+An API defines which requests a program accepts and what it returns.
+For example, a weather app requests a forecast instead of collecting sensor data itself.
+:::
+```
+
+- **Charts:** add a nearby “How to read this chart” trigger explaining the axes,
+  units, population/timeframe, comparison baseline, takeaway, and limitations or
+  source as applicable to the chart and data. Use an accessible text caption, not
+  the chart image itself, as the detail trigger.
+- **Quotations:** preserve the quoted text and show its attribution. Add a
+  “Quote context” trigger with the source/context and why the quote matters.
+  Mark illustrative or unverified quotes explicitly; never invent a citation.
+- **Static exports:** keep essential claims, chart labels/units, the takeaway,
+  and attribution visible. Hover and detail layers are not included in exported
+  slide images.
+
+Content review checks explanation coverage and suitability for the audience;
+the compiler checks annotation structure, not jargon recognition or factual quality.
 
 ## Copy gates {#copy-gates}
 

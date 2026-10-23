@@ -51,6 +51,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Require audience-facing explanations for first-use terminology, industry jargon,
+  and acronyms in reactive presentations, with fuller plain-language guidance for
+  L100–200. Chart captions explain how to read the data; quotations retain visible
+  attribution and add context. Reuse Remarp's tooltip/detail syntax and check
+  semantic coverage in content review rather than claiming automatic jargon detection.
+- Keep presentation tooltips readable while the pointer moves onto them and let
+  Escape dismiss a tooltip before triggering a deck shortcut.
+
 - Reduce co-agent's registered agents from five to three. The canonical `co-agent`
   skill replaces the duplicate orchestrator persona; `/co-agent:configure analyze
   [session-dir]` replaces `harness-analyst` with host-run, advisory analysis that

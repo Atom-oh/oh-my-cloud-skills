@@ -133,11 +133,58 @@ Exceeding 28 characters triggers `validate`'s `TITLE_LENGTH` warning. Full examp
 
 1. **Split into tabs**: 3+ sub-items of the same topic → separate into tabs
 2. **Card grid**: 4+ listed items → use the `.card-grid` token class (bullet lists forbidden)
-3. **Self-contained**: every interaction is completed via an inline onclick inside `:::html` (no external JS dependency)
+3. **Self-contained**: use the framework's built-in interactions (including tooltips/details); custom interactions use inline onclick inside `:::html` without an external JS dependency
 4. **Visual hierarchy**: color must use only semantic role tokens (`var(--accent/--info/--success/--warning/--danger)`). Hardcoded hex/rgba and solid-color backgrounds are forbidden
 5. **`:::html` reactive**: 3+ peer elements must appear sequentially via `class="fragment fade-up" data-fragment-index="N"` (static HTML forbidden)
 
 > **Theme**: light by default. Dark mode is set via `class="… theme-dark"` on the deck root. Per-slide dark mode uses `@theme: dark`. All colors auto-adapt to both via theme.css tokens.
+
+### Audience-aware explanations
+
+Use the brief's `audience` and `level` to decide what needs explanation. Explain
+unfamiliar industry terms and acronyms at their **first meaningful use in each
+independently viewable block**. Repeat after a long gap when it helps the reader;
+do not annotate every repeated word. There is no universal common-acronym exemption:
+API, JSON, EKS and S3 may still need explanation for the stated audience.
+
+| Audience level | Explanation depth |
+|---|---|
+| `100`/`200` (L100/L200, beginner/intermediate) | Expand the acronym, give its plain-language meaning, and explain why it matters here or give a simple example. Use a richer detail body when this needs several sentences. |
+| `300`/`400` (L300/L400, advanced/expert) | Still explain new or domain-specific terms; keep the definition and relevant distinction concise. |
+
+- **Choose the layer deliberately.** Use `[term]{tip="..."}` for a short,
+  meaningful hover summary. Use `[label]{detail=id}` with a top-level,
+  slide-local `:::detail id "Title"` block for a longer explanation, examples,
+  caveats or sources. Supply a readable `tip:` summary instead of a paragraph
+  tooltip or a title that merely repeats the term. Speaker notes can support the
+  presenter, but notes alone do not satisfy audience-facing explanations.
+- **Explain charts.** Provide an accessible text trigger in the caption, such
+  as `[Read this chart]{detail=latency-chart}`, outside the chart's `role="img"`
+  container. Explain axes, units, population, timeframe and comparison baseline
+  as applicable to the chart type/data, then the trend/takeaway and relevant
+  caveats or source. For simple charts, visible labels plus a short tip may
+  suffice; longer interpretation belongs in
+  a detail body. Label illustrative data explicitly.
+- **Explain quotations.** Keep the quote, attribution and necessary context
+  visible. Verify the wording and source before presenting a real quotation as
+  evidence, or visibly label it illustrative or unverified. A detail can explain
+  the context and relevance; it must not invent evidence, intent or conclusions
+  that the quotation does not support.
+- **Preserve the visible story.** Essential claims, chart axes/units/takeaway,
+  and quote attribution or uncertainty labels remain visible without interaction,
+  including PDF, screenshots and PPTX. Hover/detail adds understanding; exported
+  speaker notes are not a substitute for readable slide content.
+- **Make it reachable.** Use the existing focusable text triggers: hover or
+  keyboard focus shows the summary, click/tap or Enter/Space opens richer details,
+  and Escape dismisses the tooltip or detail panel. Keep the tooltip readable
+  when the pointer moves onto it. Check tooltip-only terms on touch too.
+  Keep summaries short enough to read comfortably without obscuring the slide.
+
+Coverage and appropriate depth are author/reviewer judgments. The existing
+`DETAIL_REF` check verifies wiring, not whether an audience understands a term,
+chart or quotation; passing validation does not establish semantic coverage.
+Syntax and compact examples:
+[remarp-format-guide.md, Detail Layer](remarp-format-guide.md#detail-layer-and-deck-navigation).
 
 ### Self-contained Tab Pattern (copy-paste)
 

@@ -70,6 +70,22 @@ SLIDES_B = """<div class="slide-deck">
 </div>
 """
 
+SLIDES_DETAIL_CONTEXTS = """<div class="slide-deck">
+  <div class="slide"><div class="slide-header"><h2>Explain the evidence</h2></div>
+    <div class="slide-body">
+      <figure>
+        <svg role="img" aria-label="Synthetic response times of 80 and 40 milliseconds" width="240" height="100" viewBox="0 0 240 100">
+          <rect x="30" y="20" width="60" height="80" fill="currentColor"/>
+          <rect x="150" y="60" width="60" height="40" fill="currentColor"/>
+        </svg>
+        <figcaption>Illustrative response time (synthetic data): <span class="rp-detail" data-tip="These illustrative bars compare synthetic median response times before and after caching. The lower value represents a faster typical response in this example; it does not describe tail latency or a real benchmark.">50% lower median</span></figcaption>
+      </figure>
+      <blockquote><p>“<span class="rp-detail" data-tip="This illustrative quotation asks readers to verify a change with evidence. The chart uses synthetic medians to demonstrate the interaction; it is not evidence of a production improvement.">Measure before you conclude.</span>”</p><footer>Illustrative quotation written for this fixture</footer></blockquote>
+    </div>
+  </div>
+</div>
+"""
+
 OPTS_A = "sidebar: true, footer: 'Footer text', logoSrc: './logo.svg'"
 
 
@@ -113,6 +129,8 @@ class DeckOverlayFixture(unittest.TestCase):
         (root / "a-nofooter.html").write_text(
             head + SLIDES_A + scripts % "sidebar: true, logoSrc: './logo.svg'", encoding="utf-8")
         (root / "b.html").write_text(head + SLIDES_B + scripts % "sidebar: false", encoding="utf-8")
+        (root / "detail-contexts.html").write_text(
+            head + SLIDES_DETAIL_CONTEXTS + scripts % "sidebar: false", encoding="utf-8")
         handler = functools.partial(_Quiet, directory=str(root))
         cls.httpd = socketserver.TCPServer(("127.0.0.1", 0), handler)
         threading.Thread(target=cls.httpd.serve_forever, daemon=True).start()
