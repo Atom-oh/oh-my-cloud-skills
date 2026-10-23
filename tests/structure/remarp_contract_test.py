@@ -1,5 +1,6 @@
 """Behavioral regression tests for the Remarp source/build contract."""
 import importlib.util
+from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
@@ -552,6 +553,201 @@ class RemarpDetailContractTests(unittest.TestCase):
     def test_detail_ref_ignores_inline_refs_in_html_comments(self):
         src = "## T\n\n<!-- [x]{detail=old} -->\n\nbody\n"
         self.assertNotIn("DETAIL_REF", {r for _, r in self.rules(self.validate_text(src))})
+
+
+class _AudienceHTML(HTMLParser):
+    """Keep element ancestry so captions, quotes and detail stores stay distinct."""
+
+    VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input",
+                 "link", "meta", "param", "source", "track", "wbr"}
+
+    def __init__(self, markup):
+        super().__init__(convert_charrefs=True)
+        self.root = SimpleNamespace(tag="root", attrs={}, children=[], parent=None)
+        self.current = self.root
+        self.feed(markup)
+
+    def handle_starttag(self, tag, attrs):
+        node = SimpleNamespace(tag=tag, attrs=dict(attrs), children=[], parent=self.current)
+        self.current.children.append(node)
+        if tag not in self.VOID_TAGS:
+            self.current = node
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        if tag not in self.VOID_TAGS:
+            self.handle_endtag(tag)
+
+    def handle_endtag(self, tag):
+        node = self.current
+        while node.parent is not None:
+            if node.tag == tag:
+                self.current = node.parent
+                return
+            node = node.parent
+
+    def handle_data(self, data):
+        self.current.children.append(data)
+
+    @classmethod
+    def elements(cls, node):
+        for child in node.children:
+            if not isinstance(child, str):
+                yield child
+                yield from cls.elements(child)
+
+    @classmethod
+    def text(cls, node):
+        return "".join(child if isinstance(child, str) else cls.text(child)
+                       for child in node.children)
+
+
+class RemarpAudienceExplanationContractTests(unittest.TestCase):
+    """Authored audience explanations survive the existing compiler contract.
+
+    These are syntax/output regressions; choosing unfamiliar terms and judging
+    explanation quality remain authoring and behavioral-evaluation concerns.
+    """
+
+    setUp = RemarpContractTests.setUp
+    write = RemarpContractTests.write
+    cli = RemarpContractTests.cli
+    build_one = RemarpDetailContractTests.build_one
+
+    def compile_audience_slide(self, content, level=100):
+        front = FRONT.replace("remarp: true", f"remarp: true\nlevel: {level}")
+        markup = self.build_one(front + content)
+        parsed = _AudienceHTML(markup)
+        return markup, list(parsed.elements(parsed.root))
+
+    def one(self, elements, *, tag=None, attr=None, value=None):
+        matches = [node for node in elements
+                   if (tag is None or node.tag == tag)
+                   and (attr is None or node.attrs.get(attr) == value)]
+        self.assertEqual(1, len(matches), (tag, attr, value, len(matches)))
+        return matches[0]
+
+    def test_level_100_and_200_first_use_term_and_acronym_explanations(self):
+        tip = 'Allowed failures before reliability work takes priority; <1% is "small" & measurable.'
+        escaped_tip = tip.replace('"', '\\"')
+        content = (
+            '## Reliability targets guide release decisions\n\n'
+            '[Service level objective (SLO)]{detail=slo} is a reliability target.\n\n'
+            f'An [error budget]{{tip="{escaped_tip}"}} is the allowed amount of failure.\n\n'
+            'Use the SLO to decide when reliability work takes priority.\n\n'
+            ':::detail slo "SLO: a \\"reliability promise\\""\n'
+            'tip: Service level objective: an agreed reliability target, such as 99.9% success.\n\n'
+            'Service level objective (SLO) means the reliability target a team agrees to meet.\n\n'
+            '- Example: 99.9% success allows one failed request in every 1,000.\n'
+            '- Why it matters: compare reliability with the target before releasing changes.\n'
+            ':::\n')
+        for level in (100, 200):
+            with self.subTest(level=level):
+                markup, elements = self.compile_audience_slide(content, level)
+                term = self.one(elements, attr="data-tip", value=tip)
+                self.assertEqual("error budget", _AudienceHTML.text(term))
+                self.assertEqual({"class": "rp-detail", "tabindex": "0", "data-tip": tip}, term.attrs)
+                self.assertIn('&lt;1% is &quot;small&quot; &amp; measurable.', markup)
+                acronym = self.one(elements, attr="data-detail", value="slo")
+                self.assertEqual("Service level objective (SLO)", _AudienceHTML.text(acronym))
+                self.assertEqual("0", acronym.attrs["tabindex"])
+                self.assertEqual("Service level objective: an agreed reliability target, such as 99.9% success.",
+                                 acronym.attrs["data-tip"])
+                detail = self.one(elements, attr="data-detail-id", value="slo")
+                self.assertEqual('SLO: a "reliability promise"', detail.attrs["data-title"])
+                self.assertIn('data-title="SLO: a &quot;reliability promise&quot;"', markup)
+                self.assertIn("one failed request in every 1,000", _AudienceHTML.text(detail))
+                self.assertIn("Why it matters:", detail.attrs["data-text"])
+                self.assertEqual("rp-detail-store", detail.parent.attrs["class"])
+                self.assertIn("hidden", detail.parent.attrs)
+                self.assertNotIn(":::detail", markup)
+
+    def test_chart_uses_text_caption_trigger_and_preserves_image_role(self):
+        content = (
+            '## Failed requests fall in this illustration\n\n'
+            ':::html\n'
+            '<svg role="img" aria-label="Illustrative checkout failures: week 1, 12; week 2, 8; week 3, 5 per 1,000 requests" viewBox="0 0 300 100">\n'
+            '<title>Illustrative checkout failures per 1,000 requests</title>\n'
+            '<rect x="10" y="10" width="120" height="20" fill="currentColor"/>\n'
+            '<rect x="10" y="40" width="80" height="20" fill="currentColor"/>\n'
+            '<rect x="10" y="70" width="50" height="20" fill="currentColor"/>\n'
+            '</svg>\n:::\n\n'
+            'Illustration only: [Failures fall from 12 to 5 per 1,000 requests]{detail=chart-context}.\n\n'
+            ':::detail chart-context "How to read the chart"\n'
+            'tip: Failures fall across three illustrative weeks; the chart does not establish a cause.\n\n'
+            '- Horizontal axis: failed requests per 1,000 checkout requests, starting at zero.\n'
+            '- Vertical axis: weeks 1, 2 and 3; values are 12, 8 and 5.\n'
+            '- Takeaway: fewer failures; investigate what changed before claiming an improvement.\n'
+            '- Source and limit: invented training data, not a production measurement.\n'
+            ':::\n')
+        _, elements = self.compile_audience_slide(content)
+        chart = self.one(elements, tag="svg")
+        self.assertEqual("img", chart.attrs["role"])
+        self.assertIn("per 1,000 requests", chart.attrs["aria-label"])
+        self.assertNotIn("rp-detail", chart.attrs.get("class", "").split())
+        self.assertNotIn("data-detail", chart.attrs)
+        self.assertNotIn("tabindex", chart.attrs)
+        caption = self.one(elements, attr="data-detail", value="chart-context")
+        self.assertEqual("span", caption.tag)
+        self.assertEqual("p", caption.parent.tag)
+        self.assertEqual("0", caption.attrs["tabindex"])
+        self.assertNotIn(caption, list(_AudienceHTML.elements(chart)))
+        self.assertEqual("Failures fall from 12 to 5 per 1,000 requests", _AudienceHTML.text(caption))
+        detail = self.one(elements, attr="data-detail-id", value="chart-context")
+        for explanation in ("Horizontal axis:", "Vertical axis:", "Takeaway:", "invented training data"):
+            self.assertIn(explanation, _AudienceHTML.text(detail))
+        self.assertIn("does not establish a cause", caption.attrs["data-tip"])
+
+    def test_quote_stays_verbatim_with_attribution_and_separate_context(self):
+        quote = '"Measure the wait before you add another lane."'
+        attribution = "Example operations coach (fictional training quote)."
+        content = (
+            '## Measure before adding capacity\n\n'
+            f'> {quote}\n\n'
+            f'— {attribution}\n\n'
+            'Measure delays before choosing a fix. [Why this quote matters]{detail=quote-context}\n\n'
+            ':::detail quote-context "Context for the quotation"\n'
+            'tip: This fictional checkout-line analogy says to find the bottleneck before buying capacity.\n\n'
+            'Context: an illustrative coaching remark, not a verified statement by a real person.\n\n'
+            'Meaning: measure waiting time and find the slow step before expanding capacity.\n\n'
+            'Limit: this analogy is not evidence that adding capacity always improves performance.\n'
+            ':::\n')
+        _, elements = self.compile_audience_slide(content, level=200)
+        quoted = self.one(elements, tag="blockquote")
+        self.assertEqual(quote, _AudienceHTML.text(quoted))
+        self.assertFalse(any("data-detail" in node.attrs for node in _AudienceHTML.elements(quoted)))
+        paragraphs = [node for node in elements if node.tag == "p"]
+        self.assertEqual(1, sum(_AudienceHTML.text(node) == f"— {attribution}" for node in paragraphs))
+        context = self.one(elements, attr="data-detail", value="quote-context")
+        self.assertEqual("Why this quote matters", _AudienceHTML.text(context))
+        self.assertEqual("0", context.attrs["tabindex"])
+        self.assertIn("fictional checkout-line analogy", context.attrs["data-tip"])
+        detail = self.one(elements, attr="data-detail-id", value="quote-context")
+        self.assertIn("not a verified statement by a real person", _AudienceHTML.text(detail))
+        self.assertIn("not evidence", detail.attrs["data-text"])
+
+    def test_reused_detail_id_keeps_each_slides_explanation_local(self):
+        content = (
+            '## First audience context\n\n[Context]{detail=context}\n\n'
+            ':::detail context "Introductory context"\ntip: A beginner definition.\n\n'
+            'Body for the introductory audience.\n:::\n\n---\n'
+            '## Second audience context\n\n[Context]{detail=context}\n\n'
+            ':::detail context "Applied context"\ntip: An intermediate example.\n\n'
+            'Body for the applied audience.\n:::\n')
+        _, elements = self.compile_audience_slide(content)
+        slides = [node for node in elements if "slide" in node.attrs.get("class", "").split()]
+        self.assertEqual(2, len(slides))
+        for slide, tip, body, other_body in (
+                (slides[0], "A beginner definition.", "Body for the introductory audience.", "Body for the applied audience."),
+                (slides[1], "An intermediate example.", "Body for the applied audience.", "Body for the introductory audience.")):
+            with self.subTest(tip=tip):
+                local_elements = list(_AudienceHTML.elements(slide))
+                trigger = self.one(local_elements, attr="data-detail", value="context")
+                detail = self.one(local_elements, attr="data-detail-id", value="context")
+                self.assertEqual(tip, trigger.attrs["data-tip"])
+                self.assertEqual(body, detail.attrs["data-text"])
+                self.assertIn(body, _AudienceHTML.text(detail))
+                self.assertNotIn(other_body, _AudienceHTML.text(slide))
 
 
 if __name__ == "__main__":

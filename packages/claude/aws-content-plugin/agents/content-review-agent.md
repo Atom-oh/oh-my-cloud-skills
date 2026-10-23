@@ -45,12 +45,15 @@ The non-code-artifact analog of superpowers:requesting-code-review — route her
 ### 2. Terminology Appropriateness
 - Claims are specific and supportable — vague filler and unsupported superlatives weaken technical credibility
 - Consistent terms for the same concept throughout
+- For Remarp presentations, assess audience comprehension using the canonical [Audience-aware explanations policy](../skills/reactive-presentation/references/authoring-rules.md#audience-aware-explanations). Check first meaningful use of unfamiliar terms/acronyms in each independently viewable block against its audience/level; L100/L200 (beginner/intermediate) needs expansion, plain meaning and relevance or a simple example. L300/L400 still needs concise explanations of new/domain-specific terms.
+- Judge explanation coverage and depth from the actual content, including charts and quotations. Notes alone and a clean `DETAIL_REF` result do not establish audience comprehension. Record defects in the applicable existing category; do not add a new score or compiler gate.
 
 ### 3. Hallucination Detection
 - AWS service names are accurate (e.g., "Lamda" → "Lambda")
 - No mention of non-existent AWS services/features
 - Service limitations and regional availability accurate
 - Statistics have source citations
+- Quotations have verified wording/source and visible attribution/context, or an explicit illustrative/unverified label. Added interpretation does not invent evidence or a speaker's intent.
 
 ### 4. Language Check
 - Korean: Technical terms in English, explanations in Korean
@@ -110,6 +113,7 @@ Finding consolidation (still a finding — just recorded once, not once per occu
 ### 8. Readability Analysis
 - Can one key message per slide/section be grasped within a few seconds — deduct points for walls of text, overcrowded bullets, or a title that swallows the body
 - Are sentences a length that can be read in one pass (flag long compound Korean sentences and English run-ons)
+- Hover summaries are readable and selective; multi-sentence explanations use richer details without annotating every repeated term.
 - Do sibling cards or callouts listing parallel items share one color? Different success/warning/info colors on options with no stated category imply a ranking; flag as a Warning
 
 ### 9. Accessibility Check (WCAG 2.1)
@@ -117,6 +121,7 @@ Finding consolidation (still a finding — just recorded once, not once per occu
 - All images have descriptive alt text
 - Minimum font size 14pt
 - Information not conveyed by color alone
+- Explanation triggers are focusable text; chart-caption triggers sit outside `role="img"` containers. Essential claims, chart axes/units/takeaway and quote attribution/uncertainty remain visible without interaction and in static exports.
 
 ### 10. Structural Completeness
 - TOC items match actual sections
@@ -126,6 +131,7 @@ Finding consolidation (still a finding — just recorded once, not once per occu
 ### 11. Data Accuracy
 - Number format consistent (1,000 vs 1000), unit notation unified (GB vs GiB)
 - Date format consistent (YYYY-MM-DD); sources cited for statistics
+- Chart explanations identify axes, units, population/timeframe and comparison baseline as applicable to the chart type/data, plus the supported takeaway and relevant caveats/source; illustrative data is labeled.
 
 ### 12. Legal/Regulatory Compliance
 - Copyright notice: `© [Year] Amazon Web Services, Inc. All rights reserved.` —
@@ -140,7 +146,7 @@ Finding consolidation (still a finding — just recorded once, not once per occu
 
 ### 14. Duplication & Gap Detection
 - No identical/similar sentences repeated; required information not missing
-- Abbreviations expanded on first occurrence
+- Abbreviations expanded on first meaningful use for the intended audience; Remarp uses the block-level coverage policy in category 2, without blanket common-acronym exemptions
 
 ### 15. External Reference Validation
 - Image file references point to existing files
@@ -182,6 +188,11 @@ If 8080 is in use, retry on a different port. Open with `browser_navigate`, test
 | Page load | `browser_navigate` → `browser_console_messages` | No JS console errors |
 | Slide transitions | `browser_press_key` (ArrowRight) x N | Confirm all slides advance |
 | Tabs/compare/quiz | `browser_click` (`.tab-btn`, `.compare-btn`, `.quiz-option`) | Content switches and feedback displays |
+| Explanation summaries | `browser_hover` on `.rp-detail`, then `browser_press_key` (Tab) to focus | A readable tooltip appears on hover and keyboard focus for term, chart-caption and quotation triggers |
+| Tooltip reading/dismissal | Move the pointer from the trigger onto its tooltip, then `browser_press_key` (Escape), including a tooltip-only term | Tooltip remains readable while the pointer is over it; Escape dismisses it without requiring a detail panel |
+| Detail activation | `browser_click`, then focus the trigger and `browser_press_key` (Enter/Space) | Each input opens the matching slide-local detail; activating it does not advance the slide |
+| Touch explanations | Touch-enabled browser context: tap tooltip-only terms and detail triggers | Tooltip-only terms show/toggle their summary; detail triggers open the panel without hover |
+| Detail dismissal | `browser_press_key` (Escape), then reopen and click the close button | Panel closes and focus returns to its trigger; slide navigation remains usable |
 | Canvas animation | Play button `browser_click` | Confirm animation runs |
 | Canvas layout | `browser_take_screenshot` | No element overlap, consistent alignment/margins, legible text |
 | Canvas step advance/retreat | `browser_press_key` (ArrowDown/ArrowUp) → screenshot | Sequential forward/reverse stepping, stops at both ends |
@@ -193,7 +204,7 @@ If 8080 is in use, retry on a different port. Open with `browser_navigate`, test
 
 | Content type | Visual test scope |
 |-------------|-----------------|
-| HTML presentation | Full (navigation, tabs, quiz, canvas, responsive, presenter view) |
+| HTML presentation | Full (navigation, tabs, quiz, explanations by hover/focus/touch and keyboard, canvas, responsive, presenter view) |
 | Animated diagram | Page load, legend toggle, animation playback, responsive |
 | Brochure / profile page (HTML) | Full (3-tier responsive 375/768/1280 screenshots, CTA/anchor behavior, console errors) |
 | GitBook (only when a build/preview URL exists) | Navigation, component rendering, link validation |

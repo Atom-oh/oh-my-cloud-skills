@@ -28,6 +28,8 @@ Output: `theme-manifest.json` (colors/fonts/logos/footer/layout) · `theme-overr
 ### Phase 2 — Content Authoring
 **Copy style**: do not use em dashes (U+2014) or middle dots (U+00B7/U+30FB) in authored presentation text, including titles, labels and speaker notes. Use natural sentences, commas, colons, parentheses or separate lines. Apply this when adapting templates too; see [authoring-rules.md §2](references/authoring-rules.md#2-forbidden--ai-slide-tells).
 
+**Audience explanations**: apply [authoring-rules.md §4, Audience-aware explanations](references/authoring-rules.md#audience-aware-explanations) to first-use terms/acronyms, charts and quotations. L100/L200 explanations need plain meaning and relevance or an example; use short hover summaries plus richer details where needed, with essential meaning visible in exports.
+
 **Planning** (don't re-ask what the brief, existing documents, or MEMORY.md already answered — ask only about what's missing):
 - Topic & audience / Duration (20-35 min per block + 5 min break) / Target repo (default `~/reactive_presentation/`) / Language (KO/EN, technical terms in English) / Aspect ratio (default 16:9)
 - **Design refs**: check whether a reference design exists (PPTX/PDF/image/existing presentation path) → if provided, extract branding+layout (`.pptx`=Phase 1, `.pdf`/image=visual layout reference). Also auto-search `~/oh-my-skill-tester/` for existing presentations and present a list. If none, use a CSS-only cover + default theme + **manually set footer/logo in `_presentation.md` (required)**.
@@ -132,6 +134,7 @@ GitHub Pages: Settings → Pages → main / root.
 
 ## Quality Assurance
 - **Copy style check**: before completion, inspect authored text in Remarp and the built deck, including HTML/Canvas labels, quizzes, footers and speaker notes, for the prohibited punctuation in authoring-rules.md §2.
+- **Audience comprehension check**: review explanation coverage against the declared audience/level using [authoring-rules.md §4](references/authoring-rules.md#audience-aware-explanations); verify hover/focus, click/tap and keyboard detail access in the built deck. This semantic review supplements the existing validation and output gates.
 - **Canvas proportional scaling (framework contract)**: every Canvas must use the `ResizeObserver` + `BASE_W/BASE_H` + `ctx.scale(scale*dpr, scale*dpr)` pattern (for FHD/4K support). `setupCanvas()` alone is forbidden (it fixes a px max-width). slide-patterns.md §5.
 - **Fact verification**: slides that cite YAML/config/API values must include only values confirmed against official documentation — one wrong config key in a technical deck undermines credibility for the whole talk.
 
