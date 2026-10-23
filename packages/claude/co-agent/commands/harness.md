@@ -126,7 +126,10 @@ fix ≤ `consensus.max_rounds`, require tests green. Record `…/code-gate/resul
 `consensus_state.py set . status done` then `report .` (writes
 `.claude/co-agent-consensus/report.md`, gitignored) — include the implementer attribution
 and per-stage `result.json` / `stage_wall.tsv`. Present to the user. Resumable via
-`consensus_state` (`phase`/`task_index`). Optionally offer the **`harness-analyst`**
-subagent (`agents/harness-analyst.md`) to mine the accumulated records for
-`/co-agent:configure` proposals — advisory only; below 3 recorded runs it reports
-observations without proposals.
+`consensus_state` (`phase`/`task_index`). Optionally offer
+`/co-agent:configure analyze "$ORCH_ROOT/.claude/co-agent-consensus"` to mine the
+accumulated records for configuration proposals. Do not run it automatically or
+spawn an analyst. If requested, the current host follows
+`skills/co-agent/references/harness-analysis.md`: read-only, no external fan-out,
+no configuration writes or implicit apply. Below 3 recorded runs (count
+`plan-gate` rows), report observations without proposals.

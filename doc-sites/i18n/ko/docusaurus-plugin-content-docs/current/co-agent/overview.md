@@ -51,11 +51,29 @@ Codex가 호스트이면 Claude를 사용합니다. Antigravity(`agy`)와 기존
 
 ## 구성 요소 {#components}
 
-Claude 패키지는 `co-agent`, `gate-chair`, `harness-analyst`, `pr-autofix-planner`, `pr-autofix-implementer`를 선언하며 스킬은 `co-agent`, `pr-autofix`, `decision-reconcile`입니다. 계획자와 구현자는 준비된 입력이 필요한 내부 PR 작업자입니다. Codex는 명령 래퍼를 포함한 생성 오버레이로 이 워크플로를 제공합니다.
+기준 `co-agent` 스킬은 중복된 조정 에이전트 대신 현재 호스트에서 실행됩니다.
+Claude 패키지에는 `gate-chair`, `pr-autofix-planner`, `pr-autofix-implementer`의
+세 에이전트가 있습니다. 판단, 읽기 전용 계획, 편집 전용 구현의 권한 경계는
+계속 분리합니다. 소스 스킬은 `co-agent`, `pr-autofix`, `decision-reconcile`의
+세 가지이며 소스 명령 다섯 개가 나머지 워크플로를 제공합니다. Codex는 명령
+래퍼와 에이전트 절차를 포함한 생성 진입점 스킬 11개를 제공하며, 이를 네이티브
+에이전트로 등록하지 않습니다.
+
+기존 `co-agent:co-agent` 페르소나와 `harness-analyst`는 폐지되었습니다. 작업
+조정에는 `/co-agent`를, 실행 기록의 자문 분석에는
+`/co-agent:configure analyze [session-dir]`를 사용합니다. 유지되는 작업자와
+모델·메모리 동작은 [역할 및 마이그레이션](/docs/co-agent/agents/co-agent)을
+참고합니다. 의사결정 조정의 동적 검토 관점 네 가지는 변경되지 않으며, 별도로
+등록된 에이전트 수에 포함하지 않습니다.
 
 ## 설정 및 게이트 {#configuration-and-gates}
 
 `/co-agent:configure`로 병합된 설정, 출처, 호스트별 외부 AI 가용성을 확인합니다. 기본 설정 파일은 프로필, 모델 목록, effort, 시간 제한, 컨텍스트 한도, 호출 예산, 재시도 한도를 정의합니다. deep 프로필은 외부 AI별 여러 모델을 사용할 수 있고 default 프로필은 단일 모델 설정을 사용합니다. 설정 문자열만으로 제공자가 지원하는 모델 목록을 추정하지 않습니다.
+
+`/co-agent:configure analyze [session-dir]`는 harness/consensus 기록을 읽고
+근거에 기반한 설정 변경을 제안하지만 직접 적용하지 않습니다. 기록된 실행이
+세 번 미만이면 관찰 결과만 보고합니다. 제안 적용은 별도로 승인이 필요한 설정
+변경입니다.
 
 [기준 기본 설정](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/co-agent/co-agent.defaults.json)
 

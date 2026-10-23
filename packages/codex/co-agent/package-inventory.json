@@ -8,19 +8,11 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "98dc3105c15468ee722f047bfc4dbd110e00dc361e66d5b53e405d51536146fd",
-      "executable": false
-    },
-    "agents/co-agent.md": {
-      "sha256": "45806a954fcaf3ab65948dfbb2c0f956e4529c75e0a0523859c4fae6a21073b7",
+      "sha256": "154dd70869f838d31adccd82531c4fc0baeaf7f7c152355151754df9693db65b",
       "executable": false
     },
     "agents/gate-chair.md": {
       "sha256": "bf73bc15488d219c10b2b9077a1edfd08f92983a3e7ad1d11b24eb28780d259f",
-      "executable": false
-    },
-    "agents/harness-analyst.md": {
-      "sha256": "3ca5618f20696f904fba6137bc20c97498cf73ad72061e70a1daa5c915ecee52",
       "executable": false
     },
     "agents/pr-autofix-implementer.md": {
@@ -32,7 +24,7 @@
       "executable": false
     },
     "commands/configure.md": {
-      "sha256": "50c2c610e405e8800bad7549c8a4415b9dec8305c4c682a3f93ef20d580e397c",
+      "sha256": "4e2f38b557a07453577323df596f43b1b670bbe81c07b8d343ef806168e28560",
       "executable": false
     },
     "commands/consensus.md": {
@@ -40,7 +32,7 @@
       "executable": false
     },
     "commands/harness.md": {
-      "sha256": "fc13e1ac3f3a8f257c8b77a076399ed96edbde514f41f0eaa5d175a9a951ee18",
+      "sha256": "acb332646dc351de77ac508dcbd9d63618015d6dd03dd2584f3f76ba8f781a90",
       "executable": false
     },
     "commands/setup.md": {
@@ -81,6 +73,10 @@
     },
     "skills/co-agent/references/delegated-implement.md": {
       "sha256": "0f432db9c5ceb0e78765b7559982891a1d1daa307f509ae7e8273699e2a7ad5a",
+      "executable": false
+    },
+    "skills/co-agent/references/harness-analysis.md": {
+      "sha256": "36419ec81b37b79e00fffdb7185f0c24a3fb489cf86c6f343a8455bebf0aa11d",
       "executable": false
     },
     "skills/co-agent/references/hybrid-gate.md": {
@@ -228,11 +224,11 @@
       "executable": false
     },
     ".codex-plugin/skills/co-agent/SKILL.md": {
-      "sha256": "b5b18165a4dc64f2044425758a5cf4e8268067d925683d1e5dbdcad297d4313a",
+      "sha256": "c2334c7d67b7666cd6cc058bfaaf9810aaf26cfb3a529a7276b2ab5d72686a7c",
       "executable": false
     },
     ".codex-plugin/skills/configure/SKILL.md": {
-      "sha256": "d06db7a1133dfe9c89873219816a357444756303cf17bf11d0d726334e22f025",
+      "sha256": "cf0cac3e9ac272f5c8eb994f12caac85bec65b832fcb2370caa70ffb87c617fd",
       "executable": false
     },
     ".codex-plugin/skills/consensus/SKILL.md": {
@@ -253,14 +249,6 @@
     },
     ".codex-plugin/skills/harness/SKILL.md": {
       "sha256": "0d118376a1c16ebe54cc1dfff2caddd3486a9d3af1ae01672afb2f32ebffc28f",
-      "executable": false
-    },
-    ".codex-plugin/skills/harness-analyst/SKILL.md": {
-      "sha256": "29a289f2d5e286d798885c6caa27c14e170471625cfd6daab140c159cb9db64c",
-      "executable": false
-    },
-    ".codex-plugin/skills/harness-analyst/agents/openai.yaml": {
-      "sha256": "4d26c56a22ecdbb30cc824eed8e212adb42c3251b7436736f44d846c3caa64c8",
       "executable": false
     },
     ".codex-plugin/skills/pr-autofix/SKILL.md": {
@@ -292,7 +280,7 @@
       "executable": false
     },
     ".codex-plugin/inventory.json": {
-      "sha256": "f371c9c0a7974d1c822bc34d5d81ddd8d93d036122436ec5d098ce6692ff8284",
+      "sha256": "403907c0e6e3bcd86af121ee8beecc53e9347e92d280eba4f10601a268c2f40c",
       "executable": false
     },
     ".codex-plugin/runtime.md": {
