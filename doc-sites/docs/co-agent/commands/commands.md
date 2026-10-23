@@ -16,11 +16,18 @@ Show merged settings and their origins. Configure peer models, profiles, effort 
 
 ```text
 /co-agent:configure
+/co-agent:configure analyze
 /co-agent:configure set autosync on
 /co-agent:configure set pr_autofix max_iterations 5
 ```
 
 [Defaults and exact keys](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/co-agent/co-agent.defaults.json)
+
+Use `/co-agent:configure analyze [session-dir]` for host-run, advisory analysis of
+harness/consensus records. The optional path selects telemetry; it defaults to
+`.claude/co-agent-consensus/` in the invoking repository. Analysis never applies
+settings or calls external peers, and fewer than three recorded runs permits
+observations only. See the [analysis contract](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/co-agent/skills/co-agent/references/harness-analysis.md).
 
 Optional hook gates default off; required CI and branch protection remain independent.
 Enabling `pr_gate` or `push_gate` is consent to send the reviewed diff to third-party

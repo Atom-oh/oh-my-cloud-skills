@@ -46,6 +46,8 @@ in `package-inventory.json`.
 The Claude-only `pr-dash` and `agent-dash` mods are shipped in their Claude packages.
 Their Codex packages exclude `hooks/` and mod tests, including the automatically
 discovered `hooks/hooks.json` module declaration, and expose only a read-only skill.
+co-agent's `workflows/decision-reconcile-panel.js` is Claude-only in the same way: its
+Codex package lists `workflows/` in `exclude`, and Codex keeps the Markdown procedure.
 A mod's `userConfig` belongs in `hosts/claude/<plugin>/plugin.json`: the generator
 rewrites `plugins/<plugin>/.claude-plugin/plugin.json` from the catalog and that file.
 

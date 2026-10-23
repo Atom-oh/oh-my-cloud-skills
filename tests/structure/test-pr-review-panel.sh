@@ -2,6 +2,9 @@
 # Exercise Kiro model selection, no-tools, preflight, fallback and quota behavior with local stubs.
 # Review-cell retry and transport coverage also lives in tests/pr-review/test-run-panel.sh.
 # The historical CLI assumptions are documented in docs/runbooks/pr-review-panel.md.
+# The Kiro cells are disabled in the shipped defaults; these tests exercise their paths, so they
+# select the three-cell fixture roster. Unset again at the end (run-all.sh sources every suite).
+export PR_REVIEW_DEFAULTS_PATH="$PWD/tests/fixtures/pr-review/defaults-kiro-enabled.json"
 PANEL="scripts/pr-review/run-panel.sh"
 SYNTH="scripts/pr-review/synthesize.sh"
 AGENT="scripts/pr-review/agents/pr-review-notools.json"
@@ -466,3 +469,4 @@ EOF2
 else
     pass "run-panel.sh quota/fallback stub behaviour (skipped: timeout(1) not available)"
 fi
+unset PR_REVIEW_DEFAULTS_PATH

@@ -33,6 +33,10 @@ workflow; the six modes then route by the requested task.
 `setup` is a separate readiness command, not a seventh mode. The five source commands
 are `setup`, `configure`, `sync-context`, `consensus` and `harness`.
 The three source skills are `co-agent`, `decision-reconcile` and `pr-autofix`.
+`workflows/decision-reconcile-panel.js` is a Claude-only dynamic workflow behind the
+`decision-reconcile` fast path; it is not a skill, command or agent, the Codex package
+excludes `workflows/`, and `tests/structure/test-decision-reconcile-workflow.sh` runs it
+against canned agent answers.
 Source modes, command files and generated Codex entry skills are different inventories.
 
 ## Readiness and acceptance
@@ -62,23 +66,38 @@ skip is not evidence of it either. Source code proves implementation, not permis
 to violate security or other stated requirements. ADR-021 records this repo's
 authority; ADR-026 amends its coverage requirement.
 
-## Specialists and implementation boundaries
+## Host procedures and specialist boundaries
+
+The current host performs advisory panel coordination and synthesis through the
+canonical `skills/co-agent/SKILL.md`; a second registered `co-agent` agent is not
+needed. Optional run retrospectives belong to `/co-agent:configure analyze
+[session-dir]` and `skills/co-agent/references/harness-analysis.md`, not a separate
+analyst agent. Analysis reads telemetry/config only, does not fan out or apply
+settings, and needs explicit authorization for a later configuration change.
+It reports observations without proposals below 3 recorded runs (`plan-gate` rows).
+
+Three registered specialists remain because their execution boundaries differ:
 
 | Agent procedure | Responsibility |
 |---|---|
-| `co-agent` | Advisory panel coordination and synthesis |
 | `gate-chair` | Evidence-based triage and verify-round judgment; no external fan-out |
-| `harness-analyst` | Read telemetry and propose configuration changes; never write configuration |
 | `pr-autofix-planner` | Read-only conversion of findings into an actionable fix plan |
 | `pr-autofix-implementer` | Apply the approved delta in an isolated worktree; no Bash/network |
 
-Agent frontmatter owns Claude model/effort settings. Codex entries expose procedures,
+`hosts/claude/co-agent/agents.json` owns installed Claude model/effort settings;
+agent frontmatter describes the shared procedure. Codex entries expose procedures,
 not native roles or an automatic sandbox. Enforce required read-only/write boundaries
 with actual host capabilities. `skills/co-agent/references/delegated-implement.md`
 owns harness isolation, task waves and allowed implementers; `hybrid-gate.md` in the
 same directory owns find → triage → verify. The host owns tests and commits.
 `skills/pr-autofix/SKILL.md` owns review polling, fix iterations and escalation;
 reviewed changes still need the host's authorized integration/merge checks.
+
+Removing the former `co-agent` and `harness-analyst` registrations does not delete
+or migrate their existing user/project agent-memory directories. Host-owned
+procedures do not inherit those agents' model, effort or persistent-memory settings.
+Do not silently import their memory into another scope; any requested migration
+requires explicit authorization and the existing secret/data hygiene rules.
 
 ## Optional local hook contracts
 

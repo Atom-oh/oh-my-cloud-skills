@@ -5,8 +5,7 @@
       "name": "co-agent",
       "path": ".codex-plugin/skills/co-agent/SKILL.md",
       "sources": [
-        "skills/co-agent/SKILL.md",
-        "agents/co-agent.md"
+        "skills/co-agent/SKILL.md"
       ]
     },
     {
@@ -42,13 +41,6 @@
       "path": ".codex-plugin/skills/harness/SKILL.md",
       "sources": [
         "commands/harness.md"
-      ]
-    },
-    {
-      "name": "harness-analyst",
-      "path": ".codex-plugin/skills/harness-analyst/SKILL.md",
-      "sources": [
-        "agents/harness-analyst.md"
       ]
     },
     {

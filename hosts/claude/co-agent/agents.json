@@ -1,23 +1,8 @@
 {
-  "co-agent.md": {
-    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
-    "model": "opus",
-    "effort": "xhigh",
-    "memory": "user",
-    "skills": [
-      "co-agent"
-    ]
-  },
   "gate-chair.md": {
     "tools": "Read, Write, Glob, Grep, Bash",
     "model": "opus",
     "effort": "xhigh",
-    "memory": "project"
-  },
-  "harness-analyst.md": {
-    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
-    "model": "opus",
-    "effort": "low",
     "memory": "project"
   },
   "pr-autofix-implementer.md": {

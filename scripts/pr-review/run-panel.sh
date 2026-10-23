@@ -26,9 +26,6 @@ CELL_BUDGET=$((T * RETRIES))
 DIR="$(cd "$(dirname "$0")" && pwd)"; . "$DIR/lib.sh"
 FORMAT_INSTRUCTIONS="$(python3 "$(review_format_path)" instructions)" || exit 1
 KIRO_PROSE_INSTRUCTIONS="Use narrative findings and plain file/line references. Do not include code/configuration snippets, inline-code markup or literal Markdown syntax examples; describe the trigger and impact in words. This CLI can render away Markdown code markers."
-# Record the installed CLI version without sending a model request.
-command -v kiro-cli >/dev/null 2>&1 \
-  && echo "run-panel.sh: $(timeout 10 kiro-cli --version 2>/dev/null | head -1)" >&2
 ensure_slots "$WORK"
 SLOT="$WORK/slot"; RESP="$WORK/responded.txt"; : > "$RESP"
 rm -f "$WORK/provider-failure.flag"
@@ -48,6 +45,10 @@ if ! KIRO_CELLS_RAW="$(python3 "$CFG" kiro-cells --root "$REPO_ROOT")"; then
 fi
 KIRO_MODELS=()
 [ -n "$KIRO_CELLS_RAW" ] && mapfile -t KIRO_MODELS <<< "$KIRO_CELLS_RAW"
+# Record the installed CLI version without sending a model request, only when a Kiro cell is enabled.
+if [ "${#KIRO_MODELS[@]}" -gt 0 ] && command -v kiro-cli >/dev/null 2>&1; then
+  echo "run-panel.sh: $(timeout 10 kiro-cli --version 2>/dev/null | head -1)" >&2
+fi
 
 # Configuration status: 0 enabled, 1 disabled, other values are errors.
 python3 "$CFG" codex-enabled --root "$REPO_ROOT"; CODEX_RC=$?

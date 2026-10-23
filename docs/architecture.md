@@ -8,7 +8,7 @@ Internal docs live in `docs/`; the public Docusaurus site lives in `doc-sites/`.
 
 Counts below are derived from shared `skills/*/SKILL.md`, `commands/*.md`,
 `agents/*.md`, generated `.codex-plugin/inventory.json`, and command hooks in each
-Claude manifest (2026-10-13). Project-init uses convention-based source discovery.
+Claude manifest (2026-10-22). Project-init uses convention-based source discovery.
 
 | Plugin | Purpose | Source skills | Commands | Agents | Codex entries | Plugin hooks |
 |---|---|---:|---:|---:|---:|---:|
@@ -16,16 +16,17 @@ Claude manifest (2026-10-13). Project-init uses convention-based source discover
 | aws-ops-plugin | AWS infrastructure diagnosis and review | 6 | 0 | 10 | 16 | 2 |
 | kiro-power-converter | Plugin to Kiro Power conversion | 1 | 0 | 1 | 2 | 1 |
 | agentcore-creator | Agent design and AgentCore conversion/deployment | 1 | 0 | 1 | 2 | 1 |
-| co-agent | Multi-AI review, decisions, ADRs and implementation workflows | 3 | 5 | 5 | 12 | 8 |
+| co-agent | Multi-AI review, decisions, ADRs and implementation workflows | 3 | 5 | 3 | 11 | 8 |
 | project-init | Project scaffolding and documentation management | 1 | 10 | 1 | 12 | 0 |
 | kiro | Host-planned implementation delegated to Kiro CLI | 1 | 4 | 1 | 6 | 5 |
 | token-saver | Concise response guidance with complete work and required formats | 1 | 0 | 0 | 1 | 1 |
 | pr-dash | PR checks and AI review status: Claude Code mod pane plus a text skill | 1 | 0 | 0 | 1 | 0 |
 | agent-dash | Agent tree, estimated waits and an opt-in model policy: Claude Code mod plus a roster text skill | 1 | 0 | 0 | 1 | 0 |
-| **Total** | | **25** | **19** | **28** | **71** | **24** |
+| **Total** | | **25** | **19** | **26** | **70** | **24** |
 
-The **72 source procedures** map to **71 Codex entry skills** because some entries
-combine sources. Specialist entries are procedures, not native Codex agent roles.
+The **70 source procedures** currently map to **70 Codex entry skills**. These are
+separate inventories: same-name source aliases can share an entry. Specialist
+entries are procedures, not native Codex agent roles.
 The **24 plugin hook commands** exclude repository hooks and project-init's
 separately installed project templates and the Claude Code mods of pr-dash and
 agent-dash (`hooks/hooks.json` `modules`), which run in-process and are not command hooks. These counts do not measure CI review cells:
@@ -59,6 +60,14 @@ flowchart LR
   Review/decide/ADR can fall back to solo with notice; consensus/harness require a
   READY peer with raw CLI access. Local optional hooks have their own opt-in and
   failure rules; they do not replace mandatory CI review.
+  The canonical skill owns orchestration without a duplicate `co-agent` persona.
+  Its three agents preserve distinct capabilities: `gate-chair` verifies
+  findings, `pr-autofix-planner` produces read-only plans, and
+  `pr-autofix-implementer` applies approved edits in an isolated worktree without
+  Bash/network. `/co-agent:configure analyze [session-dir]` replaces the retired
+  `harness-analyst` with host-run, advisory analysis; it never applies settings.
+  [ADR-029](decisions/ADR-029-co-agent-role-consolidation.md) records the role
+  consolidation and compatibility boundaries.
 - Kiro delegation confines the diff landing in the main tree through worktree and
   scope checks. It does not sandbox arbitrary `execute_bash` inside that worktree;
   see the trust decision in `plugins/kiro/CLAUDE.md`.
@@ -69,6 +78,9 @@ flowchart LR
   `agent.spawn` model rewrite that a model named on the call or forced for the
   session overrides. Validate a mod with `claude plugin validate` and
   `claude plugin test` from its plugin directory.
+- co-agent also ships one Claude-only dynamic workflow, `workflows/decision-reconcile-panel.js`,
+  behind decision-reconcile's fast path. It is not counted as a skill, command or agent, and
+  its Codex package excludes `workflows/`.
 
 ## Artifact and review boundaries
 

@@ -66,6 +66,20 @@ Assign **one lens per available agent** from `references/contradiction-taxonomy.
 Use distinct models/providers only where the current host actually supports them;
 different lenses are useful even when every worker runs the same model.
 
+**Claude Code with dynamic workflows — one run for Steps 1, 3 and 4.** Call the Workflow
+tool with `name: "co-agent:decision-reconcile-panel"` (the bare name is not found) and `args: {"pluginRoot": "${CLAUDE_PLUGIN_ROOT}",
+"decisionsDir": "docs/decisions"}`. The run collects the ADRs, runs the four lenses below
+as host subagents on the tiers in the table, verifies every quote with
+`scripts/verify_quotes.py`, clusters the surviving findings by ADR set and returns
+`clusters` (consensus or dissent, severity, `severitySplit` when the lenses rated it
+differently, recommended resolution), `dropped`,
+`overflagged`, `panel.missing`, a ready-to-present `markdown` report and a `scratch`
+directory to remove afterwards (an error result carries `scratch` too, when one was made). It writes no ADR, cannot ask for consent and therefore
+sends nothing to external AI CLIs; add their findings by hand through the optional path
+below if the user opted in. Present `markdown`, then continue at Step 5. When workflows
+are unavailable (disabled, Codex, or `claude -p` without a `Workflow` allow rule), use the
+manual path that follows; its result is the same kind of report.
+
 **Primary — host subagents, when supported.** On Claude Code, the `Agent` tool can
 dispatch the model-tier example below. On Codex, use its available native delegation
 tools and roles; these Markdown procedures do not register Claude tiers or a native
@@ -116,6 +130,11 @@ Follow the [Synthesis](references/contradiction-taxonomy.md) section:
 
 1. **Verify every finding against the ADR JSON** — drop any whose quotes don't appear in
    the cited ADR. Quote-verification, not vote-counting, is what confirms a finding.
+   `scripts/verify_quotes.py ADRS_JSON FINDINGS_JSON --decisions-dir docs/decisions` does
+   this deterministically (the flag adds the full ADR files, because collect_adrs.py clips
+   long decisions at 600 characters); the
+   workflow already ran it, so its `clusters` carry only verified quotes. Still read each
+   CRITICAL/MAJOR quote against the ADR before presenting it.
 2. Cluster by the ADR set touched; mark **consensus** (≥2 agents) vs **dissent** (one
    agent — name the agent + lens).
 3. Rank by severity (CRITICAL/MAJOR/MINOR); present CRITICAL/MAJOR with quotes.
@@ -165,6 +184,11 @@ go-ahead on that specific contradiction.
 - `references/contradiction-taxonomy.md` — C1–C6 categories, the 4 review lenses
   (per-agent prompts), severity rubric, resolution patterns, superseding-ADR draft
   rules, synthesis procedure
+- `workflows/decision-reconcile-panel.js` — the Claude Code dynamic workflow behind the
+  fast path (collect → four lenses → verify → synthesize); Claude-only, excluded from the
+  Codex package
+- `scripts/verify_quotes.py` — drop findings whose quotes are not in the cited ADR
+  (prints `{verified, dropped}` as indexes)
 - `scripts/collect_adrs.py` — parse `docs/decisions/ADR-*.md` → structured JSON +
   deterministic inconsistency pre-checks (`--summary` for human-readable)
 - `commands/add-adr.md` (project-init) — the ADR file convention the draft must follow

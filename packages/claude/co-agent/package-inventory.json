@@ -4,23 +4,15 @@
   "version": "3.0.5",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "3b47ec4fa497516404dfd0ab2acc7f85f5ec541634c0cf6f7a76115f7cb9229f",
+      "sha256": "d2914f566b8d9a7d7552c5138d8c0f46420dc9e7ca9bd0b640c0cd204382acbb",
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "5221df5cafededd3cfe884a3b110ad7116b0fafa2e4703248d3e0a42786f146f",
-      "executable": false
-    },
-    "agents/co-agent.md": {
-      "sha256": "bbd28e79242510d2695f3ddf652b8d66230d6bb546035ddd6d608b653c63eafd",
+      "sha256": "154dd70869f838d31adccd82531c4fc0baeaf7f7c152355151754df9693db65b",
       "executable": false
     },
     "agents/gate-chair.md": {
       "sha256": "883aea449edef0b059c22877894d34de65a84646d1c1b6d7cb870434a8a0d0c0",
-      "executable": false
-    },
-    "agents/harness-analyst.md": {
-      "sha256": "eb58f2a3074c1449e92f12b91ce500d9612dc04977a4043fa361e1230799073e",
       "executable": false
     },
     "agents/pr-autofix-implementer.md": {
@@ -32,7 +24,7 @@
       "executable": false
     },
     "commands/configure.md": {
-      "sha256": "50c2c610e405e8800bad7549c8a4415b9dec8305c4c682a3f93ef20d580e397c",
+      "sha256": "4e2f38b557a07453577323df596f43b1b670bbe81c07b8d343ef806168e28560",
       "executable": false
     },
     "commands/consensus.md": {
@@ -40,7 +32,7 @@
       "executable": false
     },
     "commands/harness.md": {
-      "sha256": "fc13e1ac3f3a8f257c8b77a076399ed96edbde514f41f0eaa5d175a9a951ee18",
+      "sha256": "acb332646dc351de77ac508dcbd9d63618015d6dd03dd2584f3f76ba8f781a90",
       "executable": false
     },
     "commands/setup.md": {
@@ -81,6 +73,10 @@
     },
     "skills/co-agent/references/delegated-implement.md": {
       "sha256": "0f432db9c5ceb0e78765b7559982891a1d1daa307f509ae7e8273699e2a7ad5a",
+      "executable": false
+    },
+    "skills/co-agent/references/harness-analysis.md": {
+      "sha256": "36419ec81b37b79e00fffdb7185f0c24a3fb489cf86c6f343a8455bebf0aa11d",
       "executable": false
     },
     "skills/co-agent/references/hybrid-gate.md": {
@@ -144,7 +140,7 @@
       "executable": true
     },
     "skills/decision-reconcile/SKILL.md": {
-      "sha256": "d6798d38699a0867fca582b5f1ecc7f0e11687ac7263ceabdca7fb292ae971c8",
+      "sha256": "e0a883e2093fcf221c25a576a72bb22d9920b38da4104ead9972d189b5bbdeaa",
       "executable": false
     },
     "skills/decision-reconcile/references/contradiction-taxonomy.md": {
@@ -153,6 +149,10 @@
     },
     "skills/decision-reconcile/scripts/collect_adrs.py": {
       "sha256": "2fdff7a43b57173aa058e93d7ca65eddc074e87b89e57369f7a2b480b6633047",
+      "executable": true
+    },
+    "skills/decision-reconcile/scripts/verify_quotes.py": {
+      "sha256": "0260ee0b223bfe935510707f337a3d77da416b57aaa4858db4ca55ac6bb8a971",
       "executable": true
     },
     "skills/pr-autofix/SKILL.md": {
@@ -221,6 +221,10 @@
     },
     "skills/pr-autofix/scripts/review_verdict.py": {
       "sha256": "7689b9f9419f05df3526ee765e7863e168e43b651c889e9964dfd50c2c51c79a",
+      "executable": false
+    },
+    "workflows/decision-reconcile-panel.js": {
+      "sha256": "05463c689f77799b54031f0fe0e3a84a0eba5204f09f2e8583c714c38f6be9a1",
       "executable": false
     }
   }
