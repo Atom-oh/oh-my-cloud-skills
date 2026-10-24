@@ -122,8 +122,11 @@ function stageSnapshot(root, directory, sources) {
 function assetReferences(text) {
     const refs = [];
     const patterns = [/!\[[^\]]*\]\(([^\s)]+)(?:\s+[^)]*)?\)/g, /(?:src|href)\s*=\s*["']([^"']+)["']/g,
-        /url\(\s*["']?([^"')\s]+)["']?\s*\)/g, /^\s*(?:source|logo|background|image|@background|@img):\s*["']?([^\s"']+)/gm,
-        /"(?:spec|src|image|logo)"\s*:\s*"([^"]+)"/g];
+        /url\(\s*["']?([^"')\s]+)["']?\s*\)/g, /^\s*(?:source|logo|logoSrc|logoDark|logoDarkSrc|background|image|@background|@img):\s*["']?([^\s"']+)/gm,
+        /"(?:spec|src|image|logo)"\s*:\s*"([^"]+)"/g,
+        // A Canvas icon whose quoted name holds a slash or a dot is an author path the compiler loads at
+        // runtime (drawIcon); a short name is an AWS service icon, not a project path.
+        /^\s*icon\s+\w+\s+"([^"]*[/.][^"]*)"/gm];
     for (const pattern of patterns) {
         for (const m of text.matchAll(pattern)) {
             refs.push(m[1].split(/[?#]/)[0]);

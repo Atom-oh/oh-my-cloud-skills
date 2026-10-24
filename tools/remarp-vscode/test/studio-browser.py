@@ -13,7 +13,7 @@ import tempfile
 import threading
 import unittest
 from http.server import SimpleHTTPRequestHandler
-from urllib.parse import unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 from playwright.sync_api import sync_playwright
 
@@ -238,6 +238,37 @@ const file=path.join(p.root,'shell.html');fs.writeFileSync(file,shell);process.s
         self.page.locator('#design').click()
         self.page.get_by_role('button', name='Select First option', exact=True).click()
         self.page.screenshot(path=str(screenshots / 'remarp-studio.png'), full_page=True)
+        self.assertEqual(self.errors, [])
+
+    def host_page(self):
+        # VS Code delivers webview.postMessage() through the outer webview page, so the shell sees the
+        # parent frame as event.source. Reproduce that nesting; the plain-page tests above post from the
+        # shell's own window and cannot tell the two apart.
+        outer = self.root / 'host.html'
+        outer.write_text('<!doctype html><iframe id="shell" src="%s" style="width:1440px;height:1000px;border:0"></iframe>' % self.fixture['url'])
+        page = self.context.new_page()
+        page.set_default_timeout(8000)
+        page.goto(f"{self.base}/files{quote(str(outer))}")
+        page.wait_for_function("() => { const f = document.getElementById('shell'); return f.contentDocument && f.contentDocument.readyState === 'complete' && !!f.contentDocument.getElementById('slides'); }")
+        return page
+
+    def test_host_messages_delivered_through_the_parent_frame_reach_the_shell(self):
+        page = self.host_page()
+        page.evaluate('(data)=>document.getElementById("shell").contentWindow.postMessage(data,"*")', dict(self.fixture['data'][0], type='compiled'))
+        shell = page.frame_locator('#shell')
+        shell.locator('#slides .slide-item').first.wait_for()
+        self.assertEqual(shell.locator('#slides .slide-item').count(), 2)
+
+    def test_a_message_from_a_nested_preview_frame_is_not_a_host_message(self):
+        # An authored island can open a nested frame in the sandboxed preview and post to the shell. That
+        # frame is neither the shell's own window nor its parent, so the message must be ignored.
+        forged = {'type': 'compiled', 'generation': 99, 'frameUrl': 'about:blank',
+                  'manifest': {'version': 1, 'slides': [{'file': 'x', 'title': 'Forged', 'source': 'forged', 'nodes': []}]}}
+        self.renderer().evaluate("""(data) => { const f = document.createElement('iframe');
+            f.srcdoc = '<script>parent.parent.postMessage(' + JSON.stringify(data) + ',"*")<\\/script>'; document.body.append(f); }""", forged)
+        self.page.wait_for_timeout(600)
+        self.assertEqual(self.page.locator('#slides .slide-item').count(), 2)
+        self.assertEqual(self.requests('edit'), [])
         self.assertEqual(self.errors, [])
 
 

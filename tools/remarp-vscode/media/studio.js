@@ -158,7 +158,10 @@
             if (data.dimensions && ['width','height'].every(k => Number.isFinite(data.dimensions[k]) && data.dimensions[k] >= 100 && data.dimensions[k] <= 10000)) dimensions = data.dimensions;
             zoom(); return;
         }
-        if (event.source && event.source !== window) return; // Other frames are not host messages.
+        // Host messages come from this window (tests) or from the parent frame: VS Code forwards a webview
+        // message through its outer page, so the sender is window.parent. Any other frame, such as one an
+        // authored island opens inside the sandboxed preview, is not the host.
+        if (event.source && event.source !== window && event.source !== window.parent) return;
         if (data.type === 'compiled' || data.type === 'candidate') {
             const old = slide(); manifest = data.manifest; generation = data.generation;
             if (!manifest || manifest.version !== 1 || !manifest.slides.length) return;

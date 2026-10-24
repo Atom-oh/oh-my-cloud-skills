@@ -56,6 +56,19 @@ test('staging preserves unsaved text and copies only referenced assets', t => {
     assert.equal(fs.readFileSync(path.join(out,'a.md'),'utf8'),'Unsaved\r\n![Logo](assets/icon.svg)');
     assert.ok(fs.existsSync(path.join(out,'assets','icon.svg'))); assert.ok(!fs.existsSync(path.join(out,'unrelated.secret')));
 });
+test('staging also copies runtime-loaded assets: Canvas icon paths and logo front matter', t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(),'studio-assets-')); t.after(() => fs.rmSync(root,{recursive:true,force:true}));
+    for (const file of ['img/service.png','brand/logo.svg','brand/logo-dark.svg','brand/theme-logo.svg']) {
+        fs.mkdirSync(path.dirname(path.join(root,file)),{recursive:true}); fs.writeFileSync(path.join(root,file),'x');
+    }
+    // A short icon name means an AWS service icon, not a project path: a directory called lambda stays out.
+    fs.mkdirSync(path.join(root,'lambda')); fs.writeFileSync(path.join(root,'lambda','private.txt'),'not an asset');
+    const text = ['---','logoSrc: brand/logo.svg','logoDark: "brand/logo-dark.svg"','theme:','  logo: brand/theme-logo.svg','---',
+        ':::canvas','icon a "img/service.png" at 10,10 size 48','icon b "lambda" at 80,10 size 48',':::'].join('\n');
+    const out = path.join(root,'snapshot'); stageSnapshot(root,out,new Map([['deck.md',{text}]]));
+    for (const file of ['img/service.png','brand/logo.svg','brand/logo-dark.svg','brand/theme-logo.svg']) assert.ok(fs.existsSync(path.join(out,file)),file);
+    assert.ok(!fs.existsSync(path.join(out,'lambda')));
+});
 test('traversal, absolute paths and escaping symlinks are rejected', t => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(),'studio-bound-')); t.after(() => fs.rmSync(root,{recursive:true,force:true}));
     for (const file of ['../other','/tmp/other','nested\\other']) assert.throws(() => sourcePath(root,file));

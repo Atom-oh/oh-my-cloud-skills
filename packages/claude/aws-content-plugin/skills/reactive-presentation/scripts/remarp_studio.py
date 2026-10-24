@@ -253,14 +253,25 @@ def export_studio(compiler, target, output):
         return result
     sources = compiler._discover_sources(target) if target.is_dir() else {target.stem: target}
     if target.is_file():
-        parser = compiler.RemarpParser(read_source(target))
+        text = read_source(target)
+        parser = compiler.RemarpParser(text)
         config, blocks = parser.parse()
         slides = [s for group in blocks.values() for s in group]
         for i, slide in enumerate(slides):
             slide.index = i
+        # The compiler's single-file build resolves theme settings (logo, footer, colors) into the
+        # config before it generates; raw frontmatter would drop them from the studio page.
+        assets = compiler.RemarpProjectBuilder(str(target.parent), str(output))
+        assets.main_config = config
+        assets._process_theme_config()
+        assets._copy_theme_assets_to_output()
+        assets._copy_framework_assets()
         generator = compiler.RemarpHTMLGenerator(lang=config.get('lang', 'ko'), output_dir=str(output))
         generator.archify_source_dir = str(target.parent)
         generator.archify_source_name = target.stem
+        generator.block_key = 'studio'
+        generator.block_title = (compiler._configured_block_title(config, 'studio')
+                                 or compiler._derive_block_title(config, text, target.stem))
         html = generator.generate_block('studio', slides, config, source_file=target.name)
         html_path = output / 'studio.html'
         html_path.write_text(html, encoding='utf-8')

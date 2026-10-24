@@ -217,6 +217,22 @@ class StudioTests(unittest.TestCase):
         for s in manifest['slides']:
             self.assertEqual(text_at(text, s['range']), s['source'])
 
+    def test_the_studio_page_carries_the_same_theme_settings_as_the_built_deck(self):
+        # Only a theme directory's manifest fills in the footer text, the auto logo and the colors, so the
+        # raw frontmatter alone would drop all three from the studio page.
+        brand = self.root / 'brand'
+        brand.mkdir()
+        (brand / 'theme-manifest.json').write_text(json.dumps({
+            'footer_text': 'Manifest footer text',
+            'logos': [{'filename': 'logo_manifest.png'}],
+            'colors': {'accent1': '#123456'}}), encoding='utf-8')
+        themed = HEADER.replace('title: Studio Test\n', 'title: Studio Test\ntheme:\n  source: ./brand\n')
+        _, html = self.build(themed + CARDS)
+        built = (self.output / 'default.html').read_text()
+        for marker in ('Manifest footer text', 'logo_manifest.png', '#123456'):
+            self.assertIn(marker, built)
+            self.assertIn(marker, html)
+
     def test_critical_validation_does_not_produce_editor_map(self):
         source = self.root / 'invalid.remarp.md'
         source.write_text(HEADER + '@type: canvas\n## Too complex\n:::canvas\n' + '\n'.join(f'box n{i} "Node {i}" at {i*100},100 size 90,40 color accent' for i in range(8)) + '\n:::\n')
