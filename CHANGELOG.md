@@ -65,6 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   3,000-line cap used to cut by path, which put `packages/` and `docs/` ahead of `plugins/` and
   `tools/`; a release PR could hide every maintained source file. Ordering drops nothing, and the job
   log prints the lines per class.
+  The helper reads Git's quoted headers for non-ASCII paths and splits only on line feeds, so a path
+  or a crafted line cannot change which class a file lands in.
 
 ## [3.0.4] - 2026-10-19
 
