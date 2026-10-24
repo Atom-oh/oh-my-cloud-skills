@@ -1,227 +1,127 @@
-# Remarp Slides - VSCode Extension
+# Remarp Slides: VS Code extension
 
-A VSCode extension for authoring reactive presentations using the Remarp markdown format (`.remarp.md` files).
+Source-first presentation authoring with syntax highlighting, outline/completions,
+approximate text preview, compiled HTML preview and **Design Studio** (0.2.0).
+Remarp remains the source; generated HTML is never an independent editing target.
 
-## Features
+## Install and open Studio
 
-### Syntax Highlighting
-
-Comprehensive TextMate grammar for Remarp-specific syntax:
-
-- **Directives**: `@type`, `@layout`, `@transition`, `@background`, `@class`, `@timing`, `@animation`, etc.
-- **Block Tags**: `:::notes`, `:::canvas`, `:::click`, `:::left`, `:::right`, `:::col`, `:::cell`, etc.
-- **Click Attributes**: `{.click}`, `{.click animation=fade-up order=2}`
-- **Canvas DSL**: Full highlighting for canvas shapes, positions, styles, and animations
-- **YAML Frontmatter**: Proper highlighting for presentation metadata
-
-### Live Preview
-
-- Side-by-side preview panel showing the current slide
-- **Sidebar layout**: Speaker Notes + Issue badges on the right panel
-- Automatic updates as you type (debounced for performance)
-- Dark theme matching VSCode's appearance
-- Navigation controls (Previous/Next buttons)
-- Keyboard navigation (Arrow keys, Space, PageUp/PageDown)
-- Cursor position syncs with displayed slide (`remarp.scrollSync` setting)
-- Slide type rendering: cover, compare, tabs, agenda, timeline, quiz, checklist, cards, code, steps, title, section, thankyou
-- `@background` / `@badge` directives rendered as background image and badge overlay
-
-### Document Outline
-
-- Tree view showing all slides in the Explorer sidebar
-- Each slide shows: number, title (from first heading), and @type
-- Click to jump to any slide in the editor
-- Auto-refreshes as you edit
-
-### IntelliSense
-
-Smart completions for:
-
-- **@ directives**: All supported directives with descriptions
-- **Directive values**: Type-specific values (e.g., `@type content|compare|canvas|quiz|...`)
-- **Layout values**: All layout options
-- **Transition values**: All transition effects
-- **Animation values**: All 24 animation types
-- **::: blocks**: All block types with snippet templates
-- **{.click} attributes**: Click animations and order
-- **Canvas DSL**: Shapes, positions, styles, and animations
-
-### Issue Annotation & AI Review
-
-Annotate slides with improvement suggestions that Claude Code can automatically fix:
-
-- **Prompt bar**: Input field in the sidebar to add `<!-- issue: text -->` annotations to the current slide
-- **Issue badges**: Annotations displayed as yellow badges in the sidebar
-- **Slide fix guide**: Button shows annotation count and guides to run `/slide-fix` in Claude Code
-- Issues are stored as HTML comments in the source `.md` — no format disruption
-
-### Slide Navigation
-
-- `Cmd+Shift+Right` (Mac) / `Ctrl+Shift+Right` (Win/Linux): Next slide
-- `Cmd+Shift+Left` (Mac) / `Ctrl+Shift+Left` (Win/Linux): Previous slide
-
-## Installation
-
-### From VS Code Marketplace
-
-Search for **"Remarp Slides"** in the Extensions view (`Ctrl+Shift+X`) and click Install.
-
-### From VSIX (local)
+Build/package commands are maintained in [CLAUDE.md](CLAUDE.md). Install the new
+VSIX, not the repository's older `remarp-vscode-0.1.0.vsix`:
 
 ```bash
-code --install-extension /tmp/remarp-vscode-0.1.1.vsix
+code --install-extension /tmp/remarp-vscode-0.2.0.vsix --force
 ```
 
-### Development
+Run **Developer: Reload Window**, open a local `.remarp.md` or presentation marker,
+and choose **Remarp: Open Design Studio** from the Command Palette. Studio requires
+VS Code 1.85+, Python 3, workspace trust and a compiler supporting `studio`.
+If automatic discovery selects an older installed plugin, configure:
 
-```bash
-cd tools/remarp-vscode
-npm install
-npm run compile
+```json
+{
+  "remarp.buildScriptPath": "/absolute/path/to/oh-my-cloud-skills/plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py"
+}
 ```
 
-Then press F5 in VSCode to launch the Extension Development Host.
+This repository does not establish that version 0.2.0 is published on Marketplace.
+Installing the VS Code extension is separate from installing Claude/Codex skills.
 
-## Publishing to VS Code Marketplace
+## Design Studio workflow
 
-### Prerequisites
+- **Slides/Layers**: navigate actual compiler-rendered thumbnails and mapped elements.
+- **Design**: select headings/cards, edit mapped text or the first safe card body
+  span, change selected local CSS overrides and slide directives. Blank CSS fields
+  remove a local override and inherit the theme.
+- **Canvas**: move/resize simple box/icon nodes or enter geometry and reveal steps.
+  Each released gesture produces one source transaction. Escape cancels a drag.
+  Icon service names, arrows and complex domain-specific language (DSL) remain source-editable.
+- **Play**: interact with the real presentation runtime; Design reveals fragments
+  and Canvas steps for selection. Zoom affects the editor, not the source.
+- **Reveal in source**: navigate to the owning file. Undo/Redo targets that source
+  editor rather than an unrelated active document.
+- **Unsaved changes**: debounce rebuilds into temporary snapshots. Studio neither
+  saves source nor overwrites published HTML. Validation errors retain the last
+  good preview, mark it stale and disable visual editing until a valid rebuild.
+- **Resources**: referenced project-local assets are staged with size/count limits.
+  Absolute/traversing paths and asset symlinks are rejected. Refresh after changing
+  assets; automatic watching is limited to project source/config files.
 
-```bash
-# Install vsce (Visual Studio Code Extension CLI)
-npm install -g @vscode/vsce
-```
+### AI improvement: manual, reviewable handoff
 
-### 1. Create a Publisher
+1. Select a slide and enter a request; **Copy AI request** copies its source/context.
+2. Run that request in your configured Claude, Codex or other AI session. No
+   provider is automatically invoked and the extension stores no provider key.
+3. Paste replacement slide source into **Selected slide source / AI response**.
+4. **Preview candidate & diff** compiles without modifying the original and opens
+   a read-only source diff. **Apply proposal** commits one revision-checked source
+   edit; **Reject** leaves source untouched.
 
-1. Sign in to https://dev.azure.com and create an organization (if you don't have one)
-2. Go to **User Settings** (top-right) → **Personal Access Tokens** → **New Token**
-   - Scopes: select **Marketplace > Manage**
-   - Copy the generated token (shown only once)
-3. Go to https://marketplace.visualstudio.com/manage → **Create publisher**
-   - Publisher ID must match `"publisher"` in `package.json` (currently `aws-cloud-skills`)
+Typing or external source changes expire pending proposals. An outdated draft must
+be reset from current source before it can be proposed again. Alternatively, **Add
+/slide-fix issue** writes `<!-- issue: text -->`; run the skill separately in your AI
+host. Studio does not bypass presentation validation, content review or deployment gates.
 
-### 2. Package & Publish
+## Commands and existing authoring tools
 
-```bash
-cd tools/remarp-vscode
+| Command | Purpose |
+|---------|---------|
+| `Remarp: Open Design Studio` | Unsaved canonical preview, bounded source editing and candidate/diff workflow |
+| `Remarp: Approximate Text Preview` | Fast unsaved text, speaker notes and issue annotations; not renderer parity |
+| `Remarp: Build and Preview Compiled HTML` | Save/build source and inspect generated runtime/assets |
+| `Remarp: Build HTML` | Save/build source without opening Studio |
+| `Remarp: Next Slide` / `Previous Slide` | Source navigation (`Ctrl+Shift+Right/Left`, `Cmd` on Mac) |
+| `Remarp: Show Slide Fix Guide` | Annotation count and instructions to run `/slide-fix` separately |
 
-# Login with your PAT
-vsce login aws-cloud-skills
+The Explorer outline tracks slide titles/types. IntelliSense and TextMate grammar
+cover directives, colon blocks, fragments, YAML and Canvas DSL. Approximate preview
+supports cursor synchronization (`remarp.scrollSync`); Studio is a separate panel.
 
-# Package into .vsix (optional, for testing)
-vsce package
-
-# Publish to Marketplace
-vsce publish
-```
-
-### 3. Version Bump
-
-```bash
-# Bump patch/minor/major and publish in one step
-vsce publish patch   # 0.1.0 → 0.1.1
-vsce publish minor   # 0.1.0 → 0.2.0
-vsce publish major   # 0.1.0 → 1.0.0
-```
-
-### Checklist before publishing
-
-- [ ] `media/icon.png` exists (128x128 PNG, Marketplace requirement)
-- [ ] `publisher` in `package.json` matches your Azure DevOps Publisher ID
-- [ ] `npm run compile` succeeds without errors
-- [ ] Extension tested locally via F5 (Extension Development Host)
-
-## Usage
-
-1. Create a file with `.remarp.md` extension
-2. Write your presentation using Remarp syntax
-3. Run "Remarp: Approximate Text Preview" for live text, or "Remarp: Build and Preview Compiled HTML" for compiler output
-4. Use the outline view in the Explorer to navigate slides
-
-### Example
+## Example
 
 ```markdown
 ---
 remarp: true
+ratio: "16:9"
 title: My Presentation
-author: Your Name
-theme: {mode: dark}
 ---
-
-# Welcome
-
-This is the first slide.
-
----
-
-@type: compare
-@layout: two-column
-
-## Comparison Slide
-
-::: left
-### Option A
-- Feature 1
-- Feature 2
-:::
-
-::: right
-### Option B
-- Feature 3
-- Feature 4
-:::
-
----
-
-@type: canvas
-
-## Architecture
-
-:::canvas
-box frontend "Frontend" at 100,100 size 150,80 color green
-box backend "Backend" at 400,100 size 150,80 color blue
-arrow frontend -> backend "request"
-:::
-
----
-
-## Click to Reveal
-
-- First point {.click}
-- Second point {.click animation=fade-up order=2}
-- Third point {.click animation=zoom-in order=3}
-
+@type: cards
+## Options
+### First option
+Short explanation.
+### Second option
+Another explanation.
 :::notes
-Speaker notes go here - not visible during presentation
+Presenter guidance.
+:::
+---
+@type: canvas
+## Request flow
+:::canvas
+box api "API" at 80,180 size 120,50 color accent step 1
+box service "Service" at 380,180 size 120,50 color blue step 2
+arrow api -> service "request" step 3
 :::
 ```
 
-## Commands
+## Verification and MVP boundaries
 
-| Command | Description |
-|---------|-------------|
-| `Remarp: Approximate Text Preview` | Preview unsaved text and source annotations |
-| `Remarp: Build and Preview Compiled HTML` | Save/build source and display generated HTML with its runtime/assets |
-| `Remarp: Next Slide` | Navigate to the next slide |
-| `Remarp: Previous Slide` | Navigate to the previous slide |
-| `Remarp: Build HTML` | Build HTML from the current Remarp file |
-| `Remarp: Show Slide Fix Guide` | Show `<!-- issue: -->` annotation count and guide to run `/slide-fix` in Claude Code |
+```bash
+npm test                     # TypeScript build, source planner and mocked host sessions
+npm run test:browser          # Python Playwright + Chromium; localhost required
+```
 
-## Requirements
+Browser tests exercise production shell/frame scripts with a message-recording VS
+Code API fixture, not an installed Extension Development Host. Host transaction
+tests mock VS Code but run the real Python compiler. Perform a real VS Code smoke
+test before publishing: install/reload, open Studio, edit, undo, inspect candidate
+and reject/apply. Packaging alone does not prove installation or Marketplace release.
 
-- VSCode 1.85.0 or higher
+This is not arbitrary WYSIWYG: unsupported/rich blocks remain source-only. Free
+positioning applies only to mapped simple Canvas nodes, not cards or flow text.
+Full stable identity reconciliation, slide reordering, automatic AI adapters and a
+standalone browser host are not shipped. Rebuilds preserve selection by a unique
+owning file/title or index and clear the element selection. Ordinary exports omit
+Studio metadata. Legacy visual-edit controllers remain unwired in existing previews.
 
-## Known Issues
-
-- Preview uses simplified markdown rendering (not full Remarp HTML builder)
-- Canvas DSL preview shows source as `<pre>` block (no graphic rendering)
-- Some complex nested blocks may not highlight perfectly
-- Claude CLI integration requires `claude` to be installed and accessible in PATH or `~/.local/bin/`
-
-## Contributing
-
-This extension is part of the oh-my-cloud-skills project. Contributions welcome!
-
-## License
-
-MIT
+MIT. Part of [oh-my-cloud-skills](../../README.md).

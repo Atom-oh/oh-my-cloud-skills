@@ -19,9 +19,10 @@ else
 fi
 ```
 
-Update all Claude manifests and their marketplace. The generator then updates every
-Codex manifest, inventory/adapter output and Codex marketplace version. Project-init's
-shared release-version field is the permitted exception to its upstream source mirror.
+Update every plugin version in the authoritative `hosts/catalog.json`. Also update
+project-init's source manifest version, the permitted exception to its upstream
+source mirror. The generator preserves that manifest; it regenerates the other
+source Claude manifests, all Codex overlays, both host packages and both marketplaces.
 
 ```bash
 python3 - "$RELEASE_VERSION" <<'PYTHON'
@@ -33,18 +34,24 @@ from pathlib import Path
 version = sys.argv[1]
 if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
     raise SystemExit("Replace X.Y.Z with a numeric release version")
-paths = sorted(Path("plugins").glob("*/.claude-plugin/plugin.json"))
-marketplace_path = Path(".claude-plugin/marketplace.json")
-marketplace = json.loads(marketplace_path.read_text())
-if {p.parents[1].name for p in paths} != {e["name"] for e in marketplace["plugins"]}:
-    raise SystemExit("Plugin directories and marketplace entries disagree")
-for path in paths:
-    data = json.loads(path.read_text())
-    data["version"] = version
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
-for entry in marketplace["plugins"]:
+catalog_path = Path("hosts/catalog.json")
+catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+source_plugins = {p.parents[1].name for p in Path("plugins").glob("*/.claude-plugin/plugin.json")}
+if source_plugins != set(catalog["plugins"]):
+    raise SystemExit("Plugin directories and host catalog entries disagree")
+
+mirror_path = Path("plugins/project-init/.claude-plugin/plugin.json")
+mirror_text, replacements = re.subn(
+    r'("version"\s*:\s*")[^"]*(")',
+    lambda match: f"{match[1]}{version}{match[2]}",
+    mirror_path.read_bytes().decode("utf-8"),
+)
+if replacements != 1:
+    raise SystemExit("Expected exactly one project-init source version field")
+for entry in catalog["plugins"].values():
     entry["version"] = version
-marketplace_path.write_text(json.dumps(marketplace, indent=2, ensure_ascii=False) + "\n")
+catalog_path.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+mirror_path.write_bytes(mirror_text.encode("utf-8"))
 PYTHON
 python3 scripts/sync-codex-plugins.py
 ```

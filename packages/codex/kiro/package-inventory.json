@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "kiro",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "e85142ded3224fadbb42598019bd6d10f1ee3da0c3015c5806c4082852d9dac8",
+      "sha256": "1d7c153b1e145debc8ad37f127775f93731100836bbbb0171de6ca42f83f1bfc",
       "executable": false
     },
     "CLAUDE.md": {

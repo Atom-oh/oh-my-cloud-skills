@@ -2264,7 +2264,9 @@ class RemarpHTMLGenerator:
             return ''
         rules = []
         for target, props in slide.css_overrides.items():
-            selector = f'[data-remarp-id="s{slide.index}-{target}"]'
+            # Verified indexed card/step handles use hyphens in the emitted DOM.
+            resolved = re.sub(r'^(card|step):(\d+)$', r'\1-\2', target)
+            selector = f'[data-remarp-id="s{slide.index}-{resolved}"]'
             decls = '; '.join(f'{k}: {v}' for k, v in props.items())
             rules.append(f'{selector} {{ {decls} }}')
         return f'<style>{chr(10).join(rules)}</style>'
@@ -6110,7 +6112,7 @@ def _print_validation_report(findings: List[Dict[str, Any]]):
     print('-' * 70)
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(
         description='Convert Remarp markdown to reactive-presentation HTML'
     )
@@ -6122,6 +6124,10 @@ def main():
     build_parser.add_argument('-o', '--output', help='Output directory')
     build_parser.add_argument('--block', help='Build only specific block')
     build_parser.add_argument('--lang', choices=['ko', 'en'], help='Override source language')
+
+    studio_parser = subparsers.add_parser('studio', help='Build isolated editor output and versioned source map')
+    studio_parser.add_argument('path', help='Snapshot file or project directory')
+    studio_parser.add_argument('-o', '--output', required=True, help='Isolated preview output directory')
 
     # Sync command
     sync_parser = subparsers.add_parser('sync', help='Rebuild source and all dependent presentation output')
@@ -6143,7 +6149,14 @@ def main():
     validate_parser.add_argument('path', help='Input file or project directory')
     validate_parser.add_argument('--json', action='store_true', dest='json_output', help='Output as JSON')
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+
+    if args.command == 'studio':
+        # Kept separate from ordinary exports; no editor metadata in published decks.
+        spec = importlib.util.spec_from_file_location('remarp_studio', Path(__file__).resolve().with_name('remarp_studio.py'))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.export_studio(sys.modules[__name__], Path(args.path), Path(args.output))
 
     if args.command in ('build', 'sync'):
         findings = validate_presentation(Path(args.path))

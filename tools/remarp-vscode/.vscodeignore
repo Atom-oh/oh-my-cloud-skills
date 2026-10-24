@@ -9,3 +9,8 @@ tsconfig.json
 **/*.map
 **/__pycache__/
 .gitignore
+
+CLAUDE.md
+ISSUES.md
+PREVIEW-PARITY-DESIGN.md
+README.ko.md

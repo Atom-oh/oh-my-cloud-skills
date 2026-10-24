@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "aws-content-plugin",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "acea5da9984eef8827c17248fc5afa07083ead9636fea6f2d7bd8f8652e51a3e",
+      "sha256": "61ae70fc7ea2f405a7e601af9c80ceca4ed2c31be266eb9fdf06f0edbd41e6d2",
       "executable": false
     },
     "CLAUDE.md": {
@@ -456,7 +456,7 @@
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
-      "sha256": "48a0027fad95041005e77ab9d5428d6db322b616f995c201feaff3e0209f0210",
+      "sha256": "efbf6bf33bd64d93dd271316438cfa06162d0cbb080ff961a8f99eb33f448394",
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
@@ -508,7 +508,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
-      "sha256": "34334e30d3b4b9773c569285239cbd3720307ac7bf30089cbc54f745f3802da1",
+      "sha256": "f9f8d43bc57a3831fe1fbd2eaaec54726c0f6281fb9136137c69ff94b7ed5623",
       "executable": false
     },
     "skills/reactive-presentation/assets/quiz-component.js": {
@@ -516,7 +516,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-framework.js": {
-      "sha256": "137e1a675a38dc4820dbac965ffcbc55937ea743d5d3e9698623cfdc2ba0d2bc",
+      "sha256": "518c28392283b697103f44ab001b8864371c4e7717bf4c8d24c17d17270df8c6",
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-renderer.js": {
@@ -17383,8 +17383,12 @@
       "sha256": "f5559b00d253d62ed42f833882838a382cbaed9fd12368ac467f5829923b8c0b",
       "executable": false
     },
+    "skills/reactive-presentation/scripts/remarp_studio.py": {
+      "sha256": "f857a371ff87432509084f415a485dcc3161a72c5db43eac3d4a70165e9e03ec",
+      "executable": false
+    },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {
-      "sha256": "9052a77aab1a092b8038dd208894af18da8b930ec43b6b6e4e740c555bce0237",
+      "sha256": "53b03249acd9caa9f4cb01b628c9673e35df323b48599ac18021e1d82e909cd4",
       "executable": false
     },
     "skills/slide-fix/SKILL.md": {

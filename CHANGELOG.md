@@ -13,8 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.5] - 2026-10-22
+
 ### Added
 
+- Add Remarp Design Studio in extension 0.2.0: compiler-backed previews of unsaved
+  source, slide thumbnails, layers and a bounded inspector for headings, cards,
+  styles and simple Canvas geometry. AI-assisted edits use an explicit clipboard
+  handoff and a compiled candidate diff before Apply or Reject; no AI provider is
+  invoked automatically. Source maps and version checks protect against stale edits.
 - Add the `decision-reconcile-panel` dynamic workflow to co-agent (Claude Code only;
   run it as `co-agent:decision-reconcile-panel` with the Workflow tool and `args.pluginRoot`). It runs ADR collection, the four
   decision-reconcile lenses on the skill's model tiers, quote verification against the full ADR
@@ -31,6 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   default) maps a subagent type to `opus`, `sonnet` or `haiku` only when the call names
   no model; a model forced for the session still wins. The mod needs Claude Code
   2.1.300 or later. The Codex package carries only the read-only `agent-status` skill.
+
+### Fixed
+
+- Make presenter-window Up/Down keys use the main deck's navigation logic for
+  registered actions, Canvas steps, tabs, compare toggles and fragments. Left/Right
+  and Space now preserve fragment navigation, custom key mappings are honored,
+  and typing in editable controls does not navigate the deck. Remote steps dismiss
+  blocking search/detail panels and refresh same-slide DOM previews. Rebuild existing
+  presentations with the updated compiler, reload the deck and reopen presenter view
+  to use the updated runtime assets.
 
 ### Changed
 
@@ -67,6 +84,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   log prints the lines per class.
   The helper reads Git's quoted headers for non-ASCII paths and splits only on line feeds, so a path
   or a crafted line cannot change which class a file lands in.
+
+- Bump all plugin manifests and both marketplaces to 3.0.5. The Remarp extension
+  keeps its separate 0.2.0 version.
 
 ## [3.0.4] - 2026-10-19
 
@@ -669,7 +689,8 @@ migration of configurations that selected it. All eight plugins share this versi
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.4...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.5...HEAD
+[3.0.5]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.4...v3.0.5
 [3.0.4]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.3...v3.0.4
 [3.0.3]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.0...v3.0.3
 [3.0.0]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v2.0.0...v3.0.0
