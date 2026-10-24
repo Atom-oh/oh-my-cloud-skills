@@ -99,6 +99,9 @@ jobs:
             }
             !skip
           ' "$pr_work_dir/pr-diff-raw.txt" > "$pr_work_dir/pr-diff.txt"
+          # List maintained source first and generated copies last: the line cap below trims the tail.
+          python3 scripts/pr-review/order_diff.py < "$pr_work_dir/pr-diff.txt" > "$pr_work_dir/pr-diff-ordered.txt"
+          mv "$pr_work_dir/pr-diff-ordered.txt" "$pr_work_dir/pr-diff.txt"
           RAW=$(wc -l < "$pr_work_dir/pr-diff-raw.txt")
           TOTAL_LINES=$(wc -l < "$pr_work_dir/pr-diff.txt")
           echo "total_lines=$TOTAL_LINES" >> "$GITHUB_ENV"
