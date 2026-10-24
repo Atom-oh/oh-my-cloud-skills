@@ -187,6 +187,23 @@ class StudioTests(unittest.TestCase):
         manifest, _ = self.build(source)
         self.assertFalse(manifest['slides'][0]['cssEditable'])
 
+    def test_every_css_delimiter_form_is_mapped_or_source_only_never_silently_missing(self):
+        body = '<header>\n  padding: 4px\n  color: red\n</header>\n'
+        for label, opener, closer in (('spaced', '::: css', ':::'), ('four colons', '::::css', '::::'),
+                                      ('spaced four colons', ':::: css', '::::')):
+            with self.subTest(form=label):
+                manifest, _ = self.build(HEADER + CARDS + f'\n{opener}\n{body}{closer}\n')
+                slide = manifest['slides'][0]
+                # A mapped block carries its properties; otherwise the slide must be source-only, or a visual
+                # edit would append a second css block that replaces the authored one.
+                self.assertTrue(slide.get('css') or slide['cssEditable'] is False, slide.get('css'))
+
+    def test_a_spaced_css_delimiter_still_maps_its_properties(self):
+        text = HEADER + CARDS + '\n::: css\n<header>\n  color: red\n</header>\n:::\n'
+        manifest, _ = self.build(text)
+        prop = manifest['slides'][0]['css']['targets']['header']['properties']['color']
+        self.assertEqual(text_at(text, prop), 'red')
+
     def test_nested_css_cannot_receive_visual_inserts(self):
         source = HEADER + CARDS + '\n::::left\n:::css\n<header>\n  color: red\n</header>\n:::\n::::\n'
         manifest, _ = self.build(source)
@@ -217,6 +234,7 @@ class StudioTests(unittest.TestCase):
         for s in manifest['slides']:
             self.assertEqual(text_at(text, s['range']), s['source'])
 
+    @unittest.skipUnless(compiler.HAS_YAML, 'Nested theme front matter requires optional PyYAML')
     def test_the_studio_page_carries_the_same_theme_settings_as_the_built_deck(self):
         # Only a theme directory's manifest fills in the footer text, the auto logo and the colors, so the
         # raw frontmatter alone would drop all three from the studio page.

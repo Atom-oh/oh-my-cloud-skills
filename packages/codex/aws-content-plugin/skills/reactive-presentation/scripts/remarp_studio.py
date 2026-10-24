@@ -207,8 +207,10 @@ def slide_map(compiler, source, slide, start, end, index, filename, handles):
         result['nodes'].append(node)
 
     # One top-level CSS block, explicitly delimited targets. Ambiguity is source-only.
-    css_blocks = [(o, l, s) for o, l, k, s in lines if k == 'delimiter' and re.match(r'^:::css\s*$', l)]
-    if len(css_blocks) > 1 or any(s != ((3, 'css'),) for _, _, s in css_blocks):
+    # The stack parser opens a block on three or more colons, optional spaces and the name, so any such
+    # css delimiter counts here; only the plain `:::css` form is mapped, every other form is source-only.
+    css_blocks = [(o, l, s) for o, l, k, s in lines if k == 'delimiter' and re.match(r'^:{3,}\s*css\b', l)]
+    if len(css_blocks) > 1 or any(s != ((3, 'css'),) or not re.match(r'^:::\s*css\s*$', l) for _, l, s in css_blocks):
         result['cssEditable'] = False
     elif css_blocks:
         css_start = css_blocks[0][0]
