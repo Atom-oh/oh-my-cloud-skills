@@ -92,7 +92,8 @@ class StudioSession {
             throw new Error('Open the project through its real path, not a directory symlink.');
         }
         this.project = markers.some(name => fs.existsSync(path.join(this.root, name)));
-        this.temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'remarp-studio-'));
+        // Resolve it: staging requires the real path to sit inside the root, and os.tmpdir() can be a symlink (macOS).
+        this.temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'remarp-studio-')));
         this.panel = vscode.window.createWebviewPanel('remarpStudio', 'Remarp Design Studio', vscode.ViewColumn.Beside, {
             enableScripts: true, retainContextWhenHidden: true,
             localResourceRoots: [extension, vscode.Uri.file(this.root), vscode.Uri.file(this.temporary)]

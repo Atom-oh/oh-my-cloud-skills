@@ -47,6 +47,12 @@ test('Studio compiles unsaved snapshots without saving or touching published out
     const frame=fs.readFileSync(decodeURI(built.frameUrl.replace('https://resources.example','')),'utf8');
     assert.match(frame,/Compare options/);assert.doesNotMatch(frame,/acquireVsCodeApi/);
 });
+test('Studio builds when the system temporary directory sits behind a symlink (the macOS default)',async()=>{
+    const real=fs.mkdtempSync(path.join(os.tmpdir(),'studio-realtmp-')),link=real+'-link',saved=process.env.TMPDIR;
+    fs.symlinkSync(real,link);process.env.TMPDIR=link;
+    try{const {built}=await open();assert.equal(built.manifest.slides[0].title,'Compare options');}
+    finally{if(saved===undefined)delete process.env.TMPDIR;else process.env.TMPDIR=saved;sessions.forEach(s=>s.dispose());await new Promise(r=>setTimeout(r,20));fs.rmSync(link,{force:true});fs.rmSync(real,{recursive:true,force:true});}
+});
 test('single field change targets owned source, creates one WorkspaceEdit and leaves disk untouched',async()=>{
     const {session,d,built}=await open(), from=messages.length;
     await send(session,{type:'edit',generation:built.generation,slide:'s0',node:'s0-card-0',operation:'text',value:'Changed card'});
