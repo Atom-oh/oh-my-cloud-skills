@@ -70,6 +70,33 @@ class OrderDiffTests(unittest.TestCase):
         _, out, _ = order(diff)
         self.assertEqual(paths(out), ["plugins/한글 파일.py", "docs/a b.md"])
 
+    def test_git_quoted_headers_for_non_ascii_paths_are_classified_by_their_ascii_prefix(self):
+        # core.quotePath wraps a path that has non-ASCII bytes in quotes and escapes them in octal.
+        def quoted(path, body="+x\n"):
+            return f'diff --git "a/{path}" "b/{path}"\n--- "a/{path}"\n+++ "b/{path}"\n@@ -1 +1 @@\n{body}'
+        diff = (quoted("docs/\\355\\225\\234.md") + quoted("packages/\\355\\225\\234.txt")
+                + quoted("plugins/\\355\\225\\234.py") + chunk("tools/plain.ts"))
+        code, out, err = order(diff)
+        self.assertEqual(code, 0)
+        self.assertEqual(re.findall(r'(?m)^diff --git .*? "?b/([^"\n]+)"?$', out),
+                         ["plugins/\\355\\225\\234.py", "tools/plain.ts", "docs/\\355\\225\\234.md", "packages/\\355\\225\\234.txt"])
+        self.assertIn("maintained 2 files", err)
+        self.assertIn("documentation 1 files", err)
+        self.assertIn("generated 1 files", err)
+
+    def test_only_a_line_feed_ends_a_line(self):
+        # splitlines() also splits on \v \f \x1c-\x1e \x85 \u2028 \u2029 and a bare \r; content that holds one
+        # of them before header-shaped text must not start a chunk.
+        for separator in ("\x0b", "\x0c", "\x1c", "\x85", "\u2028", "\u2029", "\r"):
+            with self.subTest(separator=repr(separator)):
+                fake = f"diff --git a/packages/x b/packages/x"
+                diff = chunk("docs/a.md", f"+text{separator}{fake}\n") + chunk("plugins/a.py")
+                code, out, err = order(diff)
+                self.assertEqual(paths(out), ["plugins/a.py", "docs/a.md"])
+                self.assertEqual(len(out), len(diff))
+                self.assertIn("documentation 1 files", err)
+                self.assertIn("generated 0 files", err)
+
     def test_a_directory_named_like_a_class_deeper_in_the_tree_is_not_that_class(self):
         names = ["plugins/x/docs/internal.py", "plugins/x/packages/lib.py", "tools/results/a.ts"]
         _, out, _ = order("".join(chunk(p) for p in names))
