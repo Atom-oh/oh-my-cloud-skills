@@ -77,6 +77,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   high-risk diff now reports the single-model-family gap to the chair on every run. The
   Kiro-path tests select a three-cell fixture roster through `$PR_REVIEW_DEFAULTS_PATH`.
 
+- Order the CI review's diff so maintained source comes first, then documentation, then generated
+  copies (`scripts/pr-review/order_diff.py`, called by `pr-review.yml` after the existing filters). The
+  3,000-line cap used to cut by path, which put `packages/` and `docs/` ahead of `plugins/` and
+  `tools/`; a release PR could hide every maintained source file. Ordering drops nothing, and the job
+  log prints the lines per class.
+
 - Bump all plugin manifests and both marketplaces to 3.0.5. The Remarp extension
   keeps its separate 0.2.0 version.
 

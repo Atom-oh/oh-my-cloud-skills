@@ -29,6 +29,11 @@ GitHub configuration; do not infer its current state from this document.
    API's 300-file limit. A PR's `base.sha` can still name an older commit. It fetches
    full ancestry without checking out PR code or running hooks, external diff or
    textconv. Marketplace filters, prompt caps and coverage reporting still apply.
+   After the filters, `order_diff.py` lists maintained source (plugins, tools, scripts, tests,
+   configuration) first, then documentation (`docs/`, `doc-sites/`, `results/`, `CHANGELOG.md`,
+   `README.md`), then generated copies (`packages/`, `plugins/*/.codex-plugin/`), keeping the input
+   order inside each class. The 3,000-line prompt cap then trims generated copies before source;
+   the freshness gate, not the review, verifies those copies. Nothing is dropped by the ordering.
 4. With `ROLE_REVIEW=1`, the workflow creates one common FULL context and adds one
    distinct specialist prompt per configured peer. The supplied diff arrives on
    stdin or as embedded text; Kiro receives no file tools. Base facts
