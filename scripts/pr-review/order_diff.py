@@ -20,7 +20,11 @@ as bytes and never interpreted.
 import re
 import sys
 
-HEADER = re.compile(r"^diff --git a/(.+?) b/(.+)$")
+# Git quotes a path that has non-ASCII bytes, a quote, a backslash or a control character (both sides,
+# C-style escapes), so accept either form. The class prefixes are ASCII and survive the escaping, so
+# the escaped text is classified as it stands.
+HEADER = re.compile(r'^diff --git (?:"a/(?:[^"\\]|\\.)*"|a/.+?) (?:"b/((?:[^"\\]|\\.)*)"|b/(.+))$')
+LINES = re.compile(r"[^\n]*\n|[^\n]+")
 DOCS_DIRS = ("docs/", "doc-sites/", "results/")
 DOCS_FILES = ("CHANGELOG.md", "README.md")
 GENERATED = (re.compile(r"^packages/"), re.compile(r"^plugins/[^/]+/\.codex-plugin/"))
@@ -40,7 +44,7 @@ def split_chunks(lines):
     for line in lines:
         match = HEADER.match(line.rstrip("\n"))
         if match:
-            chunks.append((match.group(2), [line]))
+            chunks.append((match.group(1) or match.group(2), [line]))
         elif chunks:
             chunks[-1][1].append(line)
         else:
@@ -50,7 +54,9 @@ def split_chunks(lines):
 
 def main():
     text = sys.stdin.buffer.read().decode("utf-8", "surrogateescape")
-    preamble, chunks = split_chunks(text.splitlines(keepends=True))
+    # Only a line feed ends a line: str.splitlines() also breaks on \v \f \x1c-\x1e \x85 \u2028 \u2029 and a
+    # bare \r, which would let diff content start a false chunk.
+    preamble, chunks = split_chunks(LINES.findall(text))
     classes = [[], [], []]
     for path, body in chunks:
         if not body[-1].endswith("\n"):
