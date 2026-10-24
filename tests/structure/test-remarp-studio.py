@@ -233,6 +233,15 @@ class StudioTests(unittest.TestCase):
             self.assertIn(marker, built)
             self.assertIn(marker, html)
 
+    def test_a_comment_only_segment_that_repeats_a_later_slide_does_not_take_its_span(self):
+        later = '## Later slide\nBody text\n'
+        text = HEADER + '<!--\n' + later + '-->\n---\n' + later
+        manifest, _ = self.build(text)
+        self.assertEqual(len(manifest['slides']), 1)
+        slide = manifest['slides'][0]
+        self.assertEqual(text_at(text, slide['range']), slide['source'])
+        self.assertGreater(slide['range']['start'], text.index('-->'))
+
     def test_critical_validation_does_not_produce_editor_map(self):
         source = self.root / 'invalid.remarp.md'
         source.write_text(HEADER + '@type: canvas\n## Too complex\n:::canvas\n' + '\n'.join(f'box n{i} "Node {i}" at {i*100},100 size 90,40 color accent' for i in range(8)) + '\n:::\n')

@@ -246,6 +246,18 @@ def slide_map(compiler, source, slide, start, end, index, filename, handles):
     return result
 
 
+def dropped_segments(compiler, body, offset):
+    """Source spans of the segments the compiler's slide splitter discards (comment-only or empty)."""
+    masked, literals = compiler._mask_code_fences(body)
+    spans, position = [], offset
+    for index, part in enumerate(re.split(r'(\n---[ \t]*\n)', masked)):
+        length = len(compiler._restore_literals(part, literals))
+        if index % 2 == 0 and not re.sub(r'<!--.*?-->', '', part.strip(), flags=re.DOTALL).strip():
+            spans.append((position, position + length))
+        position += length
+    return spans
+
+
 def export_studio(compiler, target, output):
     """Run the normal validation/build gate, then emit editor-only source data."""
     result = compiler.main(['build', str(target), '--output', str(output)])
@@ -291,13 +303,18 @@ def export_studio(compiler, target, output):
         flattened = [s for group in blocks.values() for s in group]
         # The compiler strips the frontmatter before it splits slides, so slide text can only start
         # after it; a search from offset 0 could match the same words inside the YAML.
-        cursor = len(source.text) - len(compiler.RemarpParser(source.text)._strip_frontmatter())
+        body = compiler.RemarpParser(source.text)._strip_frontmatter()
+        cursor = len(source.text) - len(body)
+        dropped = dropped_segments(compiler, body, cursor)
         locations = {}
         for slide in sorted(flattened, key=lambda s: s.source_index):
             # A slide that ends in a code fence gains a newline when the compiler restores the fence;
             # the file may not contain it (end of file), and the slide does not own it either way.
             raw_source = slide.raw_source.rstrip('\n')
             position = source.text.find(raw_source, cursor)
+            # The splitter drops a comment-only segment, so a slide's words can also occur inside one.
+            while position >= 0 and any(a <= position < b for a, b in dropped):
+                position = source.text.find(raw_source, position + 1)
             if position < 0:
                 raise compiler.RemarpInputError(f'Cannot safely map source slide in {filename}')
             locations[slide.source_index] = (position, position + len(raw_source))
