@@ -69,6 +69,14 @@ test('staging also copies runtime-loaded assets: Canvas icon paths and logo fron
     for (const file of ['img/service.png','brand/logo.svg','brand/logo-dark.svg','brand/theme-logo.svg']) assert.ok(fs.existsSync(path.join(out,file)),file);
     assert.ok(!fs.existsSync(path.join(out,'lambda')));
 });
+test('staging skips references outside the project and stages a file-backed archify spec', t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(),'studio-refs-')); t.after(() => fs.rmSync(root,{recursive:true,force:true}));
+    fs.mkdirSync(path.join(root,'specs')); fs.writeFileSync(path.join(root,'specs','diagram.json'),'{"components":[]}');
+    const text = ['## Code sample','```html','<script src="/static/app.js"></script>','<a href="/docs">Docs</a>','<img src="../outside.png">','```',
+        ':::archify id=flow',' specs/diagram.json',':::',':::archify id=inline','{"components":[]}',':::'].join('\n');
+    const out = path.join(root,'snapshot'); stageSnapshot(root,out,new Map([['deck.md',{text}]]));
+    assert.ok(fs.existsSync(path.join(out,'specs','diagram.json')));
+});
 test('traversal, absolute paths and escaping symlinks are rejected', t => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(),'studio-bound-')); t.after(() => fs.rmSync(root,{recursive:true,force:true}));
     for (const file of ['../other','/tmp/other','nested\\other']) assert.throws(() => sourcePath(root,file));

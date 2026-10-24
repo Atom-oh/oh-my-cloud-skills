@@ -76,7 +76,15 @@ function stageSnapshot(root, directory, sources) {
             return;
         }
         visited.add(relative);
-        const from = sourcePath(root, relative);
+        // Authored text names many paths the compiler never loads (a code sample's absolute script src, a
+        // link to the site root), so a reference outside the project is skipped, not a staging failure.
+        let from;
+        try {
+            from = sourcePath(root, relative);
+        }
+        catch {
+            return;
+        }
         if (!fs.existsSync(from)) {
             return;
         }
@@ -126,7 +134,9 @@ function assetReferences(text) {
         /"(?:spec|src|image|logo)"\s*:\s*"([^"]+)"/g,
         // A Canvas icon whose quoted name holds a slash or a dot is an author path the compiler loads at
         // runtime (drawIcon); a short name is an AWS service icon, not a project path.
-        /^\s*icon\s+\w+\s+"([^"]*[/.][^"]*)"/gm];
+        /^\s*icon\s+\w+\s+"([^"]*[/.][^"]*)"/gm,
+        // A file-backed :::archify block holds the spec path as its whole body (the inline form starts with {).
+        /^[ \t]*:::archify\b[^\n]*\r?\n\s*([^\s{:][^\r\n]*?)[ \t]*\r?$/gm];
     for (const pattern of patterns) {
         for (const m of text.matchAll(pattern)) {
             refs.push(m[1].split(/[?#]/)[0]);
