@@ -1,10 +1,10 @@
 {
   "host": "claude",
   "plugin": "project-init",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "d8752d624127a53c07b803714e7661ad0f95ce35fa74b57ec281e9d816bfac6d",
+      "sha256": "5d6e2305110db84a50fb977159cc54c817dd4a1c85b1aeb0254f5f090e258e38",
       "executable": false
     },
     "CLAUDE.md": {

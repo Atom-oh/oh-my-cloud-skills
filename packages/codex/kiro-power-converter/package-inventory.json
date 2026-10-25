@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "kiro-power-converter",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "5e23a1f0924dde070dc058c2fec6cfde8ad4926bf35272e7a8e649f0cd1d3ebf",
+      "sha256": "ace9984be2f1b923ae67114b7870f1a5241398e5e61191288a776ec9c7fb2b28",
       "executable": false
     },
     "CLAUDE.md": {

@@ -489,48 +489,13 @@ class SlideFramework {
 
       switch (action) {
         case 'next':
-          e.preventDefault();
-          if (this.overviewMode) return;
-          if (!this.revealNextFragment()) {
-            this.next();
-          }
-          break;
         case 'prev':
-          e.preventDefault();
-          if (this.overviewMode) return;
-          if (!this.revealPrevFragment()) {
-            this.prev();
-          }
-          break;
         case 'down':
-          e.preventDefault();
-          if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].down) {
-            const result = this.slideActions[this.currentSlide].down();
-            if (result === false) this.next();
-          } else if (!this.cycleInteractive(1)) {
-            if (!this.revealNextFragment()) {
-              this.next();
-            }
-          }
-          break;
         case 'up':
-          e.preventDefault();
-          if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].up) {
-            const result = this.slideActions[this.currentSlide].up();
-            if (result === false) this.prev();
-          } else if (!this.cycleInteractive(-1)) {
-            if (!this.revealPrevFragment()) {
-              this.prev();
-            }
-          }
-          break;
         case 'first':
-          e.preventDefault();
-          this.goTo(0);
-          break;
         case 'last':
           e.preventDefault();
-          this.goTo(this.totalSlides - 1);
+          this.handleNavigationAction(action);
           break;
         case 'presenter':
           e.preventDefault();
@@ -557,6 +522,42 @@ class SlideFramework {
           break;
       }
     });
+  }
+
+  // Shared by deck and presenter keyboards so steps and fragments stay in sync.
+  handleNavigationAction(action) {
+    switch (action) {
+      case 'next':
+        if (this.overviewMode) return;
+        if (!this.revealNextFragment()) this.next();
+        break;
+      case 'prev':
+        if (this.overviewMode) return;
+        if (!this.revealPrevFragment()) this.prev();
+        break;
+      case 'down':
+        if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].down) {
+          const result = this.slideActions[this.currentSlide].down();
+          if (result === false) this.next();
+        } else if (!this.cycleInteractive(1)) {
+          if (!this.revealNextFragment()) this.next();
+        }
+        break;
+      case 'up':
+        if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].up) {
+          const result = this.slideActions[this.currentSlide].up();
+          if (result === false) this.prev();
+        } else if (!this.cycleInteractive(-1)) {
+          if (!this.revealPrevFragment()) this.prev();
+        }
+        break;
+      case 'first':
+        this.goTo(0);
+        break;
+      case 'last':
+        this.goTo(this.totalSlides - 1);
+        break;
+    }
   }
 
   bindTouch() {

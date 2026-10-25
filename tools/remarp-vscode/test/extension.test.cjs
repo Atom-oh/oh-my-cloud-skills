@@ -25,6 +25,7 @@ const vscode = {
     workspace: {
         isTrusted: true, textDocuments: [], workspaceFolders: [],
         getWorkspaceFolder: () => undefined,
+        registerTextDocumentContentProvider: disposable,
         getConfiguration: () => ({ get: (key, fallback) => key === 'buildScriptPath' ? path.join(root, 'compiler.py') : fallback }),
         onDidOpenTextDocument: disposable, onDidChangeTextDocument: disposable,
         onDidSaveTextDocument: fn => { onSave.push(fn); return disposable(); },
