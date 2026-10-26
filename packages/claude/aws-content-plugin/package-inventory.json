@@ -496,7 +496,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-pen.js": {
-      "sha256": "7aff4745c816598683eb617cb8ca13969a4e31075f4e0322593514e3731d1ed0",
+      "sha256": "2bdf0685783baaad7aca34af2293650e923b721fa0238fd805aaef75830e2b7f",
       "executable": false
     },
     "skills/reactive-presentation/assets/design-tokens.css": {
@@ -516,7 +516,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
-      "sha256": "f9f8d43bc57a3831fe1fbd2eaaec54726c0f6281fb9136137c69ff94b7ed5623",
+      "sha256": "866e692b2f69d27ee6e217dcdfce2ff88d9f1025d5fdbfdd5817aea0dc5c9cc4",
       "executable": false
     },
     "skills/reactive-presentation/assets/quiz-component.js": {

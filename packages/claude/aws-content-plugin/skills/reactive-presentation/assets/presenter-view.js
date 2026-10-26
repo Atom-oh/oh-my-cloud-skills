@@ -14,6 +14,7 @@ class PresenterView {
     this.windowId = 'main';
     this.fragmentObserver = null;
     this.fragmentRenderTimer = null;
+    this._pen = null;
     this.setupSync();
   }
 
@@ -41,6 +42,8 @@ class PresenterView {
       this.presenterWindow.focus();
       return;
     }
+    // A window closed without pagehide still holds a surface: drop it first.
+    this._destroyPen();
 
     const html = this.createPresenterHTML();
     this.presenterWindow = window.open('', 'presenter', 'width=1200,height=800');
@@ -64,6 +67,7 @@ class PresenterView {
     window.__pvScaleUpdate = () => this._updateAllScales();
 
     this.setupPresenterControls();
+    this._attachPen();
     this.startTimer();
 
     // Defer first render to allow presenter window layout to calculate
@@ -81,8 +85,19 @@ class PresenterView {
     return sheets;
   }
 
+  // Pen canvas and badge styles. A deck that links deck-pen.css already has
+  // them copied by _collectStyleSheets; otherwise link the file next to deck-pen.js.
+  _penStyleSheet() {
+    const pen = window.DeckPen;
+    if (!pen || !pen.controller || !pen.cssHref) return '';
+    if (document.querySelector('link[rel="stylesheet"][href*="deck-pen.css"]')) return '';
+    const inline = Array.from(document.querySelectorAll('style'))
+      .some(style => style.textContent.indexOf('.rp-pen-canvas') >= 0);
+    return inline ? '' : `<link rel="stylesheet" href="${pen.cssHref}">\n`;
+  }
+
   createPresenterHTML() {
-    const styleSheets = this._collectStyleSheets();
+    const styleSheets = this._collectStyleSheets() + this._penStyleSheet();
     const baseHref = window.location.href.split('#')[0];
 
     return `<!DOCTYPE html>
@@ -581,6 +596,92 @@ ${styleSheets}
 
     // Recalculate scales on presenter window resize
     win.addEventListener('resize', () => this._updateAllScales());
+    // Closing the presenter window drops its pen surface; the ink stays in the deck.
+    win.addEventListener('pagehide', () => {
+      if (this.presenterWindow === win) this._destroyPen();
+    });
+  }
+
+  // Pen surface over the scaled current-slide preview. The canvas and badge are
+  // siblings of #p-current, which _renderSlidePreview empties on every update.
+  // isPrimary binds the pen keys on this window in the capture phase, so they
+  // run once, before the document-level navigation handler below.
+  _attachPen() {
+    const pen = window.DeckPen;
+    if (!pen || !pen.controller || !pen.attachSurface) return;
+    const doc = this.presenterWindow.document;
+    const wrap = doc.getElementById('p-current-wrap');
+    const controller = pen.controller;
+
+    const canvas = doc.createElement('canvas');
+    canvas.id = 'rp-pen-canvas';
+    canvas.className = 'rp-overlay-ui rp-pen-canvas';
+    canvas.setAttribute('aria-hidden', 'true');
+    wrap.appendChild(canvas);
+
+    const badgeEl = doc.createElement('div');
+    badgeEl.id = 'rp-pen-badge';
+    if (document.documentElement.lang) badgeEl.lang = document.documentElement.lang;
+    wrap.appendChild(badgeEl);
+    const badge = pen.buildBadge(badgeEl);
+
+    const placeBadge = () => {
+      const r = this._penRect();
+      badgeEl.style.left = `${r.left}px`;
+      badgeEl.style.top = `${r.top}px`;
+    };
+    // The presenter always sees the badge; audienceBadge only hides the deck one.
+    const syncBadge = () => {
+      badge.update(controller.active);
+      placeBadge();
+    };
+
+    const surface = pen.attachSurface({
+      doc: doc,
+      canvas: canvas,
+      getRect: () => this._penRect(),
+      isPrimary: true,
+      isInert: () => !(this._penRect().width > 0)
+    });
+    const unsubscribe = controller.onChange(syncBadge);
+    syncBadge();
+
+    this._pen = {
+      redraw: () => {
+        surface.redraw();
+        placeBadge();
+      },
+      destroy: () => {
+        unsubscribe();
+        surface.destroy();
+        canvas.remove();
+        badgeEl.remove();
+      }
+    };
+  }
+
+  _destroyPen() {
+    if (!this._pen) return;
+    const pen = this._pen;
+    this._pen = null;
+    pen.destroy();
+  }
+
+  // Viewport rectangle (presenter window pixels) of the scaled slide inside
+  // #p-current, from the same fit as _applyScale.
+  _penRect() {
+    const win = this.presenterWindow;
+    const container = win && !win.closed && win.document.getElementById('p-current');
+    if (!container) return { left: 0, top: 0, width: 0, height: 0 };
+    const r = container.getBoundingClientRect();
+    if (!(r.width > 0 && r.height > 0)) return { left: r.left, top: r.top, width: 0, height: 0 };
+    const fit = this._fit(r.width, r.height);
+    return {
+      left: r.left + fit.offsetX,
+      top: r.top + fit.offsetY,
+      width: fit.width,
+      height: fit.height
+    };
   }
 
   updatePresenterView() {
@@ -771,16 +872,27 @@ ${styleSheets}
     if (rect.width > 0 && rect.height > 0) {
       this._applyScale(scaler, rect.width, rect.height);
     }
+    if (container.id === 'p-current' && this._pen) this._pen.redraw();
+  }
+
+  // Centred fit of the deck canvas into a container: scale, size and offset.
+  _fit(containerW, containerH) {
+    const canvas = this._canvasSize();
+    const scale = Math.min(containerW / canvas.w, containerH / canvas.h);
+    const width = canvas.w * scale;
+    const height = canvas.h * scale;
+    return {
+      scale: scale,
+      width: width,
+      height: height,
+      offsetX: (containerW - width) / 2,
+      offsetY: (containerH - height) / 2
+    };
   }
 
   _applyScale(scaler, containerW, containerH) {
-    const canvas = this._canvasSize();
-    const scale = Math.min(containerW / canvas.w, containerH / canvas.h);
-    const scaledW = canvas.w * scale;
-    const scaledH = canvas.h * scale;
-    const offsetX = (containerW - scaledW) / 2;
-    const offsetY = (containerH - scaledH) / 2;
-    scaler.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+    const fit = this._fit(containerW, containerH);
+    scaler.style.transform = `translate(${fit.offsetX}px, ${fit.offsetY}px) scale(${fit.scale})`;
   }
 
   _observeCurrentSlide(slide) {
@@ -820,6 +932,7 @@ ${styleSheets}
         this._applyScale(scaler, rect.width, rect.height);
       }
     });
+    if (this._pen) this._pen.redraw();
   }
 
   startTimer() {
@@ -829,6 +942,7 @@ ${styleSheets}
       if (!this.presenterWindow || this.presenterWindow.closed) {
         clearInterval(this.timerInterval);
         this.timerInterval = null;
+        this._destroyPen();
         return;
       }
       const elapsed = Date.now() - this.startTime;
@@ -856,6 +970,7 @@ ${styleSheets}
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
+    this._destroyPen();
     if (this.presenterWindow && !this.presenterWindow.closed) {
       this.presenterWindow.close();
     }

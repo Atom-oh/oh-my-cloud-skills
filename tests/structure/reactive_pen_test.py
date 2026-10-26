@@ -349,6 +349,24 @@ class DeckPenTests(DeckOverlayFixture):
         }""")
         self.assertEqual(rect, [0, 0, 0, 0], "canvas covers the deck box")
 
+    def test_deck_badge_markup_and_single_surface_without_presenter(self):
+        page = self.open_pen()
+        info = page.evaluate("""() => {
+          const b = document.getElementById('rp-pen-badge');
+          return { role: b.getAttribute('role'), live: b.getAttribute('aria-live'),
+                   classes: ['rp-overlay-ui', 'rp-pen-badge'].every(c => b.classList.contains(c)),
+                   parts: Array.from(b.children).map(c => c.className),
+                   surfaces: DeckPen.controller.surfaceCount() };
+        }""")
+        self.assertEqual(info, {"role": "status", "live": "polite", "classes": True,
+                                "parts": ["rp-pen-swatch", "rp-pen-label"], "surfaces": 1})
+        page.keyboard.press("Alt+KeyU")
+        self.assertEqual(page.evaluate(
+            "() => document.querySelector('#rp-pen-badge .rp-pen-label').textContent"),
+            "Eraser, medium")
+        self.assertTrue(page.evaluate(
+            "() => document.querySelector('#rp-pen-badge .rp-pen-swatch').hidden"))
+
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result

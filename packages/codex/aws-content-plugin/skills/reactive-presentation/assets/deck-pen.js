@@ -218,7 +218,14 @@
   var ERASER_FACTOR = 2;
 
   var surfaces = [];
-  var frameId = null;
+  // deck-pen.css next to this script, for windows that must load it themselves.
+  var cssHref = null;
+  if (typeof document !== 'undefined' && document.currentScript && document.currentScript.src) {
+    var src = document.currentScript.src;
+    if (/deck-pen\.js(\?[^#]*)?(#.*)?$/.test(src)) {
+      cssHref = src.replace(/deck-pen\.js(\?[^#]*)?(#.*)?$/, 'deck-pen.css');
+    }
+  }
 
   function isTypingTarget(target) {
     if (!target) return false;
@@ -235,7 +242,6 @@
   // The single controller shared by every surface (deck window, presenter preview).
   function createController(opts) {
     var model = createModel({ fadeMs: opts.fadeMs });
-    var win = opts.win;
     var getSlide = opts.getSlide;
     var listeners = [];
 
@@ -247,16 +253,16 @@
       surfaces.forEach(function (s) { s.redraw(); });
     }
 
-    function frame() {
-      frameId = null;
-      redrawAll();
-      var down = surfaces.some(function (s) { return s.isDrawing(); });
-      if (down || model.animating(getSlide())) schedule();
+    // Each surface runs its own loop on its own window's requestAnimationFrame,
+    // so a throttled deck window does not delay presenter frames (and back).
+    function schedule() {
+      surfaces.forEach(function (s) { s.schedule(); });
     }
 
-    // The loop runs only while a pointer is down or laser ink is still fading.
-    function schedule() {
-      if (frameId === null) frameId = win.requestAnimationFrame(frame);
+    // A loop keeps running only while a pointer is down or laser ink is fading.
+    function needsFrames() {
+      return surfaces.some(function (s) { return s.isDrawing(); }) ||
+        model.animating(getSlide());
     }
 
     function stopDrawing() {
@@ -349,7 +355,9 @@
       },
       currentSlide: function () { return getSlide(); },
       redraw: redrawAll,
-      schedule: schedule
+      schedule: schedule,
+      needsFrames: needsFrames,
+      surfaceCount: function () { return surfaces.length; }
     };
     return controller;
   }
@@ -366,6 +374,7 @@
     var canvas = o.canvas;
     var ctx = canvas.getContext('2d');
     var pointerId = null;
+    var frameId = null;
     var model = controller.model;
 
     function layout() {
@@ -457,8 +466,19 @@
 
     function onKey(event) { controller.handleKey(event); }
 
+    function frame() {
+      frameId = null;
+      redraw();
+      if (controller.needsFrames()) schedule();
+    }
+
+    function schedule() {
+      if (frameId === null) frameId = win.requestAnimationFrame(frame);
+    }
+
     var surface = {
       redraw: redraw,
+      schedule: schedule,
       isDrawing: function () { return pointerId !== null; },
       cancel: finish
     };
@@ -479,6 +499,10 @@
       redraw: redraw,
       destroy: function () {
         finish();
+        if (frameId !== null) {
+          try { win.cancelAnimationFrame(frameId); } catch (e) { /* window closed */ }
+          frameId = null;
+        }
         canvas.removeEventListener('pointerdown', onDown);
         canvas.removeEventListener('pointermove', onMove);
         canvas.removeEventListener('pointerup', onUp);
@@ -493,6 +517,33 @@
     };
   }
 
+  // Turns el (in any document) into the mode badge; update(show) refreshes it
+  // from the shared controller.
+  function buildBadge(el) {
+    var doc = el.ownerDocument;
+    el.classList.add('rp-overlay-ui', 'rp-pen-badge');
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.hidden = true;
+    var swatch = doc.createElement('span');
+    swatch.className = 'rp-pen-swatch';
+    swatch.setAttribute('aria-hidden', 'true');
+    var label = doc.createElement('span');
+    label.className = 'rp-pen-label';
+    el.appendChild(swatch);
+    el.appendChild(label);
+    return {
+      el: el,
+      update: function (show) {
+        var model = api.controller.model;
+        el.hidden = !show;
+        label.textContent = MODE_LABELS[model.mode] + ', ' + SIZE_LABELS[model.size];
+        swatch.hidden = model.mode === 'eraser';
+        swatch.style.backgroundColor = PALETTE[model.effectiveColor()];
+      }
+    };
+  }
+
   // Deck window: body-level canvas over the deck box plus the mode badge.
   function initDeck(framework, deck) {
     if (api.controller) return;
@@ -500,7 +551,6 @@
     var penOpts = framework.pen || {};
     var controller = createController({
       fadeMs: penOpts.fadeMs,
-      win: window,
       getSlide: function () { return framework.currentSlide; }
     });
     api.controller = controller;
@@ -510,17 +560,7 @@
     canvas.setAttribute('aria-hidden', 'true');
 
     var badge = overlay.makeOverlay('div', 'rp-pen-badge');
-    badge.classList.add('rp-pen-badge');
-    badge.setAttribute('role', 'status');
-    badge.setAttribute('aria-live', 'polite');
-    badge.hidden = true;
-    var swatch = document.createElement('span');
-    swatch.className = 'rp-pen-swatch';
-    swatch.setAttribute('aria-hidden', 'true');
-    var label = document.createElement('span');
-    label.className = 'rp-pen-label';
-    badge.appendChild(swatch);
-    badge.appendChild(label);
+    var badgeUi = buildBadge(badge);
 
     function deckRect() { return deck.getBoundingClientRect(); }
 
@@ -531,11 +571,7 @@
     }
 
     function syncBadge() {
-      var model = controller.model;
-      badge.hidden = !controller.active || penOpts.audienceBadge === false;
-      label.textContent = MODE_LABELS[model.mode] + ', ' + SIZE_LABELS[model.size];
-      swatch.hidden = model.mode === 'eraser';
-      swatch.style.backgroundColor = PALETTE[model.effectiveColor()];
+      badgeUi.update(controller.active && penOpts.audienceBadge !== false);
       placeBadge();
     }
 
@@ -558,7 +594,8 @@
     HIGHLIGHTER_ALPHA: HIGHLIGHTER_ALPHA,
     HIGHLIGHTER_WIDTH_FACTOR: HIGHLIGHTER_WIDTH_FACTOR,
     createModel: createModel, render: render, cursorFor: cursorFor,
-    attachSurface: attachSurface,
+    attachSurface: attachSurface, buildBadge: buildBadge,
+    cssHref: cssHref,
     controller: null
   };
   if (typeof window !== 'undefined') {
