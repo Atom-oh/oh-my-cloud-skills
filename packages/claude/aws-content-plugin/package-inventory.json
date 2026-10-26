@@ -491,8 +491,12 @@
       "sha256": "c3fd3febc02e9f0dc8819562838f291c8bbffba8c67977bca511739185ff4a06",
       "executable": false
     },
+    "skills/reactive-presentation/assets/deck-pen.css": {
+      "sha256": "f0b710e318ca8e14e97ef4ff95d803e7d3b044d61d2be907b45a8d43edcd8aa1",
+      "executable": false
+    },
     "skills/reactive-presentation/assets/deck-pen.js": {
-      "sha256": "5e1a284b1edcc350eb62b9a920c5e362189aea018cdaadae1f8e8ea2d945f8ad",
+      "sha256": "0ab7eb69170edae185d0381a089de310d2b18ebfcd60c8765669ebfa40d36ee9",
       "executable": false
     },
     "skills/reactive-presentation/assets/design-tokens.css": {
@@ -520,7 +524,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-framework.js": {
-      "sha256": "518c28392283b697103f44ab001b8864371c4e7717bf4c8d24c17d17270df8c6",
+      "sha256": "499f0643a03c1bd5903c8409c1f353620c9a41406aa2a830ff124675ceca7f39",
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-renderer.js": {

@@ -1,5 +1,6 @@
-/* deck-pen.js - pen mode ink model, canvas renderer and cursor helper.
- * Pure core: no DOM access at load time. Coordinates are 0..1 of the slide box. */
+/* deck-pen.js - pen mode ink model, canvas renderer, cursor helper and the
+ * deck-window controller (overlay module 'pen'). No DOM access at load time.
+ * Coordinates are 0..1 of the slide box. */
 (function () {
   'use strict';
 
@@ -59,11 +60,16 @@
         }
       },
 
+      // Palette index the next stroke uses: Highlighter is yellow until a colour is chosen.
+      effectiveColor: function () {
+        return this.mode === 'highlighter' && !colorChosen
+          ? HIGHLIGHTER_DEFAULT_COLOR : this.colorIndex;
+      },
+
       // Returns the new stroke id, or null in eraser mode (no stroke is created).
       begin: function (slide, x, y) {
         if (this.mode === 'eraser') return null;
-        var color = this.mode === 'highlighter' && !colorChosen
-          ? HIGHLIGHTER_DEFAULT_COLOR : this.colorIndex;
+        var color = this.effectiveColor();
         current = {
           id: nextId++, slide: slide, mode: this.mode, size: this.size,
           colorIndex: color, points: [{ x: x, y: y, t: now() }]
@@ -78,18 +84,23 @@
         current = null;
       },
 
-      eraseAt: function (slide, x, y, radius) {
+      // radius is in normalized units. Without aspect it applies per axis, so the
+      // hit area is an ellipse on a non-square slide. With aspect (width / height)
+      // x distances are scaled by it and radius is a fraction of the slide height,
+      // which makes the hit area a circle in pixels.
+      eraseAt: function (slide, x, y, radius, aspect) {
         var r = radius == null ? 0.02 : radius;
+        var k = aspect > 0 ? aspect : 1;
         var removed = 0;
         bySlide[slide] = list(slide).filter(function (s) {
           if (s.mode === 'laser') return true;
           var hit = false;
           var pts = s.points;
           if (pts.length === 1) {
-            hit = dist(x, y, pts[0].x, pts[0].y, pts[0].x, pts[0].y) <= r;
+            hit = dist(x * k, y, pts[0].x * k, pts[0].y, pts[0].x * k, pts[0].y) <= r;
           }
           for (var i = 1; i < pts.length && !hit; i++) {
-            hit = dist(x, y, pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y) <= r;
+            hit = dist(x * k, y, pts[i - 1].x * k, pts[i - 1].y, pts[i].x * k, pts[i].y) <= r;
           }
           if (hit) removed++;
           return !hit;
@@ -196,12 +207,356 @@
     return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '") 2 30, crosshair';
   }
 
+  // --- DOM controller -------------------------------------------------------
+  // Everything below touches the DOM only when called, never at load time.
+
+  var MODE_LABELS = { laser: 'Laser', pen: 'Pen', highlighter: 'Highlighter', eraser: 'Eraser' };
+  var SIZE_LABELS = { 1: 'thin', 2: 'medium', 3: 'thick' };
+  var MODE_CODES = { KeyP: 'laser', KeyO: 'pen', KeyI: 'highlighter', KeyU: 'eraser' };
+  var BASE_HEIGHT = 1080;
+  // Eraser radius in design pixels (1080-high slide) is the stroke width times this.
+  var ERASER_FACTOR = 2;
+
+  var surfaces = [];
+  var frameId = null;
+
+  function isTypingTarget(target) {
+    if (!target) return false;
+    var tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
+      Boolean(target.isContentEditable);
+  }
+
+  function consume(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+
+  // The single controller shared by every surface (deck window, presenter preview).
+  function createController(opts) {
+    var model = createModel({ fadeMs: opts.fadeMs });
+    var win = opts.win;
+    var getSlide = opts.getSlide;
+    var listeners = [];
+
+    function emit() {
+      listeners.slice().forEach(function (fn) { fn(controller); });
+    }
+
+    function redrawAll() {
+      surfaces.forEach(function (s) { s.redraw(); });
+    }
+
+    function frame() {
+      frameId = null;
+      redrawAll();
+      var down = surfaces.some(function (s) { return s.isDrawing(); });
+      if (down || model.animating(getSlide())) schedule();
+    }
+
+    // The loop runs only while a pointer is down or laser ink is still fading.
+    function schedule() {
+      if (frameId === null) frameId = win.requestAnimationFrame(frame);
+    }
+
+    function stopDrawing() {
+      model.end();
+      surfaces.forEach(function (s) { s.cancel(); });
+    }
+
+    function setActive(on) {
+      on = Boolean(on);
+      if (on === controller.active) return;
+      if (!on) stopDrawing();
+      controller.active = on;
+      emit();
+      schedule();
+    }
+
+    function selectMode(mode, toggles) {
+      if (toggles && controller.active && model.mode === mode) {
+        setActive(false);
+        return;
+      }
+      model.end();
+      model.setMode(mode);
+      if (controller.active) emit();
+      else setActive(true);
+    }
+
+    function chordAction(code) {
+      if (MODE_CODES[code]) {
+        return function () { selectMode(MODE_CODES[code], code === 'KeyP'); };
+      }
+      if (code === 'KeyY') {
+        return function () {
+          model.end();
+          model.clear(getSlide());
+          redrawAll();
+        };
+      }
+      var digit = /^Digit([1-9])$/.exec(code || '');
+      if (digit) {
+        var n = Number(digit[1]);
+        return function () {
+          if (n <= 3) model.setSize(n);
+          else model.setColor(n - 4);
+          emit();
+        };
+      }
+      return null;
+    }
+
+    var controller = {
+      model: model,
+      active: false,
+      onChange: function (fn) {
+        listeners.push(fn);
+        return function () {
+          var i = listeners.indexOf(fn);
+          if (i >= 0) listeners.splice(i, 1);
+        };
+      },
+      togglePen: function () { setActive(!controller.active); },
+      setActive: setActive,
+      // Consumes (preventDefault + stopImmediatePropagation) and returns true for
+      // Option chords of the key map and for plain Esc while pen mode is on.
+      handleKey: function (event) {
+        if (event.isComposing || event.keyCode === 229) return false;
+        if (isTypingTarget(event.target)) return false;
+        if (event.ctrlKey || event.metaKey) return false;
+        if (event.altKey) {
+          var action = chordAction(event.code);
+          if (!action) return false;
+          consume(event);
+          if (!event.repeat) action();
+          return true;
+        }
+        if (event.key === 'Escape' && controller.active) {
+          consume(event);
+          setActive(false);
+          return true;
+        }
+        return false;
+      },
+      showSlide: function (slide) {
+        stopDrawing();
+        model.showSlide(slide);
+        redrawAll();
+      },
+      currentSlide: function () { return getSlide(); },
+      redraw: redrawAll,
+      schedule: schedule
+    };
+    return controller;
+  }
+
+  // Binds a canvas in any window to the shared controller. getRect() returns the
+  // slide box in that window's viewport pixels. isPrimary also binds the keys.
+  function attachSurface(o) {
+    var controller = api.controller;
+    if (!controller) throw new Error('DeckPen controller is not initialised');
+    var doc = o.doc;
+    var win = doc.defaultView;
+    var canvas = o.canvas;
+    var ctx = canvas.getContext('2d');
+    var pointerId = null;
+    var model = controller.model;
+
+    function layout() {
+      var r = o.getRect();
+      canvas.style.left = r.left + 'px';
+      canvas.style.top = r.top + 'px';
+      canvas.style.width = r.width + 'px';
+      canvas.style.height = r.height + 'px';
+      var dpr = win.devicePixelRatio || 1;
+      var w = Math.max(1, Math.round(r.width * dpr));
+      var h = Math.max(1, Math.round(r.height * dpr));
+      if (canvas.width !== w) canvas.width = w;
+      if (canvas.height !== h) canvas.height = h;
+    }
+
+    function redraw() {
+      layout();
+      render(ctx, canvas.width, canvas.height, model.visible(controller.currentSlide()));
+    }
+
+    function point(event) {
+      var r = o.getRect();
+      return {
+        x: (event.clientX - r.left) / r.width,
+        y: (event.clientY - r.top) / r.height,
+        aspect: r.width / r.height
+      };
+    }
+
+    function apply(event, starting) {
+      var p = point(event);
+      var slide = controller.currentSlide();
+      if (model.mode === 'eraser') {
+        var radius = SIZES[model.size] * ERASER_FACTOR / BASE_HEIGHT;
+        model.eraseAt(slide, p.x, p.y, radius, p.aspect);
+      } else if (starting) {
+        model.begin(slide, p.x, p.y);
+      } else {
+        model.extend(p.x, p.y);
+      }
+    }
+
+    function sync() {
+      canvas.classList.toggle('active', controller.active);
+      canvas.style.cursor = model.mode === 'eraser'
+        ? 'cell' : cursorFor(model.effectiveColor(), model.size);
+    }
+
+    function onDown(event) {
+      if (!controller.active || pointerId !== null) return;
+      if (event.pointerType === 'mouse' && event.button !== 0) return;
+      event.preventDefault();
+      pointerId = event.pointerId;
+      try { canvas.setPointerCapture(pointerId); } catch (e) { /* synthetic pointer */ }
+      apply(event, true);
+      controller.redraw();
+      controller.schedule();
+    }
+
+    function onMove(event) {
+      if (event.pointerId !== pointerId) return;
+      apply(event, false);
+    }
+
+    function onUp(event) {
+      if (event.pointerId !== pointerId) return;
+      if (event.type === 'pointerup') apply(event, false);
+      finish();
+      controller.redraw();
+      controller.schedule();
+    }
+
+    function finish() {
+      if (pointerId === null) return;
+      var id = pointerId;
+      pointerId = null;
+      model.end();
+      try {
+        if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+      } catch (e) { /* already released */ }
+    }
+
+    function onKey(event) { controller.handleKey(event); }
+
+    var surface = {
+      redraw: redraw,
+      isDrawing: function () { return pointerId !== null; },
+      cancel: finish
+    };
+
+    canvas.addEventListener('pointerdown', onDown);
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerup', onUp);
+    canvas.addEventListener('pointercancel', onUp);
+    canvas.addEventListener('lostpointercapture', onUp);
+    win.addEventListener('resize', redraw);
+    if (o.isPrimary) win.addEventListener('keydown', onKey, true);
+    var unsubscribe = controller.onChange(sync);
+    surfaces.push(surface);
+    sync();
+    redraw();
+
+    return {
+      redraw: redraw,
+      destroy: function () {
+        finish();
+        canvas.removeEventListener('pointerdown', onDown);
+        canvas.removeEventListener('pointermove', onMove);
+        canvas.removeEventListener('pointerup', onUp);
+        canvas.removeEventListener('pointercancel', onUp);
+        canvas.removeEventListener('lostpointercapture', onUp);
+        win.removeEventListener('resize', redraw);
+        if (o.isPrimary) win.removeEventListener('keydown', onKey, true);
+        unsubscribe();
+        var i = surfaces.indexOf(surface);
+        if (i >= 0) surfaces.splice(i, 1);
+      }
+    };
+  }
+
+  // Deck window: body-level canvas over the deck box plus the mode badge.
+  function initDeck(framework, deck) {
+    if (api.controller) return;
+    var overlay = window.DeckOverlay;
+    var penOpts = framework.pen || {};
+    var controller = createController({
+      fadeMs: penOpts.fadeMs,
+      win: window,
+      getSlide: function () { return framework.currentSlide; }
+    });
+    api.controller = controller;
+
+    var canvas = overlay.makeOverlay('canvas', 'rp-pen-canvas');
+    canvas.classList.add('rp-pen-canvas');
+    canvas.setAttribute('aria-hidden', 'true');
+
+    var badge = overlay.makeOverlay('div', 'rp-pen-badge');
+    badge.classList.add('rp-pen-badge');
+    badge.setAttribute('role', 'status');
+    badge.setAttribute('aria-live', 'polite');
+    badge.hidden = true;
+    var swatch = document.createElement('span');
+    swatch.className = 'rp-pen-swatch';
+    swatch.setAttribute('aria-hidden', 'true');
+    var label = document.createElement('span');
+    label.className = 'rp-pen-label';
+    badge.appendChild(swatch);
+    badge.appendChild(label);
+
+    function deckRect() { return deck.getBoundingClientRect(); }
+
+    function placeBadge() {
+      var r = deckRect();
+      badge.style.left = r.left + 'px';
+      badge.style.top = r.top + 'px';
+    }
+
+    function syncBadge() {
+      var model = controller.model;
+      badge.hidden = !controller.active || penOpts.audienceBadge === false;
+      label.textContent = MODE_LABELS[model.mode] + ', ' + SIZE_LABELS[model.size];
+      swatch.hidden = model.mode === 'eraser';
+      swatch.style.backgroundColor = PALETTE[model.effectiveColor()];
+      placeBadge();
+    }
+
+    var surface = attachSurface({ doc: document, canvas: canvas, getRect: deckRect, isPrimary: true });
+    controller.onChange(syncBadge);
+    syncBadge();
+    // The deck scale lives in the deck's inline style.
+    new MutationObserver(function () {
+      surface.redraw();
+      placeBadge();
+    }).observe(deck, { attributes: true, attributeFilter: ['style'] });
+    window.addEventListener('resize', placeBadge);
+  }
+
   var api = {
     MODES: MODES, SIZES: SIZES, PALETTE: PALETTE,
     HIGHLIGHTER_ALPHA: HIGHLIGHTER_ALPHA,
     HIGHLIGHTER_WIDTH_FACTOR: HIGHLIGHTER_WIDTH_FACTOR,
-    createModel: createModel, render: render, cursorFor: cursorFor
+    createModel: createModel, render: render, cursorFor: cursorFor,
+    attachSurface: attachSurface,
+    controller: null
   };
-  if (typeof window !== 'undefined') window.DeckPen = window.DeckPen || api;
+  if (typeof window !== 'undefined') {
+    window.DeckPen = window.DeckPen || api;
+    if (window.DeckPen === api && window.DeckOverlay) {
+      window.DeckOverlay.register('pen', {
+        priority: 0,
+        init: initDeck,
+        slideChange: function () {
+          if (api.controller) api.controller.showSlide(api.controller.currentSlide());
+        }
+      });
+    }
+  }
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

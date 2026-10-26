@@ -17,6 +17,12 @@ class SlideFramework {
     this.presenterView = null;
     this.slideActions = {};  // { slideIndex: { up: fn, down: fn } }
     this.pagination = options.pagination || false;
+    // Pen mode options (deck-pen.js); unknown keys are ignored.
+    const pen = options.pen && typeof options.pen === 'object' ? options.pen : {};
+    this.pen = {
+      fadeMs: Number.isFinite(pen.fadeMs) && pen.fadeMs > 0 ? pen.fadeMs : 3000,
+      audienceBadge: pen.audienceBadge !== false
+    };
     // Fragment system
     this.fragmentState = {};  // { slideIndex: { fragments: [], currentIndex: -1 } }
     // Overview mode

@@ -149,3 +149,33 @@ test('test_begin_in_eraser_mode_creates_no_stroke', () => {
   assert.equal(model.visible(0).length, 0);
   assert.equal(model.animating(0), false);
 });
+
+test('test_erase_aspect_makes_the_hit_area_round_in_pixels', () => {
+  const { model } = setup(3000);
+  model.setMode('pen');
+  // A vertical stroke at x = 0.5. On a 16:9 slide 0.02 of the height is
+  // 0.01125 of the width, so a point 0.015 to the side is outside the circle.
+  draw(model, 0, [[0.5, 0.1], [0.5, 0.9]]);
+  assert.equal(model.eraseAt(0, 0.515, 0.5, 0.02, 16 / 9), 0);
+  assert.equal(model.eraseAt(0, 0.51, 0.5, 0.02, 16 / 9), 1);
+  // Without an aspect the radius stays per-axis, as before.
+  draw(model, 0, [[0.5, 0.1], [0.5, 0.9]]);
+  assert.equal(model.eraseAt(0, 0.515, 0.5, 0.02), 1);
+});
+
+test('test_effective_color_follows_the_highlighter_default', () => {
+  const { model } = setup(3000);
+  assert.equal(model.effectiveColor(), 0);
+  model.setMode('highlighter');
+  assert.equal(model.effectiveColor(), 1);
+  model.setColor(3);
+  assert.equal(model.effectiveColor(), 3);
+  model.setMode('pen');
+  assert.equal(model.effectiveColor(), 3);
+});
+
+test('test_controller_is_not_created_without_the_overlay_core', () => {
+  const DeckPen = load();
+  assert.equal(DeckPen.controller, null);
+  assert.equal(typeof DeckPen.attachSurface, 'function');
+});
