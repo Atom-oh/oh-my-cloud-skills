@@ -491,6 +491,10 @@
       "sha256": "c3fd3febc02e9f0dc8819562838f291c8bbffba8c67977bca511739185ff4a06",
       "executable": false
     },
+    "skills/reactive-presentation/assets/deck-pen.js": {
+      "sha256": "5d8f438f106061dcca3abe9967cd1a7cdc9d1778e8a18fb9f6a31080daec2af7",
+      "executable": false
+    },
     "skills/reactive-presentation/assets/design-tokens.css": {
       "sha256": "ba930a0a821894474efce980e7f474a26034025cd56ea664dab91929112cbde0",
       "executable": false
