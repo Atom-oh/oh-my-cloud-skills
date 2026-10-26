@@ -197,6 +197,11 @@ class DeckPenTests(DeckOverlayFixture):
         page.keyboard.press("Alt+KeyI")
         self.assertEqual(self.state(page)["active"], True)
         self.assertEqual(self.state(page)["mode"], "highlighter")
+        # Pen was set to black; the Highlighter keeps its own default yellow.
+        self.assertEqual(self.state(page)["colorIndex"], 1)
+        page.keyboard.press("Alt+KeyO")
+        self.assertEqual(self.state(page)["colorIndex"], 5)
+        page.keyboard.press("Alt+KeyI")
         page.keyboard.press("Alt+KeyU")
         self.assertEqual(self.state(page)["mode"], "eraser")
         self.assertEqual(page.evaluate(

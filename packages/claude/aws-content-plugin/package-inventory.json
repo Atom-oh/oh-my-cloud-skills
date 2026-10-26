@@ -452,11 +452,11 @@
       "executable": false
     },
     "skills/reactive-presentation/REMARP.md": {
-      "sha256": "6eff8fa7187d7e3a5ec54d1584d02e30fde8db96df6e83e1b15fe67fa0b6e35a",
+      "sha256": "1ce24bfe9f21a10c0a13d5d91c6bf76aee774119444559232b17c36d72859a2b",
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
-      "sha256": "811962e7d8f1f849dfd83e2953175d806c92f632343d8ab3b394e900d4bb065a",
+      "sha256": "d7e859f88a922af0e881cdaddd1731bfc843b5d29b91f40a42e5155dc1f7d9ae",
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
@@ -496,7 +496,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-pen.js": {
-      "sha256": "2bdf0685783baaad7aca34af2293650e923b721fa0238fd805aaef75830e2b7f",
+      "sha256": "35b0ceb3718b6388fecdd26323214aae403d706c19711be577de651fc39f0180",
       "executable": false
     },
     "skills/reactive-presentation/assets/design-tokens.css": {
@@ -17332,7 +17332,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/framework-guide.md": {
-      "sha256": "9b747b709c4a821386ce3ae3baf39831489fcf7ca39289f700de02fe2907122a",
+      "sha256": "8e6052be65dd3e0e34c4f767595969a42273e2c6161bcd604460980bcae86431",
       "executable": false
     },
     "skills/reactive-presentation/references/interactive-patterns-guide.md": {
@@ -17340,7 +17340,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/keyboard-shortcuts.md": {
-      "sha256": "42927f916b718bfd13a2564ee7cf990e0f6be84fd05bcba9c305639709bdfe26",
+      "sha256": "52d46c66e93dcef0f3a57b4bd2e0af07fd281aa98790bf15f8c48cfc8bbbbadd",
       "executable": false
     },
     "skills/reactive-presentation/references/marp-format-guide.md": {

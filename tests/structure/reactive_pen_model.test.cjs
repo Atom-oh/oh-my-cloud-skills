@@ -101,7 +101,7 @@ test('test_invalid_size_color_mode_are_ignored', () => {
   assert.equal(model.colorIndex, 3);
 });
 
-test('test_highlighter_defaults_to_yellow_until_a_colour_is_chosen', () => {
+test('test_highlighter_defaults_to_yellow', () => {
   const { DeckPen, model } = setup(3000);
   model.setMode('highlighter');
   draw(model, 0, [[0.1, 0.1], [0.2, 0.2]]);
@@ -109,6 +109,31 @@ test('test_highlighter_defaults_to_yellow_until_a_colour_is_chosen', () => {
   model.setColor(3);
   draw(model, 0, [[0.1, 0.5], [0.2, 0.5]]);
   assert.equal(model.visible(0)[1].colorIndex, 3);
+});
+
+test('test_colour_is_remembered_per_mode', () => {
+  const { model } = setup(3000);
+  model.setMode('pen');
+  model.setColor(3);
+  model.setMode('highlighter');
+  assert.equal(model.effectiveColor(), 1);
+  model.setColor(2);
+  model.setMode('pen');
+  assert.equal(model.effectiveColor(), 3);
+  model.setMode('laser');
+  assert.equal(model.effectiveColor(), 0);
+  model.setColor(5);
+  model.setMode('highlighter');
+  assert.equal(model.effectiveColor(), 2);
+  model.setMode('pen');
+  assert.equal(model.effectiveColor(), 3);
+  // Eraser: setColor is a no-op and leaves every mode's colour alone.
+  model.setMode('eraser');
+  model.setColor(4);
+  model.setMode('pen');
+  assert.equal(model.effectiveColor(), 3);
+  model.setMode('laser');
+  assert.equal(model.effectiveColor(), 5);
 });
 
 test('test_render_loop_stops_when_idle', () => {
@@ -163,7 +188,7 @@ test('test_erase_aspect_makes_the_hit_area_round_in_pixels', () => {
   assert.equal(model.eraseAt(0, 0.515, 0.5, 0.02), 1);
 });
 
-test('test_effective_color_follows_the_highlighter_default', () => {
+test('test_effective_color_follows_the_current_mode', () => {
   const { model } = setup(3000);
   assert.equal(model.effectiveColor(), 0);
   model.setMode('highlighter');
@@ -171,7 +196,7 @@ test('test_effective_color_follows_the_highlighter_default', () => {
   model.setColor(3);
   assert.equal(model.effectiveColor(), 3);
   model.setMode('pen');
-  assert.equal(model.effectiveColor(), 3);
+  assert.equal(model.effectiveColor(), 0);
 });
 
 test('test_controller_is_not_created_without_the_overlay_core', () => {

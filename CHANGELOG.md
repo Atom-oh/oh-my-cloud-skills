@@ -18,18 +18,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add pen mode to reactive-presentation decks: a laser, pen, highlighter and eraser
   overlay driven by Option (Alt) chords (Option+P toggles the laser, Option+O/I/U pick
   pen, highlighter and eraser, Option+Y clears the slide, Option+1-9 set thickness and
-  colour, plain Esc leaves pen mode). Laser strokes fade after `pen.fadeMs`
+  colour). Laser, Pen and Highlighter each remember their own colour (red, red and
+  yellow by default). Esc leaves pen mode in a normal window; in browser fullscreen the
+  browser takes Esc first, so use Option+P there. Laser strokes fade after `pen.fadeMs`
   (default 3000); pen and highlighter ink stays per slide for the session and is not
-  saved. Ink drawn in the presenter preview mirrors to the audience window, and
-  `pen.audienceBadge: false` hides the mode badge in the deck window. Generated decks,
-  the example deck and the PDF export head load `deck-pen.js` and `deck-pen.css`; decks
-  built earlier keep working without them. Public keyboard-shortcuts page updated in
+  saved. Ink drawn in the presenter window's preview mirrors to the deck window, and
+  `pen.audienceBadge: false` hides the mode badge in the deck window. Generated decks
+  and the example deck load `deck-pen.js` and `deck-pen.css`; the export ZIP common
+  file list includes both and the PDF export head links `deck-pen.css`. Decks built
+  earlier keep working without them. Public keyboard-shortcuts page updated in
   English and Korean.
 
 ### Fixed
 
-- Correct the reactive-presentation keyboard references that listed a `1-9` slide jump;
-  `SlideFramework.getKeyAction()` has no default digit binding.
+- Remove the `1-9` slide jump, the `N` speaker-notes panel and the `B` blackout from
+  the reactive-presentation keyboard references (SKILL.md, REMARP.md,
+  keyboard-shortcuts.md, framework-guide.md); `SlideFramework.getKeyAction()` and the
+  other runtime scripts bind none of them by default.
 
 ## [3.0.5] - 2026-10-22
 

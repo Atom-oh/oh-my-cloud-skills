@@ -9,7 +9,7 @@
   var PALETTE = ['#e53935', '#fdd835', '#43a047', '#1e88e5', '#ffffff', '#000000'];
   var HIGHLIGHTER_ALPHA = 0.35;
   var HIGHLIGHTER_WIDTH_FACTOR = 3;
-  var HIGHLIGHTER_DEFAULT_COLOR = 1;
+  var DEFAULT_COLORS = { laser: 0, pen: 0, highlighter: 1 };
   var BASE_WIDTH = 1920;
 
   function createModel(opts) {
@@ -18,7 +18,9 @@
     var now = opts.now || function () { return Date.now(); };
     var bySlide = {};
     var current = null;
-    var colorChosen = false;
+    // One chosen colour per drawing mode; the eraser has none and shows the last drawing mode's.
+    var colors = { laser: DEFAULT_COLORS.laser, pen: DEFAULT_COLORS.pen, highlighter: DEFAULT_COLORS.highlighter };
+    var lastDrawMode = 'laser';
     var nextId = 1;
 
     function list(slide) {
@@ -45,25 +47,27 @@
     var model = {
       mode: 'laser',
       size: 2,
-      colorIndex: 0,
+      // Read-only view of the colour the current mode uses.
+      get colorIndex() { return this.effectiveColor(); },
 
       setMode: function (name) {
-        if (MODES.indexOf(name) >= 0) this.mode = name;
+        if (MODES.indexOf(name) < 0) return;
+        this.mode = name;
+        if (name !== 'eraser') lastDrawMode = name;
       },
       setSize: function (n) {
         if (Object.prototype.hasOwnProperty.call(SIZES, n)) this.size = Number(n);
       },
       setColor: function (i) {
+        if (this.mode === 'eraser') return;
         if (typeof i === 'number' && i % 1 === 0 && i >= 0 && i < PALETTE.length) {
-          this.colorIndex = i;
-          colorChosen = true;
+          colors[this.mode] = i;
         }
       },
 
-      // Palette index the next stroke uses: Highlighter is yellow until a colour is chosen.
+      // Palette index the current mode draws with (each drawing mode keeps its own).
       effectiveColor: function () {
-        return this.mode === 'highlighter' && !colorChosen
-          ? HIGHLIGHTER_DEFAULT_COLOR : this.colorIndex;
+        return colors[this.mode === 'eraser' ? lastDrawMode : this.mode];
       },
 
       // Returns the new stroke id, or null in eraser mode (no stroke is created).

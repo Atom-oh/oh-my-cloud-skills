@@ -34,7 +34,7 @@ The defaults below come from the current `SlideFramework.getKeyAction()` impleme
 | F | Toggle fullscreen |
 | O | Toggle overview |
 | S | Toggle sidebar outside fullscreen |
-| Escape | Exit overview or fullscreen; leaves pen mode first while it is on |
+| Escape | Exit overview or fullscreen; in a normal window it leaves pen mode first while it is on |
 
 Typing in an input or textarea does not navigate the deck. Touch swipes on the deck support previous/next navigation. Compare/tabs/Canvas behavior depends on the registered interaction for that slide.
 
@@ -50,7 +50,7 @@ The runtime reads a key-to-action object. Supported actions are those implemente
 
 ## Pen mode {#pen-mode}
 
-Draw on the slide while presenting. Every pen key is an Option (Alt) chord matched by physical key, so plain P, O, S, Space and the arrow keys keep their meaning.
+Draw on the slide while presenting. Every pen key is an Option (Alt) chord matched by QWERTY key position, so on Dvorak or AZERTY-like layouts press the key in that position (the digits use the number row positions). Plain P, O, S, Space and the arrow keys keep their meaning.
 
 | Key | Action |
 | --- | --- |
@@ -61,11 +61,13 @@ Draw on the slide while presenting. Every pen key is an Option (Alt) chord match
 | Option+Y | Clear all ink on the current slide |
 | Option+1 / 2 / 3 | Thin / medium / thick |
 | Option+4 / 5 / 6 / 7 / 8 / 9 | Red / yellow / green / blue / white / black |
-| Esc | Leave pen mode |
+| Esc | Leave pen mode (normal window only) |
 
-Option+O, Option+I and Option+U each turn pen mode on when it is off. The defaults are red and medium; the Highlighter uses yellow until you choose a colour. Plain Esc is consumed only while pen mode is on, so it does not also exit fullscreen, and it wins over an open agenda or detail panel in that case.
+Option+O, Option+I and Option+U each turn pen mode on when it is off. The defaults are red and medium, and the Highlighter defaults to yellow. Each of Laser, Pen and Highlighter remembers its own colour. Esc leaves pen mode in a normal window, and while pen mode is on it wins over an open agenda or detail panel. In browser fullscreen the browser handles Esc first and exits fullscreen, so use Option+P to leave pen mode there; press it again from Pen, Highlighter or Eraser, which first switches to Laser.
 
-Laser strokes fade after 3 seconds. Pen and highlighter ink stays on its slide for the session and is never saved. Ink drawn in the presenter window's current-slide preview appears on the audience window at the same slide position.
+While pen mode is on, the canvas takes all pointer input over the slide, so tabs, quiz buttons, compare toggles and detail tooltips need pen mode off first.
+
+Laser strokes fade after 3 seconds. Pen and highlighter ink stays on its slide for the session and is never saved. Ink is mirrored between the deck window and the presenter window popup (opened with P): ink drawn in the presenter's current-slide preview appears on the deck window at the same slide position. Two separate deck windows or tabs sync only the slide position.
 
 On Linux, Chrome or Firefox may reserve Alt+1 to Alt+9 for tab switching, so the thickness and colour keys may not reach the page there. This has not been verified.
 

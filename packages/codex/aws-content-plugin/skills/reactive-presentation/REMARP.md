@@ -469,11 +469,10 @@ Export options:
 | Cmd+K / Ctrl+K | Search all slides |
 | / | Search when focus is not in a form control |
 | F | Fullscreen |
-| N | Speaker notes panel |
 | P | Presenter view (new window) |
 | O | Slide overview (grid) |
-| B | Blackout |
 | Esc | Close search or detail, then exit fullscreen/overview |
+| Option+P | Pen mode (laser first); see references/keyboard-shortcuts.md |
 
 Keyboard customization is configured in the `keys:` section of frontmatter.
 Hover the top-right corner to open the agenda. Agenda, search, tooltips and the
