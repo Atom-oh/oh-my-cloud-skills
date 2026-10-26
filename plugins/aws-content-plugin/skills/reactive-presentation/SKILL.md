@@ -130,7 +130,7 @@ GitHub Pages: Settings → Pages → main / root.
 ## Authoring Rules & Patterns (detailed — read while authoring/validating)
 - **[references/authoring-rules.md](references/authoring-rules.md)** — Validation rules (§1) · Forbidden AI-tells (§2) · Slide Title Voice (§3) · Interactive patterns + tab templates + color tokens (§4) · Slide Type decisions + Canvas vs html/diagram (§5) · HTML Architecture flow patterns (§6)
 - Before using `:::canvas`, always read **[references/canvas-authoring-guide.md](references/canvas-authoring-guide.md)** (DSL syntax, required coordinate formulas, fragment ordering). `validate` backstops this with CANVAS_OVERLAP.
-- Viewer keyboard shortcuts (←→ Space ↑↓ F N P O S B Esc 1-9): [references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
+- Viewer keyboard shortcuts (←→ Space ↑↓ F N P O S B Esc; pen mode on Option+P, see its Pen mode section): [references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
 
 ## Quality Assurance
 - **Copy style check**: before completion, inspect authored text in Remarp and the built deck, including HTML/Canvas labels, quizzes, footers and speaker notes, for the prohibited punctuation in authoring-rules.md §2.

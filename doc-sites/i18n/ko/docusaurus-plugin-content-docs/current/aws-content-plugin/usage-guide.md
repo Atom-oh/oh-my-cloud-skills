@@ -53,6 +53,8 @@ python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_t
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py sync ./my-presentation/
 ```
 
+웹 덱에는 발표 중 슬라이드 위에 그릴 수 있는 펜 오버레이(Option+P)가 포함됩니다. [펜 모드](/docs/remarp-guide/keyboard-shortcuts#pen-mode)를 참고하세요.
+
 네이티브 PowerPoint는 aws-light-fcd 에셋과 PptxGenJS로 제작한 뒤 글꼴을 포함하고 덱을 확인합니다. 웹 덱의 PPTX 내보내기는 스크린샷 기반 슬라이드를 만들며, 애니메이션 HTML 개체를 편집 가능하게 변환하지는 않습니다.
 
 ## 다이어그램 {#diagrams}

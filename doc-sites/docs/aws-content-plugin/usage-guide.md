@@ -53,6 +53,8 @@ python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_t
 python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py sync ./my-presentation/
 ```
 
+Web decks include a pen overlay for drawing on slides while presenting (Option+P); see [Pen mode](/docs/remarp-guide/keyboard-shortcuts#pen-mode).
+
 Native PowerPoint uses aws-light-fcd assets and PptxGenJS, then embeds fonts and inspects the deck. Web-deck PPTX export produces screenshot-based slides; it does not make animated HTML objects editable.
 
 ## Diagrams {#diagrams}

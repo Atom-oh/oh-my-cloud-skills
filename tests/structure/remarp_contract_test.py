@@ -461,6 +461,24 @@ class RemarpDetailContractTests(unittest.TestCase):
         for asset in re.findall(r'(?:href|src)="(\./common/[^"]+)"', html):
             self.assertTrue((output.parent / asset).is_file(), asset)
 
+    def test_wrap_html_loads_pen_assets_after_nav(self):
+        html = self.build_one(FRONT + "## Title\n")
+        self.assertIn('href="./common/deck-pen.css"', html)
+        self.assertIn('src="./common/deck-pen.js"', html)
+        self.assertLess(html.index("deck-nav.css"), html.index("deck-pen.css"))
+        self.assertLess(html.index("deck-nav.js"), html.index("deck-pen.js"))
+        self.assertLess(html.index("deck-pen.js"), html.index("slide-framework.js"))
+        common = self.root / "slides/common"
+        for name in ("deck-pen.js", "deck-pen.css"):
+            self.assertTrue((common / name).is_file(), name)
+
+    def test_export_utils_common_files_include_pen(self):
+        text = (ROOT / "plugins/aws-content-plugin/skills/reactive-presentation/assets/export-utils.js").read_text(encoding="utf-8")
+        block = text[text.index("COMMON_FILES"):text.index("CAPTURE_HIDE_CSS")]
+        self.assertIn("'deck-pen.js'", block)
+        self.assertIn("'deck-pen.css'", block)
+        self.assertIn("commonPath + 'deck-pen.css\">", text)
+
     def test_export_details_to_text(self):
         self.assertEqual(export._details_to_text([{"title": "A", "text": "b"}], "ko"), "[디테일]\n- A: b")
         self.assertEqual(export._details_to_text([{"title": "A", "text": "b"}], "en"), "[Details]\n- A: b")

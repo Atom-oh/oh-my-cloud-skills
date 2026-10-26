@@ -54,7 +54,8 @@ const ExportUtils = {
     'design-tokens.css', 'theme.css', 'theme-override.css', 'slide-framework.js',
     'slide-renderer.js', 'presenter-view.js', 'animation-utils.js', 'quiz-component.js',
     'export-utils.js', 'deck-overlay.js', 'deck-overlay.css',
-    'deck-detail.js', 'deck-detail.css', 'deck-nav.js', 'deck-nav.css'
+    'deck-detail.js', 'deck-detail.css', 'deck-nav.js', 'deck-nav.css',
+    'deck-pen.js', 'deck-pen.css'
   ],
 
   CAPTURE_HIDE_CSS: '.rp-overlay-ui { display:none !important } ' +
@@ -142,6 +143,7 @@ const ExportUtils = {
         '<link rel="stylesheet" href="' + commonPath + 'deck-overlay.css">\n' +
         '<link rel="stylesheet" href="' + commonPath + 'deck-detail.css">\n' +
         '<link rel="stylesheet" href="' + commonPath + 'deck-nav.css">\n' +
+        '<link rel="stylesheet" href="' + commonPath + 'deck-pen.css">\n' +
         '<style>\n' +
         '@page { size: 16in 9in landscape; margin: 0; }\n' +
         'html, body { margin: 0; padding: 0; background: #000; overflow: visible !important; display: block !important; height: auto !important; }\n' +
