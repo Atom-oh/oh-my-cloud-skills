@@ -322,9 +322,11 @@
       // Consumes (preventDefault + stopImmediatePropagation) and returns true for
       // Option chords of the key map and for plain Esc while pen mode is on.
       handleKey: function (event) {
-        if (event.isComposing || event.keyCode === 229) return false;
         if (isTypingTarget(event.target)) return false;
         if (event.ctrlKey || event.metaKey) return false;
+        // Match Alt chords by code before the IME guard: on macOS Option+U and
+        // Option+I are dead keys that Chromium may report as keyCode 229 or
+        // isComposing. preventDefault() also suppresses the dead-key mark.
         if (event.altKey) {
           var action = chordAction(event.code);
           if (!action) return false;
@@ -332,6 +334,7 @@
           if (!event.repeat) action();
           return true;
         }
+        if (event.isComposing || event.keyCode === 229) return false;
         if (event.key === 'Escape' && controller.active) {
           consume(event);
           setActive(false);
@@ -353,6 +356,8 @@
 
   // Binds a canvas in any window to the shared controller. getRect() returns the
   // slide box in that window's viewport pixels. isPrimary also binds the keys.
+  // Optional isInert() makes the canvas pointer-inert and refuse strokes while
+  // it returns true (the deck window passes overview mode).
   function attachSurface(o) {
     var controller = api.controller;
     if (!controller) throw new Error('DeckPen controller is not initialised');
@@ -376,7 +381,12 @@
       if (canvas.height !== h) canvas.height = h;
     }
 
+    function inert() {
+      return Boolean(o.isInert && o.isInert());
+    }
+
     function redraw() {
+      sync();
       layout();
       render(ctx, canvas.width, canvas.height, model.visible(controller.currentSlide()));
     }
@@ -404,13 +414,15 @@
     }
 
     function sync() {
-      canvas.classList.toggle('active', controller.active);
+      var off = inert();
+      if (off) finish();
+      canvas.classList.toggle('active', controller.active && !off);
       canvas.style.cursor = model.mode === 'eraser'
         ? 'cell' : cursorFor(model.effectiveColor(), model.size);
     }
 
     function onDown(event) {
-      if (!controller.active || pointerId !== null) return;
+      if (!controller.active || inert() || pointerId !== null) return;
       if (event.pointerType === 'mouse' && event.button !== 0) return;
       event.preventDefault();
       pointerId = event.pointerId;
@@ -527,14 +539,17 @@
       placeBadge();
     }
 
-    var surface = attachSurface({ doc: document, canvas: canvas, getRect: deckRect, isPrimary: true });
+    var surface = attachSurface({
+      doc: document, canvas: canvas, getRect: deckRect, isPrimary: true,
+      isInert: function () { return deck.classList.contains('overview-mode'); }
+    });
     controller.onChange(syncBadge);
     syncBadge();
-    // The deck scale lives in the deck's inline style.
+    // The deck scale lives in the deck's inline style; overview mode in its class.
     new MutationObserver(function () {
       surface.redraw();
       placeBadge();
-    }).observe(deck, { attributes: true, attributeFilter: ['style'] });
+    }).observe(deck, { attributes: true, attributeFilter: ['style', 'class'] });
     window.addEventListener('resize', placeBadge);
   }
 

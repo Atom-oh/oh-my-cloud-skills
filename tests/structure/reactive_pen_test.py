@@ -240,6 +240,55 @@ class DeckPenTests(DeckOverlayFixture):
         page.keyboard.press("Escape")
         self.assertTrue(self.state(page)["active"], "Esc inside an input is left to the input")
 
+    def test_option_chords_work_when_the_browser_reports_dead_key_229(self):
+        page = self.open_pen()
+        send = """([code, keyCode, key, alt, composing]) => {
+          const ev = new KeyboardEvent('keydown', { code, key, altKey: alt, isComposing: composing,
+            keyCode, bubbles: true, cancelable: true });
+          document.body.dispatchEvent(ev);
+          return ev.defaultPrevented;
+        }"""
+        self.assertTrue(page.evaluate(send, ["KeyU", 229, "Dead", True, False]))
+        self.assertEqual(self.state(page)["mode"], "eraser")
+        self.assertTrue(self.state(page)["active"])
+        self.assertTrue(page.evaluate(send, ["KeyI", 229, "Dead", True, True]))
+        self.assertEqual(self.state(page)["mode"], "highlighter")
+        # A plain key during IME composition is left alone, Esc included.
+        self.assertFalse(page.evaluate(send, ["Escape", 229, "Escape", False, True]))
+        self.assertFalse(page.evaluate(send, ["Escape", 229, "Escape", False, False]))
+        self.assertTrue(self.state(page)["active"])
+
+    def test_overview_mode_makes_the_canvas_inert(self):
+        page = self.open_pen()
+        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("o")
+        page.wait_for_timeout(200)
+        self.assertTrue(self.state(page)["active"])
+        thumb = page.evaluate("""() => {
+          const r = document.querySelector('.slide-deck > .slide:nth-child(3)').getBoundingClientRect();
+          return [r.left + r.width / 2, r.top + r.height / 2];
+        }""")
+        self.assertNotEqual(page.evaluate(
+            "([x, y]) => document.elementFromPoint(x, y).id", thumb), "rp-pen-canvas")
+        self.assertEqual(page.evaluate(
+            "() => getComputedStyle(document.getElementById('rp-pen-canvas')).pointerEvents"),
+            "none")
+        page.mouse.move(thumb[0], thumb[1])
+        page.mouse.down()
+        page.mouse.move(thumb[0] + 40, thumb[1] + 20, steps=5)
+        page.mouse.up()
+        self.assertEqual(page.evaluate(
+            "() => [0, 1, 2].map(i => DeckPen.controller.model.visible(i).length)"), [0, 0, 0])
+        # The press reached the thumbnail: its click handler leaves overview mode.
+        page.wait_for_timeout(450)
+        self.assertFalse(page.evaluate(
+            "() => document.querySelector('.slide-deck').classList.contains('overview-mode')"))
+        self.assertTrue(self.state(page)["active"])
+        self.stroke(page, [(0.3, 0.5), (0.6, 0.5)])
+        self.assertEqual(page.evaluate(
+            "() => DeckPen.controller.model.visible(deck.currentSlide).length"), 1)
+        self.assertGreater(self.inked(page), 0)
+
     def test_canvas_loop_idle(self):
         page = self.open_pen()
         page.evaluate("""() => {
