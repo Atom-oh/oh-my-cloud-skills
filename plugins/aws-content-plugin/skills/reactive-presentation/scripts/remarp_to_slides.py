@@ -4625,6 +4625,7 @@ class RemarpHTMLGenerator:
   <link rel="stylesheet" href="./common/deck-overlay.css">
   <link rel="stylesheet" href="./common/deck-detail.css">
   <link rel="stylesheet" href="./common/deck-nav.css">
+  <link rel="stylesheet" href="./common/deck-pen.css">
   {theme_override}
   {global_style_tag}
   {mermaid_script}
@@ -4638,6 +4639,7 @@ class RemarpHTMLGenerator:
 <script src="./common/deck-overlay.js"></script>
 <script src="./common/deck-detail.js"></script>
 <script src="./common/deck-nav.js"></script>
+<script src="./common/deck-pen.js"></script>
 <script src="./common/slide-framework.js"></script>
 <script src="./common/quiz-component.js"></script>
 <script src="./common/presenter-view.js"></script>
@@ -5023,8 +5025,8 @@ class RemarpProjectBuilder:
 
         # Copy core framework files
         for fname in ['design-tokens.css', 'theme.css', 'deck-overlay.css',
-                      'deck-detail.css', 'deck-nav.css', 'slide-framework.js',
-                      'animation-utils.js', 'deck-overlay.js', 'deck-detail.js', 'deck-nav.js',
+                      'deck-detail.css', 'deck-nav.css', 'deck-pen.css', 'slide-framework.js',
+                      'animation-utils.js', 'deck-overlay.js', 'deck-detail.js', 'deck-nav.js', 'deck-pen.js',
                       'quiz-component.js', 'presenter-view.js', 'export-utils.js']:
             src = assets_dir / fname
             if src.exists():

@@ -61,6 +61,12 @@ also hides the overlay in print and overview mode.
 Load `deck-overlay.css`, `deck-detail.css` and `deck-nav.css` in that order after
 `theme.css`.
 
+### deck-pen.css
+
+Styles the pen canvas and mode badge. Load it after
+`deck-nav.css`. Decks must link it directly: the presenter window only falls back to a
+href derived from the `deck-pen.js` URL when no link is present.
+
 ### deck-overlay.js
 
 `DeckOverlay` owns module registration, shared helpers, scale and theme updates,
@@ -84,11 +90,19 @@ collects slides. Speaker notes and framework clones are excluded from search.
 Either module works with only the core and its own stylesheet. Cross-module
 focus restoration and agenda suppression use the core's optional delegates.
 
+### deck-pen.js
+
+Registers the pen overlay (laser, pen, highlighter, eraser) on `DeckOverlay`. Load it
+after `deck-nav.js` and before `slide-framework.js`. Decks generated before it existed
+keep working: the framework treats a missing `DeckPen` as no pen. Configure with
+`new SlideFramework({ pen: { fadeMs: 3000, audienceBadge: true } })`; the resolved
+values are `framework.pen`. Keys and behavior: keyboard-shortcuts.md "Pen mode".
+
 ### slide-framework.js
 `SlideFramework` class — instantiate with `new SlideFramework({ onSlideChange: fn })`.
 
 Features:
-- Keyboard: ←→ (prev/next slide), Space/PageDown (next), PageUp (prev), Home/End, ↑↓ (step animation → cycle tabs/compare → fragment reveal on current slide; fallback to prev/next slide), F (fullscreen), N (speaker notes panel toggle), P (presenter view), Esc (exit fullscreen), 1-9 (jump to slide)
+- Keyboard: ←→ (prev/next slide), Space/PageDown (next), PageUp (prev), Home/End, ↑↓ (step animation → cycle tabs/compare → fragment reveal on current slide; fallback to prev/next slide), F (fullscreen), P (presenter view), Esc (exit fullscreen), Option+P (pen mode, see keyboard-shortcuts.md)
 - Touch: swipe left/right on mobile
 - URL hash: `#3` jumps to slide 3
 - Auto-creates: progress bar, slide counter, nav hint (scoped to `.slide-deck`)
@@ -243,6 +257,7 @@ Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, corr
   <link rel="stylesheet" href="../common/deck-overlay.css">
   <link rel="stylesheet" href="../common/deck-detail.css">
   <link rel="stylesheet" href="../common/deck-nav.css">
+  <link rel="stylesheet" href="../common/deck-pen.css">
   <style>/* block-specific overrides */</style>
 </head>
 <body>
@@ -267,6 +282,7 @@ Methods: `quizManager.reset(id)`, `.resetAll()`, `.getScore()` → `{total, corr
 <script src="../common/deck-overlay.js"></script>
 <script src="../common/deck-detail.js"></script>
 <script src="../common/deck-nav.js"></script>
+<script src="../common/deck-pen.js"></script>
 <script src="../common/slide-framework.js"></script>
 <script src="../common/quiz-component.js"></script>
 <script>
@@ -416,9 +432,11 @@ export function init(canvasId, slideIndex, deck) {
     ├── deck-overlay.css
     ├── deck-detail.css
     ├── deck-nav.css
+    ├── deck-pen.css
     ├── deck-overlay.js
     ├── deck-detail.js
     ├── deck-nav.js
+    ├── deck-pen.js
     ├── slide-framework.js
     ├── slide-renderer.js      # ← newly added
     ├── animation-utils.js

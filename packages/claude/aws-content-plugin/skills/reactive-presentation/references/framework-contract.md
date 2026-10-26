@@ -18,6 +18,7 @@ Everything here is derived from the actual code in `assets/` — if this documen
   <link rel="stylesheet" href="./common/deck-overlay.css">
   <link rel="stylesheet" href="./common/deck-detail.css">
   <link rel="stylesheet" href="./common/deck-nav.css">
+  <link rel="stylesheet" href="./common/deck-pen.css">
   <!-- PPTX 테마 추출 시에만: -->
   <link rel="stylesheet" href="./common/pptx-theme/theme-override.css">
 </head>
@@ -44,6 +45,7 @@ Everything here is derived from the actual code in `assets/` — if this documen
 <script src="./common/deck-overlay.js"></script>
 <script src="./common/deck-detail.js"></script>
 <script src="./common/deck-nav.js"></script>
+<script src="./common/deck-pen.js"></script>
 <script src="./common/slide-framework.js"></script>
 <script src="./common/quiz-component.js"></script>
 <script src="./common/presenter-view.js"></script>
@@ -82,6 +84,15 @@ The core owns shared helpers, scaling, theme updates and keyboard dispatch.
 agenda and search. Either module can be omitted with its stylesheet. Core plus
 detail works without navigation; core plus navigation works without detail.
 The public search, detail and index methods delegate to registered modules.
+
+Load `deck-pen.css` after `deck-nav.css` and `deck-pen.js` after `deck-nav.js`, before
+`slide-framework.js`, so the overlay core exists when the pen module registers. Link
+`deck-pen.css` directly: without it the presenter window derives a href from the
+script URL. A deck without `DeckPen` still works (no pen). The optional
+`new SlideFramework({ pen: { fadeMs: 3000, audienceBadge: true } })` option is read
+into `framework.pen`; `audienceBadge: false` hides the mode badge in the deck window
+only. Every pen key is an Option (Alt) chord, so plain keys keep their meaning; the key
+table is in keyboard-shortcuts.md "Pen mode".
 
 The compiler marks every slide in a multi-block build with `data-block` and
 `data-block-title`. A single-block or manual deck may omit those attributes;

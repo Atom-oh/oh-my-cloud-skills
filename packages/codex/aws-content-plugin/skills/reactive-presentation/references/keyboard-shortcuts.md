@@ -10,14 +10,55 @@ Shortcuts the generated slideshow supports at viewing time.
 | Cmd+K / Ctrl+K | Open slide search |
 | / | Open slide search when focus is not in a form control |
 | F | Toggle fullscreen |
-| N | Toggle speaker notes panel (bottom 20% overlay) |
 | P | Open presenter view (new window with notes, timer, slide sync) |
 | O | Toggle overview mode (slide grid thumbnails) |
 | S | Toggle slide sidebar (non-fullscreen only) |
-| B | Blackout screen |
-| Esc | Close search or detail / exit fullscreen / dismiss notes panel / exit overview |
+| Esc | Close search or detail / exit fullscreen / exit overview / leave pen mode while it is on (normal window only, see Pen mode) |
 | Home/End | First/Last slide |
-| 1-9 | Jump to slide number |
+
+There is no default binding for plain `N`, `B` or the digits `1`-`9`; they do nothing
+unless a deck remaps them to an existing action (verified against `getKeyAction()` in
+`slide-framework.js` and a search of the other runtime scripts).
+
+## Pen mode
+
+`deck-pen.js` draws ink over the slide. Every pen key is an Option (Alt) chord matched
+by QWERTY key position, so on Dvorak or AZERTY-like layouts press the key in that
+position (digits use the number row positions). Plain `P`, `O`, `S`, Space and the arrow keys
+keep their meaning.
+
+| Key | Action |
+|-----|--------|
+| Option+P | Laser: off -> on in Laser; on in another mode -> Laser; on in Laser -> off |
+| Option+O | Pen (stays on) |
+| Option+I | Highlighter (translucent, wide, stays on) |
+| Option+U | Eraser (removes whole strokes) |
+| Option+Y | Clear all ink on the current slide |
+| Option+1 / 2 / 3 | Thin / medium / thick |
+| Option+4 / 5 / 6 / 7 / 8 / 9 | Red / yellow / green / blue / white / black |
+| Esc | Leave pen mode (normal window only) |
+
+- Option+O, I and U each turn pen mode on when it is off.
+- Defaults are red, medium. The Highlighter defaults to yellow. Each of Laser, Pen and
+  Highlighter remembers its own colour; the eraser has none.
+- Esc leaves pen mode in a normal window, and while pen mode is on it wins over an open
+  agenda or detail panel. In browser fullscreen the browser handles Esc first and exits
+  fullscreen (Chrome does not deliver that keydown to the page), so use Option+P to
+  leave pen mode there; press it again from Pen, Highlighter or Eraser, which first
+  switches to Laser.
+- While pen mode is on the canvas takes all pointer input over the slide, so tabs, quiz
+  buttons, compare toggles and detail tooltips need pen mode off first.
+- Laser strokes fade after 3 seconds (`pen.fadeMs`). Pen and highlighter ink stays per
+  slide for the session and is never saved.
+- Ink is mirrored between the deck window and the presenter window popup (opened with
+  `P`): ink drawn in the presenter's current-slide preview shows on the deck window at
+  the same slide position. Two separate deck windows or tabs sync only the slide position.
+- Linux caveat (not verified here): Chrome or Firefox on Linux may reserve Alt+1-9 for
+  tab switching, so the thickness and colour keys may not reach the page there.
+
+Configure with `new SlideFramework({ pen: { fadeMs: 3000, audienceBadge: true } })`.
+`audienceBadge: false` hides the mode badge in the deck window only; the presenter
+window always shows it.
 
 ## Deck Overlay Navigation
 

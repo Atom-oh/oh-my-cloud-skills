@@ -27,6 +27,7 @@ HEAD = """<!DOCTYPE html>
 <link rel="stylesheet" href="./common/deck-overlay.css">
 <link rel="stylesheet" href="./common/deck-detail.css">
 <link rel="stylesheet" href="./common/deck-nav.css">
+<link rel="stylesheet" href="./common/deck-pen.css">
 </head>
 <body>
 """
@@ -34,6 +35,7 @@ SCRIPTS = """<script src="./common/animation-utils.js"></script>
 <script src="./common/deck-overlay.js"></script>
 <script src="./common/deck-detail.js"></script>
 <script src="./common/deck-nav.js"></script>
+<script src="./common/deck-pen.js"></script>
 <script src="./common/slide-framework.js"></script>
 <script src="./common/presenter-view.js"></script>
 <script>const deck = new SlideFramework({ %s });</script>
@@ -115,15 +117,17 @@ class DeckOverlayFixture(unittest.TestCase):
         common = root / "common"
         common.mkdir()
         head, scripts = HEAD, SCRIPTS
-        for module in ("detail", "nav"):
+        for module in ("detail", "nav", "pen"):
             if module not in cls.overlay_modules:
                 head = head.replace(f'<link rel="stylesheet" href="./common/deck-{module}.css">\n', "")
                 scripts = scripts.replace(f'<script src="./common/deck-{module}.js"></script>\n', "")
         for f in ASSETS.iterdir():
-            if f.stem in ("deck-detail", "deck-nav") and f.stem[5:] not in cls.overlay_modules:
+            if f.stem in ("deck-detail", "deck-nav", "deck-pen") and f.stem[5:] not in cls.overlay_modules:
                 continue
             if f.suffix in (".js", ".css"):
                 shutil.copy(f, common / f.name)
+        # Subclasses write extra pages with the same module selection.
+        cls.root, cls.page_head, cls.page_scripts = root, head, scripts
         (root / "logo.svg").write_text(LOGO, encoding="utf-8")
         (root / "a.html").write_text(head + SLIDES_A + scripts % OPTS_A, encoding="utf-8")
         (root / "a-nofooter.html").write_text(

@@ -1,0 +1,49 @@
+/**
+ * Reactive Presentation pen mode: ink canvas and mode badge.
+ * Both are body-level overlay roots (.rp-overlay-ui), never inside .slide.
+ * Above the slides, below the detail panel (--z-modal) and tooltip (--z-toast).
+ */
+
+.rp-pen-canvas {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: var(--z-overlay);
+  pointer-events: none;
+  touch-action: none;
+}
+
+.rp-pen-canvas.active {
+  pointer-events: auto;
+}
+
+.rp-pen-badge {
+  position: fixed;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-2);
+  color: var(--on-surface);
+  font-size: calc(var(--rp-ui-rem, 1rem) * .833);
+  line-height: var(--leading-normal);
+  pointer-events: none;
+  user-select: none;
+}
+
+.rp-pen-badge[hidden],
+.rp-pen-swatch[hidden] {
+  display: none;
+}
+
+.rp-pen-swatch {
+  width: .9em;
+  height: .9em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+}

@@ -106,7 +106,7 @@ python3 {skill-dir}/scripts/measure_deck.py <deck> --viewports 1920x1080,1280x72
 ```
 `measure_deck.py` renders in headless Chromium and reports OVERFLOW · OVERLAP · CLIPPED_TEXT · LOW_CONTRAST · RATIO_DRIFT · BROKEN_IMAGE · UNDERFILL · MIN_FONT · FIT_OVERFLOW · DECK_OFFSCREEN. Bar: **no FAIL; UNDERFILL clean**. Thresholds and fixes: **authoring-rules.md §1 "Measured density gates"**.
 
-> **Screenshot verification (required)**: use Playwright MCP to capture all interactive/Canvas slides at **FHD 1920×1080** (primary resolution) + **4K 3840×2160**. Check: text legibility, canvas proportions, no overflow, controls visible. Capture after interactions (tabs/sliders/buttons). **For Canvas step slides, walk through all steps with ArrowDown/Up, capturing each step** (check for overlap, alignment, legibility). Verify scaling with N (notes) and F (fullscreen). When reviewing captures, apply the **design self-critique: [references/design-direction.md](references/design-direction.md) §6 restraint checklist**.
+> **Screenshot verification (required)**: use Playwright MCP to capture all interactive/Canvas slides at **FHD 1920×1080** (primary resolution) + **4K 3840×2160**. Check: text legibility, canvas proportions, no overflow, controls visible. Capture after interactions (tabs/sliders/buttons). **For Canvas step slides, walk through all steps with ArrowDown/Up, capturing each step** (check for overlap, alignment, legibility). Verify scaling with F (fullscreen). When reviewing captures, apply the **design self-critique: [references/design-direction.md](references/design-direction.md) §6 restraint checklist**.
 > Scaling: fixed 1920×1080 design canvas + `transform: scale(min(vw/1920, vh/1080))` → consistent pixels across FHD/4K.
 
 ### Phase 8.5 — PPTX Export (on request)
@@ -130,7 +130,7 @@ GitHub Pages: Settings → Pages → main / root.
 ## Authoring Rules & Patterns (detailed — read while authoring/validating)
 - **[references/authoring-rules.md](references/authoring-rules.md)** — Validation rules (§1) · Forbidden AI-tells (§2) · Slide Title Voice (§3) · Interactive patterns + tab templates + color tokens (§4) · Slide Type decisions + Canvas vs html/diagram (§5) · HTML Architecture flow patterns (§6)
 - Before using `:::canvas`, always read **[references/canvas-authoring-guide.md](references/canvas-authoring-guide.md)** (DSL syntax, required coordinate formulas, fragment ordering). `validate` backstops this with CANVAS_OVERLAP.
-- Viewer keyboard shortcuts (←→ Space ↑↓ F N P O S B Esc 1-9): [references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
+- Viewer keyboard shortcuts (←→ Space ↑↓ F P O S Esc; pen mode on Option+P, see its Pen mode section): [references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
 
 ## Quality Assurance
 - **Copy style check**: before completion, inspect authored text in Remarp and the built deck, including HTML/Canvas labels, quizzes, footers and speaker notes, for the prohibited punctuation in authoring-rules.md §2.
