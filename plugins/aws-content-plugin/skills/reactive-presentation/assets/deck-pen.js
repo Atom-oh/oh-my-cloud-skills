@@ -59,7 +59,9 @@
         }
       },
 
+      // Returns the new stroke id, or null in eraser mode (no stroke is created).
       begin: function (slide, x, y) {
+        if (this.mode === 'eraser') return null;
         var color = this.mode === 'highlighter' && !colorChosen
           ? HIGHLIGHTER_DEFAULT_COLOR : this.colorIndex;
         current = {

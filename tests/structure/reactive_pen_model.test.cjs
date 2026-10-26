@@ -140,3 +140,12 @@ test('test_render_scales_width_with_canvas', () => {
   assert.equal(widths[0], 8);
   assert.equal(widths[widths.length - 1], 4);
 });
+
+test('test_begin_in_eraser_mode_creates_no_stroke', () => {
+  const { model } = setup(3000);
+  model.setMode('eraser');
+  assert.equal(model.begin(0, 0.1, 0.1), null);
+  assert.doesNotThrow(() => { model.extend(0.2, 0.2); model.end(); });
+  assert.equal(model.visible(0).length, 0);
+  assert.equal(model.animating(0), false);
+});
