@@ -99,6 +99,7 @@ BOX_SLIDE = """<div class="slide-body">
       <div id="out">none</div>
       <a id="link" href="#elsewhere">A link</a>
       <button id="off" disabled>Off</button>
+      <button id="go">Next slide</button>
       <p id="txt">idle</p><p id="hid">shown</p></div></div>"""
 
 BOX_SCRIPT = """<script>
@@ -111,6 +112,7 @@ boxRoot.addEventListener('click', e => {
   boxRoot.querySelectorAll('.box').forEach(x => x.classList.toggle('sel', x === b));
   boxRoot.querySelector('#out').innerHTML = '<b>' + b.dataset.t + '</b>';
 });
+document.getElementById('go').addEventListener('click', () => deck.next());
 document.getElementById('off').addEventListener('click', () => { window.__offClicks = (window.__offClicks || 0) + 1; });
 </script>
 </body>"""
@@ -1051,6 +1053,33 @@ class PresenterPreviewMirrorTests(_PresenterBase):
         self.page.wait_for_function(
             "() => document.querySelector('.slide-deck #out').textContent === 'Gamma detail'", timeout=3000)
         self.assertEqual(self.live_state()["clicks"], 2)
+        self.assertEqual(self.errors, [])
+
+    def test_deferred_render_does_not_repaint_a_previous_slide_after_a_click_navigates(self):
+        # Record the title of every preview render in the presenter window.
+        self.pv.evaluate("""() => {
+          window.__titles = [];
+          const c = document.getElementById('p-current');
+          new MutationObserver(() => {
+            const h = c.querySelector('.slide h2');
+            if (h) window.__titles.push(h.textContent);
+          }).observe(c, { childList: true });
+        }""")
+        box = self.pv.evaluate(BOX, "#p-current #go")
+        self.pv.mouse.move(box["x"] + box["w"] / 2, box["y"] + box["h"] / 2)
+        self.pv.mouse.down()
+        # A live mutation during the press requests a (deferred) preview render.
+        self.page.evaluate("() => { document.querySelector('.slide-deck #txt').textContent = 'pressed'; }")
+        self.pv.wait_for_timeout(250)
+        self.pv.mouse.up()
+        self.page.wait_for_function("() => deck.currentSlide === 1 && !deck.transitioning", timeout=5000)
+        self.pv.wait_for_timeout(400)
+        titles = self.pv.evaluate("() => window.__titles")
+        self.assertIn("Routing choices", titles)
+        after = titles[titles.index("Routing choices"):]
+        self.assertNotIn("First slide", after, f"the previous slide was repainted: {titles}")
+        self.assertEqual(self.pv.evaluate(
+            "() => document.querySelector('#p-current .slide h2').textContent"), "Routing choices")
         self.assertEqual(self.errors, [])
 
     def test_press_then_slide_change_then_release_forwards_nothing(self):
