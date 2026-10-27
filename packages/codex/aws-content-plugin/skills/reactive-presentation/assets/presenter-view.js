@@ -741,6 +741,9 @@ ${styleSheets}
         return;
       }
       if (!this.presenterWindow || this.presenterWindow.closed) return;
+      // The click may have navigated and re-rendered the preview already; a
+      // render deferred for another slide would repaint the previous one.
+      if (args.slide !== this.framework.slides[this.framework.currentSlide]) return;
       const container = this.presenterWindow.document.getElementById('p-current');
       if (container === args.container) this._renderSlidePreview(args.doc, container, args.slide, args.revealAll);
     }, 0);

@@ -1,10 +1,10 @@
 {
   "host": "claude",
   "plugin": "aws-content-plugin",
-  "version": "3.0.5",
+  "version": "3.0.6",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "6778b35c4b7549a70098da70c9134b28f04be78ee63655cda5b27bc4acffac6a",
+      "sha256": "179f640fa8a40bc461005544714333e535f9254cfce5d7edd2121a5cf9535b11",
       "executable": false
     },
     "CLAUDE.md": {
@@ -516,7 +516,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
-      "sha256": "8e0f118fbde074773349393899f507c7daa711c2f43c64d86af2f1a46089c2fb",
+      "sha256": "c89401398d4e2e96be0dcf311be9f9ced9762887572d2ceccf3ca0c2d8d58875",
       "executable": false
     },
     "skills/reactive-presentation/assets/quiz-component.js": {
@@ -17340,7 +17340,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/keyboard-shortcuts.md": {
-      "sha256": "d6fc2459f746b8a1578cd1fdee55f6345f21b236a02544b3a6b1d3bf5ed623c5",
+      "sha256": "3edbd6029798fa5dcb11ceffc2ba353d5e9f70ad20329ac40f40eeb6116c786c",
       "executable": false
     },
     "skills/reactive-presentation/references/marp-format-guide.md": {

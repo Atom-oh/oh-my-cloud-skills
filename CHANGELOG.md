@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.6] - 2026-10-27
+
 ### Added
 
 - Add pen mode to reactive-presentation decks: a laser, pen, highlighter and eraser
@@ -34,8 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Option+4-9 do nothing in this mode. The lens position is shared, so the lens is
   mirrored between the audience window and the presenter window's current-slide
   preview; closing the presenter window leaves the deck lens working. In Magnifier mode
-  clicks and hover do not reach the slide; leave it with Esc or Option+P/O/I/U to click
-  boxes. Limits: only the slide is magnified (not the footer, logo or progress bar); pen
+  clicks and hover do not reach the slide, and Option+P/O/I/U only change the mode
+  with pen mode still on; to click boxes, turn pen mode off with Esc or by pressing
+  Option+P twice (Laser, then off). Limits: only the slide is magnified (not the footer, logo or progress bar); pen
   ink is copied as a bitmap and looks softer at 3x/4x; canvas animations are copied each
   frame, iframes reload and videos show their poster in the lens; the lens refreshes on
   slide, fragment, `class` and resize changes, so a change that only touches text,
@@ -747,7 +750,8 @@ migration of configurations that selected it. All eight plugins share this versi
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.5...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.6...HEAD
+[3.0.6]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.5...v3.0.6
 [3.0.5]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.4...v3.0.5
 [3.0.4]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.3...v3.0.4
 [3.0.3]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.0...v3.0.3

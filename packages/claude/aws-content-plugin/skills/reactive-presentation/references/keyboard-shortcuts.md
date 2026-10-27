@@ -73,8 +73,10 @@ keep their meaning.
 - The lens hides when the mouse leaves the slide, on a mode change, on a slide change
   (until the mouse moves again) and in overview mode.
 - In Magnifier mode clicks and hover do not reach the slide: no stroke, no slide
-  change, no tooltip. To click a tab, quiz button or detail term, leave the mode with
-  Esc or switch with Option+P, O, I or U.
+  change, no tooltip. Option+P, O, I and U only change the mode and keep pen mode on,
+  and the canvas still takes all pointer input. Clicks and hover reach the slide only
+  after pen mode is off: press Esc (normal window) or press Option+P twice (the first
+  press switches to Laser, the second turns pen mode off).
 
 Magnifier limits:
 
