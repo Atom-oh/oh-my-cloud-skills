@@ -243,4 +243,63 @@ describe('detail model', () => {
     expect(d.get('A')!.task).toBe('API_TOKEN=*** go')
     expect(d.get('A')!.activity.length).toBe(1)
   })
+
+  test('test_redact_is_linear_on_hostile_input', () => {
+    const inputs = ['a.'.repeat(100000), 'token'.repeat(40000), '='.repeat(200000), 'Bearer '.repeat(40000), '--token "'.repeat(20000), 'https://'.repeat(25000)]
+    for (const input of inputs) {
+      const t0 = Date.now()
+      redact(input)
+      summarizeText(input)
+      expect(Date.now() - t0).toBeLessThan(500)
+    }
+    const d = new Map<string, AgentDetail>()
+    const t1 = Date.now()
+    recordTask(d, 'A', { prompt: 'token'.repeat(40000) })
+    expect(Date.now() - t1).toBeLessThan(500)
+  })
+
+  test('test_summaries_redact_more_credential_forms', () => {
+    expect(redact('run --token "a b" go')).toBe('run --token *** go')
+    expect(redact('run --password "hunter2" go')).toBe('run --password *** go')
+    expect(redact("run --password='x y' go")).toBe('run --password *** go')
+    expect(redact('curl -u user:pass https://x')).toBe('curl -u *** https://x')
+    expect(redact('-u user:pass')).toBe('-u ***')
+    expect(redact('git clone https://user:pass@host/x')).toBe('git clone https://***@host/x')
+    expect(redact('{"password":"hunter2"}')).toBe('{"password":"***"}')
+    expect(redact('{"password": "x"}')).toBe('{"password": "***"}')
+    expect(redact('{"api_key": "k", "name": "n"}')).toBe('{"api_key": "***", "name": "n"}')
+    expect(redact('X-Api-Key: abc123')).toBe('X-Api-Key: ***')
+    expect(redact('curl --header "X-Api-Key: abc123" u')).toBe('curl --header "X-Api-Key: ***" u')
+    expect(redact('x-auth-token: z')).toBe('x-auth-token: ***')
+    expect(redact('id AKIAABCDEFGHIJKLMNOP and ASIAABCDEFGHIJKLMNOP')).toBe('id *** and ***')
+  })
+
+  test('test_long_runs_mask_secrets_but_not_paths', () => {
+    expect(redact('see src/components/dashboard/SidebarNavigation now')).toBe('see src/components/dashboard/SidebarNavigation now')
+    expect(redact('x a1b2c3d4e5f60718293a4b5c6d7e8f9012345678 y')).toBe('x *** y')
+    expect(redact('x QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo+MTIzNDU2Nw== y')).toBe('x *** y')
+    expect(redact('x QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo+MTIzNDU2Nw y')).toBe('x *** y')
+  })
+
+  test('summarizeTool reads the top level or a nested input', () => {
+    expect(summarizeTool('Grep', { pattern: 'p' })).toBe('p')
+    expect(summarizeTool('Grep', { input: { pattern: 'q' } })).toBe('q')
+    expect(summarizeTool('Bash', { command: 'top', input: { command: 'inner' } })).toBe('top')
+    expect(summarizeTool('Bash', { input: 5 })).toBe('Bash')
+  })
+
+  test('an active agent survives eviction while an idle one is dropped', () => {
+    const d = new Map<string, AgentDetail>()
+    recordActivity(d, 'idle', { tool: 'Bash', summary: 's', atMs: 0 })
+    recordActivity(d, 'active', { tool: 'Bash', summary: 's', atMs: 0 })
+    for (let i = 0; i < 250; i++) {
+      recordActivity(d, 'g' + i, { tool: 'Bash', summary: 's', atMs: i })
+      if (i % 2 === 0) recordTask(d, 'active', { prompt: 'p' })
+      else recordActivity(d, 'active', { tool: 'Bash', summary: 's', atMs: i })
+    }
+    expect(d.size).toBe(200)
+    expect(d.get('active')?.task).toBe('p')
+    expect(d.get('active')!.activity.length).toBe(6)
+    expect(d.has('idle')).toBe(false)
+  })
 })
