@@ -442,4 +442,20 @@ describe('terminal cells', () => {
       for (const t of texts(map)) expect(LONE_SURROGATE.test(t)).toBe(false)
     }
   })
+
+  test('test_wrap_shows_the_ellipsis_when_the_last_piece_fills_the_width', () => {
+    // At 60 columns the task text has 50 cells: each run below splits into pieces that fill it exactly.
+    for (const task of ['가'.repeat(200), 'x'.repeat(300)]) {
+      const ds = new Map<string, AgentDetail>([['A', { task, taskFirstLine: 'short', activity: [] }]])
+      const map = buildMap(els, buildTree([row({ id: 'A', name: 'scout' })]), [], ds, [], { ...mapBase, columns: 60 })
+      assertFitsCells(map, 60)
+      const lines = texts(cardOf(map, 'scout')!)
+      const at = lines.findIndex((t) => t.startsWith('task: '))
+      expect(cellWidth(lines[at].slice('task: '.length))).toBe(50)
+      const second = lines[at + 1]
+      expect(second.startsWith('      ')).toBe(true)
+      expect(second.endsWith('…')).toBe(true)
+      expect(cellWidth(second.trim())).toBeLessThanOrEqual(50)
+    }
+  })
 })

@@ -61,6 +61,11 @@ export function cellWidth(text: string): number {
 export function clipCells(text: string, max: number): string {
   const one = text.replace(/\s+/g, ' ').trim()
   if (cellWidth(one) <= max) return one
+  return cutCells(one, max)
+}
+
+/** Cuts one line to at most `max - 1` cells by code point and always ends it with `…`. */
+function cutCells(one: string, max: number): string {
   if (max <= 0) return ''
   let out = ''
   let used = 0
@@ -253,7 +258,8 @@ function wrapLines(text: string, width: number, max: number): string[] {
     const last = lines[lines.length - 1]
     while (last.length > 1 && cellWidth(last.join(' ')) + 1 > width) last.pop()
     const joined = last.join(' ')
-    lines[lines.length - 1] = [cellWidth(joined) + 1 <= width ? joined + '…' : clipCells(joined, width)]
+    // A single piece that fills the width exactly would fit unclipped, so cut it to make room.
+    lines[lines.length - 1] = [cellWidth(joined) + 1 <= width ? joined + '…' : cutCells(joined, width)]
   }
   return lines.map((l) => l.join(' '))
 }
