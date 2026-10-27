@@ -108,7 +108,7 @@ keyboard-shortcuts.md "Pen mode" and "Magnifier".
 `SlideFramework` class — instantiate with `new SlideFramework({ onSlideChange: fn })`.
 
 Features:
-- Keyboard: ←→ (prev/next slide), Space/PageDown (next), PageUp (prev), Home/End, ↑↓ (step animation → cycle tabs/compare → fragment reveal on current slide; fallback to prev/next slide), F (fullscreen), P (presenter view), Esc (exit fullscreen), Option+P (pen mode, see keyboard-shortcuts.md)
+- Keyboard: ←→ (prev/next slide), Space/PageDown (next), PageUp (prev), Home/End, ↑↓ (step animation → cycle tabs/compare → fragment reveal on current slide; fallback to prev/next slide), F (fullscreen), P (presenter view), Esc (leave pen mode, close overview, exit fullscreen; details in keyboard-shortcuts.md), Option+P (pen mode, see keyboard-shortcuts.md)
 - Touch: swipe left/right on mobile
 - URL hash: `#3` jumps to slide 3
 - Auto-creates: progress bar, slide counter, nav hint (scoped to `.slide-deck`)

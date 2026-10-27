@@ -48,10 +48,14 @@ keep their meaning.
   (Keyboard Lock): the first Esc leaves pen mode (or closes overview), the next Esc
   exits fullscreen, and holding Esc exits fullscreen at any time. Keyboard Lock needs
   a secure context (https or localhost), so a deck opened from `file://` may not get
-  it. In Safari, Firefox, and fullscreen entered from the browser menu or with
-  Cmd+Ctrl+F or F11, the browser takes Esc first and exits fullscreen, so use Option+P
-  to leave pen mode there; press it again from Pen, Highlighter, Eraser or Magnifier,
-  which first switches to Laser.
+  it. While focus is in a form control (a range input, a text field, an embedded
+  iframe), Esc does nothing in locked fullscreen; hold Esc, or click the slide
+  background first, to exit. Fullscreen entered from the browser menu or with
+  Cmd+Ctrl+F or F11 is not changed by the lock; whether Esc reaches the page there
+  depends on the browser (not verified). In Safari and Firefox, Esc in
+  Fullscreen-API fullscreen exits fullscreen before the page sees it. Option+P always
+  leaves pen mode; press it again from Pen, Highlighter, Eraser or Magnifier, which
+  first switches to Laser.
 - While pen mode is on the canvas takes all pointer input over the slide, so tabs, quiz
   buttons, compare toggles and detail tooltips need pen mode off first.
 - Laser strokes fade after 3 seconds (`pen.fadeMs`). Pen and highlighter ink stays per

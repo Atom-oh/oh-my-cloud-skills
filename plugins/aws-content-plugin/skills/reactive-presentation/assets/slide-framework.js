@@ -566,6 +566,8 @@ class SlideFramework {
           if (!document.fullscreenElement) this.toggleSidebar();
           break;
         case 'escape':
+          // A held Esc repeats keydown; only the first press acts.
+          if (e.repeat) break;
           if (this.overviewMode) {
             this.toggleOverview();
           } else if (document.fullscreenElement) {

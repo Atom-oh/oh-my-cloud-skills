@@ -27,6 +27,7 @@ Object.defineProperty(navigator, 'keyboard', { configurable: true, value: {
 STUB_ABSENT = "Object.defineProperty(navigator, 'keyboard', { configurable: true, value: undefined });"
 
 ESC = "() => document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}))"
+ESC_REPEAT = "() => document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, repeat: true}))"
 FS = "() => !!document.fullscreenElement"
 KB = "() => window.__kb"
 
@@ -99,6 +100,34 @@ class DeckFullscreenLockTests(DeckOverlayFixture):
         page.evaluate(ESC)
         page.wait_for_function("() => !document.fullscreenElement")
         self.assertFalse(page.evaluate(FS))
+
+    def test_held_esc_does_not_exit_fullscreen_after_leaving_pen_mode(self):
+        page = self.open_stub(STUB_OK)
+        self.toggle_fs(page, True)
+        page.keyboard.press("Alt+KeyO")
+        self.assertTrue(page.evaluate("() => DeckPen.controller.active"))
+        page.evaluate(ESC)
+        for _ in range(4):
+            page.evaluate(ESC_REPEAT)
+        page.wait_for_timeout(100)
+        self.assertFalse(page.evaluate("() => DeckPen.controller.active"))
+        self.assertTrue(page.evaluate(FS))
+        page.evaluate(ESC)
+        page.wait_for_function("() => !document.fullscreenElement")
+
+    def test_held_esc_repeats_are_consumed_while_pen_is_on(self):
+        page = self.open_stub(STUB_OK)
+        self.toggle_fs(page, True)
+        page.keyboard.press("Alt+KeyO")
+        # A repeat Escape with pen on must not turn pen off or exit fullscreen.
+        prevented = page.evaluate("""() => {
+          const e = new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true, repeat: true});
+          document.dispatchEvent(e);
+          return e.defaultPrevented;
+        }""")
+        self.assertTrue(prevented)
+        self.assertTrue(page.evaluate("() => DeckPen.controller.active"))
+        self.assertTrue(page.evaluate(FS))
 
     def test_esc_closes_overview_before_leaving_fullscreen(self):
         page = self.open_stub(STUB_OK)

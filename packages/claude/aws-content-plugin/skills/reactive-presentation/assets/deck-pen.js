@@ -418,7 +418,9 @@
         if (event.isComposing || event.keyCode === 229) return false;
         if (event.key === 'Escape' && controller.active) {
           consume(event);
-          setActive(false);
+          // Held Esc: act once, so the repeats neither re-run this nor reach the
+          // framework's fullscreen exit.
+          if (!event.repeat) setActive(false);
           return true;
         }
         return false;
