@@ -15,7 +15,9 @@ agents of the running session: who works, who delegated to whom, and who is wait
   text they keep stay in memory only: never logged, written or sent, pruned with the
   agent list, and not recorded at all with `userConfig.showDelegation` off. Redaction
   and truncation live in `hooks/lib/model.ts` (`redact`, `summarizeText`,
-  `summarizeTool`, `recordTask`); store text only through those.
+  `summarizeTool`, `recordTask`); store text only through those. Text bound for the
+  screen or a notice passes `stripControls` (model.ts), applied in `clip`, `clipCells`,
+  `wrapLines`, the map's `text` helper, `labelOf` and the listed rows in `toRows`.
 - A wait is an inference (a foreground child still running, or a message with no
   reply yet), never a fact the engine reports. Every surface labels it `est.`. A
   teammate in its own terminal pane has no loop here; its status may be stale.

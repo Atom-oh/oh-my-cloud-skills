@@ -459,3 +459,39 @@ describe('terminal cells', () => {
     }
   })
 })
+
+describe('control characters', () => {
+  const CONTROL = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/
+  const esc = (s: string) => '\x1b[31m' + s + '\x1b]0;pwned\x07\u009b2J\u202E'
+
+  test('test_view_never_draws_control_characters', () => {
+    const rs = [
+      row({ id: 'A', name: esc('scout'), type: esc('Explore'), description: esc('desc'), sinceMs: 4000 }),
+      row({ id: 'B', name: esc('kid'), parentId: 'A', background: false, description: esc('kid desc'), sinceMs: 5000 }),
+    ]
+    const ds = new Map<string, AgentDetail>([
+      ['main', { activity: [{ tool: esc('Bash'), summary: esc('npm test'), atMs: 9000 }] }],
+      ['A', { task: esc('the task\nline two'), taskFirstLine: esc('the task'), description: esc('d'), activity: [
+        { tool: 'Read', summary: esc('a/b.ts'), atMs: 8000 },
+        { tool: esc('Grep'), summary: esc('pattern'), atMs: 9000 },
+      ] }],
+    ])
+    const sends: SendRecord[] = [
+      { fromId: null, to: esc('scout'), atMs: 9000, text: esc('hello') },
+      { fromId: 'A', to: esc('nobody'), atMs: 9100, text: esc('reply') },
+    ]
+    const ws = inferWaits(rs, [], NOW)
+    for (const view of ['map', 'list'] as const) {
+      for (const columns of [60, 80]) {
+        const pane = buildPane(els, buildTree(rs), ws, { ...mapBase, view, columns, maxRows: 200 }, ds, sends)
+        const drawn = texts(pane)
+        expect(drawn.length).toBeGreaterThan(3)
+        for (const t of drawn) {
+          if (CONTROL.test(t)) throw new Error('control character in ' + JSON.stringify(t))
+        }
+        for (const b of walk(pane).filter((e) => e.type === 'Button')) expect(CONTROL.test(b.label)).toBe(false)
+      }
+    }
+    expect(clipCells(esc('abc'), 80)).toBe('abc')
+  })
+})

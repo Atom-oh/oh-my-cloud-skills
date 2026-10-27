@@ -7,12 +7,14 @@
 import {
   DEFAULT_POLICY,
   buildTree,
+  delegationOn,
   diffNotices,
   inferWaits,
   pruneDetails,
   recordActivity,
   recordTask,
   resolveModel,
+  stripControls,
   summarizeText,
   summarizeTool,
   summaryLine,
@@ -21,6 +23,7 @@ import type { AgentDetail, AgentRow, ModelPolicy, SendRecord, WaitEdge } from '.
 import { buildBand, buildPane } from './lib/view.ts'
 
 const MAX_SENDS = 200
+const DESCRIPTION_MAX = 200
 const REFRESH_MS = 5_000
 
 // Module state
@@ -53,8 +56,9 @@ function policyFrom(options: any): ModelPolicy {
   return { enabled, map }
 }
 
+// Fails closed: on only when unset, `true` or `"true"`.
 function showDelegationFrom(options: any): boolean {
-  return options?.showDelegation !== false
+  return delegationOn(options?.showDelegation)
 }
 
 function longWaitFrom(options: any): number {
@@ -84,11 +88,13 @@ function toRows(list: any[], now: number): AgentRow[] {
     const sinceMs = was !== undefined && was.status === a.status ? was.sinceMs : now
     firstSeen.set(a.id, { status: a.status, sinceMs })
     const info = spawnInfo.get(a.id)
+    // Listed fields reach the screen and notices: strip control characters, and redact
+    // and clip the description as a delegated task is.
     out.push({
       id: a.id,
-      name: a.name,
-      type: a.type,
-      description: a.description,
+      name: typeof a.name === 'string' ? stripControls(a.name) : undefined,
+      type: stripControls(String(a.type ?? '')),
+      description: summarizeText(String(a.description ?? ''), DESCRIPTION_MAX),
       status: a.status,
       parentId: a.parentId,
       teammateId: a.teammateId,
@@ -212,7 +218,7 @@ export function register(on, options) {
     const out = await next(model !== undefined && model !== e.model ? { ...e, model } : e)
     if (out?.agentId !== undefined) {
       spawnInfo.set(out.agentId, { background: e.background, runId: e.workflow?.runId })
-      if (showDelegation) {
+      if (showDelegation && watching) {
         try {
           recordTask(details, out.agentId, {
             prompt: typeof e.prompt === 'string' ? e.prompt : undefined,
@@ -226,17 +232,16 @@ export function register(on, options) {
     return out
   }).catch(($, e, next) => next(e))
 
-  // Observer only: records a one-line summary of the call after it ran and returns the
-  // chain's result unchanged.
-  on('tool.call', async ($, e, next) => {
-    const out = await next(e)
-    if (showDelegation) {
+  // Observer only: records a one-line summary of the call as it starts (so the pane shows
+  // what runs now, `atMs` is the start), never touches `e`, and returns the chain's result.
+  on('tool.call', ($, e, next) => {
+    if (showDelegation && watching) {
       try {
         const tool = String(e.tool)
         recordActivity(details, e.agentId ?? 'main', { tool, summary: summarizeTool(tool, e), atMs: Date.now() })
       } catch {}
     }
-    return out
+    return next(e)
   }).catch(($, e, next) => next(e))
 
   // Observer only: returns whatever the chain produced.
@@ -244,7 +249,7 @@ export function register(on, options) {
     const out = await next(e)
     if (out?.isDelivered === true) {
       let text: string | undefined
-      if (showDelegation) {
+      if (showDelegation && watching) {
         try {
           text = typeof e.text === 'string' ? summarizeText(e.text) : undefined
         } catch {}

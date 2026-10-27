@@ -1,6 +1,6 @@
 import { expect, test, describe } from 'claude-code/testing'
 import { row, rows } from './fixtures/agents.ts'
-import { DEFAULT_POLICY, buildTree, clip, diffNotices, inferWaits, pruneDetails, recordActivity, recordTask, redact, resolveModel, summarizeText, summarizeTool, summaryLine } from '../hooks/lib/model.ts'
+import { DEFAULT_POLICY, buildTree, clip, diffNotices, inferWaits, delegationOn, labelOf, pruneDetails, recordActivity, recordTask, redact, resolveModel, stripControls, summarizeText, summarizeTool, summaryLine } from '../hooks/lib/model.ts'
 import type { AgentDetail, TreeNode } from '../hooks/lib/model.ts'
 
 const NOW = 10_000
@@ -245,7 +245,7 @@ describe('detail model', () => {
   })
 
   test('test_redact_is_linear_on_hostile_input', () => {
-    const inputs = ['a.'.repeat(100000), 'token'.repeat(40000), '='.repeat(200000), 'Bearer '.repeat(40000), '--token "'.repeat(20000), 'https://'.repeat(25000)]
+    const inputs = ['a.'.repeat(100000), 'token'.repeat(40000), '='.repeat(200000), 'Bearer '.repeat(40000), '--token "'.repeat(20000), 'https://'.repeat(25000), 'https://' + 'a@'.repeat(60000)]
     for (const input of inputs) {
       const t0 = Date.now()
       redact(input)
@@ -265,6 +265,7 @@ describe('detail model', () => {
     expect(redact('curl -u user:pass https://x')).toBe('curl -u *** https://x')
     expect(redact('-u user:pass')).toBe('-u ***')
     expect(redact('git clone https://user:pass@host/x')).toBe('git clone https://***@host/x')
+    expect(redact('git clone https://u:p@ss@host/x')).toBe('git clone https://***@host/x')
     expect(redact('{"password":"hunter2"}')).toBe('{"password":"***"}')
     expect(redact('{"password": "x"}')).toBe('{"password": "***"}')
     expect(redact('{"api_key": "k", "name": "n"}')).toBe('{"api_key": "***", "name": "n"}')
@@ -272,6 +273,56 @@ describe('detail model', () => {
     expect(redact('curl --header "X-Api-Key: abc123" u')).toBe('curl --header "X-Api-Key: ***" u')
     expect(redact('x-auth-token: z')).toBe('x-auth-token: ***')
     expect(redact('id AKIAABCDEFGHIJKLMNOP and ASIAABCDEFGHIJKLMNOP')).toBe('id *** and ***')
+  })
+
+  test('test_strip_controls_removes_escape_sequences_and_bidi', () => {
+    expect(stripControls('\x1b[31mred\x1b[0m text')).toBe('red text')
+    expect(stripControls('a\x1b]0;title\x07b')).toBe('ab')
+    expect(stripControls('a\x1b]8;;https://x\x1b\\link\x1b]8;;\x1b\\b')).toBe('alinkb')
+    expect(stripControls('a\u009b31mb')).toBe('ab')
+    expect(stripControls('abc\u202Edef\u2066g\u2069')).toBe('abcdefg')
+    expect(stripControls('x\u0000y\u0007z\u007fw\u0085v')).toBe('xyzwv')
+    expect(stripControls('one\ttwo\nthree')).toBe('one two three')
+    expect(stripControls('plain 한글 😀')).toBe('plain 한글 😀')
+    const CONTROL = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/
+    const hostile = '\x1b[1;31mAPI_TOKEN=\x1b[0mabc123 \u202Eevil\x1b]0;t\x07'
+    expect(CONTROL.test(clip(hostile, 80))).toBe(false)
+    for (const out of [summarizeText(hostile), summarizeTool('Bash', { command: hostile })]) {
+      expect(CONTROL.test(out)).toBe(false)
+      expect(out).not.toContain('abc123')
+    }
+    expect(labelOf(row({ id: 'A', name: '\x1b[2Jboss\u202E' }))).toBe('boss')
+    const d = new Map<string, AgentDetail>()
+    recordTask(d, 'A', { prompt: 'first\x1b[31m line\nsecond', description: 'de\x1b]0;x\x07sc' })
+    expect(d.get('A')!.taskFirstLine).toBe('first line')
+    expect(d.get('A')!.description).toBe('desc')
+    const t0 = Date.now()
+    for (const h of ['\x1b['.repeat(100000), '\x1b]'.repeat(100000), '\u009b1'.repeat(100000)]) stripControls(h)
+    expect(Date.now() - t0).toBeLessThan(500)
+  })
+
+  test('test_delegation_option_fails_closed', () => {
+    for (const on of [undefined, true, 'true']) expect(delegationOn(on)).toBe(true)
+    for (const off of [false, 'false', 0, 1, '', 'yes', null, {}]) expect(delegationOn(off)).toBe(false)
+  })
+
+  test('test_webfetch_summary_drops_userinfo', () => {
+    expect(summarizeTool('WebFetch', { url: 'https://user:pass@host/x' })).toBe('host/x')
+    expect(summarizeTool('WebFetch', { url: 'https://u:p@ss@host.example/docs?q=1' })).toBe('host.example/docs')
+    expect(summarizeTool('WebFetch', { url: 'https://host/x' })).toBe('host/x')
+  })
+
+  test('test_bash_summary_is_bounded_on_a_huge_command', () => {
+    const huge = 'cat <<EOF > big.txt\n' + 'line of a heredoc\n'.repeat(60000)
+    expect(huge.length).toBeGreaterThan(1_000_000)
+    const t0 = Date.now()
+    for (let i = 0; i < 5; i++) expect(summarizeTool('Bash', { command: huge })).toBe('cat <<EOF > big.txt')
+    expect((Date.now() - t0) / 5).toBeLessThan(50)
+    const oneLine = 'echo ' + 'word '.repeat(250000)
+    const t1 = Date.now()
+    expect(summarizeTool('Bash', { command: oneLine }).endsWith('…')).toBe(true)
+    expect(Date.now() - t1).toBeLessThan(50)
+    expect(summarizeTool('Bash', { command: '\n\n  \nls -la\nrm x' })).toBe('ls -la')
   })
 
   test('test_long_runs_mask_secrets_but_not_paths', () => {

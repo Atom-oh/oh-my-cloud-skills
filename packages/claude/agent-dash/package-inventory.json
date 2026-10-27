@@ -12,11 +12,11 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "97b8e9083b7487905891fd12cc37b95eb81fe1e5b3a52284b9a6ddbfbba37f5d",
+      "sha256": "1edced2d73cca729577e780a55328e74626d4182bce15a1fb626ccf1efeddb00",
       "executable": false
     },
     "README.md": {
-      "sha256": "b0fc9000476e1668aab73efb0ed4e0d937988917daec8714f1c95fda2cb37afb",
+      "sha256": "42a1e74a8170a1b5b3b9e526ccc0550ca96a38e6d20b668c5bef5a72f09a7cba",
       "executable": false
     },
     "hooks/hooks.json": {
@@ -24,15 +24,15 @@
       "executable": false
     },
     "hooks/lib/model.ts": {
-      "sha256": "2edcabc4fb77b6263b67c3ea97fd79886c7c81a8869ab39491eb357f6c472800",
+      "sha256": "f2e14ae1d8778d09cb484aad4e8c2c17fcab65c0a89d780b7d930c0be641a042",
       "executable": false
     },
     "hooks/lib/view.ts": {
-      "sha256": "0656a5cf09bd6987ed93d77a03d5c50e09e2ef1eb4146d524a6e9c6983901f51",
+      "sha256": "96642f7d741c3f44905c22542061c6e2991569c097b2a3733943e40620776622",
       "executable": false
     },
     "hooks/register.ts": {
-      "sha256": "89d81f0c13b21b1be71b3d92a93dec99406adb43ffe9c7a49329fc90992c8549",
+      "sha256": "bcc7daa0890baf7664e12948d357486d549998c39dd782c4d1e7c9b75e858130",
       "executable": false
     },
     "skills/agent-status/SKILL.md": {
@@ -48,15 +48,15 @@
       "executable": false
     },
     "tests/model.test.ts": {
-      "sha256": "6f424b0d78c145b10eec91dde9358e08e84a34106d9b68c083b85923528f9e74",
+      "sha256": "059fcae24fbee11d95d13877ab2847acc68db0d643e3a6285adaaa1eded3a2b7",
       "executable": false
     },
     "tests/register.test.ts": {
-      "sha256": "fe69f736dda04d245c07858190abdf133eda768381b3eb1138001831e5ed3920",
+      "sha256": "34abda47c6d031a7789015d2a2f6d6b5648f9915f15d6bc57f20d0e774024451",
       "executable": false
     },
     "tests/view.test.ts": {
-      "sha256": "5067c5349c73bc184d4e50aa6645bd6dc6a091f730a89517eb27a94793c1a20c",
+      "sha256": "386d92f06a755463b9491b7888e893b3a3d05d0a5271ba7335de6d1dad57ec87",
       "executable": false
     }
   }

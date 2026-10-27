@@ -35,9 +35,29 @@ export function isFinished(row: AgentRow): boolean {
   return FINISHED.includes(row.status)
 }
 
+// Whole escape sequences first (CSI, OSC up to its terminator, two-byte ESC forms), each
+// bounded; then any control character left: C0, DEL, C1, and the bidi overrides and isolates.
+const ESCAPE_SEQ = /(?:\u001b\[|\u009b)[\u0030-\u003f]{0,32}[\u0020-\u002f]{0,8}[\u0040-\u007e]|(?:\u001b\]|\u009d)[^\u0007\u001b\u009c]{0,512}(?:\u0007|\u001b\\|\u009c)|\u001b[\u0040-\u005f]/g
+const CONTROL_WS = /[\t\n\v\f\r]/g
+const CONTROL = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g
+
+/**
+ * Removes terminal escape sequences and every control character from text bound for the
+ * screen: C0 (U+0000-001F), DEL and C1 (U+007F-009F), and the bidi overrides and isolates
+ * (U+202A-202E, U+2066-2069). Tabs and line breaks become spaces. Linear on any input.
+ */
+export function stripControls(text: string): string {
+  return text.replace(ESCAPE_SEQ, '').replace(CONTROL_WS, ' ').replace(CONTROL, '')
+}
+
+/** Whether `showDelegation` is on: only unset, `true` or `"true"`; anything else is off. */
+export function delegationOn(value: unknown): boolean {
+  return value === undefined || value === true || value === 'true'
+}
+
 /** The label a notice or the pane shows for an agent. */
 export function labelOf(row: AgentRow): string {
-  return row.name ?? row.type
+  return stripControls(row.name ?? row.type)
 }
 
 function bySince(a: AgentRow, b: AgentRow): number {
@@ -148,7 +168,7 @@ export function summaryLine(rows: AgentRow[], waits: WaitEdge[]): string {
 function labelFor(rows: AgentRow[], id: string): string {
   if (id === 'main') return 'main'
   const r = rows.find((x) => x.id === id)
-  return r === undefined ? id : labelOf(r)
+  return r === undefined ? stripControls(id) : labelOf(r)
 }
 
 /**
@@ -233,7 +253,7 @@ const TEXT_MAX = 80
 
 /** Collapses whitespace to a single line, trims, and ends with an ellipsis when cut. */
 export function clip(text: string, max: number): string {
-  const one = text.replace(/\s+/g, ' ').trim()
+  const one = stripControls(text).replace(/\s+/g, ' ').trim()
   if (one.length <= max) return one
   return one.slice(0, Math.max(0, max - 1)) + '…'
 }
@@ -254,7 +274,7 @@ export function redact(text: string): string {
     .replace(new RegExp(`"(${key})"(\\s*:\\s*)"[^"]{0,500}"`, 'gi'), '"$1"$2"***"')
     .replace(/(--(?:token|password|secret|api-key))(?:\s+|=)(?:"[^"]{0,500}"|'[^']{0,500}'|[^\s"']+)/gi, '$1 ***')
     .replace(/(?<!\S)(-u|--user)(?:\s+|=)(?:"[^"]{0,500}"|'[^']{0,500}'|[^\s"']+)/g, '$1 ***')
-    .replace(/(\b[a-z][a-z0-9+.-]{0,20}:\/\/)[^\s/@"']{1,200}@/gi, '$1***@')
+    .replace(/(\b[a-z][a-z0-9+.-]{0,20}:\/\/)[^\s/"']{1,200}@/gi, '$1***@')
     .replace(new RegExp(`(?<![A-Za-z0-9_.-])(${key})=("[^"]*"|'[^']*'|\\S+)`, 'gi'), '$1=***')
     .replace(new RegExp(`(?<![A-Za-z0-9_.-])([A-Za-z][A-Za-z0-9_-]{0,128}?(?:${KEYS})[A-Za-z0-9_-]{0,128})(\\s*:\\s*)[^\r\n"']+`, 'gi'), '$1$2***')
     .replace(/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, '***')
@@ -290,7 +310,7 @@ function boundedInput(text: string): string {
 
 /** Redacts, collapses whitespace and clips; only the first 4,000 characters are read. */
 export function summarizeText(text: string, max = TEXT_MAX): string {
-  return clip(redact(boundedInput(text)), max)
+  return clip(redact(stripControls(boundedInput(text))), max)
 }
 
 function obj(v: unknown): Record<string, unknown> {
@@ -314,7 +334,8 @@ export function summarizeTool(tool: string, input: unknown): string {
   switch (tool) {
     case 'Bash': {
       const c = field('command')
-      if (c !== undefined) out = c.split(/\r?\n/).find((l) => l.trim() !== '') ?? ''
+      // Only the head is split, so a huge heredoc costs no more than a short command.
+      if (c !== undefined) out = c.slice(0, INPUT_MAX + 1).split(/\r?\n/).find((l) => l.trim() !== '') ?? ''
       break
     }
     case 'Read':
@@ -342,8 +363,9 @@ export function summarizeTool(tool: string, input: unknown): string {
     }
     case 'WebFetch': {
       const u = field('url')
-      const m = u === undefined ? null : /^[a-z][a-z0-9+.-]*:\/\/([^/?#\s]+)([^?#\s]*)/i.exec(u)
-      if (m !== null) out = m[1] + m[2]
+      const m = u === undefined ? null : /^[a-z][a-z0-9+.-]*:\/\/([^/?#\s]+)([^?#\s]*)/i.exec(u.slice(0, INPUT_MAX))
+      // The host is what follows the last `@` of the authority; the userinfo is dropped.
+      if (m !== null) out = m[1].slice(m[1].lastIndexOf('@') + 1) + m[2]
       break
     }
   }
@@ -386,7 +408,7 @@ export function recordTask(
 ): void {
   const d = detailFor(details, agentId, maxAgents)
   if (info.prompt !== undefined) {
-    const safe = redact(boundedInput(info.prompt))
+    const safe = redact(boundedInput(info.prompt).split(/\r?\n/).map(stripControls).join('\n'))
     d.task = clip(safe, TASK_MAX)
     d.taskFirstLine = clip(safe.split(/\r?\n/).find((l) => l.trim() !== '') ?? '', TEXT_MAX)
   }

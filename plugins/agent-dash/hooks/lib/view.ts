@@ -1,7 +1,7 @@
 // Pure views for agent-dash: builds element trees from the element functions passed in.
 // No `$`, no Claude Code imports, no Node APIs.
 
-import { labelOf, summaryLine } from './model.ts'
+import { labelOf, stripControls, summaryLine } from './model.ts'
 import type { AgentDetail, AgentRow, AgentStatus, SendRecord, TreeNode, WaitEdge } from './model.ts'
 
 type Color = 'green' | 'red' | 'yellow'
@@ -59,7 +59,7 @@ export function cellWidth(text: string): number {
  * wide character that does not fit is left out whole.
  */
 export function clipCells(text: string, max: number): string {
-  const one = text.replace(/\s+/g, ' ').trim()
+  const one = stripControls(text).replace(/\s+/g, ' ').trim()
   if (cellWidth(one) <= max) return one
   return cutCells(one, max)
 }
@@ -121,7 +121,7 @@ function flatten(nodes: TreeNode[], depth = 0, out: Line[] = []): Line[] {
 function nameOf(lines: Line[], id: string): string {
   if (id === 'main') return 'main'
   const hit = lines.find((l) => l.row.id === id)
-  return hit === undefined ? id : labelOf(hit.row)
+  return hit === undefined ? stripControls(id) : labelOf(hit.row)
 }
 
 function agentRow(els: any, line: Line, waitsOn: WaitEdge[], lines: Line[], opts: PaneOpts): unknown {
@@ -130,7 +130,7 @@ function agentRow(els: any, line: Line, waitsOn: WaitEdge[], lines: Line[], opts
   if (depth > 0) children.push(els.Text({ children: ['  '.repeat(depth - 1) + '└'], dimColor: true }))
   children.push(symbol(els, row.status))
   children.push(els.Text({ children: [labelOf(row)], bold: true, wrap: 'truncate-end' }))
-  if (row.name !== undefined) children.push(els.Text({ children: [row.type], dimColor: true, wrap: 'truncate-end' }))
+  if (row.name !== undefined) children.push(els.Text({ children: [stripControls(row.type)], dimColor: true, wrap: 'truncate-end' }))
   const color = statusColor(row.status)
   const statusProps: Record<string, unknown> = { children: [row.status + ' ' + elapsed(opts.nowMs - row.sinceMs)] }
   if (color !== undefined) statusProps.color = color
@@ -226,7 +226,7 @@ const FOOTER_ROWS = 3
  */
 function wrapLines(text: string, width: number, max: number): string[] {
   const words: string[] = []
-  for (const w of text.replace(/\s+/g, ' ').trim().split(' ')) {
+  for (const w of stripControls(text).replace(/\s+/g, ' ').trim().split(' ')) {
     if (w !== '') words.push(...splitCells(w, width))
   }
   const lines: string[][] = []
@@ -279,13 +279,14 @@ function isDone(status: AgentStatus): boolean {
 function targetLabel(rows: AgentRow[], to: string): string {
   if (to === 'main') return 'main'
   const r = rows.find((x) => x.id === to || x.name === to || x.teammateId === to)
-  return r === undefined ? to : labelOf(r)
+  return r === undefined ? stripControls(to) : labelOf(r)
 }
 
 type Painter = { els: any; rows: AgentRow[]; lines: Line[]; opts: MapOpts }
 
+// Every map Text goes through here, so no control character reaches the screen.
 function text(p: Painter, s: string, props: Record<string, unknown> = {}): unknown {
-  return p.els.Text({ children: [s], wrap: 'truncate-end', ...props })
+  return p.els.Text({ children: [stripControls(s)], wrap: 'truncate-end', ...props })
 }
 
 /** `doing:` and `recent:` lines from an agent's newest-last activity. */
