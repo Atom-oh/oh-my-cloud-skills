@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add a delegation map to the agent-dash pane: the main loop on top and one card per
+  agent under the line naming what it was delegated, with its status, task, latest
+  tool calls, estimated waits and last messages. Prompt text, tool summaries and
+  message text are redacted, clipped and held in memory only. The new
+  `showDelegation` option (on by default) turns that text off.
+
+### Changed
+
+- The agent-dash pane opens as the map; `View: Map` / `View: List` (hotkey `m`)
+  switches to the previous one-line-per-agent list.
+- The agent-dash map shows only working agents (pending, running or waiting), each as a
+  compact card: title, one task line, one `doing:` line, then any estimated waits and
+  the last sent message. The main loop is one line without a box. Finished and idle
+  agents show only in the counts, the status line and `View: List`; the band above the
+  prompt appears only while an agent works.
+- agent-dash summaries leave out zero counts (`2 running · 1 done`, not
+  `2 running · 0 waiting (est.) · 1 done`).
+
 ### Fixed
 
 - Fix reactive-presentation fullscreen Esc: in Chrome and Edge, fullscreen entered with the `F` key now locks Esc to the page, so the first Esc leaves pen mode (or closes overview) and the next exits fullscreen; a held Esc no longer exits fullscreen right after leaving pen mode. The lock needs https or localhost; a deck opened from `file://` may not get it. Fullscreen entered from the browser menu, `Cmd+Ctrl+F` or `F11` is not changed (browser-dependent, not verified); Safari and Firefox still exit fullscreen on Esc, so use `Option+P` to leave pen mode.
