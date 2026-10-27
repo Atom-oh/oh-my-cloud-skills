@@ -11,6 +11,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -69,12 +70,67 @@ def _pen_deck(opts, extra_head="", css=True):
 
 
 RATIO_43 = "<style>:root { --slide-ratio-w: 4; --slide-ratio-h: 3; }</style>\n"
+
+# Slide 0 of the lens decks: a marker square and an SVG whose gradient fill and
+# <use> both reference ids (the lens clone has no ids of its own).
+LENS_MARKERS = """<div class="slide-body"><p>Intro text for the first slide.</p></div>
+    <div id="lens-mark" style="position:absolute;left:1000px;top:500px;width:40px;height:40px;background:rgb(0,170,0)"></div>
+    <svg id="lens-svg" width="160" height="60" style="position:absolute;left:200px;top:700px">
+      <defs><linearGradient id="lens-grad"><stop offset="0" stop-color="rgb(0,120,255)"/><stop offset="1" stop-color="rgb(0,120,255)"/></linearGradient>
+        <symbol id="lens-sym"><rect width="60" height="60" fill="rgb(255,140,0)"/></symbol></defs>
+      <rect id="lens-svg-grad" width="60" height="60" fill="url(#lens-grad)"/>
+      <use id="lens-svg-use" href="#lens-sym" x="90" y="0" width="60" height="60"/>
+    </svg></div>"""
+
+
+def _lens_deck(extra_head=""):
+    deck = _pen_deck("sidebar: false, pen: { fadeMs: 300 }", extra_head)
+    return deck.replace('<div class="slide-body"><p>Intro text for the first slide.</p></div></div>',
+                        LENS_MARKERS, 1)
+
+
 PEN_DECKS = {
     "pen.html": _pen_deck("sidebar: false, pen: { fadeMs: 300 }"),
     "pen-43.html": _pen_deck("sidebar: false, pen: { fadeMs: 300 }", RATIO_43),
     "pen-nobadge.html": _pen_deck("sidebar: false, pen: { fadeMs: 300, audienceBadge: false }"),
     "pen-nocss.html": _pen_deck("sidebar: false", css=False),
+    "lens.html": _lens_deck(),
+    "lens-43.html": _lens_deck(RATIO_43),
 }
+
+# The lens circle and the slide point shown at its centre, read back from the
+# clone transform: translate(tx, ty) scale(s) with the design canvas size.
+LENS_INFO = """() => {
+  const l = document.querySelector('.rp-lens');
+  if (!l) return null;
+  const r = l.getBoundingClientRect();
+  const v = l.querySelector('.rp-lens-view');
+  const m = /translate\\(([-\\d.e]+)px, ([-\\d.e]+)px\\) scale\\(([-\\d.e]+)\\)/.exec(v.style.transform || '');
+  const cw = parseFloat(v.style.width), ch = parseFloat(v.style.height);
+  const out = { hidden: l.hidden, cx: r.left + r.width / 2, cy: r.top + r.height / 2,
+                w: r.width, parent: l.parentElement.id || l.parentElement.tagName };
+  if (m) {
+    const tx = +m[1], ty = +m[2], s = +m[3];
+    out.sx = (r.width / 2 - tx) / (s * cw);
+    out.sy = (r.height / 2 - ty) / (s * ch);
+  }
+  return out;
+}"""
+
+
+def _png_pixel(png):
+    """RGB of a 1x1 8-bit PNG (any filter type is a no-op for a single pixel)."""
+    pos, idat, depth, ctype = 8, b"", None, None
+    while pos < len(png):
+        n = int.from_bytes(png[pos:pos + 4], "big")
+        kind, data = png[pos + 4:pos + 8], png[pos + 8:pos + 8 + n]
+        if kind == b"IHDR":
+            depth, ctype = data[8], data[9]
+        elif kind == b"IDAT":
+            idat += data
+        pos += 12 + n
+    assert depth == 8 and ctype in (2, 6), (depth, ctype)
+    return tuple(zlib.decompress(idat)[1:4])
 
 # Centroid of the inked pixels of #rp-pen-canvas, in CSS px relative to the canvas box.
 INK = """() => {
@@ -691,6 +747,153 @@ class PresenterPenTests(_PresenterBase):
         self.pv.evaluate("() => { window.__raf = 0; }")
         self.pv.wait_for_timeout(250)
         self.assertEqual(self.pv.evaluate("() => window.__raf"), 0, "no presenter frames when idle")
+
+
+class PresenterLensTests(_PresenterBase):
+    page_name = "lens.html"
+    MARK = (0, 170, 0)
+
+    # --- helpers ---------------------------------------------------------
+    def preview_box(self):
+        return self.pv.evaluate(BOX, "#p-current .slide-scaler")
+
+    def deck_box(self):
+        return self.page.evaluate(BOX, ".slide-deck")
+
+    def frac(self, selector):
+        """Centre of a live slide element as 0..1 slide coordinates."""
+        return self.page.evaluate("""(sel) => {
+          const d = document.querySelector('.slide-deck').getBoundingClientRect();
+          const r = document.querySelector('.slide-deck ' + sel).getBoundingClientRect();
+          return [(r.left + r.width / 2 - d.left) / d.width, (r.top + r.height / 2 - d.top) / d.height];
+        }""", selector)
+
+    def hover(self, page, box, fx, fy):
+        x, y = box["x"] + box["w"] * fx, box["y"] + box["h"] * fy
+        page.mouse.move(x - 4, y - 4)
+        page.mouse.move(x, y, steps=3)
+        page.wait_for_timeout(150)
+
+    @staticmethod
+    def pixel(page, x, y):
+        png = page.screenshot(clip={"x": int(x), "y": int(y), "width": 1, "height": 1})
+        return _png_pixel(png)
+
+    def assertColor(self, actual, expected, msg=None, tol=16):
+        self.assertTrue(all(abs(a - e) <= tol for a, e in zip(actual, expected)),
+                        f"{msg or ''}: {actual} != {expected}")
+
+    def lenses(self):
+        return self.page.evaluate(LENS_INFO), self.pv.evaluate(LENS_INFO)
+
+    def assert_lens_at(self, info, box, fx, fy, label, clamped=False):
+        """The lens shows slide point (fx, fy): within 2 px in that window's slide pixels."""
+        self.assertIsNotNone(info, label + " lens exists")
+        self.assertFalse(info["hidden"], label + " lens visible")
+        self.assertAlmostEqual(info["sx"] * box["w"], fx * box["w"], delta=2, msg=label + " slide x")
+        self.assertAlmostEqual(info["sy"] * box["h"], fy * box["h"], delta=2, msg=label + " slide y")
+        if not clamped:
+            self.assertAlmostEqual(info["cx"], box["x"] + fx * box["w"], delta=2, msg=label + " centre x")
+            self.assertAlmostEqual(info["cy"], box["y"] + fy * box["h"], delta=2, msg=label + " centre y")
+
+    def assert_mirrored(self, label):
+        mark = self.frac("#lens-mark")
+        for source in ("presenter", "deck"):
+            for fx, fy, clamped in ((mark[0], mark[1], False), (0.03, 0.96, True)):
+                with self.subTest(ratio=label, source=source, point=(round(fx, 3), round(fy, 3))):
+                    page = self.pv if source == "presenter" else self.page
+                    box = self.preview_box() if source == "presenter" else self.deck_box()
+                    self.hover(page, box, fx, fy)
+                    deck_lens, pv_lens = self.lenses()
+                    dbox, pbox = self.deck_box(), self.preview_box()
+                    self.assert_lens_at(deck_lens, dbox, fx, fy, "deck", clamped)
+                    self.assert_lens_at(pv_lens, pbox, fx, fy, "presenter", clamped)
+                    # Same slide point in both windows, in deck pixels.
+                    self.assertAlmostEqual(deck_lens["sx"] * dbox["w"], pv_lens["sx"] * dbox["w"], delta=2)
+                    self.assertAlmostEqual(deck_lens["sy"] * dbox["h"], pv_lens["sy"] * dbox["h"], delta=2)
+                    if not clamped:
+                        self.assertColor(self.pixel(self.page, deck_lens["cx"], deck_lens["cy"]),
+                                         self.MARK, "deck lens shows the marker")
+                        self.assertColor(self.pixel(self.pv, pv_lens["cx"], pv_lens["cy"]),
+                                         self.MARK, "presenter lens shows the marker")
+
+    # --- tests -----------------------------------------------------------
+    def test_lens_mirrors_between_windows(self):
+        self.pv.keyboard.press("Alt+KeyY")
+        self.assertEqual(self.page.evaluate("() => DeckPen.controller.model.mode"), "magnifier")
+        self.assert_mirrored("16:9")
+        self.pv.set_viewport_size({"width": 1100, "height": 760})
+        self.pv.wait_for_timeout(300)
+        self.assert_mirrored("16:9 presenter resized")
+        self.open_deck("lens-43.html")
+        self.assertEqual(self.pv.evaluate(
+            "() => document.querySelector('#p-current .slide-scaler').offsetWidth"), 1440)
+        self.page.keyboard.press("Alt+KeyY")
+        self.assert_mirrored("4:3")
+        self.assertEqual(self.errors, [])
+
+    def test_presenter_lens_survives_preview_rerender(self):
+        self.goto(2)
+        self.pv.keyboard.press("Alt+KeyY")
+        self.hover(self.pv, self.preview_box(), 0.5, 0.5)
+        before = self.pv.evaluate(LENS_INFO)
+        self.assertFalse(before["hidden"])
+        self.assertEqual(before["parent"], "p-current-wrap")
+        self.page.evaluate("() => deck.presenterView.updatePresenterView()")
+        self.settle()
+        self.page.keyboard.press("ArrowRight")
+        self.assert_fragment_sync(1)
+        self.pv.wait_for_timeout(300)
+        after = self.pv.evaluate(LENS_INFO)
+        self.assertFalse(after["hidden"], "lens still visible after the re-render")
+        self.assertEqual(after["parent"], "p-current-wrap")
+        self.assertEqual(self.pv.evaluate("""() => ({
+          lenses: document.querySelectorAll('.rp-lens').length,
+          inPreview: Boolean(document.querySelector('.rp-lens').closest('#p-current')),
+          fragments: document.querySelectorAll('.rp-lens .fragment.visible').length })"""),
+            {"lenses": 1, "inPreview": False, "fragments": 1})
+        for key in ("cx", "cy", "sx", "sy"):
+            self.assertAlmostEqual(after[key], before[key], delta=1, msg=key)
+        self.assertEqual(self.errors, [])
+
+    def test_closing_presenter_window_keeps_deck_lens(self):
+        self.page.keyboard.press("Alt+KeyY")
+        mark = self.frac("#lens-mark")
+        self.hover(self.page, self.deck_box(), *mark)
+        deck_lens, pv_lens = self.lenses()
+        self.assertFalse(deck_lens["hidden"])
+        self.assertFalse(pv_lens["hidden"])
+        self.assertEqual(self.page.evaluate("() => DeckPen.controller.surfaceCount()"), 2)
+        self.pv.close()
+        self.page.wait_for_function("() => deck.presenterView._pen === null", timeout=3000)
+        self.assertEqual(self.page.evaluate("() => DeckPen.controller.surfaceCount()"), 1)
+        self.assertEqual(self.page.evaluate("() => document.querySelectorAll('.rp-lens').length"), 1)
+        self.hover(self.page, self.deck_box(), 0.4, 0.4)
+        self.assert_lens_at(self.page.evaluate(LENS_INFO), self.deck_box(), 0.4, 0.4, "deck after close")
+        self.assertEqual(self.page.evaluate("() => DeckPen.controller.model.mode"), "magnifier")
+        # Reopening attaches a fresh surface with its own lens at the shared position.
+        self.open_presenter()
+        self.assertEqual(self.page.evaluate("() => DeckPen.controller.surfaceCount()"), 2)
+        self.hover(self.page, self.deck_box(), *mark)
+        pv_lens = self.pv.evaluate(LENS_INFO)
+        self.assert_lens_at(pv_lens, self.preview_box(), mark[0], mark[1], "presenter after reopen")
+        self.assertEqual(self.pv.evaluate("() => document.querySelectorAll('.rp-lens').length"), 1)
+        self.assertColor(self.pixel(self.pv, pv_lens["cx"], pv_lens["cy"]), self.MARK)
+        self.assertEqual(self.errors, [])
+
+    def test_lens_svg_id_references_in_both_windows(self):
+        """The clone drops ids; url(#id) and <use href> still resolve in both windows."""
+        self.pv.keyboard.press("Alt+KeyY")
+        for selector, colour in (("#lens-svg-grad", (0, 120, 255)), ("#lens-svg-use", (255, 140, 0))):
+            fx, fy = self.frac(selector)
+            for source in ("presenter", "deck"):
+                with self.subTest(selector=selector, source=source):
+                    page = self.pv if source == "presenter" else self.page
+                    box = self.preview_box() if source == "presenter" else self.deck_box()
+                    self.hover(page, box, fx, fy)
+                    deck_lens, pv_lens = self.lenses()
+                    self.assertColor(self.pixel(self.page, deck_lens["cx"], deck_lens["cy"]), colour, "deck")
+                    self.assertColor(self.pixel(self.pv, pv_lens["cx"], pv_lens["cy"]), colour, "presenter")
 
 
 if __name__ == "__main__":

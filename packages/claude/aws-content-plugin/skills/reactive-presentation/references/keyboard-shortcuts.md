@@ -33,12 +33,14 @@ keep their meaning.
 | Option+O | Pen (stays on) |
 | Option+I | Highlighter (translucent, wide, stays on) |
 | Option+U | Eraser (removes whole strokes) |
-| Option+Y | Clear all ink on the current slide |
-| Option+1 / 2 / 3 | Thin / medium / thick |
-| Option+4 / 5 / 6 / 7 / 8 / 9 | Red / yellow / green / blue / white / black |
+| Option+Y | Magnifier: a round lens follows the mouse (stays on) |
+| Option+T | Clear all ink on the current slide |
+| Option+1 / 2 / 3 | Thin / medium / thick; in Magnifier mode 2x / 3x / 4x zoom |
+| Option+4 / 5 / 6 / 7 / 8 / 9 | Red / yellow / green / blue / white / black; nothing in Magnifier mode |
 | Esc | Leave pen mode (normal window only) |
 
-- Option+O, I and U each turn pen mode on when it is off.
+- Option+O, I, U and Y each turn pen mode on when it is off.
+- Clearing ink moved from Option+Y to Option+T when the Magnifier took Option+Y.
 - Defaults are red, medium. The Highlighter defaults to yellow. Each of Laser, Pen and
   Highlighter remembers its own colour; the eraser has none.
 - Esc leaves pen mode in a normal window, and while pen mode is on it wins over an open
@@ -55,6 +57,37 @@ keep their meaning.
   the same slide position. Two separate deck windows or tabs sync only the slide position.
 - Linux caveat (not verified here): Chrome or Firefox on Linux may reserve Alt+1-9 for
   tab switching, so the thickness and colour keys may not reach the page there.
+
+### Magnifier
+
+- The lens is a circle 28% of the slide height. The zoom defaults to 2x and stays as
+  chosen for the session; the badge shows it (for example `Magnifier 3x`). Near an edge
+  the lens stays inside the slide and its centre still shows the point under the mouse.
+- The lens position is shared: pointing at the presenter's current-slide preview shows
+  the lens in the deck window at the same slide position, and pointing at the deck
+  window shows it in the preview. Closing the presenter window leaves the deck lens
+  working; reopening it shows the lens there again.
+- The lens hides when the mouse leaves the slide, on a mode change, on a slide change
+  (until the mouse moves again) and in overview mode.
+- In Magnifier mode clicks and hover do not reach the slide: no stroke, no slide
+  change, no tooltip. To click a tab, quiz button or detail term, leave the mode with
+  Esc or switch with Option+P, O, I or U.
+
+Magnifier limits:
+
+- Only the slide is magnified; the footer, logo and progress bar are not.
+- Pen ink is copied into the lens as a bitmap, so it looks softer at 3x and 4x.
+- Canvas animations are copied into the lens every frame. Iframes in the lens are
+  separate copies that reload, and videos show their poster or first frame.
+- The lens copy refreshes on slide change, fragment reveal, `class` changes in the slide
+  and window resize. A change that only touches text, `style` or `hidden` stays stale in
+  the lens until the next slide change or resize.
+- The lens copy carries no `id` attributes. SVG references such as `fill="url(#grad)"`
+  and `<use href="#sym">` still render in both windows: in the deck window they resolve
+  to the live slide, and in the presenter window to the current-slide preview, which
+  keeps the ids (verified in Chromium by `test_lens_svg_id_references_in_both_windows`).
+  A reference to an id that exists only outside the slide does not render in the
+  presenter window's lens.
 
 Configure with `new SlideFramework({ pen: { fadeMs: 3000, audienceBadge: true } })`.
 `audienceBadge: false` hides the mode badge in the deck window only; the presenter

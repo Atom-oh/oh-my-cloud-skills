@@ -602,8 +602,9 @@ ${styleSheets}
     });
   }
 
-  // Pen surface over the scaled current-slide preview. The canvas and badge are
-  // siblings of #p-current, which _renderSlidePreview empties on every update.
+  // Pen surface over the scaled current-slide preview. The canvas, the badge and
+  // the magnifier lens (inserted by attachSurface after the canvas) are siblings
+  // of #p-current, which _renderSlidePreview empties on every update.
   // isPrimary binds the pen keys on this window in the capture phase, so they
   // run once, before the document-level navigation handler below.
   _attachPen() {

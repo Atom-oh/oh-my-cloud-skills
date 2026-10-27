@@ -456,7 +456,7 @@
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
-      "sha256": "d7e859f88a922af0e881cdaddd1731bfc843b5d29b91f40a42e5155dc1f7d9ae",
+      "sha256": "d5d508e228739f533f3666eb5b8743faa379d414dfa90420d955e23764351fc7",
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
@@ -496,7 +496,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-pen.js": {
-      "sha256": "e77eab4d1c1494d0172580adafb49164b94acb8c9c8aaeb2ff5002ce96a4030e",
+      "sha256": "1525c3399b8214a2c514945a5388de7435cc4c99d20776c219eefc5fc6fb3b3d",
       "executable": false
     },
     "skills/reactive-presentation/assets/design-tokens.css": {
@@ -516,7 +516,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
-      "sha256": "866e692b2f69d27ee6e217dcdfce2ff88d9f1025d5fdbfdd5817aea0dc5c9cc4",
+      "sha256": "775b5e499c8932f52f5dce762f4dbe04deb3ffed3d663ddb22dda556d7afa248",
       "executable": false
     },
     "skills/reactive-presentation/assets/quiz-component.js": {
@@ -17332,7 +17332,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/framework-guide.md": {
-      "sha256": "8e6052be65dd3e0e34c4f767595969a42273e2c6161bcd604460980bcae86431",
+      "sha256": "a4d4ef8a8939e483e32d2dda1e89a7debcf653d8442bcfe801e61390f1acf587",
       "executable": false
     },
     "skills/reactive-presentation/references/interactive-patterns-guide.md": {
@@ -17340,7 +17340,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/keyboard-shortcuts.md": {
-      "sha256": "52d46c66e93dcef0f3a57b4bd2e0af07fd281aa98790bf15f8c48cfc8bbbbadd",
+      "sha256": "479541173a2f5a332e2122540d63e1bccc7e5127a3847bf8c458052e75ef7995",
       "executable": false
     },
     "skills/reactive-presentation/references/marp-format-guide.md": {

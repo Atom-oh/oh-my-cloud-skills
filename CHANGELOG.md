@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add pen mode to reactive-presentation decks: a laser, pen, highlighter and eraser
   overlay driven by Option (Alt) chords (Option+P toggles the laser, Option+O/I/U pick
-  pen, highlighter and eraser, Option+Y clears the slide, Option+1-9 set thickness and
+  pen, highlighter and eraser, Option+T clears the slide, Option+1-9 set thickness and
   colour). Laser, Pen and Highlighter each remember their own colour (red, red and
   yellow by default). Esc leaves pen mode in a normal window; in browser fullscreen the
   browser takes Esc first, so use Option+P there. Laser strokes fade after `pen.fadeMs`
@@ -28,9 +28,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   file list includes both and the PDF export head links `deck-pen.css`. Decks built
   earlier keep working without them. Public keyboard-shortcuts page updated in
   English and Korean.
+- Add a Magnifier to reactive-presentation pen mode: Option+Y turns pen mode on in
+  Magnifier mode, where a round lens (28% of the slide height) follows the mouse and
+  shows an enlarged copy of the slide. Option+1/2/3 set 2x/3x/4x zoom (default 2x) and
+  Option+4-9 do nothing in this mode. The lens position is shared, so the lens is
+  mirrored between the audience window and the presenter window's current-slide
+  preview; closing the presenter window leaves the deck lens working. In Magnifier mode
+  clicks and hover do not reach the slide; leave it with Esc or Option+P/O/I/U to click
+  boxes. Limits: only the slide is magnified (not the footer, logo or progress bar); pen
+  ink is copied as a bitmap and looks softer at 3x/4x; canvas animations are copied each
+  frame, iframes reload and videos show their poster in the lens; the lens refreshes on
+  slide, fragment, `class` and resize changes, so a change that only touches text,
+  `style` or `hidden` stays stale in the lens until the next slide change or resize;
+  SVG `url(#id)` and `<use href>` references resolve in both windows when the target is
+  inside the slide (the presenter lens resolves them against the preview, which keeps
+  the ids), but a target outside the slide does not render in the presenter lens.
+  Internal references and the public keyboard-shortcuts page updated in English and
+  Korean.
+
+### Changed
+
+- Move "clear all ink on the current slide" from Option+Y to Option+T in
+  reactive-presentation pen mode; Option+Y now selects the Magnifier.
 
 ### Fixed
 
+- Place the reactive-presentation footer after the logo instead of at a fixed
+  `left: 70px`, which overlapped the 53px logo by about 3px and wider logos by more. The
+  footer now starts 16px after the logo's right edge (`--rp-footer-left`, set by the
+  framework at start-up, when the logo loads and on each slide change, which covers a
+  light/dark logo swap). A deck with a footer but no logo moves from 70px to 96px unless
+  its theme-override sets `.slide-footer { left }`, which still wins.
 - Remove the `1-9` slide jump, the `N` speaker-notes panel and the `B` blackout from
   the reactive-presentation keyboard references (SKILL.md, REMARP.md,
   keyboard-shortcuts.md, framework-guide.md); `SlideFramework.getKeyAction()` and the

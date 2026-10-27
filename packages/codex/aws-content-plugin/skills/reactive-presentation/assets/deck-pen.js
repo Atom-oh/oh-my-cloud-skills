@@ -504,7 +504,10 @@
     // canvas is copied with drawImage on this surface's frames while the lens
     // is visible (WebGL canvases only if their buffer is preserved). Iframes
     // are cloned as plain elements and reload; videos show their poster or
-    // first frame and do not play.
+    // first frame and do not play. The clone has no ids, so SVG url(#id) and
+    // <use href> resolve document-wide: against the live slide in the deck
+    // window and against the current-slide preview (which keeps ids) in the
+    // presenter window; a target outside the slide is missing there.
     var lens = null;
     var lensShown = false;
     var lensDirty = true;
