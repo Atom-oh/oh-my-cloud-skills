@@ -13,7 +13,7 @@ Shortcuts the generated slideshow supports at viewing time.
 | P | Open presenter view (new window with notes, timer, slide sync; clicks in its current-slide preview are forwarded to the audience window, and the preview follows text-only changes) |
 | O | Toggle overview mode (slide grid thumbnails) |
 | S | Toggle slide sidebar (non-fullscreen only) |
-| Esc | Close search or detail / exit fullscreen / exit overview / leave pen mode while it is on (normal window only, see Pen mode) |
+| Esc | Close search or detail / exit overview / leave pen mode while it is on / exit fullscreen when nothing else is open (see Pen mode for fullscreen) |
 | Home/End | First/Last slide |
 
 There is no default binding for plain `N`, `B` or the digits `1`-`9`; they do nothing
@@ -37,17 +37,25 @@ keep their meaning.
 | Option+T | Clear all ink on the current slide |
 | Option+1 / 2 / 3 | Thin / medium / thick; in Magnifier mode 2x / 3x / 4x zoom |
 | Option+4 / 5 / 6 / 7 / 8 / 9 | Red / yellow / green / blue / white / black; nothing in Magnifier mode |
-| Esc | Leave pen mode (normal window only) |
+| Esc | Leave pen mode (see the fullscreen note below) |
 
 - Option+O, I, U and Y each turn pen mode on when it is off.
 - Clearing ink moved from Option+Y to Option+T when the Magnifier took Option+Y.
 - Defaults are red, medium. The Highlighter defaults to yellow. Each of Laser, Pen and
   Highlighter remembers its own colour; the eraser has none.
-- Esc leaves pen mode in a normal window, and while pen mode is on it wins over an open
-  agenda or detail panel. In browser fullscreen the browser handles Esc first and exits
-  fullscreen (Chrome does not deliver that keydown to the page), so use Option+P to
-  leave pen mode there; press it again from Pen, Highlighter, Eraser or Magnifier,
-  which first switches to Laser.
+- Esc leaves pen mode, and while pen mode is on it wins over an open agenda or detail
+  panel. In Chrome and Edge, fullscreen entered with the F key locks Esc to the page
+  (Keyboard Lock): the first Esc leaves pen mode (or closes overview), the next Esc
+  exits fullscreen, and holding Esc exits fullscreen at any time. Keyboard Lock needs
+  a secure context (https or localhost), so a deck opened from `file://` may not get
+  it. While focus is in a form control (a range input, a text field, an embedded
+  iframe), Esc does nothing in locked fullscreen; hold Esc, or click the slide
+  background first, to exit. Fullscreen entered from the browser menu or with
+  Cmd+Ctrl+F or F11 is not changed by the lock; whether Esc reaches the page there
+  depends on the browser (not verified). In Safari and Firefox, Esc in
+  Fullscreen-API fullscreen exits fullscreen before the page sees it. Option+P always
+  leaves pen mode; press it again from Pen, Highlighter, Eraser or Magnifier, which
+  first switches to Laser.
 - While pen mode is on the canvas takes all pointer input over the slide, so tabs, quiz
   buttons, compare toggles and detail tooltips need pen mode off first.
 - Laser strokes fade after 3 seconds (`pen.fadeMs`). Pen and highlighter ink stays per
@@ -75,7 +83,7 @@ keep their meaning.
 - In Magnifier mode clicks and hover do not reach the slide: no stroke, no slide
   change, no tooltip. Option+P, O, I and U only change the mode and keep pen mode on,
   and the canvas still takes all pointer input. Clicks and hover reach the slide only
-  after pen mode is off: press Esc (normal window) or press Option+P twice (the first
+  after pen mode is off: press Esc (where Esc reaches the page) or press Option+P twice (the first
   press switches to Laser, the second turns pen mode off).
 
 Magnifier limits:
