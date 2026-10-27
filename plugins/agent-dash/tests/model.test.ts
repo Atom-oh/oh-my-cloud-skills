@@ -281,6 +281,43 @@ describe('detail model', () => {
     expect(redact('x QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo+MTIzNDU2Nw y')).toBe('x *** y')
   })
 
+  test('test_maskrun_masks_mixed_20_char_segments_in_paths', () => {
+    expect(redact('see src/components/a1b2c3d4e5f6g7h8i9j0 now')).toBe('see *** now')
+    expect(redact('see repo/k9x8w7v6u5t4s3r2q1p0/cache/files now')).toBe('see *** now')
+    // A 19-character mixed segment, and segments without digits, stay a path.
+    expect(redact('see src/components/a1b2c3d4e5f6g7h8i9j now')).toBe('see src/components/a1b2c3d4e5f6g7h8i9j now')
+    expect(redact('see src/components/dashboard/SidebarNavigation now')).toBe('see src/components/dashboard/SidebarNavigation now')
+  })
+
+  test('test_truncation_never_leaves_a_secret_prefix', () => {
+    const token = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678'
+    expect(token.length).toBe(40)
+    // `n` characters of words and spaces, so each secret below straddles the 4,000-character read limit.
+    const pad = (n: number) => ('w '.repeat(n)).slice(0, n)
+    const bare = pad(3990) + token + ' tail'
+    const kv = pad(3992) + 'API_KEY=' + 'zq9'.repeat(10) + ' tail'
+    const json = pad(3980) + '{"password": "' + 'hunter2xyz'.repeat(3) + '"}'
+    for (const input of [bare, kv, json]) {
+      expect(input.length).toBeGreaterThan(4000)
+      const outs = [summarizeText(input, 10_000)]
+      const d = new Map<string, AgentDetail>()
+      recordTask(d, 'A', { prompt: input })
+      outs.push(d.get('A')!.task!, d.get('A')!.taskFirstLine!)
+      for (const out of outs) {
+        expect(out).not.toContain('a1b2c3')
+        expect(out).not.toContain('zq9')
+        expect(out).not.toContain('hunter')
+      }
+    }
+    // Text with no whitespace before the cut is dropped, leaving only the marker.
+    expect(summarizeText(token.repeat(200))).toBe('…')
+    const d = new Map<string, AgentDetail>()
+    recordTask(d, 'A', { prompt: token.repeat(200) })
+    expect(d.get('A')!.task).toBe('…')
+    // Text under the limit is untouched.
+    expect(summarizeText('short text')).toBe('short text')
+  })
+
   test('summarizeTool reads the top level or a nested input', () => {
     expect(summarizeTool('Grep', { pattern: 'p' })).toBe('p')
     expect(summarizeTool('Grep', { input: { pattern: 'q' } })).toBe('q')

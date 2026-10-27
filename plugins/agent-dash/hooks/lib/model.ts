@@ -247,7 +247,7 @@ const KEYS = 'token|secret|password|passwd|key|credential|auth'
  * Known limit: a secret with no key name and no recognisable prefix or shape cannot be found.
  */
 export function redact(text: string): string {
-  const key = `[A-Za-z0-9_.-]{0,64}?(?:${KEYS})[A-Za-z0-9_.-]{0,64}`
+  const key = `[A-Za-z0-9_.-]{0,128}?(?:${KEYS})[A-Za-z0-9_.-]{0,128}`
   return text
     .replace(/Authorization:[^\r\n"']*/gi, 'Authorization: ***')
     .replace(/\bBearer\s+[^\s"']+/gi, 'Authorization: ***')
@@ -256,7 +256,7 @@ export function redact(text: string): string {
     .replace(/(?<!\S)(-u|--user)(?:\s+|=)(?:"[^"]{0,500}"|'[^']{0,500}'|[^\s"']+)/g, '$1 ***')
     .replace(/(\b[a-z][a-z0-9+.-]{0,20}:\/\/)[^\s/@"']{1,200}@/gi, '$1***@')
     .replace(new RegExp(`(?<![A-Za-z0-9_.-])(${key})=("[^"]*"|'[^']*'|\\S+)`, 'gi'), '$1=***')
-    .replace(new RegExp(`(?<![A-Za-z0-9_.-])([A-Za-z][A-Za-z0-9_-]{0,64}?(?:${KEYS})[A-Za-z0-9_-]{0,64})(\\s*:\\s*)[^\r\n"']+`, 'gi'), '$1$2***')
+    .replace(new RegExp(`(?<![A-Za-z0-9_.-])([A-Za-z][A-Za-z0-9_-]{0,128}?(?:${KEYS})[A-Za-z0-9_-]{0,128})(\\s*:\\s*)[^\r\n"']+`, 'gi'), '$1$2***')
     .replace(/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, '***')
     .replace(/[A-Za-z0-9+/]{32,}={0,2}/g, maskRun)
 }
@@ -266,16 +266,31 @@ function hasLetterAndDigit(s: string): boolean {
 }
 
 // A long run is a secret when it has base64 markers, or letters and digits mixed; a run
-// with `/` and no markers is a path unless one segment alone looks like a secret.
+// with `/` and no markers is a path unless one segment of 20 or more characters mixes
+// letters and digits.
 function maskRun(run: string): string {
   if (/[+=]/.test(run)) return '***'
   if (!run.includes('/')) return hasLetterAndDigit(run) ? '***' : run
-  return run.split('/').some((seg) => seg.length >= 32 && hasLetterAndDigit(seg)) ? '***' : run
+  return run.split('/').some((seg) => seg.length >= 20 && hasLetterAndDigit(seg)) ? '***' : run
+}
+
+/**
+ * The first 4,000 characters, cut back to the last whitespace when the text was longer,
+ * so the cut never leaves the prefix of a token that redaction would no longer recognise.
+ * A kept part with no whitespace is dropped whole; a cut text ends with `…`.
+ */
+function boundedInput(text: string): string {
+  if (text.length <= INPUT_MAX) return text
+  let i = INPUT_MAX
+  // The character at INPUT_MAX itself may be the boundary: then nothing is split.
+  while (i > 0 && !/\s/.test(text[i])) i -= 1
+  const kept = text.slice(0, i).trimEnd()
+  return kept === '' ? '…' : kept + ' …'
 }
 
 /** Redacts, collapses whitespace and clips; only the first 4,000 characters are read. */
 export function summarizeText(text: string, max = TEXT_MAX): string {
-  return clip(redact(text.slice(0, INPUT_MAX)), max)
+  return clip(redact(boundedInput(text)), max)
 }
 
 function obj(v: unknown): Record<string, unknown> {
@@ -371,7 +386,7 @@ export function recordTask(
 ): void {
   const d = detailFor(details, agentId, maxAgents)
   if (info.prompt !== undefined) {
-    const safe = redact(info.prompt.slice(0, INPUT_MAX))
+    const safe = redact(boundedInput(info.prompt))
     d.task = clip(safe, TASK_MAX)
     d.taskFirstLine = clip(safe.split(/\r?\n/).find((l) => l.trim() !== '') ?? '', TEXT_MAX)
   }
