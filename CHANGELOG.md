@@ -58,7 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   element of the live slide (links, disabled controls, the next-slide preview and pen
   mode excepted), and the preview now follows changes that only touch text, `style` or
   children of the live slide, not just `class` changes, re-rendering at most once per
-  100 ms.
+  100 ms. A re-render requested while a pointer is down on the preview waits for the
+  release, so the click is not lost.
 - Place the reactive-presentation footer after the logo instead of at a fixed
   `left: 70px`, which overlapped the 53px logo by about 3px and wider logos by more. The
   footer now starts 16px after the logo's right edge (`--rp-footer-left`, set by the

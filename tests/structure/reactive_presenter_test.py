@@ -1019,6 +1019,60 @@ class PresenterPreviewMirrorTests(_PresenterBase):
             "last => document.querySelector('#p-current #txt').textContent === last", arg=last, timeout=1000)
         self.assertEqual(self.errors, [])
 
+    def press_box(self, index):
+        box = self.pv.evaluate(BOX, f"#p-current .box:nth-child({index + 1})")
+        self.pv.mouse.move(box["x"] + box["w"] / 2, box["y"] + box["h"] / 2)
+        self.pv.mouse.down()
+
+    def force_preview_render(self):
+        self.page.evaluate("""() => {
+          const pv = deck.presenterView;
+          const doc = pv.presenterWindow.document;
+          pv._renderSlidePreview(doc, doc.getElementById('p-current'), deck.slides[deck.currentSlide], false);
+        }""")
+
+    def test_click_forwarding_survives_a_rerender_between_press_and_release(self):
+        self.press_box(1)
+        old = self.pv.evaluate_handle("() => document.querySelectorAll('#p-current .box')[1]")
+        self.force_preview_render()
+        self.pv.mouse.up()
+        self.page.wait_for_function(
+            "() => document.querySelector('.slide-deck #out').textContent === 'Beta detail'", timeout=3000)
+        self.pv.wait_for_timeout(300)
+        # The render requested during the press ran once after the release.
+        self.assertFalse(self.pv.evaluate("el => el.isConnected", old), "the preview re-rendered")
+        self.assertTrue(self.pv.evaluate(
+            "() => document.querySelectorAll('#p-current .box')[1].classList.contains('sel')"))
+        state = self.live_state()
+        self.assertEqual(state["sel"], [False, True, False])
+        self.assertEqual(state["clicks"], 1, "the live box is clicked exactly once")
+        # A later keyboard-style click (no press) still resolves at click time.
+        self.pv.evaluate("() => document.querySelectorAll('#p-current .box')[2].click()")
+        self.page.wait_for_function(
+            "() => document.querySelector('.slide-deck #out').textContent === 'Gamma detail'", timeout=3000)
+        self.assertEqual(self.live_state()["clicks"], 2)
+        self.assertEqual(self.errors, [])
+
+    def test_press_then_slide_change_then_release_forwards_nothing(self):
+        self.press_box(1)
+        self.force_preview_render()
+        self.page.evaluate("() => deck.goTo(1)")
+        self.page.wait_for_function("() => !deck.transitioning", timeout=5000)
+        self.pv.wait_for_timeout(300)
+        self.pv.mouse.up()
+        self.pv.wait_for_function(
+            "() => document.querySelector('#p-current .slide h2').textContent === 'Routing choices'",
+            timeout=3000)
+        self.pv.wait_for_timeout(300)
+        self.assertEqual(self.live_state()["clicks"], 0)
+        self.page.evaluate("() => deck.goTo(0)")
+        self.page.wait_for_function("() => !deck.transitioning", timeout=5000)
+        state = self.live_state()
+        self.assertEqual(state["sel"], [False, False, False])
+        self.assertEqual(state["out"], "none")
+        self.assertEqual(state["clicks"], 0)
+        self.assertEqual(self.errors, [])
+
     def test_pen_mode_clicks_do_not_forward(self):
         self.pv.keyboard.press("Alt+KeyO")
         self.assertTrue(self.page.evaluate("() => DeckPen.controller.active"))

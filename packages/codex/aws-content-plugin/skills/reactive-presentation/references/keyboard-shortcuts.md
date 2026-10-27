@@ -46,8 +46,8 @@ keep their meaning.
 - Esc leaves pen mode in a normal window, and while pen mode is on it wins over an open
   agenda or detail panel. In browser fullscreen the browser handles Esc first and exits
   fullscreen (Chrome does not deliver that keydown to the page), so use Option+P to
-  leave pen mode there; press it again from Pen, Highlighter or Eraser, which first
-  switches to Laser.
+  leave pen mode there; press it again from Pen, Highlighter, Eraser or Magnifier,
+  which first switches to Laser.
 - While pen mode is on the canvas takes all pointer input over the slide, so tabs, quiz
   buttons, compare toggles and detail tooltips need pen mode off first.
 - Laser strokes fade after 3 seconds (`pen.fadeMs`). Pen and highlighter ink stays per
@@ -55,8 +55,11 @@ keep their meaning.
 - Ink is mirrored between the deck window and the presenter window popup (opened with
   `P`): ink drawn in the presenter's current-slide preview shows on the deck window at
   the same slide position. Two separate deck windows or tabs sync only the slide position.
-- Linux caveat (not verified here): Chrome or Firefox on Linux may reserve Alt+1-9 for
-  tab switching, so the thickness and colour keys may not reach the page there.
+- Linux and Windows caveat (not verified here): Chrome or Firefox on Linux may reserve
+  Alt+1-9 for tab switching, so the thickness and colour keys may not reach the page
+  there. On Firefox for Windows, Alt+T (Option+T, clear ink) is a menu accelerator; the
+  pen handler calls `preventDefault()`, which should suppress the menu, but this was not
+  verified.
 
 ### Magnifier
 

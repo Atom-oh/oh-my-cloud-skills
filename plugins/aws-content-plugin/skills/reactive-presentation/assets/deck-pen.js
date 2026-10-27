@@ -512,6 +512,7 @@
     var lensShown = false;
     var lensDirty = true;
     var lensTimer = null;
+    var lensMaxTimer = null;
     var lensObserver = null;
 
     function lensWanted() {
@@ -600,21 +601,31 @@
       lensObserver.observe(slide, { attributes: true, attributeFilter: ['class'], subtree: true });
     }
 
-    // Fragment reveals and other class changes settle before one re-clone.
+    // Fragment reveals and other class changes settle 50 ms before one
+    // re-clone. Under continuous class churn the max-wait timer still
+    // re-clones at most 200 ms after the first pending mutation.
+    function reclone() {
+      clearTimeout(lensTimer);
+      clearTimeout(lensMaxTimer);
+      lensTimer = null;
+      lensMaxTimer = null;
+      lensDirty = true;
+      if (lensShown) redraw();
+    }
+
     function queueReclone() {
       clearTimeout(lensTimer);
-      lensTimer = setTimeout(function () {
-        lensTimer = null;
-        lensDirty = true;
-        if (lensShown) redraw();
-      }, 50);
+      lensTimer = setTimeout(reclone, 50);
+      if (!lensMaxTimer) lensMaxTimer = setTimeout(reclone, 200);
     }
 
     function hideLensEl() {
       lensShown = false;
       lensDirty = true;
       clearTimeout(lensTimer);
+      clearTimeout(lensMaxTimer);
       lensTimer = null;
+      lensMaxTimer = null;
       if (lensObserver) {
         lensObserver.disconnect();
         lensObserver = null;

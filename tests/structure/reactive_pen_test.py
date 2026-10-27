@@ -663,6 +663,26 @@ class DeckLensTests(DeckOverlayFixture):
         self.assertLessEqual(page.evaluate("() => window.__lensScriptRuns || 0"), 1,
                              "cloned scripts never run")
 
+    def test_lens_reclones_within_200ms_under_continuous_class_churn(self):
+        page = self.open("lens.html")
+        self.go(page, 1)
+        page.keyboard.press("Alt+KeyY")
+        info = self.hover_lens(page, "#frag")
+        self.assertNotEqual(self.pixel(page, info["cx"], info["cy"]), (0, 0, 200))
+        # A class toggles on the live slide every 20 ms for 800 ms; the fragment
+        # is revealed at 100 ms. A trailing-only debounce would never re-clone.
+        page.evaluate("""() => {
+          const slide = document.querySelector('.slide-deck .slide.active');
+          const h = slide.querySelector('.slide-header');
+          const timer = setInterval(() => h.classList.toggle('churn'), 20);
+          setTimeout(() => clearInterval(timer), 800);
+          setTimeout(() => document.getElementById('frag').classList.add('visible'), 100);
+        }""")
+        page.wait_for_timeout(400)
+        self.assertColor(self.pixel(page, info["cx"], info["cy"]), (0, 0, 200),
+                         "fragment in the lens while the churn continues")
+        page.wait_for_timeout(500)
+
     def test_lens_tracks_fragments_and_copies_canvas_frames(self):
         page = self.open("lens.html")
         # Pen ink on slide 1, bottom-left, then the Magnifier over it.

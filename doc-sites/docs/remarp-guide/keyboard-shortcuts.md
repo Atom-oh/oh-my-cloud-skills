@@ -64,13 +64,13 @@ Draw on the slide while presenting. Every pen key is an Option (Alt) chord match
 | Option+4 / 5 / 6 / 7 / 8 / 9 | Red / yellow / green / blue / white / black; nothing in Magnifier mode |
 | Esc | Leave pen mode (normal window only) |
 
-Option+O, Option+I, Option+U and Option+Y each turn pen mode on when it is off. Clearing ink moved from Option+Y to Option+T when the Magnifier took Option+Y. The defaults are red and medium, and the Highlighter defaults to yellow. Each of Laser, Pen and Highlighter remembers its own colour. Esc leaves pen mode in a normal window, and while pen mode is on it wins over an open agenda or detail panel. In browser fullscreen the browser handles Esc first and exits fullscreen, so use Option+P to leave pen mode there; press it again from Pen, Highlighter or Eraser, which first switches to Laser.
+Option+O, Option+I, Option+U and Option+Y each turn pen mode on when it is off. Clearing ink moved from Option+Y to Option+T when the Magnifier took Option+Y. The defaults are red and medium, and the Highlighter defaults to yellow. Each of Laser, Pen and Highlighter remembers its own colour. Esc leaves pen mode in a normal window, and while pen mode is on it wins over an open agenda or detail panel. In browser fullscreen the browser handles Esc first and exits fullscreen, so use Option+P to leave pen mode there; press it again from Pen, Highlighter, Eraser or Magnifier, which first switches to Laser.
 
 While pen mode is on, the canvas takes all pointer input over the slide, so tabs, quiz buttons, compare toggles and detail tooltips need pen mode off first.
 
 Laser strokes fade after 3 seconds. Pen and highlighter ink stays on its slide for the session and is never saved. Ink is mirrored between the deck window and the presenter window popup (opened with P): ink drawn in the presenter's current-slide preview appears on the deck window at the same slide position. Two separate deck windows or tabs sync only the slide position.
 
-On Linux, Chrome or Firefox may reserve Alt+1 to Alt+9 for tab switching, so the thickness and colour keys may not reach the page there. This has not been verified.
+On Linux, Chrome or Firefox may reserve Alt+1 to Alt+9 for tab switching, so the thickness and colour keys may not reach the page there. On Firefox for Windows, Alt+T (Option+T, clear ink) is a menu accelerator; the pen handler calls `preventDefault()`, which should suppress the menu. Neither behaviour has been verified.
 
 Set `pen: { fadeMs, audienceBadge }` in the `SlideFramework` options to change the laser fade time (default 3000 ms) or to hide the mode badge in the deck window with `audienceBadge: false`. The presenter window always shows the badge.
 
