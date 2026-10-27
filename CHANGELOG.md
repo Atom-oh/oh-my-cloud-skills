@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix reactive-presentation fullscreen Esc: in Chrome and Edge, fullscreen entered with the `F` key now locks Esc to the page, so the first Esc leaves pen mode (or closes overview) and the next exits fullscreen; Safari, Firefox and menu, `Cmd+Ctrl+F` or `F11` fullscreen still exit on the first Esc, so use `Option+P` there.
+
 ## [3.0.6] - 2026-10-27
 
 ### Added

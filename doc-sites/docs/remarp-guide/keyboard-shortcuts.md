@@ -34,7 +34,7 @@ The defaults below come from the current `SlideFramework.getKeyAction()` impleme
 | F | Toggle fullscreen |
 | O | Toggle overview |
 | S | Toggle sidebar outside fullscreen |
-| Escape | Exit overview or fullscreen; in a normal window it leaves pen mode first while it is on |
+| Escape | Leave pen mode while it is on, otherwise exit overview, otherwise exit fullscreen |
 
 Typing in an input or textarea does not navigate the deck. Touch swipes on the deck support previous/next navigation. Compare/tabs/Canvas behavior depends on the registered interaction for that slide.
 
@@ -62,9 +62,9 @@ Draw on the slide while presenting. Every pen key is an Option (Alt) chord match
 | Option+T | Clear all ink on the current slide |
 | Option+1 / 2 / 3 | Thin / medium / thick; in Magnifier mode 2x / 3x / 4x zoom |
 | Option+4 / 5 / 6 / 7 / 8 / 9 | Red / yellow / green / blue / white / black; nothing in Magnifier mode |
-| Esc | Leave pen mode (normal window only) |
+| Esc | Leave pen mode |
 
-Option+O, Option+I, Option+U and Option+Y each turn pen mode on when it is off. Clearing ink moved from Option+Y to Option+T when the Magnifier took Option+Y. The defaults are red and medium, and the Highlighter defaults to yellow. Each of Laser, Pen and Highlighter remembers its own colour. Esc leaves pen mode in a normal window, and while pen mode is on it wins over an open agenda or detail panel. In browser fullscreen the browser handles Esc first and exits fullscreen, so use Option+P to leave pen mode there; press it again from Pen, Highlighter, Eraser or Magnifier, which first switches to Laser.
+Option+O, Option+I, Option+U and Option+Y each turn pen mode on when it is off. Clearing ink moved from Option+Y to Option+T when the Magnifier took Option+Y. The defaults are red and medium, and the Highlighter defaults to yellow. Each of Laser, Pen and Highlighter remembers its own colour. Esc leaves pen mode, and while pen mode is on it wins over an open agenda or detail panel. In Chrome and Edge, fullscreen entered with the F key locks Esc to the page: the first Esc leaves pen mode (or closes overview), the next Esc exits fullscreen, and holding Esc exits fullscreen at any time. The lock needs a secure context (https or localhost), so a deck opened from `file://` may not get it. In Safari, Firefox, and fullscreen entered from the browser menu or with Cmd+Ctrl+F or F11, the browser takes Esc first and exits fullscreen, so use Option+P to leave pen mode there; press it again from Pen, Highlighter, Eraser or Magnifier, which first switches to Laser.
 
 While pen mode is on, the canvas takes all pointer input over the slide, so tabs, quiz buttons, compare toggles and detail tooltips need pen mode off first.
 
@@ -80,7 +80,7 @@ Option+Y turns on the Magnifier: a round lens, 28% of the slide height, follows 
 
 The lens is mirrored between the deck window and the presenter window: pointing at the presenter's current-slide preview shows the lens in the deck window at the same slide position, and pointing at the deck window shows it in the preview. Closing the presenter window leaves the deck lens working. The lens hides when the mouse leaves the slide, on a mode change, on a slide change (until the mouse moves again) and in overview mode.
 
-In Magnifier mode, clicks and hover do not reach the slide. Option+P, Option+O, Option+I and Option+U only change the mode and keep pen mode on, so the canvas still takes all pointer input. Clicks and hover reach the slide only after pen mode is off: press Esc in a normal window, or press Option+P twice (the first press switches to Laser and the second turns pen mode off).
+In Magnifier mode, clicks and hover do not reach the slide. Option+P, Option+O, Option+I and Option+U only change the mode and keep pen mode on, so the canvas still takes all pointer input. Clicks and hover reach the slide only after pen mode is off: press Esc (where Esc reaches the page), or press Option+P twice (the first press switches to Laser and the second turns pen mode off).
 
 The lens has these limits:
 
