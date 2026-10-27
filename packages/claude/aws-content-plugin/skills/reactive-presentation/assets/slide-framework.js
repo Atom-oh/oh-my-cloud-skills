@@ -82,6 +82,7 @@ class SlideFramework {
         }
       }
       if (window.DeckOverlay) window.DeckOverlay.init(this);
+      this.bindEscapeLock();
       this.bindKeys();
       this.bindTouch();
       this.handleHash();
@@ -291,6 +292,35 @@ class SlideFramework {
         }
       }
     });
+  }
+
+  // While the page is fullscreen through the Fullscreen API, ask the browser to
+  // deliver Escape to the page (Chromium Keyboard Lock) so pen mode and overview
+  // can consume it before the browser leaves fullscreen. Browsers without the
+  // API behave as before. Holding Esc still exits fullscreen at the browser level.
+  bindEscapeLock() {
+    if (this.escapeLockBound) return;
+    this.escapeLockBound = true;
+    const kb = () => {
+      try { return navigator.keyboard || null; } catch (e) { return null; }
+    };
+    const unlock = () => {
+      try {
+        const k = kb();
+        if (k && typeof k.unlock === 'function') k.unlock();
+      } catch (e) { /* unlock is best effort */ }
+    };
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) { unlock(); return; }
+      try {
+        const k = kb();
+        if (k && typeof k.lock === 'function') {
+          const p = k.lock(['Escape']);
+          if (p && typeof p.catch === 'function') p.catch(() => {});
+        }
+      } catch (e) { /* lock is best effort */ }
+    });
+    window.addEventListener('pagehide', unlock);
   }
 
   // Get action for a key (supports custom mappings)
