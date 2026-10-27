@@ -265,15 +265,9 @@ function wrapLines(text: string, width: number, max: number): string[] {
   return lines.map((l) => l.join(' '))
 }
 
+// Only working rows get a card: yellow while it waits (by status or an estimated edge), else green.
 function borderFor(row: AgentRow, waitsFrom: boolean): Record<string, unknown> {
-  if (row.status === 'failed') return { borderColor: 'red' }
-  if (row.status === 'waiting' || (waitsFrom && !isDone(row.status))) return { borderColor: 'yellow' }
-  if (row.status === 'running' || row.status === 'pending') return { borderColor: 'green' }
-  return { borderDimColor: true }
-}
-
-function isDone(status: AgentStatus): boolean {
-  return status === 'completed' || status === 'failed' || status === 'killed'
+  return { borderColor: row.status === 'waiting' || waitsFrom ? 'yellow' : 'green' }
 }
 
 /** The label a send's target resolves to: a listed id, name or teammate id, else the raw name. */
@@ -406,24 +400,33 @@ export function buildMap(
   const children: unknown[] = []
   if (working.length === 0) {
     children.push(text(p, 'No agents working', { dimColor: true }))
-    if (rows.length > 0) children.push(text(p, clipCells(summaryLine(rows, waits), Math.max(1, opts.columns)), { dimColor: true }))
+    if (rows.length > 0) {
+      const width = Math.max(1, opts.columns)
+      children.push(text(p, clipCells(summaryLine(rows, waits), width), { dimColor: true }))
+      // Finished and idle agents have no card; the list still shows them.
+      children.push(text(p, clipCells('View: List shows them', width), { dimColor: true }))
+    }
     children.push(viewButtons(els, opts))
     return els.Box({ flexDirection: 'column', children })
   }
   const head = mainLines(p, working.length, waits, details)
   children.push(...head)
-  const hasWait = waits.length > 0
-  let used = head.length + FOOTER_ROWS + (hasWait ? 1 : 0)
+  // The note explains the wait lines the map draws: main's and those of a drawn card. Its
+  // row is budgeted when any working agent waits, and drawn only for a card that showed.
+  const canWait = new Set<string>(['main', ...working.map((l) => l.row.id)])
+  let used = head.length + FOOTER_ROWS + (waits.some((w) => canWait.has(w.from)) ? 1 : 0)
+  const drawnFrom = new Set<string>(['main'])
   let shown = 0
   for (const line of working) {
     const card = agentCard(p, line, waits, details, sends)
     if (shown > 0 && used + card.rows > opts.maxRows) break
     children.push(card.el)
+    drawnFrom.add(line.row.id)
     used += card.rows
     shown += 1
   }
   if (shown < working.length) children.push(text(p, '+' + (working.length - shown) + ' more', { dimColor: true }))
-  if (hasWait) children.push(text(p, clipCells(WAIT_NOTE, Math.max(1, opts.columns)), { dimColor: true }))
+  if (waits.some((w) => drawnFrom.has(w.from))) children.push(text(p, clipCells(WAIT_NOTE, Math.max(1, opts.columns)), { dimColor: true }))
   children.push(viewButtons(els, opts))
   return els.Box({ flexDirection: 'column', children })
 }

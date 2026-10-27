@@ -578,3 +578,16 @@ test('test_band_is_hidden_when_nothing_is_working', async ($, on) => {
   expect((await ui.find({ type: 'Text', text: /agents:/ }))?.text).toBe('agents: 1 running · 2 done')
   await ui.unmount()
 })
+
+test('test_pending_only_list_has_a_band_and_a_status_line', async ($, on) => {
+  const { lines } = stubs(on, { list: [{ ...HELPER, status: 'pending' }] })
+  on('ui.render', ($, e) => $.ui.resolve(e).Text({ children: ['engine band'] }))
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  await clock.advance(5_000)
+  expect(lines[lines.length - 1]).toBe('1 running')
+  const ui = await $.ui.mount(BAND)
+  expect((await ui.find({ type: 'Text', text: /agents:/ }))?.text).toBe('agents: 1 running')
+  await ui.unmount()
+})

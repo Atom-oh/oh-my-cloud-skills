@@ -110,6 +110,33 @@ describe('summaryLine', () => {
     expect(summaryLine([], [])).toBe('no agents')
   })
 
+  test('test_summary_line_counts_pending_and_waiting_rows', () => {
+    const total = (s: string) => [...s.matchAll(/(\d+) /g)].reduce((n, m) => n + Number(m[1]), 0)
+    const pending = [row({ id: 'A', status: 'pending' }), row({ id: 'B', status: 'pending' })]
+    expect(summaryLine(pending, [])).toBe('2 running')
+    // A waiting status with no inferred wait edge is a working agent that is not blocked.
+    const waitingNoEdge = [row({ id: 'W', status: 'waiting' })]
+    expect(summaryLine(waitingNoEdge, [])).toBe('1 running')
+    const mixed = [
+      row({ id: 'A', status: 'pending' }),
+      row({ id: 'B', status: 'waiting' }),
+      row({ id: 'C' }),
+      row({ id: 'D', status: 'idle' }),
+      row({ id: 'E', status: 'completed' }),
+    ]
+    // An idle sender of a message wait counts once, as idle.
+    const edges = [
+      { from: 'C', to: 'B', sinceMs: 0, reason: 'message' as const },
+      { from: 'D', to: 'C', sinceMs: 0, reason: 'message' as const },
+    ]
+    for (const [rs, ws] of [[pending, []], [waitingNoEdge, []], [mixed, []], [mixed, edges]] as const) {
+      const line = summaryLine(rs as any, ws as any)
+      expect(line).not.toBe('')
+      expect(total(line)).toBe(rs.length)
+    }
+    expect(summaryLine(mixed, edges)).toBe('2 running · 1 waiting (est.) · 1 idle · 1 done')
+  })
+
   test('test_summary_line_hides_zero_counts', () => {
     expect(summaryLine([row({ id: 'A' }), row({ id: 'B' })], [])).toBe('2 running')
     expect(summaryLine([row({ id: 'A', status: 'completed' })], [])).toBe('1 done')

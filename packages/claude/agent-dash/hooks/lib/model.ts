@@ -164,18 +164,25 @@ function senderIs(rows: AgentRow[], to: string, sender: string | null): boolean 
 }
 
 /**
- * One line for the status line, the band and the pane header. A count of zero is left
- * out; `no agents` only when there are no rows.
+ * One line for the status line, the band and the pane header. Every row counts exactly
+ * once: a working row (pending, running or waiting) is `waiting (est.)` when it has a
+ * wait edge and `running` otherwise, so a pending row or a waiting status with no
+ * inferred edge reads as running; then `idle` and `done`. The main loop adds one to the
+ * waiting count when it waits, without being a row. A count of zero is left out; a
+ * non-empty list never gives an empty line, and `no agents` stands for no rows.
  */
 export function summaryLine(rows: AgentRow[], waits: WaitEdge[]): string {
   if (rows.length === 0) return 'no agents'
-  const waiting = new Set(waits.map((w) => w.from))
-  const running = rows.filter((r) => r.status === 'running' && !waiting.has(r.id)).length
+  const senders = new Set(waits.map((w) => w.from))
+  const working = rows.filter(isWorking)
+  const blocked = working.filter((r) => senders.has(r.id)).length
+  const running = working.length - blocked
+  const waitingCount = blocked + (senders.has('main') ? 1 : 0)
   const idle = rows.filter((r) => r.status === 'idle').length
   const done = rows.filter(isFinished).length
   const parts: string[] = []
   if (running > 0) parts.push(`${running} running`)
-  if (waiting.size > 0) parts.push(`${waiting.size} waiting (est.)`)
+  if (waitingCount > 0) parts.push(`${waitingCount} waiting (est.)`)
   if (idle > 0) parts.push(`${idle} idle`)
   if (done > 0) parts.push(`${done} done`)
   return parts.join(' · ')

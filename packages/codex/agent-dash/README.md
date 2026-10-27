@@ -19,10 +19,12 @@ Code 2.1.300 or later.
   while it runs, with the time since it started), `waits on <agent> (est.)` when it
   probably waits, and the last message it sent. A working child is indented under its
   working parent; cards that do not fit collapse into `+N more`. With nothing working
-  the map says `No agents working` and the counts.
+  the map says `No agents working`, the counts and `View: List shows them`.
 - Finished and idle agents get no card: they show only in the counts, in the status
   line and in the list. The band above the prompt shows `agents: <summary>` only while
-  an agent works. A count of zero is never shown.
+  an agent works. A count of zero is never shown. Every agent counts once: a pending or
+  running agent, or one whose status says waiting with no inferred wait, counts as
+  `running`; one with an estimated wait as `waiting (est.)`; then `idle` and `done`.
 - `View: Map` / `View: List` (hotkey `m`) switches to the list: one line per agent,
   finished ones included, in a delegation tree with status, elapsed time and
   `waits on <agent> (est.)`. A foreground agent started by the main loop shows as
@@ -56,6 +58,15 @@ doing: Agent Review the map change (50s ago)
 │ doing: Read agent-dash/hooks/lib/view.ts (4s ago)            │
 ╰──────────────────────────────────────────────────────────────╯
 waits are estimates from spawn and message events
+m: View: Map  r: Refresh
+```
+
+With nothing working, the map keeps only the counts:
+
+```
+No agents working
+2 done
+View: List shows them
 m: View: Map  r: Refresh
 ```
 

@@ -298,6 +298,26 @@ describe('buildMap', () => {
     const orphan = cardOf(map, 'orphan')!
     expect(orphan.marginLeft ?? 0).toBe(0)
     expect(texts(orphan).includes('└')).toBe(false)
+    // Border colour: green for a running card, yellow for a waiting one.
+    expect(orphan.borderColor).toBe('green')
+    expect(cardOf(map, 'starting')!.borderColor).toBe('green')
+    expect(cardOf(map, 'waiter')!.borderColor).toBe('yellow')
+    // The estimate note shows only for a wait the map draws.
+    expect(texts(map)).not.toContain('waits are estimates from spawn and message events')
+    const idleWait = [{ from: 'I', to: 'W', sinceMs: 0, reason: 'message' as const }]
+    const quiet = buildMap(els, buildTree(rs), idleWait, new Map(), [], { ...mapBase, maxRows: 200 })
+    expect(texts(quiet)).not.toContain('waits are estimates from spawn and message events')
+    const drawn = [{ from: 'N', to: 'W', sinceMs: 0, reason: 'message' as const }]
+    const noisy = buildMap(els, buildTree(rs), drawn, new Map(), [], { ...mapBase, maxRows: 200 })
+    expect(texts(noisy)).toContain('waits are estimates from spawn and message events')
+    const fromMain = [{ from: 'main', to: 'W', sinceMs: 0, reason: 'message' as const }]
+    expect(texts(buildMap(els, buildTree(rs), fromMain, new Map(), [], { ...mapBase, maxRows: 200 }))).toContain('waits are estimates from spawn and message events')
+    // A wait from a card collapsed into `+N more` draws no note either.
+    const many = Array.from({ length: 6 }, (_, i) => row({ id: 'R' + i, name: 'agent' + i, sinceMs: 1000 + i }))
+    const lastWaits = [{ from: 'R5', to: 'R0', sinceMs: 0, reason: 'message' as const }]
+    const cut = buildMap(els, buildTree(many), lastWaits, new Map(), [], { ...mapBase, maxRows: 8 })
+    expect(texts(cut).some((t) => /^\+\d+ more$/.test(t))).toBe(true)
+    expect(texts(cut)).not.toContain('waits are estimates from spawn and message events')
     expect(texts(map)[0]).toBe('main · 3 working · 1 idle · 3 done')
   })
 
@@ -357,7 +377,10 @@ describe('buildMap', () => {
     const map = buildMap(els, buildTree(rs), [], new Map(), [], mapBase)
     expect(cards(map).length).toBe(0)
     const all = texts(map)
-    expect(all.slice(0, 2)).toEqual(['No agents working', '1 idle · 1 done'])
+    expect(all.slice(0, 3)).toEqual(['No agents working', '1 idle · 1 done', 'View: List shows them'])
+    const hint = walk(map).find((e) => e.type === 'Text' && e.children[0] === 'View: List shows them')!
+    expect(hint.dimColor).toBe(true)
+    assertFitsCells(buildMap(els, buildTree(rs), [], new Map(), [], { ...mapBase, columns: 20 }), 20)
     expect(all.some((t) => t.startsWith('main'))).toBe(false)
     const dim = walk(map).find((e) => e.type === 'Text' && e.children[0] === 'No agents working')!
     expect(dim.dimColor).toBe(true)
