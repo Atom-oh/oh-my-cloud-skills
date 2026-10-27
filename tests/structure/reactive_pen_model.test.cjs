@@ -199,6 +199,35 @@ test('test_effective_color_follows_the_current_mode', () => {
   assert.equal(model.effectiveColor(), 0);
 });
 
+test('test_magnifier_mode_creates_no_stroke_and_remembers_zoom', () => {
+  const { DeckPen, model } = setup(3000);
+  assert.ok(DeckPen.MODES.includes('magnifier'));
+  assert.equal(DeckPen.MODES.indexOf('magnifier'), DeckPen.MODES.indexOf('eraser') + 1);
+  assert.equal(model.zoom, 2);
+  model.setMode('pen');
+  model.setColor(3);
+  model.setMode('magnifier');
+  assert.equal(model.mode, 'magnifier');
+  assert.equal(model.begin(0, 0.1, 0.1), null);
+  assert.doesNotThrow(() => { model.extend(0.2, 0.2); model.end(); });
+  assert.equal(model.visible(0).length, 0);
+  assert.equal(model.animating(0), false);
+  // Magnifier has no colour of its own; setColor is a no-op there.
+  model.setColor(5);
+  model.setZoom(3);
+  assert.equal(model.zoom, 3);
+  model.setMode('pen');
+  assert.equal(model.effectiveColor(), 3);
+  model.setMode('magnifier');
+  assert.equal(model.zoom, 3);
+  for (const bad of [5, 1, 0, 2.5, '4', null, undefined]) model.setZoom(bad);
+  assert.equal(model.zoom, 3);
+  model.setZoom(4);
+  assert.equal(model.zoom, 4);
+  model.setZoom(2);
+  assert.equal(model.zoom, 2);
+});
+
 test('test_controller_is_not_created_without_the_overlay_core', () => {
   const DeckPen = load();
   assert.equal(DeckPen.controller, null);

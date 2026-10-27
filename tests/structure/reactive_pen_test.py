@@ -105,7 +105,7 @@ class DeckPenTests(DeckOverlayFixture):
     def test_option_chords_do_not_trigger_framework_keys(self):
         page = self.open_pen()
         for code, key in (("KeyO", "o"), ("KeyI", "i"), ("KeyU", "u"), ("KeyY", "y"),
-                          ("Digit1", "1"), ("Digit4", "4"), ("Digit3", "3")):
+                          ("KeyT", "t"), ("Digit1", "1"), ("Digit4", "4"), ("Digit3", "3")):
             self.assertTrue(self.chord(page, code, key), code)
         page.keyboard.press("Alt+KeyO")
         page.wait_for_timeout(300)
@@ -210,7 +210,7 @@ class DeckPenTests(DeckOverlayFixture):
         self.assertEqual(self.state(page)["mode"], "laser")
         self.assertTrue(self.state(page)["active"])
 
-    def test_eraser_removes_one_stroke_and_option_y_clears(self):
+    def test_eraser_removes_one_stroke_and_option_t_clears(self):
         page = self.open_pen()
         page.keyboard.press("Alt+KeyO")
         self.stroke(page, [(0.2, 0.3), (0.6, 0.3)])
@@ -225,10 +225,122 @@ class DeckPenTests(DeckOverlayFixture):
         page.keyboard.press("Alt+KeyO")
         self.stroke(page, [(0.2, 0.5), (0.6, 0.5)])
         self.assertEqual(page.evaluate(visible), 2)
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("Alt+KeyT")
         page.wait_for_timeout(100)
         self.assertEqual(page.evaluate(visible), 0)
         self.assertEqual(self.inked(page), 0)
+
+    def test_clear_moved_to_option_t_and_digits_mean_zoom_in_magnifier(self):
+        page = self.open_pen()
+        visible = "() => DeckPen.controller.model.visible(0).length"
+        zoom = "() => DeckPen.controller.model.zoom"
+        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("Alt+Digit3")
+        page.keyboard.press("Alt+Digit7")
+        self.stroke(page, [(0.2, 0.3), (0.6, 0.3)])
+        self.assertEqual(page.evaluate(visible), 1)
+        page.keyboard.press("Escape")
+        self.assertFalse(self.state(page)["active"])
+        # Option+Y selects the Magnifier, turns pen mode on and keeps the ink.
+        self.assertTrue(self.chord(page, "KeyY", "y"))
+        self.assertEqual(self.state(page)["active"], True)
+        self.assertEqual(self.state(page)["mode"], "magnifier")
+        page.keyboard.press("Alt+KeyY")
+        page.wait_for_timeout(100)
+        self.assertEqual(self.state(page)["mode"], "magnifier", "Option+Y is not a toggle")
+        self.assertTrue(self.state(page)["active"])
+        self.assertEqual(page.evaluate(visible), 1, "Option+Y no longer clears ink")
+        self.assertGreater(self.inked(page), 0)
+        # Drawing in Magnifier mode creates no stroke.
+        self.stroke(page, [(0.2, 0.6), (0.6, 0.6)])
+        self.assertEqual(page.evaluate(visible), 1)
+        # Digits 1-3 are zoom only; 4-9 are consumed and change nothing.
+        self.assertEqual(page.evaluate(zoom), 2)
+        self.assertTrue(self.chord(page, "Digit2", "2"))
+        self.assertEqual(page.evaluate(zoom), 3)
+        self.assertEqual(self.state(page)["size"], 3, "pen size unchanged")
+        page.keyboard.press("Alt+Digit1")
+        self.assertEqual(page.evaluate(zoom), 2)
+        page.keyboard.press("Alt+Digit3")
+        self.assertEqual(page.evaluate(zoom), 4)
+        page.keyboard.press("Alt+Digit2")
+        self.assertEqual(page.evaluate(zoom), 3)
+        self.assertTrue(self.chord(page, "Digit5", "5"))
+        self.assertEqual(page.evaluate(zoom), 3)
+        self.assertEqual(self.state(page)["size"], 3)
+        self.assertEqual(self.state(page)["colorIndex"], 3, "Option+5 left the colours alone")
+        # Back to Pen: the previous size and colour return.
+        page.keyboard.press("Alt+KeyO")
+        self.assertEqual(self.state(page),
+                         {"active": True, "mode": "pen", "size": 3, "colorIndex": 3})
+        # Zoom is remembered across modes.
+        page.keyboard.press("Alt+KeyY")
+        self.assertEqual(page.evaluate(zoom), 3)
+        # Option+T clears all ink on the current slide.
+        page.keyboard.press("Alt+KeyT")
+        page.wait_for_timeout(100)
+        self.assertEqual(page.evaluate(visible), 0)
+        self.assertEqual(self.inked(page), 0)
+        self.assertEqual(self.state(page)["mode"], "magnifier")
+
+    def test_badge_shows_magnifier_and_zoom(self):
+        page = self.open_pen()
+        label = "() => document.querySelector('#rp-pen-badge .rp-pen-label').textContent"
+        swatch = """() => {
+          const s = document.querySelector('#rp-pen-badge .rp-pen-swatch');
+          return { hidden: s.hidden, neutral: s.classList.contains('rp-pen-swatch-neutral'),
+                   inline: s.style.backgroundColor };
+        }"""
+        page.keyboard.press("Alt+KeyY")
+        self.assertTrue(page.locator("#rp-pen-badge").is_visible())
+        self.assertEqual(page.evaluate(label), "Magnifier 2x")
+        self.assertEqual(page.evaluate(swatch), {"hidden": False, "neutral": True, "inline": ""})
+        page.keyboard.press("Alt+Digit3")
+        self.assertEqual(page.evaluate(label), "Magnifier 4x")
+        page.keyboard.press("Alt+Digit2")
+        self.assertEqual(page.evaluate(label), "Magnifier 3x")
+        page.keyboard.press("Alt+KeyO")
+        self.assertEqual(page.evaluate(label), "Pen, medium")
+        info = page.evaluate(swatch)
+        self.assertFalse(info["neutral"])
+        self.assertNotEqual(info["inline"], "")
+        page.keyboard.press("Alt+KeyY")
+        self.assertEqual(page.evaluate(label), "Magnifier 3x")
+
+    def test_changing_mode_hides_the_lens_state(self):
+        page = self.open_pen()
+        lens = "() => Object.assign({}, DeckPen.controller.lens)"
+        self.assertEqual(page.evaluate(lens)["visible"], False)
+        page.keyboard.press("Alt+KeyY")
+        changes = page.evaluate("""() => {
+          window.__changes = 0;
+          DeckPen.controller.onChange(() => { window.__changes++; });
+          DeckPen.controller.setLens(0.25, 0.75, true);
+          return window.__changes;
+        }""")
+        self.assertEqual(changes, 1, "setLens emits a change")
+        self.assertEqual(page.evaluate(lens), {"x": 0.25, "y": 0.75, "visible": True})
+        # Option+Y again keeps Magnifier and does not hide the lens.
+        page.keyboard.press("Alt+KeyY")
+        self.assertTrue(page.evaluate(lens)["visible"])
+        # Zoom keys do not hide it either.
+        page.keyboard.press("Alt+Digit2")
+        self.assertTrue(page.evaluate(lens)["visible"])
+        for code in ("KeyP", "KeyO", "KeyI", "KeyU"):
+            page.keyboard.press("Alt+KeyY")
+            page.evaluate("() => DeckPen.controller.setLens(0.5, 0.5, true)")
+            page.keyboard.press("Alt+" + code)
+            self.assertFalse(page.evaluate(lens)["visible"], code)
+            self.assertTrue(self.state(page)["active"], code)
+        page.keyboard.press("Alt+KeyY")
+        page.evaluate("() => DeckPen.controller.setLens(0.5, 0.5, true)")
+        page.keyboard.press("Escape")
+        self.assertFalse(self.state(page)["active"])
+        self.assertFalse(page.evaluate(lens)["visible"])
+        page.keyboard.press("Alt+KeyY")
+        page.evaluate("() => DeckPen.controller.setLens(0.5, 0.5, true)")
+        page.evaluate("() => DeckPen.controller.setActive(false)")
+        self.assertFalse(page.evaluate(lens)["visible"])
 
     def test_pen_ignores_typing_targets(self):
         page = self.open_pen()

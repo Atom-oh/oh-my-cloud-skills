@@ -47,3 +47,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
 }
+
+.rp-pen-swatch-neutral {
+  background: var(--on-surface-muted);
+}

@@ -4,7 +4,8 @@
 (function () {
   'use strict';
 
-  var MODES = ['laser', 'pen', 'highlighter', 'eraser'];
+  var MODES = ['laser', 'pen', 'highlighter', 'eraser', 'magnifier'];
+  var ZOOMS = [2, 3, 4];
   var SIZES = { 1: 4, 2: 8, 3: 16 };
   var PALETTE = ['#e53935', '#fdd835', '#43a047', '#1e88e5', '#ffffff', '#000000'];
   var HIGHLIGHTER_ALPHA = 0.35;
@@ -18,10 +19,16 @@
     var now = opts.now || function () { return Date.now(); };
     var bySlide = {};
     var current = null;
-    // One chosen colour per drawing mode; the eraser has none and shows the last drawing mode's.
+    // One chosen colour per drawing mode; the eraser and magnifier have none and
+    // show the last drawing mode's.
     var colors = { laser: DEFAULT_COLORS.laser, pen: DEFAULT_COLORS.pen, highlighter: DEFAULT_COLORS.highlighter };
     var lastDrawMode = 'laser';
     var nextId = 1;
+
+    // Eraser and magnifier draw nothing and have no colour of their own.
+    function drawsInk(name) {
+      return name !== 'eraser' && name !== 'magnifier';
+    }
 
     function list(slide) {
       return bySlide[slide] || (bySlide[slide] = []);
@@ -47,19 +54,24 @@
     var model = {
       mode: 'laser',
       size: 2,
+      // Magnifier zoom factor, a setting separate from the pen size.
+      zoom: 2,
       // Read-only view of the colour the current mode uses.
       get colorIndex() { return this.effectiveColor(); },
 
       setMode: function (name) {
         if (MODES.indexOf(name) < 0) return;
         this.mode = name;
-        if (name !== 'eraser') lastDrawMode = name;
+        if (drawsInk(name)) lastDrawMode = name;
+      },
+      setZoom: function (n) {
+        if (ZOOMS.indexOf(n) >= 0) this.zoom = n;
       },
       setSize: function (n) {
         if (Object.prototype.hasOwnProperty.call(SIZES, n)) this.size = Number(n);
       },
       setColor: function (i) {
-        if (this.mode === 'eraser') return;
+        if (!drawsInk(this.mode)) return;
         if (typeof i === 'number' && i % 1 === 0 && i >= 0 && i < PALETTE.length) {
           colors[this.mode] = i;
         }
@@ -67,12 +79,13 @@
 
       // Palette index the current mode draws with (each drawing mode keeps its own).
       effectiveColor: function () {
-        return colors[this.mode === 'eraser' ? lastDrawMode : this.mode];
+        return colors[drawsInk(this.mode) ? this.mode : lastDrawMode];
       },
 
-      // Returns the new stroke id, or null in eraser mode (no stroke is created).
+      // Returns the new stroke id, or null in eraser or magnifier mode (no stroke
+      // is created).
       begin: function (slide, x, y) {
-        if (this.mode === 'eraser') return null;
+        if (!drawsInk(this.mode)) return null;
         var color = this.effectiveColor();
         current = {
           id: nextId++, slide: slide, mode: this.mode, size: this.size,
@@ -214,9 +227,11 @@
   // --- DOM controller -------------------------------------------------------
   // Everything below touches the DOM only when called, never at load time.
 
-  var MODE_LABELS = { laser: 'Laser', pen: 'Pen', highlighter: 'Highlighter', eraser: 'Eraser' };
+  var MODE_LABELS = {
+    laser: 'Laser', pen: 'Pen', highlighter: 'Highlighter', eraser: 'Eraser', magnifier: 'Magnifier'
+  };
   var SIZE_LABELS = { 1: 'thin', 2: 'medium', 3: 'thick' };
-  var MODE_CODES = { KeyP: 'laser', KeyO: 'pen', KeyI: 'highlighter', KeyU: 'eraser' };
+  var MODE_CODES = { KeyP: 'laser', KeyO: 'pen', KeyI: 'highlighter', KeyU: 'eraser', KeyY: 'magnifier' };
   var BASE_HEIGHT = 1080;
   // Eraser radius in design pixels (1080-high slide) is the stroke width times this.
   var ERASER_FACTOR = 2;
@@ -274,10 +289,27 @@
       surfaces.forEach(function (s) { s.cancel(); });
     }
 
+    function hideLens() {
+      controller.lens.visible = false;
+    }
+
+    // Lens position in 0..1 slide coordinates; drawing it is left to the surfaces.
+    function setLens(x, y, visible) {
+      var lens = controller.lens;
+      if (typeof x === 'number' && isFinite(x)) lens.x = Math.max(0, Math.min(1, x));
+      if (typeof y === 'number' && isFinite(y)) lens.y = Math.max(0, Math.min(1, y));
+      lens.visible = Boolean(visible);
+      emit();
+      schedule();
+    }
+
     function setActive(on) {
       on = Boolean(on);
       if (on === controller.active) return;
-      if (!on) stopDrawing();
+      if (!on) {
+        stopDrawing();
+        hideLens();
+      }
       controller.active = on;
       emit();
       schedule();
@@ -289,6 +321,7 @@
         return;
       }
       model.end();
+      if (!controller.active || model.mode !== mode) hideLens();
       model.setMode(mode);
       if (controller.active) emit();
       else setActive(true);
@@ -298,7 +331,7 @@
       if (MODE_CODES[code]) {
         return function () { selectMode(MODE_CODES[code], code === 'KeyP'); };
       }
-      if (code === 'KeyY') {
+      if (code === 'KeyT') {
         return function () {
           model.end();
           model.clear(getSlide());
@@ -308,9 +341,16 @@
       var digit = /^Digit([1-9])$/.exec(code || '');
       if (digit) {
         var n = Number(digit[1]);
+        // In magnifier mode 1-3 pick the zoom and 4-9 do nothing (still consumed).
         return function () {
-          if (n <= 3) model.setSize(n);
-          else model.setColor(n - 4);
+          if (model.mode === 'magnifier') {
+            if (n > 3) return;
+            model.setZoom(n + 1);
+          } else if (n <= 3) {
+            model.setSize(n);
+          } else {
+            model.setColor(n - 4);
+          }
           emit();
         };
       }
@@ -320,6 +360,8 @@
     var controller = {
       model: model,
       active: false,
+      lens: { x: 0.5, y: 0.5, visible: false },
+      setLens: setLens,
       onChange: function (fn) {
         listeners.push(fn);
         return function () {
@@ -430,8 +472,9 @@
       var off = inert();
       if (off) finish();
       canvas.classList.toggle('active', controller.active && !off);
-      canvas.style.cursor = model.mode === 'eraser'
-        ? 'cell' : cursorFor(model.effectiveColor(), model.size);
+      if (model.mode === 'eraser') canvas.style.cursor = 'cell';
+      else if (model.mode === 'magnifier') canvas.style.cursor = 'zoom-in';
+      else canvas.style.cursor = cursorFor(model.effectiveColor(), model.size);
     }
 
     function onDown(event) {
@@ -541,9 +584,14 @@
       update: function (show) {
         var model = api.controller.model;
         el.hidden = !show;
-        label.textContent = MODE_LABELS[model.mode] + ', ' + SIZE_LABELS[model.size];
+        var magnifier = model.mode === 'magnifier';
+        label.textContent = magnifier
+          ? MODE_LABELS.magnifier + ' ' + model.zoom + 'x'
+          : MODE_LABELS[model.mode] + ', ' + SIZE_LABELS[model.size];
         swatch.hidden = model.mode === 'eraser';
-        swatch.style.backgroundColor = PALETTE[model.effectiveColor()];
+        // The magnifier shows a neutral swatch (theme colour) instead of ink.
+        swatch.classList.toggle('rp-pen-swatch-neutral', magnifier);
+        swatch.style.backgroundColor = magnifier ? '' : PALETTE[model.effectiveColor()];
       }
     };
   }
@@ -594,7 +642,7 @@
   }
 
   var api = {
-    MODES: MODES, SIZES: SIZES, PALETTE: PALETTE,
+    MODES: MODES, SIZES: SIZES, ZOOMS: ZOOMS, PALETTE: PALETTE,
     HIGHLIGHTER_ALPHA: HIGHLIGHTER_ALPHA,
     HIGHLIGHTER_WIDTH_FACTOR: HIGHLIGHTER_WIDTH_FACTOR,
     createModel: createModel, render: render, cursorFor: cursorFor,
