@@ -1,7 +1,7 @@
 import { expect, test, describe } from 'claude-code/testing'
 import { row, rows } from './fixtures/agents.ts'
-import { DEFAULT_POLICY, buildTree, diffNotices, inferWaits, resolveModel, summaryLine } from '../hooks/lib/model.ts'
-import type { TreeNode } from '../hooks/lib/model.ts'
+import { DEFAULT_POLICY, buildTree, clip, diffNotices, inferWaits, pruneDetails, recordActivity, recordTask, redact, resolveModel, summarizeText, summarizeTool, summaryLine } from '../hooks/lib/model.ts'
+import type { AgentDetail, TreeNode } from '../hooks/lib/model.ts'
 
 const NOW = 10_000
 
@@ -165,5 +165,82 @@ describe('resolveModel', () => {
     expect(DEFAULT_POLICY.enabled).toBe(false)
     for (const v of Object.values(DEFAULT_POLICY.map)) expect(['opus', 'sonnet', 'haiku']).toContain(v)
     expect(DEFAULT_POLICY.map['aws-content-plugin:presentation-agent']).toBe('sonnet')
+  })
+})
+
+describe('detail model', () => {
+  test('test_clip_makes_one_line_and_marks_the_cut', () => {
+    expect(clip('  a\n  b\tc  ', 80)).toBe('a b c')
+    expect(clip('abcdefghij', 5)).toBe('abcd…')
+    expect(clip('abcde', 5)).toBe('abcde')
+    expect(clip('', 5)).toBe('')
+  })
+
+  test('test_summaries_redact_secrets', () => {
+    const a = summarizeText('API_TOKEN=abc123 curl -H "Authorization: Bearer x.y.z"')
+    expect(a).toContain('API_TOKEN=***')
+    expect(a).not.toContain('abc123')
+    expect(a).not.toContain('x.y.z')
+    expect(a).toContain('Authorization: ***')
+    expect(redact('login --password hunter2 now')).toBe('login --password *** now')
+    expect(redact('--api-key k1 --token t1 --secret s1')).toBe('--api-key *** --token *** --secret ***')
+    expect(redact('Bearer abc.def')).toBe('Authorization: ***')
+    expect(redact('db_Password=x and plain=y')).toBe('db_Password=*** and plain=y')
+    const hex = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678'
+    expect(hex.length).toBe(40)
+    expect(redact('sha ' + hex + ' end')).toBe('sha *** end')
+    expect(summarizeText('line one\nAPI_KEY=zzz')).not.toContain('\n')
+  })
+
+  test('test_summarize_tool_shapes', () => {
+    expect(summarizeTool('Bash', { command: 'ls -la\nrm x' })).toBe('ls -la')
+    expect(summarizeTool('Read', { file_path: '/a/b/c/d/e.ts' })).toBe('c/d/e.ts')
+    expect(summarizeTool('Edit', { file_path: '/a/b/c/d.ts' })).toBe('a/b/c/d.ts'.split('/').slice(-3).join('/'))
+    expect(summarizeTool('Write', { file_path: 'x.ts' })).toBe('x.ts')
+    expect(summarizeTool('NotebookEdit', { notebook_path: '/n/a/b/c.ipynb' })).toBe('n/a/b/c.ipynb'.split('/').slice(-3).join('/'))
+    expect(summarizeTool('Grep', { pattern: 'foo.*bar' })).toBe('foo.*bar')
+    expect(summarizeTool('Glob', { pattern: '**/*.ts' })).toBe('**/*.ts')
+    expect(summarizeTool('Agent', { description: 'scan repo', prompt: 'secret stuff' })).toBe('scan repo')
+    expect(summarizeTool('SendMessage', { to: 'bob', message: 'hello\nthere' })).toBe('bob: hello there')
+    expect(summarizeTool('WebFetch', { url: 'https://example.com/docs/x?token=abc#f' })).toBe('example.com/docs/x')
+    expect(summarizeTool('Mystery', { a: 1 })).toBe('Mystery')
+    expect(summarizeTool('Bash', null)).toBe('Bash')
+    expect(summarizeTool('Read', 'str')).toBe('Read')
+    expect(summarizeTool('Grep', {})).toBe('Grep')
+    expect(summarizeTool('WebFetch', { url: 'not a url' })).toBe('WebFetch')
+    expect(summarizeTool('Bash', { command: 'API_TOKEN=abc123 run' })).toBe('API_TOKEN=*** run')
+    expect(summarizeTool('Bash', { command: 'word '.repeat(40) }).length).toBe(80)
+  })
+
+  test('test_detail_is_bounded_and_pruned', () => {
+    const d = new Map<string, AgentDetail>()
+    for (let i = 0; i < 1000; i++) recordActivity(d, 'A', { tool: 'Bash', summary: 's' + i, atMs: i })
+    expect(d.get('A')!.activity.length).toBe(6)
+    expect(d.get('A')!.activity.map((x) => x.atMs)).toEqual([994, 995, 996, 997, 998, 999])
+    const m = new Map<string, AgentDetail>()
+    for (let i = 0; i < 250; i++) recordActivity(m, 'g' + i, { tool: 'Bash', summary: 's', atMs: i })
+    expect(m.size).toBe(200)
+    expect(m.has('g0')).toBe(false)
+    expect(m.has('g249')).toBe(true)
+    for (let i = 0; i < 250; i++) recordTask(m, 't' + i, { prompt: 'p' })
+    expect(m.size).toBe(200)
+    pruneDetails(m, new Set(['t249', 't248', 'nope']))
+    expect([...m.keys()].sort()).toEqual(['t248', 't249'])
+  })
+
+  test('test_record_task_keeps_first_line_and_clips', () => {
+    const d = new Map<string, AgentDetail>()
+    recordTask(d, 'A', { prompt: 'Fix the bug\n' + 'word '.repeat(200), description: 'fixer', model: 'opus' })
+    const a = d.get('A')!
+    expect(a.taskFirstLine).toBe('Fix the bug')
+    expect(a.task!.length).toBe(600)
+    expect(a.task!.endsWith('…')).toBe(true)
+    expect(a.description).toBe('fixer')
+    expect(a.model).toBe('opus')
+    expect(a.activity).toEqual([])
+    recordActivity(d, 'A', { tool: 'Bash', summary: 'x', atMs: 1 })
+    recordTask(d, 'A', { prompt: 'API_TOKEN=abc123 go' })
+    expect(d.get('A')!.task).toBe('API_TOKEN=*** go')
+    expect(d.get('A')!.activity.length).toBe(1)
   })
 })
