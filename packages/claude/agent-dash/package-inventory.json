@@ -12,11 +12,11 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "1edced2d73cca729577e780a55328e74626d4182bce15a1fb626ccf1efeddb00",
+      "sha256": "139995c7758bb781edaa4d2e0de5558b938346a1c8152a032380fb37507ff729",
       "executable": false
     },
     "README.md": {
-      "sha256": "42a1e74a8170a1b5b3b9e526ccc0550ca96a38e6d20b668c5bef5a72f09a7cba",
+      "sha256": "b5494b8cc75037757f7d9efd9096258694e72014f00e28f7a205a39910b0bde6",
       "executable": false
     },
     "hooks/hooks.json": {
@@ -32,7 +32,7 @@
       "executable": false
     },
     "hooks/register.ts": {
-      "sha256": "bcc7daa0890baf7664e12948d357486d549998c39dd782c4d1e7c9b75e858130",
+      "sha256": "7173cb53fb39ceb034f8fd5e14e436f19dcd6a9d8fbeb85986e44b36a18fdb25",
       "executable": false
     },
     "skills/agent-status/SKILL.md": {
@@ -52,7 +52,7 @@
       "executable": false
     },
     "tests/register.test.ts": {
-      "sha256": "34abda47c6d031a7789015d2a2f6d6b5648f9915f15d6bc57f20d0e774024451",
+      "sha256": "8746c5c6c991cd996283554c5bead5165ee3a3286187269ce39f209ca40aba7b",
       "executable": false
     },
     "tests/view.test.ts": {

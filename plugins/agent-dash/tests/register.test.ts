@@ -27,6 +27,7 @@ function stubs(on, opts: StubOpts = {}) {
   const spawns: any[] = []
   const sends: any[] = []
   const calls: any[] = []
+  const invalidations = { n: 0 }
   const lists = { n: 0 }
 
   on('agent.list', () => {
@@ -44,7 +45,11 @@ function stubs(on, opts: StubOpts = {}) {
     return { value: { isSent: true, channel: 'terminal' } }
   })
   // Left to the kit when a test needs a mounted pane to draw again.
-  if (opts.engineInvalidate !== true) on('ui.invalidate', () => ({ value: undefined }))
+  if (opts.engineInvalidate !== true)
+    on('ui.invalidate', () => {
+      invalidations.n += 1
+      return { value: undefined }
+    })
   on('ui.open', ($, e) => {
     opens.push(e)
     return { value: { isPlaced: true } }
@@ -67,7 +72,7 @@ function stubs(on, opts: StubOpts = {}) {
   })
   on('session.start', () => ({ cwd: '/work' }))
 
-  return { state, lines, notices, opens, views, spawns, sends, calls, lists }
+  return { state, lines, notices, opens, views, spawns, sends, calls, invalidations, lists }
 }
 
 /** Every Text the mounted pane draws, joined into one string each. */
@@ -461,5 +466,82 @@ test('test_listed_agent_fields_are_stripped_and_redacted', async ($, on) => {
   expect(all.some((t) => t.startsWith('scout · Explore · '))).toBe(true)
   expect(all.some((t) => t.includes('abc123'))).toBe(false)
   expect(all.some((t) => t.startsWith('→ ghost'))).toBe(true)
+  await ui.unmount()
+})
+
+test('test_tool_call_repaints_without_waiting_for_the_tick', async ($, on) => {
+  const { invalidations } = stubs(on)
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  await $.command.run({ command: 'agent-dash', args: '' })
+  await clock.settle()
+  const before = invalidations.n
+  await $.tool.call({ tool: 'Grep', pattern: 'quick' })
+  expect(invalidations.n).toBe(before)
+  await clock.advance(500)
+  expect(invalidations.n).toBe(before + 1)
+
+  // A storm of 20 calls inside 500 ms coalesces into one repaint.
+  for (let i = 0; i < 20; i++) {
+    await $.tool.call({ tool: 'Grep', pattern: 'storm' + i })
+    await clock.advance(20)
+  }
+  await clock.advance(500)
+  expect(invalidations.n).toBe(before + 2)
+})
+
+test('test_stop_cancels_the_pending_repaint', async ($, on) => {
+  const { invalidations } = stubs(on)
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  await $.command.run({ command: 'agent-dash', args: '' })
+  await clock.settle()
+  await $.tool.call({ tool: 'Grep', pattern: 'quick' })
+  await $.command.run({ command: 'agent-dash', args: 'stop' })
+  const afterStop = invalidations.n
+  await clock.advance(1_000)
+  expect(invalidations.n).toBe(afterStop)
+})
+
+test('test_resume_spawn_keeps_the_original_task', async ($, on) => {
+  stubs(on, { list: [HELPER] })
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  await $.agent.spawn({ prompt: 'ORIGINAL task text', description: 'helper', subagentType: 'Explore' })
+  await $.agent.spawn({ prompt: 'WAKEWORD come back', description: 'helper', subagentType: 'Explore', resume: { agentId: 'N1' } } as any)
+  await $.command.run({ command: 'agent-dash', args: '' })
+  await clock.settle()
+
+  const ui = await $.ui.mount(PANE)
+  const all = await paneTexts(ui)
+  expect(all).toContain('│ "ORIGINAL task text"')
+  expect(all.some((t) => t.includes('WAKEWORD'))).toBe(false)
+  await ui.unmount()
+})
+
+test('test_stop_forgets_captured_text', async ($, on) => {
+  const { invalidations } = stubs(on, { list: [LEAD, SCOUT, HELPER] })
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  await $.command.run({ command: 'agent-dash', args: '' })
+  await $.agent.spawn({ prompt: 'PROMPTWORD go', subagentType: 'Explore' })
+  await $.tool.call({ tool: 'Grep', pattern: 'TOOLWORD' })
+  await $.session.send({ to: 'scout', text: 'MSGWORD hi' })
+  await clock.settle()
+  const before = invalidations.n
+  await $.command.run({ command: 'agent-dash', args: 'stop' })
+  expect(invalidations.n).toBeGreaterThan(before)
+  await $.command.run({ command: 'agent-dash', args: '' })
+  await clock.settle()
+
+  const ui = await $.ui.mount(PANE)
+  const all = await paneTexts(ui)
+  for (const word of ['PROMPTWORD', 'TOOLWORD', 'MSGWORD']) expect(all.some((t) => t.includes(word))).toBe(false)
+  // The send itself is kept as structure: the edge still draws, without its text.
+  expect(all.some((t) => t === '→ scout')).toBe(true)
   await ui.unmount()
 })

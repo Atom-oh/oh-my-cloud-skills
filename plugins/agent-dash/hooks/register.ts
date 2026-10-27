@@ -32,6 +32,9 @@ let rows: AgentRow[] = []
 let waits: WaitEdge[] = []
 let sends: SendRecord[] = []
 let timer: any = null
+// One pending repaint after a tool call, so `doing:` does not wait for the 5 s tick.
+let repaint: any = null
+const REPAINT_MS = 500
 let running: Promise<void> | null = null
 let rerun = false
 let generation = 0
@@ -76,6 +79,23 @@ function startTimer($, longWaitMs: number) {
 function stopTimer() {
   if (timer) timer.cancel()
   timer = null
+  if (repaint) repaint.cancel()
+  repaint = null
+}
+
+/** Schedules one repaint unless one is pending, so a storm of calls coalesces. */
+function scheduleRepaint($) {
+  if (repaint !== null) return
+  repaint = $.clock.after(REPAINT_MS, () => {
+    repaint = null
+    $.ui.invalidate('ui.render')
+  })
+}
+
+/** `/agent-dash stop` forgets captured text: task details and message text. */
+function forgetText() {
+  details.clear()
+  sends = sends.map((s) => ({ fromId: s.fromId, to: s.to, atMs: s.atMs }))
 }
 
 /** Maps `$.agent.list()` entries to rows, keeping when each status was first seen. */
@@ -194,7 +214,9 @@ export function register(on, options) {
       generation += 1
       rerun = false
       stopTimer()
+      forgetText()
       $.ui.status(undefined)
+      $.ui.invalidate('ui.render')
       return { text: 'agent-dash stopped' }
     }
     watching = true
@@ -221,7 +243,8 @@ export function register(on, options) {
       if (showDelegation && watching) {
         try {
           recordTask(details, out.agentId, {
-            prompt: typeof e.prompt === 'string' ? e.prompt : undefined,
+            // A resume's prompt is the wake message, not the task: keep the original.
+            prompt: e.resume === undefined && typeof e.prompt === 'string' ? e.prompt : undefined,
             description: typeof e.description === 'string' ? e.description : undefined,
             model: typeof out.model === 'string' ? out.model : e.model,
           })
@@ -239,6 +262,7 @@ export function register(on, options) {
       try {
         const tool = String(e.tool)
         recordActivity(details, e.agentId ?? 'main', { tool, summary: summarizeTool(tool, e), atMs: Date.now() })
+        scheduleRepaint($)
       } catch {}
     }
     return next(e)

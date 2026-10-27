@@ -10,7 +10,7 @@ Codex and `claude -p`, the `agent-status` skill reports the agent-team roster as
 Install `agent-dash@oh-my-cloud-skills` and start a new session. The mod needs Claude
 Code 2.1.300 or later.
 
-- `/agent-dash` opens the pane; `/agent-dash stop` stops watching and clears the status line. A notice already shown stays.
+- `/agent-dash` opens the pane; `/agent-dash stop` stops watching, clears the status line and forgets the captured task, tool and message text. A notice already shown stays.
 - The pane opens as a map. The main loop sits on top; under it each agent gets a card,
   headed by the first line of what it was delegated. A card shows the agent's status
   and elapsed time, its task (two lines at most), its latest tool call (`doing:`, shown
@@ -38,7 +38,7 @@ A map with the main loop and one agent:
 │ doing: (no tool calls yet)                                   │
 ╰──────────────────────────────────────────────────────────────╯
 waits are estimates from spawn and message events
-View: Map  Refresh
+m: View: Map  r: Refresh
 ```
 
 ## Boundaries
@@ -50,9 +50,10 @@ View: Map  Refresh
   in URLs and long secret-shaped strings are masked) and clipped. Only the first 4,000
   characters of a text are read. Nothing is written to disk or sent anywhere, and an
   agent's detail is dropped when it leaves the agent list. Nothing is recorded while
-  the dash is stopped. Redaction is best effort: a secret with no key name and no
-  recognisable shape can still show, and a harmless long run of mixed letters and
-  digits, such as a git SHA or a hash-named directory in a path, shows as `***`.
+  the dash is stopped; stopping also clears what was captured. Redaction is best
+  effort: a secret with no key name and no recognisable shape can still show, and a
+  harmless long run of mixed letters and digits, such as a git SHA or a hash-named
+  directory in a path, shows as `***`.
 - Terminal escape sequences, control characters and bidi overrides are stripped from
   everything the pane, band and notices draw, agent names and descriptions included.
 - `showDelegation` (on by default) turns that text off: the observers then record no
