@@ -35,6 +35,7 @@
 4. The lens never receives pointer events and never changes slide state: no tooltip, hover, click, drag or navigation reaches the clone; ids in the clone do not collide with the live slide. Pinned by `test_lens_is_inert_and_clone_has_no_ids` (Task 3).
 5. The lens follows slide changes, fragment reveals and Canvas animation (a canvas redraw shows up inside the lens), and no rAF loop runs when the lens is hidden. Pinned by `test_lens_tracks_fragments_and_copies_canvas_frames` and `test_lens_loop_stops_when_hidden` (Task 3).
 6. Pointer over the presenter preview shows the lens in the audience window at the same slide position and the reverse; closing the presenter window leaves the deck lens working. Pinned by `test_lens_mirrors_between_windows` (Task 4).
+7. A box clicked in the presenter's current-slide preview opens in the audience window, and a change made in the audience window that only touches text or `style` (no `class`) shows up in the preview; continuous DOM mutation must not make the preview re-render more than about 10 times per second. Pinned by `test_clicking_a_box_in_the_presenter_preview_selects_it_in_the_deck_window`, `test_text_only_changes_in_the_deck_window_reach_the_preview`, `test_preview_rerender_rate_is_bounded_under_continuous_mutation` (Task 5).
 
 ---
 
@@ -101,3 +102,21 @@
 - [ ] **Step 3: Implement** the presenter lens; update docs (key table with `Option+Y` Magnifier, `Option+T` clear, zoom keys, mirroring, the clone limits for iframe/video, and the unchanged plain keys) in EN, KO and internal references; CHANGELOG entry.
 - [ ] **Step 4: Verify.** Redirect to logs under `/home/atomoh/.tmp`: `python3 scripts/sync-codex-plugins.py --plugin aws-content-plugin` then `--check`; `bash tests/run-all.sh`; `python3 scripts/test-plugins.py`; `python3 scripts/test-codex-plugins.py`; `python3 scripts/eval-skills.py`; the four browser suites unskipped; `npm run record:locales`, `node scripts/check-guide-locales.cjs`, `npm run build` in `doc-sites/`. Expected: all pass.
 - [ ] **Step 5: Commit** `feat(reactive-presentation): mirror the magnifier lens in the presenter preview and document it`.
+
+### Task 5: Presenter preview mirrors box selection in both directions
+
+**Why:** the presenter preview is a clone of the live slide, so (a) clicking a box in the preview does nothing in the audience window (the clone has no handlers), and (b) the preview observes only `class` attribute changes of the live slide (`PresenterView._observeCurrentSlide`, `attributeFilter: ['class']`), so a handler that only sets `innerHTML`, `textContent` or `style` (for example the box detail text in decks such as `aws-landing-zone`, whose handlers toggle `lz-sel` and set `out.innerHTML`) is not reflected until something else triggers a re-render.
+
+**Files:**
+- Modify: `RP/assets/presenter-view.js` (`_observeCurrentSlide`, `setupPresenterControls`, a new click-forwarding helper), `CHANGELOG.md` (Unreleased, Fixed), `RP/references/keyboard-shortcuts.md` or the framework guide only if a sentence about the presenter preview exists there
+- Test: `tests/structure/reactive_presenter_test.py`
+
+**Interfaces:**
+- Consumes: `PresenterView._renderSlidePreview`, `_observeCurrentSlide`, `framework.slides[currentSlide]` (live slide), `#p-current` (current-slide preview container; persists across renders, its children are replaced).
+- Produces: `PresenterView._livePathTarget(liveSlide, cloneSlide, target) -> Element|null` mapping an element inside the clone to the same element of the live slide by child-index path (null when the structure differs); a delegated `click` listener on `#p-current` (attached once in `setupPresenterControls`, not on `#p-next`) that resolves the target and calls `.click()` on the live element, skips anchors with `href`, skips when pen mode is active (the pen canvas receives the pointer then), and ignores clicks outside the clone slide; `_observeCurrentSlide` observing `attributes: true`, `childList: true`, `characterData: true`, `subtree: true`, with the re-render coalesced to at most one per 100 ms (leading edge not required) and no observer on the clone itself (so no feedback loop).
+
+- [ ] **Step 1: Write the failing tests** in `reactive_presenter_test.py`: `test_clicking_a_box_in_the_presenter_preview_selects_it_in_the_deck_window` (slide with three boxes and a delegated live handler that toggles a class and sets `out.innerHTML`; click the second box inside `#p-current` of the presenter window; the live slide's second box has the class, `out` shows the second text, and the preview re-renders to the same state), `test_clicking_a_link_or_the_next_preview_does_not_forward`, `test_text_only_changes_in_the_deck_window_reach_the_preview` (live code sets only `textContent` / `style.display`; preview shows it within 300 ms), `test_preview_rerender_rate_is_bounded_under_continuous_mutation` (mutate the live slide every 10 ms for 600 ms; count `_renderSlidePreview` calls for `p-current`: at most 8), `test_pen_mode_clicks_do_not_forward` (pen mode on: a click on the preview does not toggle the live box).
+- [ ] **Step 2: Run to verify failure:** `python3 tests/structure/reactive_presenter_test.py`. Expected: new cases FAIL.
+- [ ] **Step 3: Implement** per the interface; keep existing preview tests (fragment reveal re-render within about 50 ms) green by choosing a coalescing scheme that fires within 100 ms of the first mutation.
+- [ ] **Step 4: Verify:** the four browser suites (presenter, pen, nav, detail) and footer, `python3 scripts/sync-codex-plugins.py --plugin aws-content-plugin` then `--check`, `bash tests/run-all.sh`, `python3 scripts/test-plugins.py`, `python3 scripts/test-codex-plugins.py`, `python3 scripts/eval-skills.py`.
+- [ ] **Step 5: Commit** `fix(reactive-presentation): forward preview clicks to the live slide and mirror text-only changes`.
