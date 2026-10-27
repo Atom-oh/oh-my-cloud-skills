@@ -524,7 +524,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-framework.js": {
-      "sha256": "499f0643a03c1bd5903c8409c1f353620c9a41406aa2a830ff124675ceca7f39",
+      "sha256": "4bd77be462fb74017521deb534b46bb259caa85f60cc3c786e1374253862a82e",
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-renderer.js": {
@@ -536,7 +536,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/theme.css": {
-      "sha256": "bf36fa5fb0f4c451d068d2711cb9e97ba5e7a16f78b57346de25ed4bd69143a7",
+      "sha256": "0eda7871fe93b477dc55eb431fbf7d4bb59e8c84aa474434e6feec0bb9abb88b",
       "executable": false
     },
     "skills/reactive-presentation/icons/AgentCore/dark-blue/AI-Agent.png": {
