@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "agent-dash",
-  "version": "3.0.5",
+  "version": "3.0.6",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "0039008a3baab3ff7a8e3af4cb41ca6d9107cd2899ad7b2795f7b8b26e1e9729",
+      "sha256": "b6e0c111e33102bdec87b44a73248f0e0084837d88c13c686fb573eecafb23fc",
       "executable": false
     },
     ".gitignore": {

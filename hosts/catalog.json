@@ -2,7 +2,7 @@
   "plugins": {
     "agent-dash": {
       "name": "agent-dash",
-      "version": "3.0.5",
+      "version": "3.0.6",
       "description": "Claude Code mod that shows which agents are working, who delegated to whom and who is waiting, with an opt-in subagent model policy.",
       "author": {
         "name": "atomoh"
@@ -10,7 +10,7 @@
     },
     "agentcore-creator": {
       "name": "agentcore-creator",
-      "version": "3.0.5",
+      "version": "3.0.6",
       "description": "Convert Claude Code plugins to Amazon Bedrock AgentCore — config-only harness (skills attach unchanged) or Runtime agents, Gateway tools, Memory knowledge stores, Lambda functions",
       "author": {
         "name": "atomoh"
@@ -18,7 +18,7 @@
     },
     "aws-content-plugin": {
       "name": "aws-content-plugin",
-      "version": "3.0.5",
+      "version": "3.0.6",
       "description": "AWS cloud content creation plugin — presentations, architecture diagrams, animated diagrams, documents, GitBook sites, workshops, and brochures",
       "author": {
         "name": "atomoh"
@@ -26,7 +26,7 @@
     },
     "aws-ops-plugin": {
       "name": "aws-ops-plugin",
-      "version": "3.0.5",
+      "version": "3.0.6",
       "description": "AWS/EKS infrastructure operations and troubleshooting plugin — EKS cluster management, networking, IAM, observability, storage, database, and cost optimization",
       "author": {
         "name": "atomoh"
@@ -34,7 +34,7 @@
     },
     "co-agent": {
       "name": "co-agent",
-      "version": "3.0.5",
+      "version": "3.0.6",
       "description": "Collaborate with other AI agents (Kiro CLI and the opposite host CLI) — multi-AI code/architecture review, decision support when you're unsure, ADR co-authoring, and autonomous consensus/harness implementation pipelines. Claude chairs in Claude Code; Codex chairs in Codex.",
       "author": {
         "name": "atomoh"
@@ -42,7 +42,7 @@
     },
     "kiro": {
       "name": "kiro",
-      "version": "3.0.5",
+      "version": "3.0.6",
       "description": "Cost-saving delegation: the current host plans and verifies; Kiro CLI implements in isolated worktrees and optionally reviews changes before commits.",
       "author": {
         "name": "atomoh"
@@ -50,7 +50,7 @@
     },
     "kiro-power-converter": {
       "name": "kiro-power-converter",
-      "version": "3.0.5",
+      "version": "3.0.6",
       "description": "Convert Claude Code plugins to Kiro Power format. Supports GitHub URL, local path, marketplace name, and individual skill conversion.",
       "author": {
         "name": "atomoh"
@@ -58,7 +58,7 @@
     },
     "pr-dash": {
       "name": "pr-dash",
-      "version": "3.0.5",
+      "version": "3.0.6",
       "description": "Claude Code mod that shows a pull request's CI checks and AI review result in a pane, status line and toasts; actions only hand prompts to Claude.",
       "author": {
         "name": "atomoh"
@@ -66,7 +66,7 @@
     },
     "project-init": {
       "name": "project-init",
-      "version": "3.0.5",
+      "version": "3.0.6",
       "description": "Initialize and maintain Claude Code project structures with adaptive project detection, CLAUDE.md quality scoring, and auto-sync documentation workflows",
       "author": {
         "name": "whchoi98",
@@ -75,7 +75,7 @@
     },
     "token-saver": {
       "name": "token-saver",
-      "version": "3.0.5",
+      "version": "3.0.6",
       "description": "Concise responses with full reasoning, verification and complete deliverables.",
       "author": {
         "name": "atomoh"

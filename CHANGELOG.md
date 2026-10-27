@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.6] - 2026-10-27
+
 ### Added
 
 - Add pen mode to reactive-presentation decks: a laser, pen, highlighter and eraser
@@ -748,7 +750,8 @@ migration of configurations that selected it. All eight plugins share this versi
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.5...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.6...HEAD
+[3.0.6]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.5...v3.0.6
 [3.0.5]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.4...v3.0.5
 [3.0.4]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.3...v3.0.4
 [3.0.3]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.0...v3.0.3

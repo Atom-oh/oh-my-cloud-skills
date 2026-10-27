@@ -1,10 +1,10 @@
 {
   "host": "claude",
   "plugin": "aws-content-plugin",
-  "version": "3.0.5",
+  "version": "3.0.6",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "6778b35c4b7549a70098da70c9134b28f04be78ee63655cda5b27bc4acffac6a",
+      "sha256": "179f640fa8a40bc461005544714333e535f9254cfce5d7edd2121a5cf9535b11",
       "executable": false
     },
     "CLAUDE.md": {

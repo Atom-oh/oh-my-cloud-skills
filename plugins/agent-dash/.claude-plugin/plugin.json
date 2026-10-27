@@ -1,6 +1,6 @@
 {
   "name": "agent-dash",
-  "version": "3.0.5",
+  "version": "3.0.6",
   "description": "Claude Code mod that shows which agents are working, who delegated to whom and who is waiting, with an opt-in subagent model policy.",
   "author": {
     "name": "atomoh"
