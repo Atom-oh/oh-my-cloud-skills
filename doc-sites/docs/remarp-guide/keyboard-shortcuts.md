@@ -80,7 +80,7 @@ Option+Y turns on the Magnifier: a round lens, 28% of the slide height, follows 
 
 The lens is mirrored between the deck window and the presenter window: pointing at the presenter's current-slide preview shows the lens in the deck window at the same slide position, and pointing at the deck window shows it in the preview. Closing the presenter window leaves the deck lens working. The lens hides when the mouse leaves the slide, on a mode change, on a slide change (until the mouse moves again) and in overview mode.
 
-In Magnifier mode, clicks and hover do not reach the slide. To click a tab, quiz button or detail term, leave the mode with Esc or switch with Option+P, Option+O, Option+I or Option+U.
+In Magnifier mode, clicks and hover do not reach the slide. Option+P, Option+O, Option+I and Option+U only change the mode and keep pen mode on, so the canvas still takes all pointer input. Clicks and hover reach the slide only after pen mode is off: press Esc in a normal window, or press Option+P twice (the first press switches to Laser and the second turns pen mode off).
 
 The lens has these limits:
 

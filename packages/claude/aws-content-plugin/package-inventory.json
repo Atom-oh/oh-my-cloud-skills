@@ -516,7 +516,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
-      "sha256": "8e0f118fbde074773349393899f507c7daa711c2f43c64d86af2f1a46089c2fb",
+      "sha256": "c89401398d4e2e96be0dcf311be9f9ced9762887572d2ceccf3ca0c2d8d58875",
       "executable": false
     },
     "skills/reactive-presentation/assets/quiz-component.js": {
@@ -17340,7 +17340,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/keyboard-shortcuts.md": {
-      "sha256": "d6fc2459f746b8a1578cd1fdee55f6345f21b236a02544b3a6b1d3bf5ed623c5",
+      "sha256": "3edbd6029798fa5dcb11ceffc2ba353d5e9f70ad20329ac40f40eeb6116c786c",
       "executable": false
     },
     "skills/reactive-presentation/references/marp-format-guide.md": {
