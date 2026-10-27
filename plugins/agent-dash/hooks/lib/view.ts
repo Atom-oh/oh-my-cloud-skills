@@ -1,19 +1,95 @@
 // Pure views for agent-dash: builds element trees from the element functions passed in.
 // No `$`, no Claude Code imports, no Node APIs.
 
-import { clip, labelOf, summaryLine } from './model.ts'
+import { labelOf, summaryLine } from './model.ts'
 import type { AgentDetail, AgentRow, AgentStatus, SendRecord, TreeNode, WaitEdge } from './model.ts'
 
 type Color = 'green' | 'red' | 'yellow'
 
+const SYMBOLS: Record<AgentStatus, { ch: string; props: Record<string, unknown> }> = {
+  running: { ch: '●', props: { color: 'green' } },
+  waiting: { ch: '⏳', props: { color: 'yellow' } },
+  completed: { ch: '✓', props: { color: 'green' } },
+  failed: { ch: '✗', props: { color: 'red' } },
+  killed: { ch: '–', props: { dimColor: true } },
+  idle: { ch: '○', props: { dimColor: true } },
+  pending: { ch: '…', props: { color: 'yellow' } },
+}
+
 function symbol(els: any, status: AgentStatus): unknown {
-  if (status === 'running') return els.Text({ children: ['●'], color: 'green' })
-  if (status === 'waiting') return els.Text({ children: ['⏳'], color: 'yellow' })
-  if (status === 'completed') return els.Text({ children: ['✓'], color: 'green' })
-  if (status === 'failed') return els.Text({ children: ['✗'], color: 'red' })
-  if (status === 'killed') return els.Text({ children: ['–'], dimColor: true })
-  if (status === 'idle') return els.Text({ children: ['○'], dimColor: true })
-  return els.Text({ children: ['…'], color: 'yellow' })
+  const s = SYMBOLS[status] ?? SYMBOLS.pending
+  return els.Text({ children: [s.ch], ...s.props })
+}
+
+// Code point ranges a terminal draws two cells wide: Hangul, CJK, full-width forms,
+// emoji and the supplementary ideographic planes.
+const WIDE: Array<[number, number]> = [
+  [0x1100, 0x115f],
+  // The hourglass the map draws for a wait.
+  [0x23f3, 0x23f3],
+  [0x2e80, 0x303e],
+  [0x3041, 0x33ff],
+  [0x3400, 0x4dbf],
+  [0x4e00, 0x9fff],
+  [0xa000, 0xa4cf],
+  [0xac00, 0xd7a3],
+  [0xf900, 0xfaff],
+  [0xfe30, 0xfe4f],
+  [0xff00, 0xff60],
+  [0xffe0, 0xffe6],
+  [0x1f300, 0x1faff],
+  [0x20000, 0x3fffd],
+]
+
+function charCells(cp: number): number {
+  for (const [lo, hi] of WIDE) if (cp >= lo && cp <= hi) return 2
+  return 1
+}
+
+/** Terminal cells a string takes, counted per code point (2 for wide characters, else 1). */
+export function cellWidth(text: string): number {
+  let n = 0
+  for (const ch of text) n += charCells(ch.codePointAt(0) ?? 0)
+  return n
+}
+
+/**
+ * Collapses whitespace to one line and cuts it to at most `max` cells, ending with `…`
+ * (one cell) when cut. Iterates by code point, so a surrogate pair is never split, and a
+ * wide character that does not fit is left out whole.
+ */
+export function clipCells(text: string, max: number): string {
+  const one = text.replace(/\s+/g, ' ').trim()
+  if (cellWidth(one) <= max) return one
+  if (max <= 0) return ''
+  let out = ''
+  let used = 0
+  for (const ch of one) {
+    const w = charCells(ch.codePointAt(0) ?? 0)
+    if (used + w > max - 1) break
+    out += ch
+    used += w
+  }
+  return out.trimEnd() + '…'
+}
+
+/** Cuts a run with no spaces into pieces of at most `width` cells, by code point. */
+function splitCells(word: string, width: number): string[] {
+  const out: string[] = []
+  let cur = ''
+  let used = 0
+  for (const ch of word) {
+    const w = charCells(ch.codePointAt(0) ?? 0)
+    if (used + w > width && cur !== '') {
+      out.push(cur)
+      cur = ''
+      used = 0
+    }
+    cur += ch
+    used += w
+  }
+  if (cur !== '') out.push(cur)
+  return out
 }
 
 function statusColor(status: AgentStatus): Color | undefined {
@@ -77,7 +153,7 @@ export type MapOpts = PaneOpts & ViewOpts
 function viewButtons(els: any, opts: MapOpts): unknown {
   const toggle = els.Button({
     key: 'view',
-    label: opts.view === 'map' ? '[Map] List' : 'Map [List]',
+    label: opts.view === 'map' ? 'View: Map' : 'View: List',
     hotkey: 'm',
     plain: true,
     onPress: () => opts.onToggleView(),
@@ -138,33 +214,48 @@ const CARD_FRAME = 4
 const MIN_WIDTH = 12
 const FOOTER_ROWS = 3
 
-/** Breaks text into at most `max` lines of `width`; the last line ends with an ellipsis when cut. */
+/**
+ * Breaks text into at most `max` lines of `width` cells, wrapping on spaces and cutting a
+ * longer run by cells. When text is left over, the last line keeps whole words and ends
+ * with `…`.
+ */
 function wrapLines(text: string, width: number, max: number): string[] {
   const words: string[] = []
   for (const w of text.replace(/\s+/g, ' ').trim().split(' ')) {
-    for (let i = 0; i < w.length; i += width) words.push(w.slice(i, i + width))
+    if (w !== '') words.push(...splitCells(w, width))
   }
-  const out: string[] = []
-  let cur = ''
+  const lines: string[][] = []
+  let cur: string[] = []
   let used = 0
-  for (; used < words.length; used++) {
-    const w = words[used]
-    if (cur === '') cur = w
-    else if (cur.length + 1 + w.length <= width) cur += ' ' + w
-    else {
-      out.push(cur)
-      cur = w
-      if (out.length === max) break
+  let next = 0
+  for (; next < words.length; next++) {
+    const w = words[next]
+    const cells = cellWidth(w)
+    if (cur.length === 0) {
+      cur = [w]
+      used = cells
+    } else if (used + 1 + cells <= width) {
+      cur.push(w)
+      used += 1 + cells
+    } else {
+      lines.push(cur)
+      if (lines.length === max) break
+      cur = [w]
+      used = cells
     }
   }
-  if (out.length < max && cur !== '') {
-    out.push(cur)
-    used = words.length
+  if (lines.length < max && cur.length > 0) {
+    lines.push(cur)
+    next = words.length
   }
-  if (used < words.length && out.length > 0) {
-    out[out.length - 1] = clip(out[out.length - 1] + ' ' + words.slice(used).join(' '), width)
+  if (next < words.length && lines.length > 0) {
+    // Text is left over: drop trailing words until the last line has room for the ellipsis.
+    const last = lines[lines.length - 1]
+    while (last.length > 1 && cellWidth(last.join(' ')) + 1 > width) last.pop()
+    const joined = last.join(' ')
+    lines[lines.length - 1] = [cellWidth(joined) + 1 <= width ? joined + '…' : clipCells(joined, width)]
   }
-  return out
+  return lines.map((l) => l.join(' '))
 }
 
 function borderFor(row: AgentRow, waitsFrom: boolean): Record<string, unknown> {
@@ -193,17 +284,18 @@ function text(p: Painter, s: string, props: Record<string, unknown> = {}): unkno
 
 /** `doing:` and `recent:` lines from an agent's newest-last activity. */
 function activityLines(p: Painter, detail: AgentDetail | undefined, width: number): unknown[] {
-  if (!p.opts.showDelegation) return [text(p, clip('doing: ' + HIDDEN, width))]
+  if (!p.opts.showDelegation) return [text(p, clipCells('doing: ' + HIDDEN, width))]
   const act = detail?.activity ?? []
-  if (act.length === 0) return [text(p, clip('doing: (no tool calls yet)', width), { dimColor: true })]
+  if (act.length === 0) return [text(p, clipCells('doing: (no tool calls yet)', width), { dimColor: true })]
   const call = (a: { tool: string; summary: string }): string => (a.summary === '' || a.summary === a.tool ? a.tool : a.tool + ' ' + a.summary)
   const latest = act[act.length - 1]
   const ago = ' (' + elapsed(p.opts.nowMs - latest.atMs) + ' ago)'
-  const out: unknown[] = [text(p, 'doing: ' + clip(call(latest), Math.max(1, width - 7 - ago.length)) + ago)]
+  const lead = 'doing: '
+  const out: unknown[] = [text(p, lead + clipCells(call(latest), Math.max(1, width - cellWidth(lead) - cellWidth(ago))) + ago)]
   const earlier = act.slice(-3, -1).reverse()
   earlier.forEach((a, i) => {
     const lead = i === 0 ? 'recent: ' : '        '
-    out.push(text(p, lead + clip(call(a), Math.max(1, width - lead.length)), { dimColor: true }))
+    out.push(text(p, lead + clipCells(call(a), Math.max(1, width - cellWidth(lead))), { dimColor: true }))
   })
   return out
 }
@@ -217,18 +309,18 @@ function edgeLines(p: Painter, from: string, fromId: string | null, waits: WaitE
     seen.add(w.to)
     const head = from === 'main' ? 'main waits on ' : '⏳ waits on '
     const tail = ' (est.)'
-    // The hourglass takes two terminal cells.
-    const cells = head.length + tail.length + (from === 'main' ? 0 : 1)
-    out.push(text(p, head + clip(nameOf(p.lines, w.to), Math.max(1, width - cells)) + tail, { color: 'yellow' }))
+    const room = Math.max(1, width - cellWidth(head) - cellWidth(tail))
+    out.push(text(p, head + clipCells(nameOf(p.lines, w.to), room) + tail, { color: 'yellow' }))
   }
   const mine = sends.filter((s) => s.fromId === fromId).sort((a, b) => a.atMs - b.atMs).slice(-2)
   for (const s of mine) {
-    const label = clip(targetLabel(p.rows, s.to), Math.max(1, Math.floor(width / 3)))
+    const label = clipCells(targetLabel(p.rows, s.to), Math.max(1, Math.floor(width / 3)))
     const head = '→ ' + label
     let line = head
     if (!p.opts.showDelegation) line = head + ': ' + HIDDEN
-    else if (s.text !== undefined && s.text !== '') line = head + ': "' + clip(s.text, Math.max(1, width - head.length - 4)) + '"'
-    out.push(text(p, clip(line, width), { dimColor: true }))
+    // Four cells for the `: "` before the text and the closing quote.
+    else if (s.text !== undefined && s.text !== '') line = head + ': "' + clipCells(s.text, Math.max(1, width - cellWidth(head) - 4)) + '"'
+    out.push(text(p, cellWidth(line) <= width ? line : clipCells(line, width), { dimColor: true }))
   }
   return out
 }
@@ -237,7 +329,7 @@ function mainNode(p: Painter, tree: TreeNode[], waits: WaitEdge[], details: Map<
   const width = Math.max(MIN_WIDTH, p.opts.columns - CARD_FRAME)
   const n = tree.length
   const title = 'main · ' + n + (n === 1 ? ' delegation' : ' delegations') + ' · ' + summaryLine(p.rows, waits)
-  const children: unknown[] = [text(p, clip(title, width), { bold: true })]
+  const children: unknown[] = [text(p, clipCells(title, width), { bold: true })]
   const own = details.get('main')
   if (own !== undefined && own.activity.length > 0) children.push(...activityLines(p, own, width).slice(0, 1))
   children.push(...edgeLines(p, 'main', null, waits, sends, width))
@@ -256,27 +348,31 @@ function agentCard(p: Painter, line: Line, waits: WaitEdge[], details: Map<strin
   const connector = depth === 0 ? '│ ' : '└ '
   let edge = connector + HIDDEN
   if (opts.showDelegation) {
-    const first = detail?.taskFirstLine ?? detail?.description ?? row.description
-    edge = connector + '"' + clip(first, Math.max(1, outer - connector.length - 2)) + '"'
+    // An empty first line falls through to the task, then the description.
+    const first = detail?.taskFirstLine || detail?.task || detail?.description || row.description
+    edge = connector + '"' + clipCells(first, Math.max(1, outer - cellWidth(connector) - 2)) + '"'
   }
 
   const head = [labelOf(row)]
   if (row.name !== undefined) head.push(row.type)
   head.push(row.status + ' ' + elapsed(opts.nowMs - row.sinceMs))
+  const OPEN = 'open'
+  // The symbol, the open button and the two one-cell gaps between the three parts.
+  const reserved = cellWidth((SYMBOLS[row.status] ?? SYMBOLS.pending).ch) + cellWidth(OPEN) + 2
   const title = els.Box({
     flexDirection: 'row',
     columnGap: 1,
     children: [
       symbol(els, row.status),
-      text(p, clip(head.join(' · '), Math.max(1, width - 7)), { bold: true }),
-      els.Button({ key: 'open:' + row.id, label: 'open', plain: true, onPress: () => opts.onOpen(row.id) }),
+      text(p, clipCells(head.join(' · '), Math.max(1, width - reserved)), { bold: true }),
+      els.Button({ key: 'open:' + row.id, label: OPEN, plain: true, onPress: () => opts.onOpen(row.id) }),
     ],
   })
 
   const lines: unknown[] = [title]
   if (opts.showDelegation) {
-    const task = detail?.task ?? detail?.description ?? row.description
-    const wrapped = wrapLines(task, Math.max(1, width - 6), 2)
+    const task = detail?.task || detail?.description || row.description
+    const wrapped = wrapLines(task, Math.max(1, width - cellWidth('task: ')), 2)
     wrapped.forEach((l, i) => lines.push(text(p, (i === 0 ? 'task: ' : '      ') + l)))
     if (wrapped.length === 0) lines.push(text(p, 'task: (unknown)', { dimColor: true }))
   } else {
@@ -324,7 +420,7 @@ export function buildMap(
     shown += 1
   }
   if (shown < lines.length) children.push(text(p, '+' + (lines.length - shown) + ' more', { dimColor: true }))
-  children.push(text(p, clip(WAIT_NOTE, Math.max(1, opts.columns)), { dimColor: true }))
+  children.push(text(p, clipCells(WAIT_NOTE, Math.max(1, opts.columns)), { dimColor: true }))
   children.push(viewButtons(els, opts))
   return els.Box({ flexDirection: 'column', children })
 }
