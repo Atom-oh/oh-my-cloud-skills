@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add a delegation map to the agent-dash pane: the main loop on top and one card per
+  agent under the line naming what it was delegated, with its status, task, latest
+  tool calls, estimated waits and last messages. Prompt text, tool summaries and
+  message text are redacted, clipped and held in memory only. The new
+  `showDelegation` option (on by default) turns that text off.
+
+### Changed
+
+- The agent-dash pane opens as the map; `View: Map` / `View: List` (hotkey `m`)
+  switches to the previous one-line-per-agent list.
+
 ## [3.0.6] - 2026-10-27
 
 ### Added

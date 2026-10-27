@@ -10,6 +10,12 @@ agents of the running session: who works, who delegated to whom, and who is wait
   a prompt, or change a `session.send`. The one exception is the `agent.spawn` model
   rewrite, off by default (`userConfig.modelPolicyEnabled`) and applied only when the
   spawn names no model. A model forced by the session still wins over it.
+- The `agent.spawn`, `tool.call` and `session.send` observers return the chain's result
+  unchanged and swallow their own failures. The task text, tool summaries and message
+  text they keep stay in memory only: never logged, written or sent, pruned with the
+  agent list, and not recorded at all with `userConfig.showDelegation` off. Redaction
+  and truncation live in `hooks/lib/model.ts` (`redact`, `summarizeText`,
+  `summarizeTool`, `recordTask`); store text only through those.
 - A wait is an inference (a foreground child still running, or a message with no
   reply yet), never a fact the engine reports. Every surface labels it `est.`. A
   teammate in its own terminal pane has no loop here; its status may be stale.

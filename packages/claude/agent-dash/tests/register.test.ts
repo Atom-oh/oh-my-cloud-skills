@@ -15,7 +15,7 @@ const PANE = {
   props: { title: 'Agents', isFocused: true, bodyColumns: 80, placement: 'inline', scroll: { offset: 0, bodyRows: 20 }, view: {} },
 } as const
 
-type StubOpts = { surfaces?: string[]; list?: unknown[] }
+type StubOpts = { surfaces?: string[]; list?: unknown[]; engineInvalidate?: boolean }
 
 /** Registers every stub the hooks module can reach. Call BEFORE the first `$` call. */
 function stubs(on, opts: StubOpts = {}) {
@@ -26,6 +26,7 @@ function stubs(on, opts: StubOpts = {}) {
   const views: unknown[] = []
   const spawns: any[] = []
   const sends: any[] = []
+  const calls: any[] = []
   const lists = { n: 0 }
 
   on('agent.list', () => {
@@ -42,7 +43,8 @@ function stubs(on, opts: StubOpts = {}) {
     notices.push(e.text)
     return { value: { isSent: true, channel: 'terminal' } }
   })
-  on('ui.invalidate', () => ({ value: undefined }))
+  // Left to the kit when a test needs a mounted pane to draw again.
+  if (opts.engineInvalidate !== true) on('ui.invalidate', () => ({ value: undefined }))
   on('ui.open', ($, e) => {
     opens.push(e)
     return { value: { isPlaced: true } }
@@ -59,9 +61,19 @@ function stubs(on, opts: StubOpts = {}) {
     sends.push(e)
     return { isDelivered: true }
   })
+  on('tool.call', ($, e) => {
+    calls.push(e)
+    return { result: 'done', text: 'done' }
+  })
   on('session.start', () => ({ cwd: '/work' }))
 
-  return { state, lines, notices, opens, views, spawns, sends, lists }
+  return { state, lines, notices, opens, views, spawns, sends, calls, lists }
+}
+
+/** Every Text the mounted pane draws, joined into one string each. */
+async function paneTexts(ui): Promise<string[]> {
+  const found = await ui.findAll({ type: 'Text' })
+  return found.map((t) => [].concat(t.props?.children ?? t.children ?? []).join(''))
 }
 
 test('/agent-dash opens the pane and sets the summary status line', async ($, on) => {
@@ -239,4 +251,101 @@ test('/agent-dash stop stops the tick from listing agents; /agent-dash starts it
   const resumed = lists.n
   await clock.advance(5_000)
   expect(lists.n).toBe(resumed + 1)
+})
+
+test('test_tool_call_observer_passes_the_event_through_and_swallows_errors', async ($, on) => {
+  const { calls } = stubs(on)
+  mock.clock(on)
+
+  await $.session.start(SESSION)
+  const r = await $.tool.call({ tool: 'Bash', command: 'ls -la' })
+  expect(r).toMatchObject({ result: 'done', text: 'done' })
+  expect(calls[0]).toMatchObject({ tool: 'Bash', command: 'ls -la' })
+
+  // Odd and oversized arguments never break the call or change what the tool receives.
+  const huge = 'x'.repeat(1_000_000)
+  const r2 = await $.tool.call({ tool: 'mcp__odd__tool', input: null, command: { not: 'a string' }, pattern: huge } as any)
+  expect(r2).toMatchObject({ result: 'done' })
+  expect(calls[1].pattern.length).toBe(1_000_000)
+  expect(calls[1].command).toEqual({ not: 'a string' })
+})
+
+test('test_spawn_prompt_and_tool_calls_reach_the_pane', async ($, on) => {
+  const { state } = stubs(on)
+  mock.clock(on)
+  state.list = [HELPER]
+
+  await $.session.start(SESSION)
+  await $.agent.spawn({ prompt: 'Find the config loader\nand list every caller of it', description: 'find loader', subagentType: 'Explore' })
+  await $.tool.call({ tool: 'Grep', pattern: 'buildTree' })
+  await $.command.run({ command: 'agent-dash', args: '' })
+
+  const ui = await $.ui.mount(PANE)
+  const all = await paneTexts(ui)
+  expect(all).toContain('│ "Find the config loader"')
+  expect(all.some((t) => t.startsWith('task: Find the config loader and list every caller'))).toBe(true)
+  // The test's call runs in the main loop, so it shows on the main card.
+  expect(all.some((t) => t.startsWith('doing: Grep buildTree'))).toBe(true)
+  await ui.unmount()
+})
+
+test('test_message_text_is_recorded_clipped', async ($, on) => {
+  stubs(on)
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  await $.command.run({ command: 'agent-dash', args: '' })
+  await $.session.send({ to: 'scout', text: 'API_TOKEN=abc123 please check ' + 'word '.repeat(100) })
+  await clock.settle()
+
+  const ui = await $.ui.mount(PANE)
+  const all = await paneTexts(ui)
+  const line = all.find((t) => t.startsWith('→ scout: "'))
+  expect(line).toBeDefined()
+  expect(line!.startsWith('→ scout: "API_TOKEN=*** please check word')).toBe(true)
+  expect(line!.endsWith('…"')).toBe(true)
+  expect(all.some((t) => t.includes('abc123'))).toBe(false)
+  await ui.unmount()
+})
+
+test('test_show_delegation_off_hides_text', { options: { showDelegation: false } }, async ($, on) => {
+  const { state, sends } = stubs(on)
+  const clock = mock.clock(on)
+  state.list = [LEAD, SCOUT, HELPER]
+
+  await $.session.start(SESSION)
+  await $.agent.spawn({ prompt: 'PROMPTWORD do the thing', description: 'DESCWORD', subagentType: 'Explore' })
+  await $.tool.call({ tool: 'Grep', pattern: 'TOOLWORD' })
+  await $.session.send({ to: 'scout', text: 'MSGWORD hello' })
+  await $.command.run({ command: 'agent-dash', args: '' })
+  await clock.settle()
+  // The send itself still goes through unchanged.
+  expect(sends[0]).toMatchObject({ to: 'scout', text: 'MSGWORD hello' })
+
+  const ui = await $.ui.mount(PANE)
+  const all = await paneTexts(ui)
+  expect(all.length).toBeGreaterThan(0)
+  for (const word of ['PROMPTWORD', 'DESCWORD', 'TOOLWORD', 'MSGWORD', 'do the thing', 'hello']) {
+    expect(all.some((t) => t.includes(word))).toBe(false)
+  }
+  expect(all.some((t) => t.includes('(hidden)'))).toBe(true)
+  await ui.unmount()
+})
+
+test('test_toggle_button_switches_to_the_list', async ($, on) => {
+  stubs(on, { engineInvalidate: true })
+  mock.clock(on)
+
+  await $.session.start(SESSION)
+  await $.command.run({ command: 'agent-dash', args: '' })
+
+  const ui = await $.ui.mount(PANE)
+  expect((await paneTexts(ui)).some((t) => t.startsWith('main · '))).toBe(true)
+  expect(await ui.find({ type: 'Button', text: 'View: Map' })).toBeDefined()
+  await ui.press({ key: 'view' })
+  const after = await paneTexts(ui)
+  expect(after.some((t) => t.startsWith('Agents · '))).toBe(true)
+  expect(after.some((t) => t.startsWith('main · '))).toBe(false)
+  expect(await ui.find({ type: 'Button', text: 'View: List' })).toBeDefined()
+  await ui.unmount()
 })

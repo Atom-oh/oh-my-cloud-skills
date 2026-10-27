@@ -1,10 +1,23 @@
 // agent-dash hooks module: the `/agent-dash` command, the 5 s refresh timer, the observers
-// of agent spawns, sent messages and finished turns, and the pane and band renders.
-// This is the only file that touches `$`. It never approves, denies or rewrites a tool
-// call or a prompt; the one rewrite is the opt-in `agent.spawn` model policy.
+// of agent spawns, tool calls, sent messages and finished turns, and the pane and band
+// renders. This is the only file that touches `$`. It never approves, denies or rewrites a
+// tool call or a prompt; the one rewrite is the opt-in `agent.spawn` model policy. Task
+// text, tool summaries and message text stay in memory, redacted and clipped by model.ts.
 
-import { DEFAULT_POLICY, buildTree, diffNotices, inferWaits, resolveModel, summaryLine } from './lib/model.ts'
-import type { AgentRow, ModelPolicy, SendRecord, WaitEdge } from './lib/model.ts'
+import {
+  DEFAULT_POLICY,
+  buildTree,
+  diffNotices,
+  inferWaits,
+  pruneDetails,
+  recordActivity,
+  recordTask,
+  resolveModel,
+  summarizeText,
+  summarizeTool,
+  summaryLine,
+} from './lib/model.ts'
+import type { AgentDetail, AgentRow, ModelPolicy, SendRecord, WaitEdge } from './lib/model.ts'
 import { buildBand, buildPane } from './lib/view.ts'
 
 const MAX_SENDS = 200
@@ -20,6 +33,10 @@ let running: Promise<void> | null = null
 let rerun = false
 let generation = 0
 const spawnInfo = new Map<string, { background?: boolean; runId?: string }>()
+// What main delegated and each agent's latest tool calls, keyed by agent id (`main` for
+// the main loop). Memory only.
+const details = new Map<string, AgentDetail>()
+let viewMode: 'map' | 'list' = 'map'
 const firstSeen = new Map<string, { status: string; sinceMs: number }>()
 const longSeen = new Set<string>()
 
@@ -34,6 +51,10 @@ function policyFrom(options: any): ModelPolicy {
     } catch {}
   }
   return { enabled, map }
+}
+
+function showDelegationFrom(options: any): boolean {
+  return options?.showDelegation !== false
 }
 
 function longWaitFrom(options: any): number {
@@ -107,6 +128,10 @@ async function pull($, longWaitMs: number) {
   const now = Date.now()
   const prev = rows
   rows = toRows(list, now)
+  // Keep the main loop's detail and that of a spawn whose row is not listed yet.
+  const live = new Set<string>(['main', ...spawnInfo.keys()])
+  for (const r of rows) live.add(r.id)
+  pruneDetails(details, live)
   waits = inferWaits(rows, sends, now)
   const notices = diffNotices(prev, rows, waits, longWaitMs, now, longSeen)
   setStatus($)
@@ -141,6 +166,7 @@ async function refresh($, longWaitMs: number) {
 export function register(on, options) {
   const policy = policyFrom(options)
   const longWaitMs = longWaitFrom(options)
+  const showDelegation = showDelegationFrom(options)
 
   on('session.start', async ($, e, next) => {
     try {
@@ -186,8 +212,30 @@ export function register(on, options) {
     const out = await next(model !== undefined && model !== e.model ? { ...e, model } : e)
     if (out?.agentId !== undefined) {
       spawnInfo.set(out.agentId, { background: e.background, runId: e.workflow?.runId })
+      if (showDelegation) {
+        try {
+          recordTask(details, out.agentId, {
+            prompt: typeof e.prompt === 'string' ? e.prompt : undefined,
+            description: typeof e.description === 'string' ? e.description : undefined,
+            model: typeof out.model === 'string' ? out.model : e.model,
+          })
+        } catch {}
+      }
     }
     void refresh($, longWaitMs)
+    return out
+  }).catch(($, e, next) => next(e))
+
+  // Observer only: records a one-line summary of the call after it ran and returns the
+  // chain's result unchanged.
+  on('tool.call', async ($, e, next) => {
+    const out = await next(e)
+    if (showDelegation) {
+      try {
+        const tool = String(e.tool)
+        recordActivity(details, e.agentId ?? 'main', { tool, summary: summarizeTool(tool, e), atMs: Date.now() })
+      } catch {}
+    }
     return out
   }).catch(($, e, next) => next(e))
 
@@ -195,7 +243,13 @@ export function register(on, options) {
   on('session.send', async ($, e, next) => {
     const out = await next(e)
     if (out?.isDelivered === true) {
-      sends.push({ fromId: e.agentId ?? null, to: e.to, atMs: Date.now() })
+      let text: string | undefined
+      if (showDelegation) {
+        try {
+          text = typeof e.text === 'string' ? summarizeText(e.text) : undefined
+        } catch {}
+      }
+      sends.push({ fromId: e.agentId ?? null, to: e.to, atMs: Date.now(), text })
       if (sends.length > MAX_SENDS) sends = sends.slice(-MAX_SENDS)
       void refresh($, longWaitMs)
     }
@@ -210,17 +264,30 @@ export function register(on, options) {
 
   on('ui.render', { component: 'Pane' }, async ($, e, next) => {
     if (e.requestId !== 'agent-dash') return next(e)
-    return buildPane($.ui.resolve(e), buildTree(rows), waits, {
-      columns: e.props?.bodyColumns ?? 80,
-      maxRows: Math.max(5, (e.viewport?.rows ?? 24) - 6),
-      nowMs: Date.now(),
-      onOpen: (agentId: string) => {
-        void $.ui.view({ agentId })
+    return buildPane(
+      $.ui.resolve(e),
+      buildTree(rows),
+      waits,
+      {
+        columns: e.props?.bodyColumns ?? 80,
+        maxRows: Math.max(5, (e.viewport?.rows ?? 24) - 6),
+        nowMs: Date.now(),
+        view: viewMode,
+        showDelegation,
+        onOpen: (agentId: string) => {
+          void $.ui.view({ agentId })
+        },
+        onRefresh: () => {
+          void refresh($, longWaitMs)
+        },
+        onToggleView: () => {
+          viewMode = viewMode === 'map' ? 'list' : 'map'
+          $.ui.invalidate('ui.render')
+        },
       },
-      onRefresh: () => {
-        void refresh($, longWaitMs)
-      },
-    })
+      details,
+      sends,
+    )
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {

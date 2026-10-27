@@ -22,6 +22,12 @@
       "type": "string",
       "title": "Model policy map (JSON)",
       "description": "JSON object mapping a subagent type to opus, sonnet or haiku. Empty uses the built-in map."
+    },
+    "showDelegation": {
+      "type": "boolean",
+      "title": "Show delegation text",
+      "description": "Shows what main delegated and each agent's latest tool calls in the pane; kept in memory only.",
+      "default": true
     }
   }
 }

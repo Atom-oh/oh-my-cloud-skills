@@ -22,7 +22,7 @@ export type AgentRow = {
 }
 
 /** A `session.send` the mod observed; `fromId` is null for the main loop. */
-export type SendRecord = { fromId: string | null; to: string; atMs: number }
+export type SendRecord = { fromId: string | null; to: string; atMs: number; /** Redacted, clipped message text; kept in memory only. */ text?: string }
 
 export type WaitEdge = { from: string; to: string; sinceMs: number; reason: 'child' | 'message' }
 
@@ -214,4 +214,187 @@ export function resolveModel(policy: ModelPolicy, subagentType: string, requeste
   if (requested !== undefined) return requested
   const alias = policy.map[subagentType]
   return alias !== undefined && ALIASES.includes(alias) ? alias : undefined
+}
+
+/** One tool call an agent made: the tool name and a redacted, clipped one-line summary. */
+export type ToolActivity = { tool: string; summary: string; atMs: number }
+
+/** What the mod knows about one agent beyond its row. Memory only; never logged or written. */
+export type AgentDetail = {
+  task?: string
+  taskFirstLine?: string
+  description?: string
+  model?: string
+  activity: ToolActivity[]
+}
+
+const TASK_MAX = 600
+const TEXT_MAX = 80
+
+/** Collapses whitespace to a single line, trims, and ends with an ellipsis when cut. */
+export function clip(text: string, max: number): string {
+  const one = text.replace(/\s+/g, ' ').trim()
+  if (one.length <= max) return one
+  return one.slice(0, Math.max(0, max - 1)) + '…'
+}
+
+const INPUT_MAX = 4000
+const KEYS = 'token|secret|password|passwd|key|credential|auth'
+
+/**
+ * Masks secrets before a summary is clipped or stored. Every rule is bounded (capped
+ * quantifiers, or anchored on a literal) so hostile input stays linear.
+ * Known limit: a secret with no key name and no recognisable prefix or shape cannot be found.
+ */
+export function redact(text: string): string {
+  const key = `[A-Za-z0-9_.-]{0,128}?(?:${KEYS})[A-Za-z0-9_.-]{0,128}`
+  return text
+    .replace(/Authorization:[^\r\n"']*/gi, 'Authorization: ***')
+    .replace(/\bBearer\s+[^\s"']+/gi, 'Authorization: ***')
+    .replace(new RegExp(`"(${key})"(\\s*:\\s*)"[^"]{0,500}"`, 'gi'), '"$1"$2"***"')
+    .replace(/(--(?:token|password|secret|api-key))(?:\s+|=)(?:"[^"]{0,500}"|'[^']{0,500}'|[^\s"']+)/gi, '$1 ***')
+    .replace(/(?<!\S)(-u|--user)(?:\s+|=)(?:"[^"]{0,500}"|'[^']{0,500}'|[^\s"']+)/g, '$1 ***')
+    .replace(/(\b[a-z][a-z0-9+.-]{0,20}:\/\/)[^\s/@"']{1,200}@/gi, '$1***@')
+    .replace(new RegExp(`(?<![A-Za-z0-9_.-])(${key})=("[^"]*"|'[^']*'|\\S+)`, 'gi'), '$1=***')
+    .replace(new RegExp(`(?<![A-Za-z0-9_.-])([A-Za-z][A-Za-z0-9_-]{0,128}?(?:${KEYS})[A-Za-z0-9_-]{0,128})(\\s*:\\s*)[^\r\n"']+`, 'gi'), '$1$2***')
+    .replace(/\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g, '***')
+    .replace(/[A-Za-z0-9+/]{32,}={0,2}/g, maskRun)
+}
+
+function hasLetterAndDigit(s: string): boolean {
+  return /[A-Za-z]/.test(s) && /[0-9]/.test(s)
+}
+
+// A long run is a secret when it has base64 markers, or letters and digits mixed; a run
+// with `/` and no markers is a path unless one segment of 20 or more characters mixes
+// letters and digits.
+function maskRun(run: string): string {
+  if (/[+=]/.test(run)) return '***'
+  if (!run.includes('/')) return hasLetterAndDigit(run) ? '***' : run
+  return run.split('/').some((seg) => seg.length >= 20 && hasLetterAndDigit(seg)) ? '***' : run
+}
+
+/**
+ * The first 4,000 characters, cut back to the last whitespace when the text was longer,
+ * so the cut never leaves the prefix of a token that redaction would no longer recognise.
+ * A kept part with no whitespace is dropped whole; a cut text ends with `…`.
+ */
+function boundedInput(text: string): string {
+  if (text.length <= INPUT_MAX) return text
+  let i = INPUT_MAX
+  // The character at INPUT_MAX itself may be the boundary: then nothing is split.
+  while (i > 0 && !/\s/.test(text[i])) i -= 1
+  const kept = text.slice(0, i).trimEnd()
+  return kept === '' ? '…' : kept + ' …'
+}
+
+/** Redacts, collapses whitespace and clips; only the first 4,000 characters are read. */
+export function summarizeText(text: string, max = TEXT_MAX): string {
+  return clip(redact(boundedInput(text)), max)
+}
+
+function obj(v: unknown): Record<string, unknown> {
+  return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {}
+}
+
+function str(v: unknown): string | undefined {
+  return typeof v === 'string' ? v : undefined
+}
+
+function lastSegments(path: string, n: number): string {
+  return path.split('/').filter((x) => x !== '').slice(-n).join('/')
+}
+
+/** A one-line, redacted summary of a tool call. Any input shape is safe. */
+export function summarizeTool(tool: string, input: unknown): string {
+  const o = obj(input)
+  const inner = obj(o.input)
+  const field = (name: string): string | undefined => str(o[name]) ?? str(inner[name])
+  let out: string | undefined
+  switch (tool) {
+    case 'Bash': {
+      const c = field('command')
+      if (c !== undefined) out = c.split(/\r?\n/).find((l) => l.trim() !== '') ?? ''
+      break
+    }
+    case 'Read':
+    case 'Edit':
+    case 'Write':
+    case 'NotebookEdit': {
+      const f = field('file_path') ?? field('notebook_path')
+      if (f !== undefined) out = lastSegments(f, 3)
+      break
+    }
+    case 'Grep':
+    case 'Glob':
+      out = field('pattern')
+      break
+    case 'Agent':
+      out = field('description')
+      break
+    case 'SendMessage': {
+      const to = field('to')
+      if (to !== undefined) {
+        const m = field('message') ?? field('text') ?? field('summary')
+        out = m === undefined ? to : to + ': ' + summarizeText(m)
+      }
+      break
+    }
+    case 'WebFetch': {
+      const u = field('url')
+      const m = u === undefined ? null : /^[a-z][a-z0-9+.-]*:\/\/([^/?#\s]+)([^?#\s]*)/i.exec(u)
+      if (m !== null) out = m[1] + m[2]
+      break
+    }
+  }
+  if (out === undefined) return tool
+  const s = summarizeText(out)
+  return s === '' ? tool : s
+}
+
+function detailFor(details: Map<string, AgentDetail>, agentId: string, maxAgents: number): AgentDetail {
+  const have = details.get(agentId)
+  if (have !== undefined) {
+    // Refresh recency so eviction drops the least recently used agent.
+    details.delete(agentId)
+    details.set(agentId, have)
+    return have
+  }
+  while (details.size >= Math.max(1, maxAgents)) {
+    const oldest = details.keys().next()
+    if (oldest.done === true) break
+    details.delete(oldest.value)
+  }
+  const made: AgentDetail = { activity: [] }
+  details.set(agentId, made)
+  return made
+}
+
+/** Appends a tool call to an agent's detail, keeping the last `keep` calls and `maxAgents` agents. */
+export function recordActivity(details: Map<string, AgentDetail>, agentId: string, entry: ToolActivity, maxAgents = 200, keep = 6): void {
+  const d = detailFor(details, agentId, maxAgents)
+  d.activity.push(entry)
+  if (d.activity.length > keep) d.activity.splice(0, d.activity.length - keep)
+}
+
+/** Stores the delegation: the redacted, 600-char task, its first line, the description and model. */
+export function recordTask(
+  details: Map<string, AgentDetail>,
+  agentId: string,
+  info: { prompt?: string; description?: string; model?: string },
+  maxAgents = 200,
+): void {
+  const d = detailFor(details, agentId, maxAgents)
+  if (info.prompt !== undefined) {
+    const safe = redact(boundedInput(info.prompt))
+    d.task = clip(safe, TASK_MAX)
+    d.taskFirstLine = clip(safe.split(/\r?\n/).find((l) => l.trim() !== '') ?? '', TEXT_MAX)
+  }
+  if (info.description !== undefined) d.description = summarizeText(info.description)
+  if (info.model !== undefined) d.model = info.model
+}
+
+/** Drops the detail of every agent that is no longer listed. */
+export function pruneDetails(details: Map<string, AgentDetail>, liveIds: Set<string>): void {
+  for (const id of [...details.keys()]) if (!liveIds.has(id)) details.delete(id)
 }

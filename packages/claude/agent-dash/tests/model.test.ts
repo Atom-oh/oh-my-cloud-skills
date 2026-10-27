@@ -1,7 +1,7 @@
 import { expect, test, describe } from 'claude-code/testing'
 import { row, rows } from './fixtures/agents.ts'
-import { DEFAULT_POLICY, buildTree, diffNotices, inferWaits, resolveModel, summaryLine } from '../hooks/lib/model.ts'
-import type { TreeNode } from '../hooks/lib/model.ts'
+import { DEFAULT_POLICY, buildTree, clip, diffNotices, inferWaits, pruneDetails, recordActivity, recordTask, redact, resolveModel, summarizeText, summarizeTool, summaryLine } from '../hooks/lib/model.ts'
+import type { AgentDetail, TreeNode } from '../hooks/lib/model.ts'
 
 const NOW = 10_000
 
@@ -165,5 +165,178 @@ describe('resolveModel', () => {
     expect(DEFAULT_POLICY.enabled).toBe(false)
     for (const v of Object.values(DEFAULT_POLICY.map)) expect(['opus', 'sonnet', 'haiku']).toContain(v)
     expect(DEFAULT_POLICY.map['aws-content-plugin:presentation-agent']).toBe('sonnet')
+  })
+})
+
+describe('detail model', () => {
+  test('test_clip_makes_one_line_and_marks_the_cut', () => {
+    expect(clip('  a\n  b\tc  ', 80)).toBe('a b c')
+    expect(clip('abcdefghij', 5)).toBe('abcd…')
+    expect(clip('abcde', 5)).toBe('abcde')
+    expect(clip('', 5)).toBe('')
+  })
+
+  test('test_summaries_redact_secrets', () => {
+    const a = summarizeText('API_TOKEN=abc123 curl -H "Authorization: Bearer x.y.z"')
+    expect(a).toContain('API_TOKEN=***')
+    expect(a).not.toContain('abc123')
+    expect(a).not.toContain('x.y.z')
+    expect(a).toContain('Authorization: ***')
+    expect(redact('login --password hunter2 now')).toBe('login --password *** now')
+    expect(redact('--api-key k1 --token t1 --secret s1')).toBe('--api-key *** --token *** --secret ***')
+    expect(redact('Bearer abc.def')).toBe('Authorization: ***')
+    expect(redact('db_Password=x and plain=y')).toBe('db_Password=*** and plain=y')
+    const hex = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678'
+    expect(hex.length).toBe(40)
+    expect(redact('sha ' + hex + ' end')).toBe('sha *** end')
+    expect(summarizeText('line one\nAPI_KEY=zzz')).not.toContain('\n')
+  })
+
+  test('test_summarize_tool_shapes', () => {
+    expect(summarizeTool('Bash', { command: 'ls -la\nrm x' })).toBe('ls -la')
+    expect(summarizeTool('Read', { file_path: '/a/b/c/d/e.ts' })).toBe('c/d/e.ts')
+    expect(summarizeTool('Edit', { file_path: '/a/b/c/d.ts' })).toBe('a/b/c/d.ts'.split('/').slice(-3).join('/'))
+    expect(summarizeTool('Write', { file_path: 'x.ts' })).toBe('x.ts')
+    expect(summarizeTool('NotebookEdit', { notebook_path: '/n/a/b/c.ipynb' })).toBe('n/a/b/c.ipynb'.split('/').slice(-3).join('/'))
+    expect(summarizeTool('Grep', { pattern: 'foo.*bar' })).toBe('foo.*bar')
+    expect(summarizeTool('Glob', { pattern: '**/*.ts' })).toBe('**/*.ts')
+    expect(summarizeTool('Agent', { description: 'scan repo', prompt: 'secret stuff' })).toBe('scan repo')
+    expect(summarizeTool('SendMessage', { to: 'bob', message: 'hello\nthere' })).toBe('bob: hello there')
+    expect(summarizeTool('WebFetch', { url: 'https://example.com/docs/x?token=abc#f' })).toBe('example.com/docs/x')
+    expect(summarizeTool('Mystery', { a: 1 })).toBe('Mystery')
+    expect(summarizeTool('Bash', null)).toBe('Bash')
+    expect(summarizeTool('Read', 'str')).toBe('Read')
+    expect(summarizeTool('Grep', {})).toBe('Grep')
+    expect(summarizeTool('WebFetch', { url: 'not a url' })).toBe('WebFetch')
+    expect(summarizeTool('Bash', { command: 'API_TOKEN=abc123 run' })).toBe('API_TOKEN=*** run')
+    expect(summarizeTool('Bash', { command: 'word '.repeat(40) }).length).toBe(80)
+  })
+
+  test('test_detail_is_bounded_and_pruned', () => {
+    const d = new Map<string, AgentDetail>()
+    for (let i = 0; i < 1000; i++) recordActivity(d, 'A', { tool: 'Bash', summary: 's' + i, atMs: i })
+    expect(d.get('A')!.activity.length).toBe(6)
+    expect(d.get('A')!.activity.map((x) => x.atMs)).toEqual([994, 995, 996, 997, 998, 999])
+    const m = new Map<string, AgentDetail>()
+    for (let i = 0; i < 250; i++) recordActivity(m, 'g' + i, { tool: 'Bash', summary: 's', atMs: i })
+    expect(m.size).toBe(200)
+    expect(m.has('g0')).toBe(false)
+    expect(m.has('g249')).toBe(true)
+    for (let i = 0; i < 250; i++) recordTask(m, 't' + i, { prompt: 'p' })
+    expect(m.size).toBe(200)
+    pruneDetails(m, new Set(['t249', 't248', 'nope']))
+    expect([...m.keys()].sort()).toEqual(['t248', 't249'])
+  })
+
+  test('test_record_task_keeps_first_line_and_clips', () => {
+    const d = new Map<string, AgentDetail>()
+    recordTask(d, 'A', { prompt: 'Fix the bug\n' + 'word '.repeat(200), description: 'fixer', model: 'opus' })
+    const a = d.get('A')!
+    expect(a.taskFirstLine).toBe('Fix the bug')
+    expect(a.task!.length).toBe(600)
+    expect(a.task!.endsWith('…')).toBe(true)
+    expect(a.description).toBe('fixer')
+    expect(a.model).toBe('opus')
+    expect(a.activity).toEqual([])
+    recordActivity(d, 'A', { tool: 'Bash', summary: 'x', atMs: 1 })
+    recordTask(d, 'A', { prompt: 'API_TOKEN=abc123 go' })
+    expect(d.get('A')!.task).toBe('API_TOKEN=*** go')
+    expect(d.get('A')!.activity.length).toBe(1)
+  })
+
+  test('test_redact_is_linear_on_hostile_input', () => {
+    const inputs = ['a.'.repeat(100000), 'token'.repeat(40000), '='.repeat(200000), 'Bearer '.repeat(40000), '--token "'.repeat(20000), 'https://'.repeat(25000)]
+    for (const input of inputs) {
+      const t0 = Date.now()
+      redact(input)
+      summarizeText(input)
+      expect(Date.now() - t0).toBeLessThan(500)
+    }
+    const d = new Map<string, AgentDetail>()
+    const t1 = Date.now()
+    recordTask(d, 'A', { prompt: 'token'.repeat(40000) })
+    expect(Date.now() - t1).toBeLessThan(500)
+  })
+
+  test('test_summaries_redact_more_credential_forms', () => {
+    expect(redact('run --token "a b" go')).toBe('run --token *** go')
+    expect(redact('run --password "hunter2" go')).toBe('run --password *** go')
+    expect(redact("run --password='x y' go")).toBe('run --password *** go')
+    expect(redact('curl -u user:pass https://x')).toBe('curl -u *** https://x')
+    expect(redact('-u user:pass')).toBe('-u ***')
+    expect(redact('git clone https://user:pass@host/x')).toBe('git clone https://***@host/x')
+    expect(redact('{"password":"hunter2"}')).toBe('{"password":"***"}')
+    expect(redact('{"password": "x"}')).toBe('{"password": "***"}')
+    expect(redact('{"api_key": "k", "name": "n"}')).toBe('{"api_key": "***", "name": "n"}')
+    expect(redact('X-Api-Key: abc123')).toBe('X-Api-Key: ***')
+    expect(redact('curl --header "X-Api-Key: abc123" u')).toBe('curl --header "X-Api-Key: ***" u')
+    expect(redact('x-auth-token: z')).toBe('x-auth-token: ***')
+    expect(redact('id AKIAABCDEFGHIJKLMNOP and ASIAABCDEFGHIJKLMNOP')).toBe('id *** and ***')
+  })
+
+  test('test_long_runs_mask_secrets_but_not_paths', () => {
+    expect(redact('see src/components/dashboard/SidebarNavigation now')).toBe('see src/components/dashboard/SidebarNavigation now')
+    expect(redact('x a1b2c3d4e5f60718293a4b5c6d7e8f9012345678 y')).toBe('x *** y')
+    expect(redact('x QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo+MTIzNDU2Nw== y')).toBe('x *** y')
+    expect(redact('x QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo+MTIzNDU2Nw y')).toBe('x *** y')
+  })
+
+  test('test_maskrun_masks_mixed_20_char_segments_in_paths', () => {
+    expect(redact('see src/components/a1b2c3d4e5f6g7h8i9j0 now')).toBe('see *** now')
+    expect(redact('see repo/k9x8w7v6u5t4s3r2q1p0/cache/files now')).toBe('see *** now')
+    // A 19-character mixed segment, and segments without digits, stay a path.
+    expect(redact('see src/components/a1b2c3d4e5f6g7h8i9j now')).toBe('see src/components/a1b2c3d4e5f6g7h8i9j now')
+    expect(redact('see src/components/dashboard/SidebarNavigation now')).toBe('see src/components/dashboard/SidebarNavigation now')
+  })
+
+  test('test_truncation_never_leaves_a_secret_prefix', () => {
+    const token = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678'
+    expect(token.length).toBe(40)
+    // `n` characters of words and spaces, so each secret below straddles the 4,000-character read limit.
+    const pad = (n: number) => ('w '.repeat(n)).slice(0, n)
+    const bare = pad(3990) + token + ' tail'
+    const kv = pad(3992) + 'API_KEY=' + 'zq9'.repeat(10) + ' tail'
+    const json = pad(3980) + '{"password": "' + 'hunter2xyz'.repeat(3) + '"}'
+    for (const input of [bare, kv, json]) {
+      expect(input.length).toBeGreaterThan(4000)
+      const outs = [summarizeText(input, 10_000)]
+      const d = new Map<string, AgentDetail>()
+      recordTask(d, 'A', { prompt: input })
+      outs.push(d.get('A')!.task!, d.get('A')!.taskFirstLine!)
+      for (const out of outs) {
+        expect(out).not.toContain('a1b2c3')
+        expect(out).not.toContain('zq9')
+        expect(out).not.toContain('hunter')
+      }
+    }
+    // Text with no whitespace before the cut is dropped, leaving only the marker.
+    expect(summarizeText(token.repeat(200))).toBe('…')
+    const d = new Map<string, AgentDetail>()
+    recordTask(d, 'A', { prompt: token.repeat(200) })
+    expect(d.get('A')!.task).toBe('…')
+    // Text under the limit is untouched.
+    expect(summarizeText('short text')).toBe('short text')
+  })
+
+  test('summarizeTool reads the top level or a nested input', () => {
+    expect(summarizeTool('Grep', { pattern: 'p' })).toBe('p')
+    expect(summarizeTool('Grep', { input: { pattern: 'q' } })).toBe('q')
+    expect(summarizeTool('Bash', { command: 'top', input: { command: 'inner' } })).toBe('top')
+    expect(summarizeTool('Bash', { input: 5 })).toBe('Bash')
+  })
+
+  test('an active agent survives eviction while an idle one is dropped', () => {
+    const d = new Map<string, AgentDetail>()
+    recordActivity(d, 'idle', { tool: 'Bash', summary: 's', atMs: 0 })
+    recordActivity(d, 'active', { tool: 'Bash', summary: 's', atMs: 0 })
+    for (let i = 0; i < 250; i++) {
+      recordActivity(d, 'g' + i, { tool: 'Bash', summary: 's', atMs: i })
+      if (i % 2 === 0) recordTask(d, 'active', { prompt: 'p' })
+      else recordActivity(d, 'active', { tool: 'Bash', summary: 's', atMs: i })
+    }
+    expect(d.size).toBe(200)
+    expect(d.get('active')?.task).toBe('p')
+    expect(d.get('active')!.activity.length).toBe(6)
+    expect(d.has('idle')).toBe(false)
   })
 })
