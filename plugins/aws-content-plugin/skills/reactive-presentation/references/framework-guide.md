@@ -134,7 +134,7 @@ Auto-inits on DOMContentLoaded: `initTabs()`, `initChecklists()`, `initCompareTo
 
 **Font loading**: Loads Pretendard Variable and JetBrains Mono via CDN. Sets `<meta charset="UTF-8">` and `lang="ko"`.
 
-**Sync**: Uses `BroadcastChannel('slide-sync')` to sync slide navigation between main window and presenter view.
+**Sync**: Uses `BroadcastChannel('slide-sync')` to sync slide navigation between main window and presenter view. Clicks in the current-slide preview are forwarded to the same element of the live slide in the audience window (not links, disabled controls, the next-slide preview or clicks in pen mode), and the preview follows any change to the live slide, including text-only and `style` changes.
 
 ### animation-utils.js
 Canvas drawing primitives and animation helpers.

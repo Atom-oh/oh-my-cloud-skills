@@ -10,7 +10,7 @@ Shortcuts the generated slideshow supports at viewing time.
 | Cmd+K / Ctrl+K | Open slide search |
 | / | Open slide search when focus is not in a form control |
 | F | Toggle fullscreen |
-| P | Open presenter view (new window with notes, timer, slide sync) |
+| P | Open presenter view (new window with notes, timer, slide sync; clicks in its current-slide preview are forwarded to the audience window, and the preview follows text-only changes) |
 | O | Toggle overview mode (slide grid thumbnails) |
 | S | Toggle slide sidebar (non-fullscreen only) |
 | Esc | Close search or detail / exit fullscreen / exit overview / leave pen mode while it is on (normal window only, see Pen mode) |

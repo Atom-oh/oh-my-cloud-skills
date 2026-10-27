@@ -53,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reflect box selection between the reactive-presentation presenter window and the
+  deck window: a click in the presenter's current-slide preview now runs on the same
+  element of the live slide (links, disabled controls, the next-slide preview and pen
+  mode excepted), and the preview now follows changes that only touch text, `style` or
+  children of the live slide, not just `class` changes, re-rendering at most once per
+  100 ms.
 - Place the reactive-presentation footer after the logo instead of at a fixed
   `left: 70px`, which overlapped the 53px logo by about 3px and wider logos by more. The
   footer now starts 16px after the logo's right edge (`--rp-footer-left`, set by the
