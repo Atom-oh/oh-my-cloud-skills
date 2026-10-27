@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The agent-dash pane opens as the map; `View: Map` / `View: List` (hotkey `m`)
   switches to the previous one-line-per-agent list.
 
+### Fixed
+
+- Fix reactive-presentation fullscreen Esc: in Chrome and Edge, fullscreen entered with the `F` key now locks Esc to the page, so the first Esc leaves pen mode (or closes overview) and the next exits fullscreen; a held Esc no longer exits fullscreen right after leaving pen mode. The lock needs https or localhost; a deck opened from `file://` may not get it. Fullscreen entered from the browser menu, `Cmd+Ctrl+F` or `F11` is not changed (browser-dependent, not verified); Safari and Firefox still exit fullscreen on Esc, so use `Option+P` to leave pen mode.
+
 ## [3.0.6] - 2026-10-27
 
 ### Added
