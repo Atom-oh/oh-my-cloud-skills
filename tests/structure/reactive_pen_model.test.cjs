@@ -199,8 +199,77 @@ test('test_effective_color_follows_the_current_mode', () => {
   assert.equal(model.effectiveColor(), 0);
 });
 
+test('test_magnifier_mode_creates_no_stroke_and_remembers_zoom', () => {
+  const { DeckPen, model } = setup(3000);
+  assert.ok(DeckPen.MODES.includes('magnifier'));
+  assert.equal(DeckPen.MODES.indexOf('magnifier'), DeckPen.MODES.indexOf('eraser') + 1);
+  assert.equal(model.zoom, 2);
+  model.setMode('pen');
+  model.setColor(3);
+  model.setMode('magnifier');
+  assert.equal(model.mode, 'magnifier');
+  assert.equal(model.begin(0, 0.1, 0.1), null);
+  assert.doesNotThrow(() => { model.extend(0.2, 0.2); model.end(); });
+  assert.equal(model.visible(0).length, 0);
+  assert.equal(model.animating(0), false);
+  // Magnifier has no colour of its own; setColor is a no-op there.
+  model.setColor(5);
+  model.setZoom(3);
+  assert.equal(model.zoom, 3);
+  model.setMode('pen');
+  assert.equal(model.effectiveColor(), 3);
+  model.setMode('magnifier');
+  assert.equal(model.zoom, 3);
+  for (const bad of [5, 1, 0, 2.5, '4', null, undefined]) model.setZoom(bad);
+  assert.equal(model.zoom, 3);
+  model.setZoom(4);
+  assert.equal(model.zoom, 4);
+  model.setZoom(2);
+  assert.equal(model.zoom, 2);
+});
+
 test('test_controller_is_not_created_without_the_overlay_core', () => {
   const DeckPen = load();
   assert.equal(DeckPen.controller, null);
   assert.equal(typeof DeckPen.attachSurface, 'function');
+});
+
+test('test_lens_geometry_clamps_and_centres_the_pointer_point', () => {
+  const DeckPen = load();
+  const rect = { left: 100, top: 50, width: 1600, height: 900 };
+  const canvasW = 1920;
+  const canvasH = 1080;
+  const close = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg}: ${a} != ${b}`);
+  for (const zoom of [2, 3, 4]) {
+    for (const [x, y] of [[0, 0], [1, 1], [0.5, 0.5], [0.02, 0.97], [0.3, 0.7]]) {
+      const g = DeckPen.lensGeometry({ rect, x, y, zoom, canvasW, canvasH, diameter: 252 });
+      assert.equal(g.size, 252);
+      close(g.scale, zoom * rect.width / canvasW, 'scale');
+      // The lens stays fully inside the slide box.
+      assert.ok(g.left >= rect.left && g.left + g.size <= rect.left + rect.width, `x inside ${x}`);
+      assert.ok(g.top >= rect.top && g.top + g.size <= rect.top + rect.height, `y inside ${y}`);
+      // The pointer's slide point (design pixels) lands on the lens centre.
+      close(g.tx + g.scale * x * canvasW, g.size / 2, `centre x z${zoom}`);
+      close(g.ty + g.scale * y * canvasH, g.size / 2, `centre y z${zoom}`);
+    }
+  }
+  // Away from the edges the lens is centred on the pointer.
+  const mid = DeckPen.lensGeometry({ rect, x: 0.5, y: 0.5, zoom: 2, canvasW, canvasH, diameter: 252 });
+  close(mid.left + mid.size / 2, rect.left + rect.width / 2, 'unclamped x');
+  close(mid.top + mid.size / 2, rect.top + rect.height / 2, 'unclamped y');
+  // At a corner it is clamped against both edges.
+  const corner = DeckPen.lensGeometry({ rect, x: 1, y: 1, zoom: 3, canvasW, canvasH, diameter: 252 });
+  assert.equal(corner.left, rect.left + rect.width - 252);
+  assert.equal(corner.top, rect.top + rect.height - 252);
+  const origin = DeckPen.lensGeometry({ rect, x: 0, y: 0, zoom: 3, canvasW, canvasH, diameter: 252 });
+  assert.equal(origin.left, rect.left);
+  assert.equal(origin.top, rect.top);
+  // Default diameter is 28% of the slide height; never larger than the box.
+  const dflt = DeckPen.lensGeometry({ rect, x: 0.5, y: 0.5, zoom: 2, canvasW, canvasH });
+  close(dflt.size, 0.28 * rect.height, 'default diameter');
+  const tiny = DeckPen.lensGeometry({
+    rect: { left: 0, top: 0, width: 100, height: 50 }, x: 0.5, y: 0.5, zoom: 2,
+    canvasW, canvasH, diameter: 400
+  });
+  assert.equal(tiny.size, 50);
 });

@@ -594,6 +594,18 @@ ${styleSheets}
 
     doc.getElementById('p-title').textContent = document.title;
 
+    // Clicks in the current-slide preview run on the live slide in the deck
+    // window. #p-current persists across renders (only its children are
+    // replaced), so one delegated listener is enough. #p-next stays inert.
+    const current = doc.getElementById('p-current');
+    current.addEventListener('click', (e) => this._forwardPreviewClick(e));
+    current.addEventListener('pointerdown', () => { this._previewPointerDown = true; });
+    // The release may land anywhere in the presenter window; blur covers a
+    // release that never reaches it.
+    doc.addEventListener('pointerup', () => this._releasePreviewPointer());
+    doc.addEventListener('pointercancel', () => this._releasePreviewPointer());
+    win.addEventListener('blur', () => this._releasePreviewPointer());
+
     // Recalculate scales on presenter window resize
     win.addEventListener('resize', () => this._updateAllScales());
     // Closing the presenter window drops its pen surface; the ink stays in the deck.
@@ -602,8 +614,9 @@ ${styleSheets}
     });
   }
 
-  // Pen surface over the scaled current-slide preview. The canvas and badge are
-  // siblings of #p-current, which _renderSlidePreview empties on every update.
+  // Pen surface over the scaled current-slide preview. The canvas, the badge and
+  // the magnifier lens (inserted by attachSurface after the canvas) are siblings
+  // of #p-current, which _renderSlidePreview empties on every update.
   // isPrimary binds the pen keys on this window in the capture phase, so they
   // run once, before the document-level navigation handler below.
   _attachPen() {
@@ -682,6 +695,78 @@ ${styleSheets}
       width: fit.width,
       height: fit.height
     };
+  }
+
+  // Forward a click on the clone in #p-current to the same element of the live
+  // current slide. Links are not followed and disabled controls are skipped;
+  // in pen mode the pen canvas owns the pointer, so nothing is forwarded.
+  _forwardPreviewClick(e) {
+    const container = e.currentTarget;
+    const target = e.target;
+    const cloneSlide = container && container.querySelector(':scope > .slide-scaler > .slide-deck > .slide');
+    if (!cloneSlide || !target || target.nodeType !== 1 || !cloneSlide.contains(target)) return;
+    e.preventDefault();
+    const pen = window.DeckPen;
+    if (pen && pen.controller && pen.controller.active) return;
+    const anchor = target.closest('a[href]');
+    if (anchor && cloneSlide.contains(anchor)) return;
+
+    // The preview must show the current live slide; a press that outlived a
+    // slide change (the re-render waits for the release) forwards nothing.
+    const liveSlide = this.framework.slides[this.framework.currentSlide];
+    if (!liveSlide || this._previewSource !== liveSlide) return;
+    const live = this._livePathTarget(liveSlide, cloneSlide, target);
+    if (!live || live.closest(':disabled')) return;
+    if (typeof live.click === 'function') {
+      live.click();
+    } else {
+      // SVG elements have no click(); dispatch an equivalent event.
+      live.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    }
+  }
+
+  // Replacing the pressed node between press and release makes the browser
+  // drop the click (Chromium fires none), so while a pointer is down on
+  // #p-current its re-render waits and runs once after the release, after
+  // the click has been dispatched.
+  _releasePreviewPointer() {
+    if (!this._previewPointerDown) return;
+    this._previewPointerDown = false;
+    if (!this._deferredPreview) return;
+    setTimeout(() => {
+      const args = this._deferredPreview;
+      this._deferredPreview = null;
+      if (!args || this._previewPointerDown) {
+        if (args) this._deferredPreview = args;
+        return;
+      }
+      if (!this.presenterWindow || this.presenterWindow.closed) return;
+      const container = this.presenterWindow.document.getElementById('p-current');
+      if (container === args.container) this._renderSlidePreview(args.doc, container, args.slide, args.revealAll);
+    }, 0);
+  }
+
+  // The element of liveSlide at the same child-index path as target inside
+  // cloneSlide, or null when the structure differs.
+  _livePathTarget(liveSlide, cloneSlide, target) {
+    if (!liveSlide || !cloneSlide || !target) return null;
+    const path = [];
+    let node = target;
+    while (node && node !== cloneSlide) {
+      const parent = node.parentElement;
+      if (!parent) return null;
+      path.push(Array.prototype.indexOf.call(parent.children, node));
+      node = parent;
+    }
+    if (node !== cloneSlide) return null;
+    let live = liveSlide;
+    let clone = cloneSlide;
+    for (let i = path.length - 1; i >= 0; i--) {
+      clone = clone.children[path[i]];
+      live = live.children[path[i]];
+      if (!live || !clone || live.tagName !== clone.tagName) return null;
+    }
+    return live;
   }
 
   updatePresenterView() {
@@ -823,6 +908,10 @@ ${styleSheets}
   }
 
   _renderSlidePreview(doc, container, sourceSlide, revealAll) {
+    if (container.id === 'p-current' && this._previewPointerDown) {
+      this._deferredPreview = { doc: doc, container: container, slide: sourceSlide, revealAll: revealAll };
+      return;
+    }
     container.innerHTML = '';
 
     const canvas = this._canvasSize();
@@ -872,7 +961,11 @@ ${styleSheets}
     if (rect.width > 0 && rect.height > 0) {
       this._applyScale(scaler, rect.width, rect.height);
     }
-    if (container.id === 'p-current' && this._pen) this._pen.redraw();
+    if (container.id === 'p-current') {
+      this._previewSource = sourceSlide;
+      this._lastPreviewRender = Date.now();
+      if (this._pen) this._pen.redraw();
+    }
   }
 
   // Centred fit of the deck canvas into a container: scale, size and offset.
@@ -903,19 +996,28 @@ ${styleSheets}
     this.fragmentRenderTimer = null;
     if (!slide) return;
 
+    // Any change in the live slide (classes, style, text, children) re-renders
+    // the preview, coalesced to at most one render per 100 ms: the first
+    // mutation schedules a render 50 to 100 ms out and later mutations wait for
+    // it. Only the live slide is observed, never the clone, so a render cannot
+    // trigger itself.
     this.fragmentObserver = new MutationObserver(() => {
-      clearTimeout(this.fragmentRenderTimer);
+      if (this.fragmentRenderTimer) return;
+      const sinceLast = Date.now() - (this._lastPreviewRender || 0);
+      const delay = Math.min(100, Math.max(50, 100 - sinceLast));
       this.fragmentRenderTimer = setTimeout(() => {
+        this.fragmentRenderTimer = null;
         if (!this.presenterWindow || this.presenterWindow.closed) return;
         const currentEl = this.presenterWindow.document.getElementById('p-current');
         if (currentEl && slide === this.framework.slides[this.framework.currentSlide]) {
           this._renderSlidePreview(this.presenterWindow.document, currentEl, slide, false);
         }
-      }, 50);
+      }, delay);
     });
     this.fragmentObserver.observe(slide, {
       attributes: true,
-      attributeFilter: ['class'],
+      childList: true,
+      characterData: true,
       subtree: true
     });
   }

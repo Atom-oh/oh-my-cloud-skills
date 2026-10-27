@@ -11,6 +11,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -69,12 +70,102 @@ def _pen_deck(opts, extra_head="", css=True):
 
 
 RATIO_43 = "<style>:root { --slide-ratio-w: 4; --slide-ratio-h: 3; }</style>\n"
+
+# Slide 0 of the lens decks: a marker square and an SVG whose gradient fill and
+# <use> both reference ids (the lens clone has no ids of its own).
+LENS_MARKERS = """<div class="slide-body"><p>Intro text for the first slide.</p></div>
+    <div id="lens-mark" style="position:absolute;left:1000px;top:500px;width:40px;height:40px;background:rgb(0,170,0)"></div>
+    <svg id="lens-svg" width="160" height="60" style="position:absolute;left:200px;top:700px">
+      <defs><linearGradient id="lens-grad"><stop offset="0" stop-color="rgb(0,120,255)"/><stop offset="1" stop-color="rgb(0,120,255)"/></linearGradient>
+        <symbol id="lens-sym"><rect width="60" height="60" fill="rgb(255,140,0)"/></symbol></defs>
+      <rect id="lens-svg-grad" width="60" height="60" fill="url(#lens-grad)"/>
+      <use id="lens-svg-use" href="#lens-sym" x="90" y="0" width="60" height="60"/>
+    </svg></div>"""
+
+
+def _lens_deck(extra_head=""):
+    deck = _pen_deck("sidebar: false, pen: { fadeMs: 300 }", extra_head)
+    return deck.replace('<div class="slide-body"><p>Intro text for the first slide.</p></div></div>',
+                        LENS_MARKERS, 1)
+
+
+# Slide 0 of the boxes deck: three boxes with a delegated live handler on the
+# slide root (like the aws-landing-zone handlers: e.target.closest, a class
+# toggle and out.innerHTML), plus a link, a disabled button and text targets.
+BOX_SLIDE = """<div class="slide-body">
+      <div class="boxes"><div class="box" data-t="Alpha detail">Alpha</div>
+        <div class="box" data-t="Beta detail"><span class="lbl">Beta</span></div>
+        <div class="box" data-t="Gamma detail">Gamma</div></div>
+      <div id="out">none</div>
+      <a id="link" href="#elsewhere">A link</a>
+      <button id="off" disabled>Off</button>
+      <p id="txt">idle</p><p id="hid">shown</p></div></div>"""
+
+BOX_SCRIPT = """<script>
+window.__docClicks = 0;
+document.addEventListener('click', () => { window.__docClicks++; });
+const boxRoot = document.querySelector('.slide');
+boxRoot.addEventListener('click', e => {
+  const b = e.target.closest('.box');
+  if (!b) return;
+  boxRoot.querySelectorAll('.box').forEach(x => x.classList.toggle('sel', x === b));
+  boxRoot.querySelector('#out').innerHTML = '<b>' + b.dataset.t + '</b>';
+});
+document.getElementById('off').addEventListener('click', () => { window.__offClicks = (window.__offClicks || 0) + 1; });
+</script>
+</body>"""
+
+
+def _box_deck():
+    deck = _pen_deck("sidebar: false, pen: { fadeMs: 300 }")
+    deck = deck.replace('<div class="slide-body"><p>Intro text for the first slide.</p></div></div>',
+                        BOX_SLIDE, 1)
+    return deck.replace("</body>", BOX_SCRIPT, 1)
+
+
 PEN_DECKS = {
+    "boxes.html": _box_deck(),
     "pen.html": _pen_deck("sidebar: false, pen: { fadeMs: 300 }"),
     "pen-43.html": _pen_deck("sidebar: false, pen: { fadeMs: 300 }", RATIO_43),
     "pen-nobadge.html": _pen_deck("sidebar: false, pen: { fadeMs: 300, audienceBadge: false }"),
     "pen-nocss.html": _pen_deck("sidebar: false", css=False),
+    "lens.html": _lens_deck(),
+    "lens-43.html": _lens_deck(RATIO_43),
 }
+
+# The lens circle and the slide point shown at its centre, read back from the
+# clone transform: translate(tx, ty) scale(s) with the design canvas size.
+LENS_INFO = """() => {
+  const l = document.querySelector('.rp-lens');
+  if (!l) return null;
+  const r = l.getBoundingClientRect();
+  const v = l.querySelector('.rp-lens-view');
+  const m = /translate\\(([-\\d.e]+)px, ([-\\d.e]+)px\\) scale\\(([-\\d.e]+)\\)/.exec(v.style.transform || '');
+  const cw = parseFloat(v.style.width), ch = parseFloat(v.style.height);
+  const out = { hidden: l.hidden, cx: r.left + r.width / 2, cy: r.top + r.height / 2,
+                w: r.width, parent: l.parentElement.id || l.parentElement.tagName };
+  if (m) {
+    const tx = +m[1], ty = +m[2], s = +m[3];
+    out.sx = (r.width / 2 - tx) / (s * cw);
+    out.sy = (r.height / 2 - ty) / (s * ch);
+  }
+  return out;
+}"""
+
+
+def _png_pixel(png):
+    """RGB of a 1x1 8-bit PNG (any filter type is a no-op for a single pixel)."""
+    pos, idat, depth, ctype = 8, b"", None, None
+    while pos < len(png):
+        n = int.from_bytes(png[pos:pos + 4], "big")
+        kind, data = png[pos + 4:pos + 8], png[pos + 8:pos + 8 + n]
+        if kind == b"IHDR":
+            depth, ctype = data[8], data[9]
+        elif kind == b"IDAT":
+            idat += data
+        pos += 12 + n
+    assert depth == 8 and ctype in (2, 6), (depth, ctype)
+    return tuple(zlib.decompress(idat)[1:4])
 
 # Centroid of the inked pixels of #rp-pen-canvas, in CSS px relative to the canvas box.
 INK = """() => {
@@ -691,6 +782,316 @@ class PresenterPenTests(_PresenterBase):
         self.pv.evaluate("() => { window.__raf = 0; }")
         self.pv.wait_for_timeout(250)
         self.assertEqual(self.pv.evaluate("() => window.__raf"), 0, "no presenter frames when idle")
+
+
+class PresenterLensTests(_PresenterBase):
+    page_name = "lens.html"
+    MARK = (0, 170, 0)
+
+    # --- helpers ---------------------------------------------------------
+    def preview_box(self):
+        return self.pv.evaluate(BOX, "#p-current .slide-scaler")
+
+    def deck_box(self):
+        return self.page.evaluate(BOX, ".slide-deck")
+
+    def frac(self, selector):
+        """Centre of a live slide element as 0..1 slide coordinates."""
+        return self.page.evaluate("""(sel) => {
+          const d = document.querySelector('.slide-deck').getBoundingClientRect();
+          const r = document.querySelector('.slide-deck ' + sel).getBoundingClientRect();
+          return [(r.left + r.width / 2 - d.left) / d.width, (r.top + r.height / 2 - d.top) / d.height];
+        }""", selector)
+
+    def hover(self, page, box, fx, fy):
+        x, y = box["x"] + box["w"] * fx, box["y"] + box["h"] * fy
+        page.mouse.move(x - 4, y - 4)
+        page.mouse.move(x, y, steps=3)
+        page.wait_for_timeout(150)
+
+    @staticmethod
+    def pixel(page, x, y):
+        png = page.screenshot(clip={"x": int(x), "y": int(y), "width": 1, "height": 1})
+        return _png_pixel(png)
+
+    def assertColor(self, actual, expected, msg=None, tol=16):
+        self.assertTrue(all(abs(a - e) <= tol for a, e in zip(actual, expected)),
+                        f"{msg or ''}: {actual} != {expected}")
+
+    def lenses(self):
+        return self.page.evaluate(LENS_INFO), self.pv.evaluate(LENS_INFO)
+
+    def assert_lens_at(self, info, box, fx, fy, label, clamped=False):
+        """The lens shows slide point (fx, fy): within 2 px in that window's slide pixels."""
+        self.assertIsNotNone(info, label + " lens exists")
+        self.assertFalse(info["hidden"], label + " lens visible")
+        self.assertAlmostEqual(info["sx"] * box["w"], fx * box["w"], delta=2, msg=label + " slide x")
+        self.assertAlmostEqual(info["sy"] * box["h"], fy * box["h"], delta=2, msg=label + " slide y")
+        if not clamped:
+            self.assertAlmostEqual(info["cx"], box["x"] + fx * box["w"], delta=2, msg=label + " centre x")
+            self.assertAlmostEqual(info["cy"], box["y"] + fy * box["h"], delta=2, msg=label + " centre y")
+
+    def assert_mirrored(self, label):
+        mark = self.frac("#lens-mark")
+        for source in ("presenter", "deck"):
+            for fx, fy, clamped in ((mark[0], mark[1], False), (0.03, 0.96, True)):
+                with self.subTest(ratio=label, source=source, point=(round(fx, 3), round(fy, 3))):
+                    page = self.pv if source == "presenter" else self.page
+                    box = self.preview_box() if source == "presenter" else self.deck_box()
+                    self.hover(page, box, fx, fy)
+                    deck_lens, pv_lens = self.lenses()
+                    dbox, pbox = self.deck_box(), self.preview_box()
+                    self.assert_lens_at(deck_lens, dbox, fx, fy, "deck", clamped)
+                    self.assert_lens_at(pv_lens, pbox, fx, fy, "presenter", clamped)
+                    # Same slide point in both windows, in deck pixels.
+                    self.assertAlmostEqual(deck_lens["sx"] * dbox["w"], pv_lens["sx"] * dbox["w"], delta=2)
+                    self.assertAlmostEqual(deck_lens["sy"] * dbox["h"], pv_lens["sy"] * dbox["h"], delta=2)
+                    if not clamped:
+                        self.assertColor(self.pixel(self.page, deck_lens["cx"], deck_lens["cy"]),
+                                         self.MARK, "deck lens shows the marker")
+                        self.assertColor(self.pixel(self.pv, pv_lens["cx"], pv_lens["cy"]),
+                                         self.MARK, "presenter lens shows the marker")
+
+    # --- tests -----------------------------------------------------------
+    def test_lens_mirrors_between_windows(self):
+        self.pv.keyboard.press("Alt+KeyY")
+        self.assertEqual(self.page.evaluate("() => DeckPen.controller.model.mode"), "magnifier")
+        self.assert_mirrored("16:9")
+        self.pv.set_viewport_size({"width": 1100, "height": 760})
+        self.pv.wait_for_timeout(300)
+        self.assert_mirrored("16:9 presenter resized")
+        self.open_deck("lens-43.html")
+        self.assertEqual(self.pv.evaluate(
+            "() => document.querySelector('#p-current .slide-scaler').offsetWidth"), 1440)
+        self.page.keyboard.press("Alt+KeyY")
+        self.assert_mirrored("4:3")
+        self.assertEqual(self.errors, [])
+
+    def test_presenter_lens_survives_preview_rerender(self):
+        self.goto(2)
+        self.pv.keyboard.press("Alt+KeyY")
+        self.hover(self.pv, self.preview_box(), 0.5, 0.5)
+        before = self.pv.evaluate(LENS_INFO)
+        self.assertFalse(before["hidden"])
+        self.assertEqual(before["parent"], "p-current-wrap")
+        self.page.evaluate("() => deck.presenterView.updatePresenterView()")
+        self.settle()
+        self.page.keyboard.press("ArrowRight")
+        self.assert_fragment_sync(1)
+        self.pv.wait_for_timeout(300)
+        after = self.pv.evaluate(LENS_INFO)
+        self.assertFalse(after["hidden"], "lens still visible after the re-render")
+        self.assertEqual(after["parent"], "p-current-wrap")
+        self.assertEqual(self.pv.evaluate("""() => ({
+          lenses: document.querySelectorAll('.rp-lens').length,
+          inPreview: Boolean(document.querySelector('.rp-lens').closest('#p-current')),
+          fragments: document.querySelectorAll('.rp-lens .fragment.visible').length })"""),
+            {"lenses": 1, "inPreview": False, "fragments": 1})
+        for key in ("cx", "cy", "sx", "sy"):
+            self.assertAlmostEqual(after[key], before[key], delta=1, msg=key)
+        self.assertEqual(self.errors, [])
+
+    def test_closing_presenter_window_keeps_deck_lens(self):
+        self.page.keyboard.press("Alt+KeyY")
+        mark = self.frac("#lens-mark")
+        self.hover(self.page, self.deck_box(), *mark)
+        deck_lens, pv_lens = self.lenses()
+        self.assertFalse(deck_lens["hidden"])
+        self.assertFalse(pv_lens["hidden"])
+        self.assertEqual(self.page.evaluate("() => DeckPen.controller.surfaceCount()"), 2)
+        self.pv.close()
+        self.page.wait_for_function("() => deck.presenterView._pen === null", timeout=3000)
+        self.assertEqual(self.page.evaluate("() => DeckPen.controller.surfaceCount()"), 1)
+        self.assertEqual(self.page.evaluate("() => document.querySelectorAll('.rp-lens').length"), 1)
+        self.hover(self.page, self.deck_box(), 0.4, 0.4)
+        self.assert_lens_at(self.page.evaluate(LENS_INFO), self.deck_box(), 0.4, 0.4, "deck after close")
+        self.assertEqual(self.page.evaluate("() => DeckPen.controller.model.mode"), "magnifier")
+        # Reopening attaches a fresh surface with its own lens at the shared position.
+        self.open_presenter()
+        self.assertEqual(self.page.evaluate("() => DeckPen.controller.surfaceCount()"), 2)
+        self.hover(self.page, self.deck_box(), *mark)
+        pv_lens = self.pv.evaluate(LENS_INFO)
+        self.assert_lens_at(pv_lens, self.preview_box(), mark[0], mark[1], "presenter after reopen")
+        self.assertEqual(self.pv.evaluate("() => document.querySelectorAll('.rp-lens').length"), 1)
+        self.assertColor(self.pixel(self.pv, pv_lens["cx"], pv_lens["cy"]), self.MARK)
+        self.assertEqual(self.errors, [])
+
+    def test_lens_svg_id_references_in_both_windows(self):
+        """The clone drops ids; url(#id) and <use href> still resolve in both windows."""
+        self.pv.keyboard.press("Alt+KeyY")
+        for selector, colour in (("#lens-svg-grad", (0, 120, 255)), ("#lens-svg-use", (255, 140, 0))):
+            fx, fy = self.frac(selector)
+            for source in ("presenter", "deck"):
+                with self.subTest(selector=selector, source=source):
+                    page = self.pv if source == "presenter" else self.page
+                    box = self.preview_box() if source == "presenter" else self.deck_box()
+                    self.hover(page, box, fx, fy)
+                    deck_lens, pv_lens = self.lenses()
+                    self.assertColor(self.pixel(self.page, deck_lens["cx"], deck_lens["cy"]), colour, "deck")
+                    self.assertColor(self.pixel(self.pv, pv_lens["cx"], pv_lens["cy"]), colour, "presenter")
+
+
+class PresenterPreviewMirrorTests(_PresenterBase):
+    """Clicks in the current-slide preview reach the live slide; live changes reach the preview."""
+    page_name = "boxes.html"
+
+    def live_state(self):
+        return self.page.evaluate("""() => ({
+          sel: Array.from(document.querySelectorAll('.slide-deck .box')).map(b => b.classList.contains('sel')),
+          out: document.querySelector('.slide-deck #out').textContent,
+          clicks: window.__docClicks })""")
+
+    def test_clicking_a_box_in_the_presenter_preview_selects_it_in_the_deck_window(self):
+        self.pv.locator("#p-current .box .lbl").click()
+        self.page.wait_for_function(
+            "() => document.querySelector('.slide-deck #out').textContent === 'Beta detail'", timeout=3000)
+        state = self.live_state()
+        self.assertEqual(state["sel"], [False, True, False])
+        self.assertEqual(state["out"], "Beta detail")
+        # The preview re-renders to the same state as the live slide.
+        self.pv.wait_for_function("""() => {
+          const boxes = document.querySelectorAll('#p-current .box');
+          return boxes.length === 3 && boxes[1].classList.contains('sel') &&
+                 !boxes[0].classList.contains('sel') &&
+                 document.querySelector('#p-current #out').innerHTML === '<b>Beta detail</b>';
+        }""", timeout=3000)
+        # A second click on another box moves the selection.
+        self.pv.locator("#p-current .box").nth(2).click()
+        self.page.wait_for_function(
+            "() => document.querySelector('.slide-deck #out').textContent === 'Gamma detail'", timeout=3000)
+        self.assertEqual(self.live_state()["sel"], [False, False, True])
+        self.pv.wait_for_function(
+            "() => document.querySelectorAll('#p-current .box')[2].classList.contains('sel')", timeout=3000)
+        self.assertEqual(self.errors, [])
+
+    def test_clicking_a_link_or_the_next_preview_does_not_forward(self):
+        pv_url = self.pv.url
+        deck_hash = self.page.evaluate("() => location.hash")
+        self.pv.locator("#p-current #link").click()
+        self.pv.locator("#p-current #off").dispatch_event("click")
+        self.pv.locator("#p-next .slide h2").click()
+        self.pv.locator("#p-next .slide td").first.click()
+        # A click on the letterbox around the clone is outside the slide.
+        self.pv.evaluate("() => document.getElementById('p-current').click()")
+        self.pv.wait_for_timeout(300)
+        self.assertEqual(self.live_state()["clicks"], 0, "nothing reached the deck window")
+        self.assertEqual(self.page.evaluate("() => window.__offClicks || 0"), 0)
+        self.assertEqual(self.page.evaluate("() => location.hash"), deck_hash)
+        self.assertEqual(self.pv.url, pv_url, "presenter window did not navigate")
+        self.assertEqual(self.page.evaluate("() => deck.currentSlide"), 0)
+        # A forwardable box click does reach the deck (control for the zero count above).
+        self.pv.locator("#p-current .box").first.click()
+        self.page.wait_for_function("() => window.__docClicks === 1", timeout=3000)
+        self.assertEqual(self.errors, [])
+
+    def test_text_only_changes_in_the_deck_window_reach_the_preview(self):
+        self.page.evaluate("() => { document.querySelector('.slide-deck #txt').textContent = 'changed'; }")
+        self.pv.wait_for_function(
+            "() => document.querySelector('#p-current #txt').textContent === 'changed'", timeout=300)
+        self.page.evaluate("() => { document.querySelector('.slide-deck #hid').style.display = 'none'; }")
+        self.pv.wait_for_function(
+            "() => getComputedStyle(document.querySelector('#p-current #hid')).display === 'none'", timeout=300)
+        self.page.evaluate("() => { document.querySelector('.slide-deck #txt').firstChild.data = 'data'; }")
+        self.pv.wait_for_function(
+            "() => document.querySelector('#p-current #txt').textContent === 'data'", timeout=300)
+        self.assertEqual(self.errors, [])
+
+    def test_preview_rerender_rate_is_bounded_under_continuous_mutation(self):
+        self.page.evaluate("""() => {
+          const pv = deck.presenterView;
+          const orig = pv._renderSlidePreview.bind(pv);
+          window.__renders = 0;
+          pv._renderSlidePreview = (doc, container, slide, revealAll) => {
+            if (container.id === 'p-current') window.__renders++;
+            return orig(doc, container, slide, revealAll);
+          };
+          const txt = document.querySelector('.slide-deck #txt');
+          let n = 0;
+          const timer = setInterval(() => { txt.textContent = 'tick ' + (++n); }, 10);
+          setTimeout(() => { clearInterval(timer); window.__last = txt.textContent; }, 600);
+        }""")
+        self.page.wait_for_timeout(900)
+        renders = self.page.evaluate("() => window.__renders")
+        self.assertGreaterEqual(renders, 1)
+        self.assertLessEqual(renders, 8)
+        last = self.page.evaluate("() => window.__last")
+        self.pv.wait_for_function(
+            "last => document.querySelector('#p-current #txt').textContent === last", arg=last, timeout=1000)
+        self.assertEqual(self.errors, [])
+
+    def press_box(self, index):
+        box = self.pv.evaluate(BOX, f"#p-current .box:nth-child({index + 1})")
+        self.pv.mouse.move(box["x"] + box["w"] / 2, box["y"] + box["h"] / 2)
+        self.pv.mouse.down()
+
+    def force_preview_render(self):
+        self.page.evaluate("""() => {
+          const pv = deck.presenterView;
+          const doc = pv.presenterWindow.document;
+          pv._renderSlidePreview(doc, doc.getElementById('p-current'), deck.slides[deck.currentSlide], false);
+        }""")
+
+    def test_click_forwarding_survives_a_rerender_between_press_and_release(self):
+        self.press_box(1)
+        old = self.pv.evaluate_handle("() => document.querySelectorAll('#p-current .box')[1]")
+        self.force_preview_render()
+        self.pv.mouse.up()
+        self.page.wait_for_function(
+            "() => document.querySelector('.slide-deck #out').textContent === 'Beta detail'", timeout=3000)
+        self.pv.wait_for_timeout(300)
+        # The render requested during the press ran once after the release.
+        self.assertFalse(self.pv.evaluate("el => el.isConnected", old), "the preview re-rendered")
+        self.assertTrue(self.pv.evaluate(
+            "() => document.querySelectorAll('#p-current .box')[1].classList.contains('sel')"))
+        state = self.live_state()
+        self.assertEqual(state["sel"], [False, True, False])
+        self.assertEqual(state["clicks"], 1, "the live box is clicked exactly once")
+        # A later keyboard-style click (no press) still resolves at click time.
+        self.pv.evaluate("() => document.querySelectorAll('#p-current .box')[2].click()")
+        self.page.wait_for_function(
+            "() => document.querySelector('.slide-deck #out').textContent === 'Gamma detail'", timeout=3000)
+        self.assertEqual(self.live_state()["clicks"], 2)
+        self.assertEqual(self.errors, [])
+
+    def test_press_then_slide_change_then_release_forwards_nothing(self):
+        self.press_box(1)
+        self.force_preview_render()
+        self.page.evaluate("() => deck.goTo(1)")
+        self.page.wait_for_function("() => !deck.transitioning", timeout=5000)
+        self.pv.wait_for_timeout(300)
+        self.pv.mouse.up()
+        self.pv.wait_for_function(
+            "() => document.querySelector('#p-current .slide h2').textContent === 'Routing choices'",
+            timeout=3000)
+        self.pv.wait_for_timeout(300)
+        self.assertEqual(self.live_state()["clicks"], 0)
+        self.page.evaluate("() => deck.goTo(0)")
+        self.page.wait_for_function("() => !deck.transitioning", timeout=5000)
+        state = self.live_state()
+        self.assertEqual(state["sel"], [False, False, False])
+        self.assertEqual(state["out"], "none")
+        self.assertEqual(state["clicks"], 0)
+        self.assertEqual(self.errors, [])
+
+    def test_pen_mode_clicks_do_not_forward(self):
+        self.pv.keyboard.press("Alt+KeyO")
+        self.assertTrue(self.page.evaluate("() => DeckPen.controller.active"))
+        box = self.pv.evaluate(BOX, "#p-current .box:nth-child(2)")
+        self.pv.mouse.click(box["x"] + box["w"] / 2, box["y"] + box["h"] / 2)
+        # Even a click that reaches the preview element is not forwarded in pen mode.
+        self.pv.evaluate("() => document.querySelectorAll('#p-current .box')[1].click()")
+        self.pv.wait_for_timeout(300)
+        state = self.live_state()
+        self.assertEqual(state["sel"], [False, False, False])
+        self.assertEqual(state["out"], "none")
+        self.assertEqual(state["clicks"], 0)
+        # Leaving pen mode restores forwarding.
+        self.pv.keyboard.press("Escape")
+        self.assertFalse(self.page.evaluate("() => DeckPen.controller.active"))
+        self.pv.locator("#p-current .box").nth(1).click()
+        self.page.wait_for_function(
+            "() => document.querySelector('.slide-deck #out').textContent === 'Beta detail'", timeout=3000)
+        self.assertEqual(self.errors, [])
 
 
 if __name__ == "__main__":

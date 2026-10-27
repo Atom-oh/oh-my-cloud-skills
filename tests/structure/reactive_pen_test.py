@@ -1,6 +1,7 @@
 """Browser regressions for the deck-window pen overlay; skips without Playwright/Chromium."""
 import sys
 import unittest
+import zlib
 
 sys.dont_write_bytecode = True
 
@@ -105,7 +106,7 @@ class DeckPenTests(DeckOverlayFixture):
     def test_option_chords_do_not_trigger_framework_keys(self):
         page = self.open_pen()
         for code, key in (("KeyO", "o"), ("KeyI", "i"), ("KeyU", "u"), ("KeyY", "y"),
-                          ("Digit1", "1"), ("Digit4", "4"), ("Digit3", "3")):
+                          ("KeyT", "t"), ("Digit1", "1"), ("Digit4", "4"), ("Digit3", "3")):
             self.assertTrue(self.chord(page, code, key), code)
         page.keyboard.press("Alt+KeyO")
         page.wait_for_timeout(300)
@@ -210,7 +211,7 @@ class DeckPenTests(DeckOverlayFixture):
         self.assertEqual(self.state(page)["mode"], "laser")
         self.assertTrue(self.state(page)["active"])
 
-    def test_eraser_removes_one_stroke_and_option_y_clears(self):
+    def test_eraser_removes_one_stroke_and_option_t_clears(self):
         page = self.open_pen()
         page.keyboard.press("Alt+KeyO")
         self.stroke(page, [(0.2, 0.3), (0.6, 0.3)])
@@ -225,10 +226,122 @@ class DeckPenTests(DeckOverlayFixture):
         page.keyboard.press("Alt+KeyO")
         self.stroke(page, [(0.2, 0.5), (0.6, 0.5)])
         self.assertEqual(page.evaluate(visible), 2)
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("Alt+KeyT")
         page.wait_for_timeout(100)
         self.assertEqual(page.evaluate(visible), 0)
         self.assertEqual(self.inked(page), 0)
+
+    def test_clear_moved_to_option_t_and_digits_mean_zoom_in_magnifier(self):
+        page = self.open_pen()
+        visible = "() => DeckPen.controller.model.visible(0).length"
+        zoom = "() => DeckPen.controller.model.zoom"
+        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("Alt+Digit3")
+        page.keyboard.press("Alt+Digit7")
+        self.stroke(page, [(0.2, 0.3), (0.6, 0.3)])
+        self.assertEqual(page.evaluate(visible), 1)
+        page.keyboard.press("Escape")
+        self.assertFalse(self.state(page)["active"])
+        # Option+Y selects the Magnifier, turns pen mode on and keeps the ink.
+        self.assertTrue(self.chord(page, "KeyY", "y"))
+        self.assertEqual(self.state(page)["active"], True)
+        self.assertEqual(self.state(page)["mode"], "magnifier")
+        page.keyboard.press("Alt+KeyY")
+        page.wait_for_timeout(100)
+        self.assertEqual(self.state(page)["mode"], "magnifier", "Option+Y is not a toggle")
+        self.assertTrue(self.state(page)["active"])
+        self.assertEqual(page.evaluate(visible), 1, "Option+Y no longer clears ink")
+        self.assertGreater(self.inked(page), 0)
+        # Drawing in Magnifier mode creates no stroke.
+        self.stroke(page, [(0.2, 0.6), (0.6, 0.6)])
+        self.assertEqual(page.evaluate(visible), 1)
+        # Digits 1-3 are zoom only; 4-9 are consumed and change nothing.
+        self.assertEqual(page.evaluate(zoom), 2)
+        self.assertTrue(self.chord(page, "Digit2", "2"))
+        self.assertEqual(page.evaluate(zoom), 3)
+        self.assertEqual(self.state(page)["size"], 3, "pen size unchanged")
+        page.keyboard.press("Alt+Digit1")
+        self.assertEqual(page.evaluate(zoom), 2)
+        page.keyboard.press("Alt+Digit3")
+        self.assertEqual(page.evaluate(zoom), 4)
+        page.keyboard.press("Alt+Digit2")
+        self.assertEqual(page.evaluate(zoom), 3)
+        self.assertTrue(self.chord(page, "Digit5", "5"))
+        self.assertEqual(page.evaluate(zoom), 3)
+        self.assertEqual(self.state(page)["size"], 3)
+        self.assertEqual(self.state(page)["colorIndex"], 3, "Option+5 left the colours alone")
+        # Back to Pen: the previous size and colour return.
+        page.keyboard.press("Alt+KeyO")
+        self.assertEqual(self.state(page),
+                         {"active": True, "mode": "pen", "size": 3, "colorIndex": 3})
+        # Zoom is remembered across modes.
+        page.keyboard.press("Alt+KeyY")
+        self.assertEqual(page.evaluate(zoom), 3)
+        # Option+T clears all ink on the current slide.
+        page.keyboard.press("Alt+KeyT")
+        page.wait_for_timeout(100)
+        self.assertEqual(page.evaluate(visible), 0)
+        self.assertEqual(self.inked(page), 0)
+        self.assertEqual(self.state(page)["mode"], "magnifier")
+
+    def test_badge_shows_magnifier_and_zoom(self):
+        page = self.open_pen()
+        label = "() => document.querySelector('#rp-pen-badge .rp-pen-label').textContent"
+        swatch = """() => {
+          const s = document.querySelector('#rp-pen-badge .rp-pen-swatch');
+          return { hidden: s.hidden, neutral: s.classList.contains('rp-pen-swatch-neutral'),
+                   inline: s.style.backgroundColor };
+        }"""
+        page.keyboard.press("Alt+KeyY")
+        self.assertTrue(page.locator("#rp-pen-badge").is_visible())
+        self.assertEqual(page.evaluate(label), "Magnifier 2x")
+        self.assertEqual(page.evaluate(swatch), {"hidden": False, "neutral": True, "inline": ""})
+        page.keyboard.press("Alt+Digit3")
+        self.assertEqual(page.evaluate(label), "Magnifier 4x")
+        page.keyboard.press("Alt+Digit2")
+        self.assertEqual(page.evaluate(label), "Magnifier 3x")
+        page.keyboard.press("Alt+KeyO")
+        self.assertEqual(page.evaluate(label), "Pen, medium")
+        info = page.evaluate(swatch)
+        self.assertFalse(info["neutral"])
+        self.assertNotEqual(info["inline"], "")
+        page.keyboard.press("Alt+KeyY")
+        self.assertEqual(page.evaluate(label), "Magnifier 3x")
+
+    def test_changing_mode_hides_the_lens_state(self):
+        page = self.open_pen()
+        lens = "() => Object.assign({}, DeckPen.controller.lens)"
+        self.assertEqual(page.evaluate(lens)["visible"], False)
+        page.keyboard.press("Alt+KeyY")
+        changes = page.evaluate("""() => {
+          window.__changes = 0;
+          DeckPen.controller.onChange(() => { window.__changes++; });
+          DeckPen.controller.setLens(0.25, 0.75, true);
+          return window.__changes;
+        }""")
+        self.assertEqual(changes, 1, "setLens emits a change")
+        self.assertEqual(page.evaluate(lens), {"x": 0.25, "y": 0.75, "visible": True})
+        # Option+Y again keeps Magnifier and does not hide the lens.
+        page.keyboard.press("Alt+KeyY")
+        self.assertTrue(page.evaluate(lens)["visible"])
+        # Zoom keys do not hide it either.
+        page.keyboard.press("Alt+Digit2")
+        self.assertTrue(page.evaluate(lens)["visible"])
+        for code in ("KeyP", "KeyO", "KeyI", "KeyU"):
+            page.keyboard.press("Alt+KeyY")
+            page.evaluate("() => DeckPen.controller.setLens(0.5, 0.5, true)")
+            page.keyboard.press("Alt+" + code)
+            self.assertFalse(page.evaluate(lens)["visible"], code)
+            self.assertTrue(self.state(page)["active"], code)
+        page.keyboard.press("Alt+KeyY")
+        page.evaluate("() => DeckPen.controller.setLens(0.5, 0.5, true)")
+        page.keyboard.press("Escape")
+        self.assertFalse(self.state(page)["active"])
+        self.assertFalse(page.evaluate(lens)["visible"])
+        page.keyboard.press("Alt+KeyY")
+        page.evaluate("() => DeckPen.controller.setLens(0.5, 0.5, true)")
+        page.evaluate("() => DeckPen.controller.setActive(false)")
+        self.assertFalse(page.evaluate(lens)["visible"])
 
     def test_pen_ignores_typing_targets(self):
         page = self.open_pen()
@@ -371,6 +484,309 @@ class DeckPenTests(DeckOverlayFixture):
             "Eraser, medium")
         self.assertTrue(page.evaluate(
             "() => document.querySelector('#rp-pen-badge .rp-pen-swatch').hidden"))
+
+
+RATIO_43 = "<style>:root { --slide-ratio-w: 4; --slide-ratio-h: 3; }</style>\n"
+
+# Slide 0: a corner square (the lens is clamped there, so its centre sits over
+# plain background on the live slide) and a mid square. Slide 1: a fragment in
+# the top-left corner, a canvas in the top-right corner and a detail term.
+SLIDES_LENS = """<div class="slide-deck">
+  <div class="slide" id="lens-s0"><div class="slide-header"><h2>Squares</h2></div>
+    <div id="sq-corner" style="position:absolute;left:20px;top:20px;width:20px;height:20px;background:rgb(0,170,0)"></div>
+    <div id="sq-mid" style="position:absolute;left:700px;top:530px;width:20px;height:20px;background:rgb(170,0,170)"></div>
+    <script>window.__lensScriptRuns = (window.__lensScriptRuns || 0) + 1;</script>
+  </div>
+  <div class="slide"><div class="slide-header"><h2>Live</h2></div>
+    <div id="frag" class="fragment" style="position:absolute;left:30px;top:30px;width:60px;height:60px;background:rgb(0,0,200)"></div>
+    <canvas id="src-canvas" width="60" height="60" style="position:absolute;right:30px;top:30px;width:60px;height:60px"></canvas>
+    <div class="slide-body"><p style="margin-top:300px">Term: <span id="term" class="rp-detail" tabindex="0" data-detail="lensd" data-tip="lens tip">lens term</span></p></div>
+    <div class="rp-detail-store" hidden><section data-detail-id="lensd" data-title="Lens detail" data-text="lens body"><p>lens body</p></section></div>
+  </div>
+  <div class="slide"><div class="slide-header"><h2>Three</h2></div><div class="slide-body"><p>c</p></div></div>
+</div>
+"""
+
+LENS_INFO = """() => {
+  const l = document.querySelector('.rp-lens');
+  if (!l) return null;
+  const r = l.getBoundingClientRect();
+  return { hidden: l.hidden, display: getComputedStyle(l).display,
+           cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, h: r.height };
+}"""
+
+
+def _png_pixel(png):
+    """RGB of a 1x1 8-bit PNG (any filter type is a no-op for a single pixel)."""
+    pos, idat, depth, ctype = 8, b"", None, None
+    while pos < len(png):
+        n = int.from_bytes(png[pos:pos + 4], "big")
+        kind, data = png[pos + 4:pos + 8], png[pos + 8:pos + 8 + n]
+        if kind == b"IHDR":
+            depth, ctype = data[8], data[9]
+        elif kind == b"IDAT":
+            idat += data
+        pos += 12 + n
+    assert depth == 8 and ctype in (2, 6), (depth, ctype)
+    return tuple(zlib.decompress(idat)[1:4])
+
+
+class DeckLensTests(DeckOverlayFixture):
+    overlay_modules = ("detail", "pen")
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        opts = "sidebar: false, pen: { fadeMs: 300 }"
+        (cls.root / "lens.html").write_text(
+            cls.page_head + SLIDES_LENS + cls.page_scripts % opts, encoding="utf-8")
+        (cls.root / "lens-43.html").write_text(
+            cls.page_head + RATIO_43 + SLIDES_LENS + cls.page_scripts % opts, encoding="utf-8")
+
+    # --- helpers ---------------------------------------------------------
+    @staticmethod
+    def pixel(page, x, y):
+        png = page.screenshot(clip={"x": int(x), "y": int(y), "width": 1, "height": 1})
+        return _png_pixel(png)
+
+    def assertColor(self, actual, expected, msg=None, tol=16):
+        self.assertTrue(all(abs(a - e) <= tol for a, e in zip(actual, expected)),
+                        f"{msg or ''}: {actual} != {expected}")
+
+    @staticmethod
+    def centre_of(page, selector):
+        return page.evaluate("""(sel) => {
+          const r = document.querySelector('.slide-deck').querySelector(sel).getBoundingClientRect();
+          return [r.left + r.width / 2, r.top + r.height / 2];
+        }""", selector)
+
+    @staticmethod
+    def lens(page):
+        return page.evaluate(LENS_INFO)
+
+    def hover_lens(self, page, selector):
+        x, y = self.centre_of(page, selector)
+        page.mouse.move(x - 3, y - 3)
+        page.mouse.move(x, y, steps=3)
+        page.wait_for_timeout(120)
+        info = self.lens(page)
+        self.assertIsNotNone(info, "lens created")
+        self.assertFalse(info["hidden"], "lens visible")
+        return info
+
+    def go(self, page, index):
+        page.evaluate("(i) => deck.goTo ? deck.goTo(i) : deck.showSlide(i)", index)
+        page.wait_for_timeout(450)
+        self.assertEqual(self.active(page), index)
+
+    def check_centre(self, page, label):
+        page.keyboard.press("Alt+Digit1")
+        info = self.hover_lens(page, "#sq-corner")
+        corner = (0, 170, 0)
+        self.assertColor(self.pixel(page, info["cx"], info["cy"]), corner, label + " corner lens")
+        self.assertNotEqual(self.pixel(page, info["cx"], info["cy"] + info["h"] / 2 + 20)[:3],
+                            corner, label + " below the lens is not the square")
+        page.keyboard.press("Alt+Digit3")
+        info = self.hover_lens(page, "#sq-mid")
+        mid = (170, 0, 170)
+        self.assertColor(self.pixel(page, info["cx"], info["cy"]), mid, label + " mid lens")
+        # 20 px right of the centre: inside the 4x square in the lens, outside the live one.
+        self.assertColor(self.pixel(page, info["cx"] + 20, info["cy"]), mid, label + " mid offset")
+        page.mouse.move(*self.centre_of(page, "#sq-mid"))
+
+    # --- tests -----------------------------------------------------------
+    def test_lens_centre_shows_the_slide_point_under_the_pointer(self):
+        page = self.open("lens.html")
+        page.keyboard.press("Alt+KeyY")
+        self.check_centre(page, "16:9")
+        info = self.lens(page)
+        deck_h = page.evaluate("() => document.querySelector('.slide-deck').getBoundingClientRect().height")
+        self.assertAlmostEqual(info["w"], 0.28 * deck_h, delta=1)
+        self.assertAlmostEqual(info["w"], info["h"], delta=0.5)
+        self.assertEqual(page.evaluate(
+            "() => getComputedStyle(document.querySelector('.rp-lens')).borderRadius"), "50%")
+        self.assertEqual(page.evaluate(
+            "() => document.getElementById('rp-pen-canvas').style.cursor"), "crosshair")
+        page.set_viewport_size({"width": 1100, "height": 800})
+        page.wait_for_timeout(200)
+        self.check_centre(page, "16:9 resized")
+
+        page = self.open("lens-43.html")
+        page.keyboard.press("Alt+KeyY")
+        self.check_centre(page, "4:3")
+        page.set_viewport_size({"width": 900, "height": 800})
+        page.wait_for_timeout(200)
+        self.check_centre(page, "4:3 resized")
+
+    def test_lens_is_inert_and_clone_has_no_ids(self):
+        page = self.open("lens.html")
+        self.go(page, 1)
+        page.keyboard.press("Alt+KeyY")
+        self.hover_lens(page, "#term")
+        info = page.evaluate("""() => {
+          const l = document.querySelector('.rp-lens');
+          return { inert: l.inert && l.hasAttribute('inert'), aria: l.getAttribute('aria-hidden'),
+                   pointer: getComputedStyle(l).pointerEvents,
+                   overlay: l.classList.contains('rp-overlay-ui'),
+                   inSlide: Boolean(l.closest('.slide')), bodyChild: l.parentElement === document.body,
+                   ids: l.querySelectorAll('[id]').length, scripts: l.querySelectorAll('script').length,
+                   hasClone: Boolean(l.querySelector('.slide.active .rp-detail')) };
+        }""")
+        self.assertEqual(info, {"inert": True, "aria": "true", "pointer": "none", "overlay": True,
+                                "inSlide": False, "bodyChild": True, "ids": 0, "scripts": 0,
+                                "hasClone": True})
+        x, y = self.centre_of(page, "#term")
+        self.assertEqual(page.evaluate(
+            "([x, y]) => document.elementFromPoint(x, y).id", [x, y]), "rp-pen-canvas",
+            "the lens is never a hit target; the pen canvas is")
+        # Clicking in Magnifier mode makes no stroke and does not navigate.
+        page.mouse.click(x, y)
+        page.wait_for_timeout(300)
+        self.assertEqual(self.active(page), 1)
+        self.assertEqual(page.evaluate("() => DeckPen.controller.model.visible(1).length"), 0)
+        self.assertFalse(self.has_body_class(page, "rp-detail-open"))
+        # With the pen canvas out of the way, a hover and a click under the
+        # still-visible lens reach the live term, not the clone.
+        page.evaluate("() => { document.getElementById('rp-pen-canvas').style.pointerEvents = 'none'; }")
+        self.assertFalse(self.lens(page)["hidden"])
+        self.assertEqual(page.evaluate("""([x, y]) => {
+          const el = document.elementFromPoint(x, y);
+          return el.id === 'term' && el.closest('.slide-deck') === document.querySelector('.slide-deck');
+        }""", [x, y]), True)
+        page.mouse.move(x + 1, y)
+        page.mouse.move(x, y)
+        page.wait_for_selector("#rp-tooltip", state="visible")
+        page.mouse.click(x, y)
+        page.wait_for_selector("#rp-detail-panel", state="visible")
+        self.assertTrue(self.has_body_class(page, "rp-detail-open"))
+        self.assertEqual(self.active(page), 1)
+        self.assertLessEqual(page.evaluate("() => window.__lensScriptRuns || 0"), 1,
+                             "cloned scripts never run")
+
+    def test_lens_reclones_within_200ms_under_continuous_class_churn(self):
+        page = self.open("lens.html")
+        self.go(page, 1)
+        page.keyboard.press("Alt+KeyY")
+        info = self.hover_lens(page, "#frag")
+        self.assertNotEqual(self.pixel(page, info["cx"], info["cy"]), (0, 0, 200))
+        # A class toggles on the live slide every 20 ms for 800 ms; the fragment
+        # is revealed at 100 ms. A trailing-only debounce would never re-clone.
+        page.evaluate("""() => {
+          const slide = document.querySelector('.slide-deck .slide.active');
+          const h = slide.querySelector('.slide-header');
+          const timer = setInterval(() => h.classList.toggle('churn'), 20);
+          setTimeout(() => clearInterval(timer), 800);
+          setTimeout(() => document.getElementById('frag').classList.add('visible'), 100);
+        }""")
+        page.wait_for_timeout(400)
+        self.assertColor(self.pixel(page, info["cx"], info["cy"]), (0, 0, 200),
+                         "fragment in the lens while the churn continues")
+        page.wait_for_timeout(500)
+
+    def test_lens_tracks_fragments_and_copies_canvas_frames(self):
+        page = self.open("lens.html")
+        # Pen ink on slide 1, bottom-left, then the Magnifier over it.
+        self.go(page, 1)
+        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("Alt+Digit3")
+        box = page.evaluate("""() => {
+          const r = document.querySelector('.slide-deck').getBoundingClientRect();
+          return [r.left, r.top, r.width, r.height];
+        }""")
+        at = lambda fx, fy: (box[0] + box[2] * fx, box[1] + box[3] * fy)  # noqa: E731
+        page.mouse.move(*at(0.05, 0.9))
+        page.mouse.down()
+        page.mouse.move(*at(0.3, 0.9), steps=6)
+        page.mouse.up()
+        page.keyboard.press("Alt+KeyY")
+        page.mouse.move(*at(0.1, 0.88))
+        page.mouse.move(*at(0.1, 0.9), steps=2)
+        page.wait_for_timeout(120)
+        info = self.lens(page)
+        self.assertColor(self.pixel(page, info["cx"], info["cy"]), (229, 57, 53), "ink in the lens")
+        # Fragment: hidden at first, appears in the lens within 200 ms of the reveal.
+        info = self.hover_lens(page, "#frag")
+        bg = self.pixel(page, info["cx"], info["cy"])
+        self.assertNotEqual(bg, (0, 0, 200))
+        page.keyboard.press("ArrowRight")
+        page.wait_for_timeout(200)
+        self.assertEqual(self.active(page), 1, "the fragment advanced, not the slide")
+        self.assertColor(self.pixel(page, info["cx"], info["cy"]), (0, 0, 200), "fragment in the lens")
+        # Canvas frames: whatever the source canvas shows is copied into the lens.
+        paint = "(c) => { const g = document.getElementById('src-canvas').getContext('2d'); g.fillStyle = c; g.fillRect(0, 0, 60, 60); }"
+        page.evaluate(paint, "rgb(220, 0, 0)")
+        info = self.hover_lens(page, "#src-canvas")
+        self.assertColor(self.pixel(page, info["cx"], info["cy"]), (220, 0, 0), "canvas frame 1")
+        page.evaluate(paint, "rgb(0, 160, 160)")
+        page.wait_for_timeout(100)
+        self.assertColor(self.pixel(page, info["cx"], info["cy"]), (0, 160, 160), "canvas frame 2")
+
+    def test_lens_hides_on_pointer_leave_mode_change_and_overview(self):
+        page = self.open("lens.html")
+        page.set_viewport_size({"width": 1600, "height": 1000})
+        page.wait_for_timeout(200)
+        page.keyboard.press("Alt+KeyY")
+        self.assertIsNone(self.lens(page), "the lens is created lazily")
+        self.hover_lens(page, "#sq-mid")
+        page.mouse.move(800, 10, steps=3)
+        page.wait_for_timeout(100)
+        self.assertTrue(self.lens(page)["hidden"], "pointer left the slide")
+        self.assertFalse(page.evaluate("() => DeckPen.controller.lens.visible"))
+        self.hover_lens(page, "#sq-mid")
+        page.keyboard.press("Alt+KeyO")
+        page.wait_for_timeout(100)
+        self.assertTrue(self.lens(page)["hidden"], "mode change")
+        page.keyboard.press("Alt+KeyY")
+        page.wait_for_timeout(100)
+        self.assertTrue(self.lens(page)["hidden"], "reappears only on the next move")
+        self.hover_lens(page, "#sq-mid")
+        page.keyboard.press("ArrowRight")
+        page.wait_for_timeout(450)
+        self.assertEqual(self.active(page), 1)
+        self.assertTrue(self.lens(page)["hidden"], "slide change")
+        self.assertFalse(page.evaluate("() => DeckPen.controller.lens.visible"))
+        self.hover_lens(page, "#term")
+        self.assertTrue(page.evaluate(
+            "() => Boolean(document.querySelector('.rp-lens .slide.active #term, .rp-lens .slide.active .rp-detail'))"),
+            "the lens shows the new slide")
+        page.keyboard.press("o")
+        page.wait_for_timeout(200)
+        self.assertTrue(self.lens(page)["hidden"], "overview mode")
+        page.keyboard.press("o")
+        page.wait_for_timeout(200)
+        self.hover_lens(page, "#term")
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(100)
+        self.assertTrue(self.lens(page)["hidden"], "pen mode off")
+
+    def test_lens_loop_stops_when_hidden(self):
+        page = self.open("lens.html")
+        self.go(page, 1)
+        page.evaluate("""() => {
+          window.__raf = 0;
+          const orig = window.requestAnimationFrame.bind(window);
+          window.requestAnimationFrame = f => { window.__raf++; return orig(f); };
+        }""")
+        page.keyboard.press("Alt+KeyY")
+        self.hover_lens(page, "#term")
+        page.evaluate("() => { window.__raf = 0; }")
+        page.wait_for_timeout(200)
+        self.assertGreater(page.evaluate("() => window.__raf"), 3,
+                           "the loop copies the slide canvas while the lens is visible")
+        page.keyboard.press("Alt+KeyO")
+        page.wait_for_timeout(50)
+        page.evaluate("() => { window.__raf = 0; }")
+        page.wait_for_timeout(250)
+        self.assertEqual(page.evaluate("() => window.__raf"), 0, "no frames after hide")
+        # A slide without canvases needs no loop even while the lens is visible.
+        self.go(page, 0)
+        page.keyboard.press("Alt+KeyY")
+        self.hover_lens(page, "#sq-mid")
+        page.wait_for_timeout(50)
+        page.evaluate("() => { window.__raf = 0; }")
+        page.wait_for_timeout(250)
+        self.assertEqual(page.evaluate("() => window.__raf"), 0, "idle lens without canvases")
+        self.assertFalse(self.lens(page)["hidden"])
 
 
 if __name__ == "__main__":

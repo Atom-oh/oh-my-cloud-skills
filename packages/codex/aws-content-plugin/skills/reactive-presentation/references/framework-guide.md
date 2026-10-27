@@ -63,7 +63,7 @@ Load `deck-overlay.css`, `deck-detail.css` and `deck-nav.css` in that order afte
 
 ### deck-pen.css
 
-Styles the pen canvas and mode badge. Load it after
+Styles the pen canvas, the mode badge and the magnifier lens. Load it after
 `deck-nav.css`. Decks must link it directly: the presenter window only falls back to a
 href derived from the `deck-pen.js` URL when no link is present.
 
@@ -92,11 +92,17 @@ focus restoration and agenda suppression use the core's optional delegates.
 
 ### deck-pen.js
 
-Registers the pen overlay (laser, pen, highlighter, eraser) on `DeckOverlay`. Load it
-after `deck-nav.js` and before `slide-framework.js`. Decks generated before it existed
-keep working: the framework treats a missing `DeckPen` as no pen. Configure with
+Registers the pen overlay (laser, pen, highlighter, eraser, magnifier) on `DeckOverlay`.
+Load it after `deck-nav.js` and before `slide-framework.js`. Decks generated before it
+existed keep working: the framework treats a missing `DeckPen` as no pen. Configure with
 `new SlideFramework({ pen: { fadeMs: 3000, audienceBadge: true } })`; the resolved
-values are `framework.pen`. Keys and behavior: keyboard-shortcuts.md "Pen mode".
+values are `framework.pen`. One controller holds the ink and the magnifier position (0..1
+slide coordinates); each surface (the deck window and the presenter's current-slide
+preview) draws its own canvas and lens from it, so both windows show the same ink and
+the lens at the same slide point. The lens is a body-level `.rp-overlay-ui.rp-lens` (in
+the presenter window, a child of `#p-current-wrap`, so preview re-renders keep it)
+holding an id-free clone of the active slide. Keys, behavior and the lens limits:
+keyboard-shortcuts.md "Pen mode" and "Magnifier".
 
 ### slide-framework.js
 `SlideFramework` class — instantiate with `new SlideFramework({ onSlideChange: fn })`.
@@ -128,7 +134,7 @@ Auto-inits on DOMContentLoaded: `initTabs()`, `initChecklists()`, `initCompareTo
 
 **Font loading**: Loads Pretendard Variable and JetBrains Mono via CDN. Sets `<meta charset="UTF-8">` and `lang="ko"`.
 
-**Sync**: Uses `BroadcastChannel('slide-sync')` to sync slide navigation between main window and presenter view.
+**Sync**: Uses `BroadcastChannel('slide-sync')` to sync slide navigation between main window and presenter view. Clicks in the current-slide preview are forwarded to the same element of the live slide in the audience window (not links, disabled controls, the next-slide preview or clicks in pen mode), and the preview follows any change to the live slide, including text-only and `style` changes.
 
 ### animation-utils.js
 Canvas drawing primitives and animation helpers.

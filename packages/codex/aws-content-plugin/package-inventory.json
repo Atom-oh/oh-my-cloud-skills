@@ -456,7 +456,7 @@
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
-      "sha256": "d7e859f88a922af0e881cdaddd1731bfc843b5d29b91f40a42e5155dc1f7d9ae",
+      "sha256": "d5d508e228739f533f3666eb5b8743faa379d414dfa90420d955e23764351fc7",
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
@@ -492,11 +492,11 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-pen.css": {
-      "sha256": "f0b710e318ca8e14e97ef4ff95d803e7d3b044d61d2be907b45a8d43edcd8aa1",
+      "sha256": "ad8bd88ce6735a27c41d448c01b62b948065b4885ad5d5a4576fee9fed287693",
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-pen.js": {
-      "sha256": "35b0ceb3718b6388fecdd26323214aae403d706c19711be577de651fc39f0180",
+      "sha256": "e943877af2a288e7e9ec1f5b9cdaa35d970bbc357ad067a2fbf015af396e8c41",
       "executable": false
     },
     "skills/reactive-presentation/assets/design-tokens.css": {
@@ -516,7 +516,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
-      "sha256": "866e692b2f69d27ee6e217dcdfce2ff88d9f1025d5fdbfdd5817aea0dc5c9cc4",
+      "sha256": "8e0f118fbde074773349393899f507c7daa711c2f43c64d86af2f1a46089c2fb",
       "executable": false
     },
     "skills/reactive-presentation/assets/quiz-component.js": {
@@ -524,7 +524,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-framework.js": {
-      "sha256": "499f0643a03c1bd5903c8409c1f353620c9a41406aa2a830ff124675ceca7f39",
+      "sha256": "4bd77be462fb74017521deb534b46bb259caa85f60cc3c786e1374253862a82e",
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-renderer.js": {
@@ -536,7 +536,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/theme.css": {
-      "sha256": "bf36fa5fb0f4c451d068d2711cb9e97ba5e7a16f78b57346de25ed4bd69143a7",
+      "sha256": "0eda7871fe93b477dc55eb431fbf7d4bb59e8c84aa474434e6feec0bb9abb88b",
       "executable": false
     },
     "skills/reactive-presentation/icons/AgentCore/dark-blue/AI-Agent.png": {
@@ -17332,7 +17332,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/framework-guide.md": {
-      "sha256": "8e6052be65dd3e0e34c4f767595969a42273e2c6161bcd604460980bcae86431",
+      "sha256": "9483c596049fe97bfde8674758e785a2b04735f31e8e09bd99e1074b7f548f67",
       "executable": false
     },
     "skills/reactive-presentation/references/interactive-patterns-guide.md": {
@@ -17340,7 +17340,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/keyboard-shortcuts.md": {
-      "sha256": "52d46c66e93dcef0f3a57b4bd2e0af07fd281aa98790bf15f8c48cfc8bbbbadd",
+      "sha256": "d6fc2459f746b8a1578cd1fdee55f6345f21b236a02544b3a6b1d3bf5ed623c5",
       "executable": false
     },
     "skills/reactive-presentation/references/marp-format-guide.md": {

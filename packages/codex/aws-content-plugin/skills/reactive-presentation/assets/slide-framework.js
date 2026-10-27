@@ -424,15 +424,31 @@ class SlideFramework {
     (this.getDeck() || document.body).appendChild(logo);
   }
 
-  positionNavHint() {
-    if (!this.navHint) return;
+  // Layout x (deck px, scale independent) just right of the visible logo plus a
+  // 16px gap, or null when there is no visible logo.
+  logoClearLeft() {
     const deck = this.getDeck() || document.body;
     const logo = deck.querySelector('.slide-logo');
-    if (!logo || getComputedStyle(logo).display === 'none' || !logo.offsetWidth) {
-      this.navHint.style.removeProperty('left');
-      return;
-    }
-    this.navHint.style.left = (logo.offsetLeft + logo.offsetWidth + 16) + 'px';
+    if (!logo || getComputedStyle(logo).display === 'none' || !logo.offsetWidth) return null;
+    return logo.offsetLeft + logo.offsetWidth + 16;
+  }
+
+  // Footer text starts after the logo. A deck override `.slide-footer { left: Npx }`
+  // still wins over the theme default that reads this custom property.
+  positionFooter() {
+    const footer = (this.getDeck() || document.body).querySelector('.slide-footer');
+    if (!footer) return;
+    const left = this.logoClearLeft();
+    if (left === null) footer.style.removeProperty('--rp-footer-left');
+    else footer.style.setProperty('--rp-footer-left', left + 'px');
+  }
+
+  positionNavHint() {
+    this.positionFooter();
+    if (!this.navHint) return;
+    const left = this.logoClearLeft();
+    if (left === null) this.navHint.style.removeProperty('left');
+    else this.navHint.style.left = left + 'px';
   }
 
   openPresenterView() {

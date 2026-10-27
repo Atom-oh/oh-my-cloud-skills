@@ -1139,7 +1139,7 @@ input[type="range"]::-webkit-slider-thumb {
 .slide-footer {
   position: absolute;
   bottom: 14px;
-  left: 70px;
+  left: var(--rp-footer-left, 96px);
   font-size: .75rem;
   color: var(--text-muted);
   z-index: 999;
