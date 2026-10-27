@@ -11,31 +11,49 @@ Install `agent-dash@oh-my-cloud-skills` and start a new session. The mod needs C
 Code 2.1.300 or later.
 
 - `/agent-dash` opens the pane; `/agent-dash stop` stops watching, clears the status line and forgets the captured task, tool and message text. A notice already shown stays.
-- The pane opens as a map. The main loop sits on top; under it each agent gets a card,
-  headed by the first line of what it was delegated. A card shows the agent's status
-  and elapsed time, its task (two lines at most), its latest tool call (`doing:`, shown
-  while it runs, with the time since it started) and up to two earlier ones (`recent:`), `waits on <agent> (est.)` when it probably
-  waits, and the last two messages it sent. Children are indented under their parent;
-  cards that do not fit collapse into `+N more`.
-- `View: Map` / `View: List` (hotkey `m`) switches to the list: one line per agent in a
-  delegation tree with status, elapsed time and `waits on <agent> (est.)`. A foreground
-  agent started by the main loop shows as `main waits on <agent> (est.)` and counts in
-  the waiting total. In both views an agent's `open` button opens its conversation.
+- The pane opens as a map of the agents that are working now (pending, running or
+  waiting). The main loop is one line on top: how many agents work, the idle and
+  finished counts when there are any, `main waits on <agent> (est.)` when it probably
+  waits, and its own latest tool call. Each working agent gets a compact card: its
+  status and elapsed time, its task on one line, its latest tool call (`doing:`, shown
+  while it runs, with the time since it started), `waits on <agent> (est.)` when it
+  probably waits, and the last message it sent. A working child is indented under its
+  working parent; cards that do not fit collapse into `+N more`. With nothing working
+  the map says `No agents working` and the counts.
+- Finished and idle agents get no card: they show only in the counts, in the status
+  line and in the list. The band above the prompt shows `agents: <summary>` only while
+  an agent works. A count of zero is never shown.
+- `View: Map` / `View: List` (hotkey `m`) switches to the list: one line per agent,
+  finished ones included, in a delegation tree with status, elapsed time and
+  `waits on <agent> (est.)`. A foreground agent started by the main loop shows as
+  `main waits on <agent> (est.)` and counts in the waiting total. In both views an
+  agent's `open` button opens its conversation.
 - Notices appear when an agent finishes or fails and when a wait lasts longer than
   `longWaitMs` (120000 by default).
 
-A map with the main loop and one agent:
+A map with three working agents (a lead, its foreground child and an agent the main
+loop waits on) and two finished ones:
 
 ```
+main · 3 working · 2 done
+main waits on reviewer (est.)
+doing: Agent Review the map change (50s ago)
 ╭──────────────────────────────────────────────────────────────╮
-│ main · 1 delegation · 1 running · 0 waiting (est.) · 0 done  │
-│ doing: Grep buildTree (0s ago)                               │
+│ ● lead · team-lead · running 80s open                        │
+│ task: Coordinate the map review and merge the findings       │
+│ doing: SendMessage tester: run only tests/view.te… (40s ago) │
+│ ⏳ waits on tester (est.)                                    │
+│ → tester: "run only tests/view.test.ts first"                │
 ╰──────────────────────────────────────────────────────────────╯
-│ "Find the config loader"
+  ╭────────────────────────────────────────────────────────────╮
+  │ └ ● tester · general-purpose · running 60s open            │
+  │ task: Run the unit tests and report failures               │
+  │ doing: Bash claude plugin test plugins/agent-dash (8s ago) │
+  ╰────────────────────────────────────────────────────────────╯
 ╭──────────────────────────────────────────────────────────────╮
-│ ● helper · Explore · running 0s                         open │
-│ task: Find the config loader and list every caller of it     │
-│ doing: (no tool calls yet)                                   │
+│ ● reviewer · code-reviewer · running 50s open                │
+│ task: Review hooks/lib/view.ts for width bugs                │
+│ doing: Read agent-dash/hooks/lib/view.ts (4s ago)            │
 ╰──────────────────────────────────────────────────────────────╯
 waits are estimates from spawn and message events
 m: View: Map  r: Refresh

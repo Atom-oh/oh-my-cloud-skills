@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The agent-dash pane opens as the map; `View: Map` / `View: List` (hotkey `m`)
   switches to the previous one-line-per-agent list.
+- The agent-dash map shows only working agents (pending, running or waiting), each as a
+  compact card: title, one task line, one `doing:` line, then any estimated waits and
+  the last sent message. The main loop is one line without a box. Finished and idle
+  agents show only in the counts, the status line and `View: List`; the band above the
+  prompt appears only while an agent works.
+- agent-dash summaries leave out zero counts (`2 running · 1 done`, not
+  `2 running · 0 waiting (est.) · 1 done`).
 
 ### Fixed
 

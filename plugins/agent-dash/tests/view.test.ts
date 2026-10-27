@@ -121,18 +121,18 @@ describe('buildMap', () => {
   test('test_map_with_one_agent_shows_task_and_activity', () => {
     const map = buildMap(els, buildTree(one), [], oneDetails, [], mapBase)
     const all = texts(map)
-    const all_cards = cards(map)
-    expect(all_cards.length).toBe(2)
-    expect(texts(all_cards[0]).some((t) => t.startsWith('main · 1 delegation'))).toBe(true)
-    const edges = all.filter((t) => t.startsWith('│ "'))
-    expect(edges).toEqual(['│ "Find the config loader"'])
+    expect(cards(map).length).toBe(1)
+    expect(all[0]).toBe('main · 1 working')
+    // The delegation is the card's task line; there is no separate edge line.
+    expect(all.some((t) => t.startsWith('│ '))).toBe(false)
     const card = cardOf(map, 'scout')!
     expect(card).toBeDefined()
     const lines = texts(card)
     expect(lines.some((t) => t === 'scout · Explore · running 6s')).toBe(true)
-    expect(lines.some((t) => t.startsWith('task: Find the config loader'))).toBe(true)
+    expect(lines).toContain('task: Find the config loader and list every caller of it')
     expect(lines).toContain('doing: Grep buildTree (1s ago)')
-    expect(lines.filter((t) => t.includes('hooks/lib/model.ts') || t.includes('**/*.ts')).length).toBe(2)
+    // Earlier calls are not drawn.
+    expect(all.some((t) => t.startsWith('recent:') || t.includes('hooks/lib/model.ts') || t.includes('**/*.ts'))).toBe(false)
     expect(card.borderColor).toBe('green')
   })
 
@@ -154,20 +154,23 @@ describe('buildMap', () => {
     ])
     const map = buildMap(els, buildTree(rs), ws, ds, sends, { ...mapBase, maxRows: 40 })
     const all = texts(map)
-    expect(texts(cards(map)[0]).some((t) => t.startsWith('main · 2 delegations'))).toBe(true)
-    expect(all).toContain('│ "Coordinate the review"')
-    expect(all).toContain('└ "Run the unit tests"')
+    expect(all[0]).toBe('main · 2 working · 1 done')
+    expect(texts(cardOf(map, 'lead')!)).toContain('task: Coordinate the review')
+    expect(texts(cardOf(map, 'child')!)).toContain('task: Run the unit tests')
     const lead = cardOf(map, 'lead')!
     expect(texts(lead)).toContain('⏳ waits on child (est.)')
-    expect(texts(lead)).toContain('→ child: "second note"')
+    // Only the last message an agent sent is drawn.
     expect(texts(lead)).toContain('→ child: "check the tests"')
-    expect(all.some((t) => t.includes('first note'))).toBe(false)
-    // The child sits one indent level deeper than its parent.
-    const holder = walk(map).filter((e) => e.type === 'Box' && (e.marginLeft ?? 0) > 0)
-    expect(holder.some((b) => cardOf(b, 'child') !== undefined)).toBe(true)
-    expect(holder.some((b) => cardOf(b, 'lead') !== undefined)).toBe(false)
-    expect(cardOf(map, 'other')!.borderColor).toBe('red')
-    expect(cardOf(map, 'child')!.borderColor).toBe('green')
+    expect(all.some((t) => t.includes('first note') || t.includes('second note'))).toBe(false)
+    // The child sits one indent level deeper than its parent, with the connector on its title row.
+    const child = cardOf(map, 'child')!
+    expect(child.marginLeft).toBe(2)
+    expect(lead.marginLeft ?? 0).toBe(0)
+    expect(texts(child.children[0])[0]).toBe('└')
+    expect(texts(lead.children[0])[0]).not.toBe('└')
+    // A finished agent has no card.
+    expect(cardOf(map, 'other')).toBeUndefined()
+    expect(child.borderColor).toBe('green')
     expect(lead.borderColor).toBe('yellow')
   })
 
@@ -192,11 +195,11 @@ describe('buildMap', () => {
     const sends: SendRecord[] = [{ fromId: 'P', to: 'kid', atMs: 2500, text: 'm'.repeat(80) }]
     const map = buildMap(els, buildTree(rs), inferWaits(rs, sends, NOW), ds, sends, { ...mapBase, columns: 60, maxRows: 200 })
     const all = texts(map)
-    expect(all.length > 10).toBe(true)
+    expect(all.length >= 10).toBe(true)
     for (const t of all) expect(t.length <= 60).toBe(true)
     // Each Text stays within the width left after its card's indent and border.
-    for (const holder of walk(map).filter((e) => e.type === 'Box' && e.marginLeft !== undefined)) {
-      for (const t of texts(holder)) expect(t.length <= 60 - holder.marginLeft).toBe(true)
+    for (const card of walk(map).filter((e) => e.type === 'Box' && e.marginLeft !== undefined)) {
+      for (const t of texts(card)) expect(t.length <= 60 - card.marginLeft - 4).toBe(true)
     }
     expect(all.filter((t) => t.startsWith('task: ')).length).toBe(3)
     expect(all.some((t) => t.endsWith('…'))).toBe(true)
@@ -207,7 +210,7 @@ describe('buildMap', () => {
     const sends: SendRecord[] = rs.map((r, i) => ({ fromId: r.id, to: 'main', atMs: 5000 + i, text: 'note-from-' + r.id }))
     const ds = new Map<string, AgentDetail>(rs.map((r) => [r.id, detail('task of ' + r.id)]))
     const map = buildMap(els, buildTree(rs), [], ds, sends, { ...mapBase, maxRows: 24 })
-    const shown = cards(map).length - 1
+    const shown = cards(map).length
     expect(shown >= 1 && shown < 10).toBe(true)
     const all = texts(map)
     expect(all).toContain('+' + (10 - shown) + ' more')
@@ -215,7 +218,8 @@ describe('buildMap', () => {
     expect(all.some((t) => t.includes('task of R9'))).toBe(false)
     // A tiny budget still shows main plus one full card.
     const tiny = buildMap(els, buildTree(rs), [], ds, sends, { ...mapBase, maxRows: 1 })
-    expect(cards(tiny).length).toBe(2)
+    expect(cards(tiny).length).toBe(1)
+    expect(texts(tiny)[0]).toBe('main · 10 working')
     expect(texts(tiny)).toContain('+9 more')
   })
 
@@ -248,7 +252,8 @@ describe('buildMap', () => {
     expect(lead).toContain('⏳ waits on child (est.)')
     expect(lead).toContain('→ child: (hidden)')
     expect(lead.some((t) => t.startsWith('lead · general-purpose · running'))).toBe(true)
-    expect(texts(map)).toContain('│ (hidden)')
+    // The main loop's own doing line is left out rather than drawn hidden.
+    expect(texts(map).some((t) => t.startsWith('doing: ') && !lead.includes(t))).toBe(false)
   })
 
   test('test_toggle_button_switches_view', () => {
@@ -266,12 +271,113 @@ describe('buildMap', () => {
     mb.onPress()
     expect(toggled).toBe(2)
     expect(cards(list).length).toBe(0)
-    expect(cards(map).length).toBe(8)
+    // Only the 5 working agents of the fixture get a card.
+    expect(cards(map).length).toBe(5)
     expect(walk(map).some((e) => e.type === 'Button' && e.key === 'refresh' && e.hotkey === 'r')).toBe(true)
     // The default stays the list view, so a caller that passes nothing keeps the old pane.
     expect(cards(buildPane(els, tree, waits, base)).length).toBe(0)
     const empty = buildPane(els, [], [], { ...opts, view: 'map' })
-    expect(texts(empty)).toContain('No agents yet')
+    expect(texts(empty)).toContain('No agents working')
+  })
+
+  test('test_map_shows_only_working_agents', () => {
+    const rs = [
+      row({ id: 'P', name: 'parent', status: 'completed', sinceMs: 1000 }),
+      row({ id: 'C', name: 'orphan', parentId: 'P', background: false, sinceMs: 2000 }),
+      row({ id: 'I', name: 'sleeper', status: 'idle', sinceMs: 3000 }),
+      row({ id: 'K', name: 'stopped', status: 'killed', sinceMs: 4000 }),
+      row({ id: 'F', name: 'broken', status: 'failed', sinceMs: 4500 }),
+      row({ id: 'W', name: 'waiter', status: 'waiting', sinceMs: 5000 }),
+      row({ id: 'N', name: 'starting', status: 'pending', sinceMs: 6000 }),
+    ]
+    const map = buildMap(els, buildTree(rs), inferWaits(rs, [], NOW), new Map(), [], { ...mapBase, maxRows: 200 })
+    for (const gone of ['parent', 'sleeper', 'stopped', 'broken']) expect(cardOf(map, gone)).toBeUndefined()
+    for (const shown of ['orphan', 'waiter', 'starting']) expect(cardOf(map, shown)).toBeDefined()
+    expect(cards(map).length).toBe(3)
+    // A working child of a finished parent is a root card: no indent, no connector.
+    const orphan = cardOf(map, 'orphan')!
+    expect(orphan.marginLeft ?? 0).toBe(0)
+    expect(texts(orphan).includes('└')).toBe(false)
+    expect(texts(map)[0]).toBe('main · 3 working · 1 idle · 3 done')
+  })
+
+  test('test_map_card_is_compact', () => {
+    const map = buildMap(els, buildTree(one), [], oneDetails, [], mapBase)
+    const card = cardOf(map, 'scout')!
+    // Border, title, task, doing, border: three child rows inside the border.
+    expect(card.borderStyle).toBeDefined()
+    expect(card.children.length).toBe(3)
+    const [title, task, doing] = card.children
+    expect(title.type).toBe('Box')
+    expect(title.flexDirection).toBe('row')
+    for (const line of [task, doing]) {
+      expect(line.type).toBe('Text')
+      expect(line.children.length).toBe(1)
+      expect(/\n/.test(line.children[0])).toBe(false)
+    }
+    expect(task.children[0].startsWith('task: ')).toBe(true)
+    expect(doing.children[0].startsWith('doing: ')).toBe(true)
+    // A long task stays one line.
+    const long = new Map<string, AgentDetail>([['A', detail('word '.repeat(200), [])]])
+    const card2 = cardOf(buildMap(els, buildTree(one), [], long, [], mapBase), 'scout')!
+    expect(card2.children.length).toBe(3)
+    expect(card2.children[1].children[0].endsWith('…')).toBe(true)
+    // A wait and a sent message add one row each.
+    const rs = [row({ id: 'A', name: 'scout', type: 'Explore', sinceMs: 4000 }), row({ id: 'B', name: 'kid', parentId: 'A', background: false })]
+    const sends: SendRecord[] = [{ fromId: 'A', to: 'kid', atMs: 9000, text: 'one' }, { fromId: 'A', to: 'kid', atMs: 9500, text: 'two' }]
+    const card3 = cardOf(buildMap(els, buildTree(rs), inferWaits(rs, sends, NOW), oneDetails, sends, mapBase), 'scout')!
+    expect(card3.children.length).toBe(5)
+  })
+
+  test('test_map_main_is_one_borderless_line', () => {
+    const map = buildMap(els, buildTree(one), [], oneDetails, [], mapBase)
+    const first = (map as El).children[0]
+    expect(first.type).toBe('Text')
+    expect(first.children[0]).toBe('main · 1 working')
+    for (const c of cards(map)) expect(texts(c).some((t) => t.startsWith('main'))).toBe(false)
+    // A main wait adds one line, main's own activity one more; nothing else is drawn for main.
+    const fg = [row({ id: 'A', name: 'scout', type: 'Explore', background: false, sinceMs: 4000 })]
+    const ds = new Map<string, AgentDetail>([...oneDetails, ['main', detail(undefined, [{ tool: 'Agent', summary: 'find loader', atMs: 8000 }])]])
+    const sends: SendRecord[] = [{ fromId: null, to: 'scout', atMs: 9000, text: 'MAINNOTE' }]
+    const withWait = buildMap(els, buildTree(fg), inferWaits(fg, sends, NOW), ds, sends, mapBase)
+    const top = (withWait as El).children.slice(0, 3).map((e: El) => (e.type === 'Text' ? e.children.join('') : e.type))
+    expect(top).toEqual(['main · 1 working', 'main waits on scout (est.)', 'doing: Agent find loader (2s ago)'])
+    expect(texts(withWait).some((t) => t.includes('MAINNOTE'))).toBe(false)
+    const off = buildMap(els, buildTree(fg), inferWaits(fg, sends, NOW), ds, sends, { ...mapBase, showDelegation: false })
+    const offTop = (off as El).children.slice(0, 2).map((e: El) => e.type === 'Text' ? e.children.join('') : e.type)
+    expect(offTop).toEqual(['main · 1 working', 'main waits on scout (est.)'])
+    expect(texts(off).some((t) => t.includes('find loader'))).toBe(false)
+    // Non-working counts follow only when non-zero.
+    const mixed = [...one, row({ id: 'D', status: 'completed' }), row({ id: 'E', status: 'failed' })]
+    expect(texts(buildMap(els, buildTree(mixed), [], oneDetails, [], mapBase))[0]).toBe('main · 1 working · 2 done')
+  })
+
+  test('test_map_empty_state_when_nothing_is_working', () => {
+    const rs = [row({ id: 'D', name: 'done', status: 'completed' }), row({ id: 'I', name: 'nap', status: 'idle' })]
+    const map = buildMap(els, buildTree(rs), [], new Map(), [], mapBase)
+    expect(cards(map).length).toBe(0)
+    const all = texts(map)
+    expect(all.slice(0, 2)).toEqual(['No agents working', '1 idle · 1 done'])
+    expect(all.some((t) => t.startsWith('main'))).toBe(false)
+    const dim = walk(map).find((e) => e.type === 'Text' && e.children[0] === 'No agents working')!
+    expect(dim.dimColor).toBe(true)
+    expect(walk(map).some((e) => e.type === 'Button' && e.key === 'view')).toBe(true)
+    expect(walk(map).some((e) => e.type === 'Button' && e.key === 'refresh')).toBe(true)
+    // With no agents at all there is no summary line.
+    const none = texts(buildMap(els, [], [], new Map(), [], mapBase))
+    expect(none).toEqual(['No agents working'])
+  })
+
+  test('test_list_view_still_shows_finished_agents', () => {
+    const list = texts(buildPane(els, tree, waits, { ...mapBase, view: 'list' }))
+    expect(list.some((t) => t === 'done-one')).toBe(true)
+    expect(list.some((t) => t === 'broken')).toBe(true)
+    expect(list.some((t) => t.startsWith('failed '))).toBe(true)
+    const finished = [row({ id: 'D', name: 'done', status: 'completed' }), row({ id: 'K', name: 'gone', status: 'killed' })]
+    const pane = texts(buildPane(els, buildTree(finished), [], { ...mapBase, view: 'list' }))
+    expect(pane[0]).toBe('Agents · 2 done')
+    expect(pane).toContain('done')
+    expect(pane).toContain('gone')
   })
 })
 
@@ -376,10 +482,11 @@ describe('terminal cells', () => {
     for (const columns of [60, 80]) {
       const map = buildMap(els, buildTree(rs), ws, ds, sends, { ...mapBase, columns, maxRows: 200 })
       assertFitsCells(map, columns)
-      expect(cards(map).length).toBe(4)
+      expect(cards(map).length).toBe(3)
       const all = texts(map)
-      // Each line keeps its closing parts: the quote, the age, the (est.) label.
-      expect(all.filter((t) => t.startsWith('│ "') || t.startsWith('└ "')).every((t) => t.endsWith('"'))).toBe(true)
+      // Each line keeps its closing parts: the ellipsis, the quote, the age, the (est.) label.
+      expect(all.filter((t) => t.startsWith('task: ')).length).toBe(3)
+      expect(all.filter((t) => t.startsWith('task: ')).every((t) => t.endsWith('…'))).toBe(true)
       expect(all.filter((t) => t.startsWith('doing: ')).every((t) => t.endsWith(' ago)'))).toBe(true)
       expect(all.filter((t) => t.startsWith('→ ')).every((t) => t.endsWith('"'))).toBe(true)
       expect(all.filter((t) => t.includes('waits on')).every((t) => t.endsWith('(est.)'))).toBe(true)
@@ -392,7 +499,7 @@ describe('terminal cells', () => {
     assertFitsCells(buildMap(els, buildTree(lrs), [], latin, [], { ...mapBase, columns: 60 }), 60)
   })
 
-  test('test_korean_task_wraps_into_two_complete_lines', () => {
+  test('test_korean_task_fits_one_line_of_whole_words', () => {
     const task = hangulText(200)
     const words = new Set(task.split(' '))
     const ds = new Map<string, AgentDetail>([
@@ -402,23 +509,19 @@ describe('terminal cells', () => {
     const lines = texts(cardOf(map, 'scout')!)
     const at = lines.findIndex((t) => t.startsWith('task: '))
     const first = lines[at].slice('task: '.length)
-    const second = lines[at + 1]
-    expect(second.startsWith('      ')).toBe(true)
-    expect(second.endsWith('…')).toBe(true)
-    for (const w of first.split(' ')) expect(words.has(w)).toBe(true)
-    for (const w of second.trim().slice(0, -1).split(' ')) expect(words.has(w)).toBe(true)
-    // The second line starts where the first one stopped.
-    expect(task.startsWith(first + ' ' + second.trim().slice(0, -1))).toBe(true)
+    expect(lines[at + 1].startsWith('doing: ')).toBe(true)
+    expect(first.endsWith('…')).toBe(true)
+    for (const w of first.slice(0, -1).split(' ')) expect(words.has(w)).toBe(true)
+    expect(task.startsWith(first.slice(0, -1))).toBe(true)
     expect(lines.find((t) => t.startsWith('doing: '))!.endsWith('(1s ago)')).toBe(true)
   })
 
   test('test_empty_first_line_falls_back_to_task', () => {
     const ds = new Map<string, AgentDetail>([['A', { task: 'Check the loader', taskFirstLine: '', activity: [] }]])
     const map = buildMap(els, buildTree([row({ id: 'A', name: 'scout' })]), [], ds, [], mapBase)
-    expect(texts(map)).toContain('│ "Check the loader"')
+    expect(texts(map)).toContain('task: Check the loader')
     const blank = new Map<string, AgentDetail>([['A', { task: '', taskFirstLine: '', description: 'Look around', activity: [] }]])
     const map2 = buildMap(els, buildTree([row({ id: 'A', name: 'scout' })]), [], blank, [], mapBase)
-    expect(texts(map2)).toContain('│ "Look around"')
     expect(texts(map2)).toContain('task: Look around')
   })
 
@@ -451,11 +554,10 @@ describe('terminal cells', () => {
       assertFitsCells(map, 60)
       const lines = texts(cardOf(map, 'scout')!)
       const at = lines.findIndex((t) => t.startsWith('task: '))
-      expect(cellWidth(lines[at].slice('task: '.length))).toBe(50)
-      const second = lines[at + 1]
-      expect(second.startsWith('      ')).toBe(true)
-      expect(second.endsWith('…')).toBe(true)
-      expect(cellWidth(second.trim())).toBeLessThanOrEqual(50)
+      const first = lines[at].slice('task: '.length)
+      expect(first.endsWith('…')).toBe(true)
+      expect(cellWidth(first)).toBeLessThanOrEqual(50)
+      expect(lines[at + 1].startsWith('doing: ')).toBe(true)
     }
   })
 })

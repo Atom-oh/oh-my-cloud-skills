@@ -90,7 +90,7 @@ test('/agent-dash opens the pane and sets the summary status line', async ($, on
 
   expect(opens[0]).toMatchObject({ id: 'agent-dash', title: 'Agents', focus: true, closeOnEscape: true })
   expect(r.text).toBeUndefined()
-  expect(lines[lines.length - 1]).toBe('2 running · 0 waiting (est.) · 0 done')
+  expect(lines[lines.length - 1]).toBe('2 running')
 })
 
 test('/agent-dash returns the summary as text where nothing draws', async ($, on) => {
@@ -125,7 +125,7 @@ test('a message with no reply yet shows as an estimated wait in the status line'
   await clock.settle()
 
   // The main loop is the waiter here, so both rows still count as running.
-  expect(lines[lines.length - 1]).toBe('2 running · 1 waiting (est.) · 0 done')
+  expect(lines[lines.length - 1]).toBe('2 running · 1 waiting (est.)')
 })
 
 test('the tick notices an agent that finished', async ($, on) => {
@@ -205,11 +205,11 @@ test('a foreground spawn from the main loop is an estimated wait in the status l
   state.list = [LEAD, SCOUT, HELPER]
   await $.agent.spawn({ prompt: 'x', subagentType: 'Explore', background: true })
   await clock.settle()
-  expect(lines[lines.length - 1]).toBe('3 running · 0 waiting (est.) · 0 done')
+  expect(lines[lines.length - 1]).toBe('3 running')
 
   await $.agent.spawn({ prompt: 'x', subagentType: 'Explore', background: false })
   await clock.settle()
-  expect(lines[lines.length - 1]).toBe('3 running · 1 waiting (est.) · 0 done')
+  expect(lines[lines.length - 1]).toBe('3 running · 1 waiting (est.)')
 })
 
 test('a spawn recorded before its row is listed still becomes a wait', async ($, on) => {
@@ -222,7 +222,7 @@ test('a spawn recorded before its row is listed still becomes a wait', async ($,
   state.list = [LEAD, SCOUT, HELPER]
   await clock.advance(5_000)
 
-  expect(lines[lines.length - 1]).toBe('3 running · 1 waiting (est.) · 0 done')
+  expect(lines[lines.length - 1]).toBe('3 running · 1 waiting (est.)')
 })
 
 test('a row that leaves the list is forgotten, including its spawn flags', async ($, on) => {
@@ -233,13 +233,13 @@ test('a row that leaves the list is forgotten, including its spawn flags', async
   state.list = [LEAD, SCOUT, HELPER]
   await $.agent.spawn({ prompt: 'x', subagentType: 'Explore', background: false })
   await clock.settle()
-  expect(lines[lines.length - 1]).toBe('3 running · 1 waiting (est.) · 0 done')
+  expect(lines[lines.length - 1]).toBe('3 running · 1 waiting (est.)')
 
   state.list = [LEAD, SCOUT]
   await clock.advance(5_000)
   state.list = [LEAD, SCOUT, HELPER]
   await clock.advance(5_000)
-  expect(lines[lines.length - 1]).toBe('3 running · 0 waiting (est.) · 0 done')
+  expect(lines[lines.length - 1]).toBe('3 running')
 })
 
 test('/agent-dash stop stops the tick from listing agents; /agent-dash starts it again', async ($, on) => {
@@ -297,8 +297,8 @@ test('test_spawn_prompt_and_tool_calls_reach_the_pane', async ($, on) => {
 
   const ui = await $.ui.mount(PANE)
   const all = await paneTexts(ui)
-  expect(all).toContain('│ "Find the config loader"')
-  expect(all.some((t) => t.startsWith('task: Find the config loader and list every caller'))).toBe(true)
+  expect(all.some((t) => t.startsWith('│ '))).toBe(false)
+  expect(all).toContain('task: Find the config loader and list every caller of it')
   // The test's call runs in the main loop, so it shows on the main card.
   expect(all.some((t) => t.startsWith('doing: Grep buildTree'))).toBe(true)
   await ui.unmount()
@@ -310,7 +310,7 @@ test('test_message_text_is_recorded_clipped', async ($, on) => {
 
   await $.session.start(SESSION)
   await $.command.run({ command: 'agent-dash', args: '' })
-  await $.session.send({ to: 'scout', text: 'API_TOKEN=abc123 please check ' + 'word '.repeat(100) })
+  await $.session.send({ to: 'scout', text: 'API_TOKEN=abc123 please check ' + 'word '.repeat(100), agentId: 'L' } as any)
   await clock.settle()
 
   const ui = await $.ui.mount(PANE)
@@ -457,7 +457,7 @@ test('test_listed_agent_fields_are_stripped_and_redacted', async ($, on) => {
 
   await $.session.start(SESSION)
   await $.command.run({ command: 'agent-dash', args: '' })
-  await $.session.send({ to: '\x1b[31mghost\u202E', text: 'hi' })
+  await $.session.send({ to: '\x1b[31mghost\u202E', text: 'hi', agentId: 'F1' } as any)
   await clock.settle()
   const ui = await $.ui.mount(PANE)
   const all = await paneTexts(ui)
@@ -517,7 +517,7 @@ test('test_resume_spawn_keeps_the_original_task', async ($, on) => {
 
   const ui = await $.ui.mount(PANE)
   const all = await paneTexts(ui)
-  expect(all).toContain('│ "ORIGINAL task text"')
+  expect(all).toContain('task: ORIGINAL task text')
   expect(all.some((t) => t.includes('WAKEWORD'))).toBe(false)
   await ui.unmount()
 })
@@ -530,7 +530,7 @@ test('test_stop_forgets_captured_text', async ($, on) => {
   await $.command.run({ command: 'agent-dash', args: '' })
   await $.agent.spawn({ prompt: 'PROMPTWORD go', subagentType: 'Explore' })
   await $.tool.call({ tool: 'Grep', pattern: 'TOOLWORD' })
-  await $.session.send({ to: 'scout', text: 'MSGWORD hi' })
+  await $.session.send({ to: 'scout', text: 'MSGWORD hi', agentId: 'L' } as any)
   await clock.settle()
   const before = invalidations.n
   await $.command.run({ command: 'agent-dash', args: 'stop' })
@@ -543,5 +543,38 @@ test('test_stop_forgets_captured_text', async ($, on) => {
   for (const word of ['PROMPTWORD', 'TOOLWORD', 'MSGWORD']) expect(all.some((t) => t.includes(word))).toBe(false)
   // The send itself is kept as structure: the edge still draws, without its text.
   expect(all.some((t) => t === '→ scout')).toBe(true)
+  await ui.unmount()
+})
+
+const BAND = {
+  plugin: 'agent-dash',
+  component: 'AbovePrompt',
+  surface: 'terminal',
+  viewport: { columns: 100, rows: 30 },
+  props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 9 }, view: {} },
+} as const
+
+test('test_band_is_hidden_when_nothing_is_working', async ($, on) => {
+  const DONE = { ...LEAD, status: 'completed' }
+  const FAILED = { ...SCOUT, status: 'failed' }
+  const { state, lines } = stubs(on, { list: [DONE, FAILED] })
+  // Stands for the engine's own band beneath the plugin.
+  on('ui.render', ($, e) => $.ui.resolve(e).Text({ children: ['engine band'] }))
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  await clock.advance(5_000)
+  // Finished agents live in the status line only.
+  expect(lines[lines.length - 1]).toBe('2 done')
+  let ui = await $.ui.mount(BAND)
+  expect(await ui.find({ type: 'Text', text: /agents:/ })).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: /engine band/ }))?.text).toBe('engine band')
+  await ui.unmount()
+
+  state.list = [DONE, FAILED, HELPER]
+  await clock.advance(5_000)
+  expect(lines[lines.length - 1]).toBe('1 running · 2 done')
+  ui = await $.ui.mount(BAND)
+  expect((await ui.find({ type: 'Text', text: /agents:/ }))?.text).toBe('agents: 1 running · 2 done')
   await ui.unmount()
 })

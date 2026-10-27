@@ -103,10 +103,28 @@ describe('summaryLine', () => {
 
   test('the main loop counts as a waiter without being a row', () => {
     const h = [row({ id: 'H', background: false })]
-    expect(summaryLine(h, inferWaits(h, [], NOW))).toBe('1 running · 1 waiting (est.) · 0 done')
+    expect(summaryLine(h, inferWaits(h, [], NOW))).toBe('1 running · 1 waiting (est.)')
   })
 
   test('no agents', () => {
+    expect(summaryLine([], [])).toBe('no agents')
+  })
+
+  test('test_summary_line_hides_zero_counts', () => {
+    expect(summaryLine([row({ id: 'A' }), row({ id: 'B' })], [])).toBe('2 running')
+    expect(summaryLine([row({ id: 'A', status: 'completed' })], [])).toBe('1 done')
+    expect(summaryLine([row({ id: 'A', status: 'idle' })], [])).toBe('1 idle')
+    const mixed = [
+      row({ id: 'A' }),
+      row({ id: 'B', status: 'idle' }),
+      row({ id: 'C', status: 'failed' }),
+      row({ id: 'D', status: 'killed' }),
+      row({ id: 'E', status: 'completed' }),
+    ]
+    expect(summaryLine(mixed, [])).toBe('1 running · 1 idle · 3 done')
+    const wait = [{ from: 'A', to: 'B', sinceMs: 0, reason: 'message' as const }]
+    expect(summaryLine(mixed, wait)).toBe('1 waiting (est.) · 1 idle · 3 done')
+    for (const s of [summaryLine(mixed, []), summaryLine(mixed, wait)]) expect(/(^|· )0 /.test(s)).toBe(false)
     expect(summaryLine([], [])).toBe('no agents')
   })
 })

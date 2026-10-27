@@ -16,7 +16,7 @@
       "executable": false
     },
     "README.md": {
-      "sha256": "b5494b8cc75037757f7d9efd9096258694e72014f00e28f7a205a39910b0bde6",
+      "sha256": "475f906d23fecf72ba27f27f66e4b9d618aa4e4baf433b85a1e422364a4d15e9",
       "executable": false
     },
     "hooks/hooks.json": {
@@ -24,15 +24,15 @@
       "executable": false
     },
     "hooks/lib/model.ts": {
-      "sha256": "f2e14ae1d8778d09cb484aad4e8c2c17fcab65c0a89d780b7d930c0be641a042",
+      "sha256": "d93c9104088eef5e6dd830fd237bf22ac92ad2880b84a184b6296537efa75b5d",
       "executable": false
     },
     "hooks/lib/view.ts": {
-      "sha256": "96642f7d741c3f44905c22542061c6e2991569c097b2a3733943e40620776622",
+      "sha256": "530f6907f12a13b36937ccdcd07c877afc2d3ca99202fa482966b6d8c04374dc",
       "executable": false
     },
     "hooks/register.ts": {
-      "sha256": "7173cb53fb39ceb034f8fd5e14e436f19dcd6a9d8fbeb85986e44b36a18fdb25",
+      "sha256": "0c1b332c095acaaf05add0a0fb545cc590eef2d1b282fe40dc09ecd2e08d2c65",
       "executable": false
     },
     "skills/agent-status/SKILL.md": {
@@ -48,15 +48,15 @@
       "executable": false
     },
     "tests/model.test.ts": {
-      "sha256": "059fcae24fbee11d95d13877ab2847acc68db0d643e3a6285adaaa1eded3a2b7",
+      "sha256": "73ff9e21e6738e75580e0184469df94b541b12df420362aa82bae16cc9f51fdf",
       "executable": false
     },
     "tests/register.test.ts": {
-      "sha256": "8746c5c6c991cd996283554c5bead5165ee3a3286187269ce39f209ca40aba7b",
+      "sha256": "b828193bb2753c4dab269787d0b4cb255d574274c51f7c6de76611e5e2c1e76e",
       "executable": false
     },
     "tests/view.test.ts": {
-      "sha256": "386d92f06a755463b9491b7888e893b3a3d05d0a5271ba7335de6d1dad57ec87",
+      "sha256": "69c05adfbbbc09326de3aa7012d5ee541e702f6891b36966cf2fef95779f17ab",
       "executable": false
     }
   }

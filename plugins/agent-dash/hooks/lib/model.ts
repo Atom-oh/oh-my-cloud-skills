@@ -35,6 +35,13 @@ export function isFinished(row: AgentRow): boolean {
   return FINISHED.includes(row.status)
 }
 
+const WORKING: AgentStatus[] = ['pending', 'running', 'waiting']
+
+/** An agent the map draws a card for and the band counts: pending, running or waiting. */
+export function isWorking(row: AgentRow): boolean {
+  return WORKING.includes(row.status)
+}
+
 // Whole escape sequences first (CSI, OSC up to its terminator, two-byte ESC forms), each
 // bounded; then any control character left: C0, DEL, C1, and the bidi overrides and isolates.
 const ESCAPE_SEQ = /(?:\u001b\[|\u009b)[\u0030-\u003f]{0,32}[\u0020-\u002f]{0,8}[\u0040-\u007e]|(?:\u001b\]|\u009d)[^\u0007\u001b\u009c]{0,512}(?:\u0007|\u001b\\|\u009c)|\u001b[\u0040-\u005f]/g
@@ -156,13 +163,32 @@ function senderIs(rows: AgentRow[], to: string, sender: string | null): boolean 
   return r !== undefined && r.id === sender
 }
 
-/** One line for the status line and the band. */
+/**
+ * One line for the status line, the band and the pane header. A count of zero is left
+ * out; `no agents` only when there are no rows.
+ */
 export function summaryLine(rows: AgentRow[], waits: WaitEdge[]): string {
   if (rows.length === 0) return 'no agents'
   const waiting = new Set(waits.map((w) => w.from))
   const running = rows.filter((r) => r.status === 'running' && !waiting.has(r.id)).length
+  const idle = rows.filter((r) => r.status === 'idle').length
   const done = rows.filter(isFinished).length
-  return `${running} running · ${waiting.size} waiting (est.) · ${done} done`
+  const parts: string[] = []
+  if (running > 0) parts.push(`${running} running`)
+  if (waiting.size > 0) parts.push(`${waiting.size} waiting (est.)`)
+  if (idle > 0) parts.push(`${idle} idle`)
+  if (done > 0) parts.push(`${done} done`)
+  return parts.join(' · ')
+}
+
+/** The idle and finished counts alone, zeros left out; empty when there are none. */
+export function restLine(rows: AgentRow[]): string {
+  const idle = rows.filter((r) => r.status === 'idle').length
+  const done = rows.filter(isFinished).length
+  const parts: string[] = []
+  if (idle > 0) parts.push(`${idle} idle`)
+  if (done > 0) parts.push(`${done} done`)
+  return parts.join(' · ')
 }
 
 function labelFor(rows: AgentRow[], id: string): string {

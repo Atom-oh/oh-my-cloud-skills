@@ -10,6 +10,7 @@ import {
   delegationOn,
   diffNotices,
   inferWaits,
+  isWorking,
   pruneDetails,
   recordActivity,
   recordTask,
@@ -319,8 +320,9 @@ export function register(on, options) {
     )
   })
 
+  // The band shows only while an agent works; finished agents live in the status line.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (!watching || rows.length === 0 || e.props?.hasSurvey === true) return next(e)
+    if (!watching || !rows.some(isWorking) || e.props?.hasSurvey === true) return next(e)
     return buildBand($.ui.resolve(e), summary())
   })
 }
