@@ -1,7 +1,7 @@
 // Pure views for agent-dash: builds element trees from the element functions passed in.
 // No `$`, no Claude Code imports, no Node APIs.
 
-import { buildTree, isWorking, labelOf, restLine, stripControls, summaryLine } from './model.ts'
+import { buildTree, distinctTasks, isWorking, labelOf, restLine, stripControls, summarizeText, summaryLine } from './model.ts'
 import type { AgentDetail, AgentRow, AgentStatus, SendRecord, TreeNode, WaitEdge } from './model.ts'
 
 type Color = 'green' | 'red' | 'yellow'
@@ -217,8 +217,17 @@ const HIDDEN = '(hidden)'
 // A card's border and its one-cell padding on each side.
 const CARD_FRAME = 4
 const MIN_WIDTH = 12
-// The `+N more` line and the button row.
-const FOOTER_ROWS = 2
+// The grid: cells between two cards on a line, and one cell left free at the right edge.
+const GRID_GAP = 1
+const GRID_SPARE = 1
+// Body columns from which the map draws two and three cards per line.
+const TWO_COLUMNS = 120
+const THREE_COLUMNS = 180
+// The main loop's own `doing:` dims after a minute and is left out after ten.
+const MAIN_DIM_MS = 60_000
+const MAIN_HIDE_MS = 600_000
+// The longest description a headline reads, as the listed description is stored.
+const DESCRIPTION_MAX = 200
 
 /**
  * Breaks text into at most `max` lines of `width` cells, wrapping on spaces and cutting a
@@ -284,8 +293,8 @@ function text(p: Painter, s: string, props: Record<string, unknown> = {}): unkno
   return p.els.Text({ children: [stripControls(s)], wrap: 'truncate-end', ...props })
 }
 
-/** The one `doing:` line from an agent's newest-last activity. */
-function doingLine(p: Painter, detail: AgentDetail | undefined, width: number): unknown {
+/** The one `doing:` line from an agent's newest-last activity; `dim` draws it dimmed. */
+function doingLine(p: Painter, detail: AgentDetail | undefined, width: number, dim = false): unknown {
   if (!p.opts.showDelegation) return text(p, clipCells('doing: ' + HIDDEN, width))
   const act = detail?.activity ?? []
   if (act.length === 0) return text(p, clipCells('doing: (no tool calls yet)', width), { dimColor: true })
@@ -293,7 +302,7 @@ function doingLine(p: Painter, detail: AgentDetail | undefined, width: number): 
   const call = latest.summary === '' || latest.summary === latest.tool ? latest.tool : latest.tool + ' ' + latest.summary
   const ago = ' (' + elapsed(p.opts.nowMs - latest.atMs) + ' ago)'
   const lead = 'doing: '
-  return text(p, lead + clipCells(call, Math.max(1, width - cellWidth(lead) - cellWidth(ago))) + ago)
+  return text(p, lead + clipCells(call, Math.max(1, width - cellWidth(lead) - cellWidth(ago))) + ago, dim ? { dimColor: true } : {})
 }
 
 /** One line per wait edge from `from`; the main loop's read `main waits on`. */
@@ -325,7 +334,11 @@ function messageLine(p: Painter, fromId: string, sends: SendRecord[], width: num
   return [text(p, cellWidth(line) <= width ? line : clipCells(line, width), { dimColor: true })]
 }
 
-/** The main loop: one borderless line, then its wait and its own latest call when present. */
+/**
+ * The main loop: one borderless line, then its wait and its own latest call when present.
+ * That call is dimmed once it is older than a minute and left out after ten minutes, so an
+ * old call does not read as current.
+ */
 function mainLines(p: Painter, working: number, waits: WaitEdge[], details: Map<string, AgentDetail>): unknown[] {
   const width = Math.max(MIN_WIDTH, p.opts.columns)
   const rest = restLine(p.rows)
@@ -333,21 +346,78 @@ function mainLines(p: Painter, working: number, waits: WaitEdge[], details: Map<
   const out: unknown[] = [text(p, clipCells(title, width), { bold: true })]
   out.push(...waitLines(p, 'main', waits, width))
   const own = details.get('main')
-  if (p.opts.showDelegation && own !== undefined && own.activity.length > 0) out.push(doingLine(p, own, width))
+  if (p.opts.showDelegation && own !== undefined && own.activity.length > 0) {
+    const age = p.opts.nowMs - own.activity[own.activity.length - 1].atMs
+    if (age <= MAIN_HIDE_MS) out.push(doingLine(p, own, width, age > MAIN_DIM_MS))
+  }
   return out
 }
 
-/** A compact card: title, one task line, one doing line, then waits and the last message. */
-function agentCard(p: Painter, line: Line, waits: WaitEdge[], details: Map<string, AgentDetail>, sends: SendRecord[]): { el: unknown; rows: number } {
+/** Cards per grid line for the pane's body columns: 1, 2 from 120, 3 from 180. */
+function gridColumns(columns: number): number {
+  if (columns >= THREE_COLUMNS) return 3
+  if (columns >= TWO_COLUMNS) return 2
+  return 1
+}
+
+/** A card's outer width in cells, border and padding included. */
+function cardWidth(columns: number, cols: number, indent: number): number {
+  const free = columns - GRID_SPARE - (cols - 1) * GRID_GAP - indent * cols
+  return Math.max(MIN_WIDTH + CARD_FRAME, Math.floor(free / cols))
+}
+
+function hasName(row: AgentRow): boolean {
+  return row.name !== undefined && stripControls(row.name).trim() !== ''
+}
+
+/** The delegation's description, else the listed one: redacted, clipped and stripped. */
+function descriptionOf(row: AgentRow, detail: AgentDetail | undefined): string {
+  return summarizeText(detail?.description || row.description || '', DESCRIPTION_MAX)
+}
+
+type Headline = { text: string; fromDescription: boolean }
+
+/**
+ * What a card is called: the agent's name, else (with `showDelegation` on) what it was
+ * asked to do in the spawn's description, else its type. With `showDelegation` off the
+ * description is never read.
+ */
+function headlineOf(row: AgentRow, detail: AgentDetail | undefined, show: boolean): Headline {
+  if (hasName(row)) return { text: labelOf(row), fromDescription: false }
+  if (show) {
+    const d = descriptionOf(row, detail)
+    if (d !== '') return { text: d, fromDescription: true }
+  }
+  return { text: stripControls(row.type), fromDescription: false }
+}
+
+/** The title text: the headline cut on whole words, then the type when it fits, then the status. */
+function titleText(headline: string, type: string, status: string, room: number): string {
+  const typed = type !== '' && type !== headline ? ' · ' + type : ''
+  const full = headline + typed + ' · ' + status
+  if (cellWidth(full) <= room) return full
+  const tail = ' · ' + status
+  const left = room - cellWidth(tail)
+  if (left < MIN_WIDTH / 2) return clipCells(headline + tail, room)
+  const cut = wrapLines(headline, left, 1)
+  return (cut[0] ?? '') + tail
+}
+
+type CardLayout = { width: number; indent: number; task?: string }
+
+/**
+ * A compact card: the title (headline, type, status, open), then the task when the
+ * headline is not already the description, the doing line, its waits and last message.
+ * `layout.width` is the card's outer width in cells; `layout.task` replaces the task text
+ * with its distinguishing part.
+ */
+function agentCard(p: Painter, line: Line, waits: WaitEdge[], details: Map<string, AgentDetail>, sends: SendRecord[], layout: CardLayout): unknown {
   const { row, depth } = line
   const { els, opts } = p
-  const indent = Math.min(depth * 2, Math.max(0, opts.columns - 40))
-  const width = Math.max(MIN_WIDTH + CARD_FRAME, opts.columns - indent) - CARD_FRAME
+  const width = layout.width - CARD_FRAME
   const detail = details.get(row.id)
+  const headline = headlineOf(row, detail, opts.showDelegation)
 
-  const head = [labelOf(row)]
-  if (row.name !== undefined) head.push(row.type)
-  head.push(row.status + ' ' + elapsed(opts.nowMs - row.sinceMs))
   const OPEN = 'open'
   const CONNECTOR = '└'
   const parts: unknown[] = []
@@ -356,15 +426,16 @@ function agentCard(p: Painter, line: Line, waits: WaitEdge[], details: Map<strin
   // The connector, the symbol and the open button, each with a one-cell gap after the
   // part before it.
   const reserved = (depth > 0 ? cellWidth(CONNECTOR) + 1 : 0) + cellWidth((SYMBOLS[row.status] ?? SYMBOLS.pending).ch) + cellWidth(OPEN) + 2
-  parts.push(text(p, clipCells(head.join(' · '), Math.max(1, width - reserved)), { bold: true }))
+  const status = row.status + ' ' + elapsed(opts.nowMs - row.sinceMs)
+  parts.push(text(p, titleText(headline.text, stripControls(row.type), status, Math.max(1, width - reserved)), { bold: true }))
   parts.push(els.Button({ key: 'open:' + row.id, label: OPEN, plain: true, onPress: () => opts.onOpen(row.id) }))
   const title = els.Box({ flexDirection: 'row', columnGap: 1, children: parts })
 
   const lines: unknown[] = [title]
   const lead = 'task: '
   if (!opts.showDelegation) lines.push(text(p, lead + HIDDEN))
-  else {
-    const task = detail?.task || detail?.description || row.description
+  else if (!headline.fromDescription) {
+    const task = layout.task || detail?.task || detail?.description || row.description
     const one = wrapLines(task, Math.max(1, width - cellWidth(lead)), 1)
     lines.push(one.length === 0 ? text(p, lead + '(unknown)', { dimColor: true }) : text(p, lead + one[0]))
   }
@@ -373,16 +444,19 @@ function agentCard(p: Painter, line: Line, waits: WaitEdge[], details: Map<strin
   lines.push(...messageLine(p, row.id, sends, width))
 
   const waitsFrom = waits.some((w) => w.from === row.id)
-  const card = els.Box({ flexDirection: 'column', borderStyle: 'round', paddingX: 1, marginLeft: indent, ...borderFor(row, waitsFrom), children: lines })
-  return { el: card, rows: lines.length + 2 }
+  const box: Record<string, unknown> = { flexDirection: 'column', borderStyle: 'round', paddingX: 1, width: layout.width, flexShrink: 0, ...borderFor(row, waitsFrom), children: lines }
+  if (layout.indent > 0) box.marginLeft = layout.indent
+  return els.Box(box)
 }
 
 /**
  * The delegation map: the main loop as one line on top, then a compact bordered card for
- * each working agent (pending, running or waiting), children indented under a working
- * parent. Finished and idle agents get no card; they show only in the counts. Cards that
- * do not fit `maxRows` collapse into `+N more`; the first card always shows. With
- * `showDelegation` off no task, tool or message text is drawn.
+ * each working agent (pending, running or waiting) in a grid of equal-width cards: one
+ * per line below 120 body columns, two from 120, three from 180. A working child follows
+ * its working parent with a `└` on its title row (indented only in the one-column
+ * layout). Every working card is drawn; the engine scrolls the pane. Finished and idle
+ * agents get no card; they show only in the counts. With `showDelegation` off no task,
+ * description, tool or message text is drawn.
  */
 export function buildMap(
   els: any,
@@ -409,23 +483,26 @@ export function buildMap(
     children.push(viewButtons(els, opts))
     return els.Box({ flexDirection: 'column', children })
   }
-  const head = mainLines(p, working.length, waits, details)
-  children.push(...head)
-  // The note explains the wait lines the map draws: main's and those of a drawn card. Its
-  // row is budgeted when any working agent waits, and drawn only for a card that showed.
-  const canWait = new Set<string>(['main', ...working.map((l) => l.row.id)])
-  let used = head.length + FOOTER_ROWS + (waits.some((w) => canWait.has(w.from)) ? 1 : 0)
-  const drawnFrom = new Set<string>(['main'])
-  let shown = 0
+  children.push(...mainLines(p, working.length, waits, details))
+
+  // Agents with neither a name nor a description are told apart by their tasks: the
+  // leading words all of them share are left out.
+  const plain = opts.showDelegation
+    ? working.filter((l) => !hasName(l.row) && descriptionOf(l.row, details.get(l.row.id)) === '' && (details.get(l.row.id)?.task ?? '') !== '')
+    : []
+  const distinct = distinctTasks(plain.map((l) => details.get(l.row.id)!.task!))
+  const taskOf = new Map<string, string>(plain.map((l, i) => [l.row.id, distinct[i]]))
+
+  const cols = gridColumns(opts.columns)
+  const cards: unknown[] = []
   for (const line of working) {
-    const card = agentCard(p, line, waits, details, sends)
-    if (shown > 0 && used + card.rows > opts.maxRows) break
-    children.push(card.el)
-    drawnFrom.add(line.row.id)
-    used += card.rows
-    shown += 1
+    // Only the one-column layout indents a child; in a grid the connector marks it.
+    const indent = cols === 1 ? Math.min(line.depth * 2, Math.max(0, opts.columns - 40)) : 0
+    cards.push(agentCard(p, line, waits, details, sends, { width: cardWidth(opts.columns, cols, indent), indent, task: taskOf.get(line.row.id) }))
   }
-  if (shown < working.length) children.push(text(p, '+' + (working.length - shown) + ' more', { dimColor: true }))
+  children.push(els.Box({ flexDirection: 'row', flexWrap: 'wrap', columnGap: GRID_GAP, children: cards }))
+  // The note explains the wait lines the map draws: main's and those of a working card.
+  const drawnFrom = new Set<string>(['main', ...working.map((l) => l.row.id)])
   if (waits.some((w) => drawnFrom.has(w.from))) children.push(text(p, clipCells(WAIT_NOTE, Math.max(1, opts.columns)), { dimColor: true }))
   children.push(viewButtons(els, opts))
   return els.Box({ flexDirection: 'column', children })

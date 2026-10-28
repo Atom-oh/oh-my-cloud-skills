@@ -1,6 +1,6 @@
 import { expect, test, describe } from 'claude-code/testing'
 import { row, rows } from './fixtures/agents.ts'
-import { DEFAULT_POLICY, buildTree, clip, diffNotices, inferWaits, delegationOn, labelOf, pruneDetails, recordActivity, recordTask, redact, resolveModel, stripControls, summarizeText, summarizeTool, summaryLine } from '../hooks/lib/model.ts'
+import { DEFAULT_POLICY, buildTree, clip, diffNotices, distinctTasks, inferWaits, delegationOn, labelOf, pruneDetails, recordActivity, recordTask, redact, resolveModel, stripControls, summarizeText, summarizeTool, summaryLine } from '../hooks/lib/model.ts'
 import type { AgentDetail, TreeNode } from '../hooks/lib/model.ts'
 
 const NOW = 10_000
@@ -434,5 +434,39 @@ describe('detail model', () => {
     expect(d.get('active')?.task).toBe('p')
     expect(d.get('active')!.activity.length).toBe(6)
     expect(d.has('idle')).toBe(false)
+  })
+})
+
+describe('distinctTasks', () => {
+  const PREAMBLE = 'Work in /home/u/proj. Run the team discovery pipeline for ONE team, following the skill. Execute three stages in order.'
+
+  test('test_common_prefix_run_is_stripped_and_marked', () => {
+    const tasks = ['channels', 'cards', 'loans'].map((t) => PREAMBLE + ' Team: ' + t + ' and its owners.')
+    expect(distinctTasks(tasks)).toEqual(['…channels and its owners.', '…cards and its owners.', '…loans and its owners.'])
+    // Whole words only: a shared start of a word stays with the remainder.
+    expect(distinctTasks(['Fix the loader in file alpha', 'Fix the loader in file alphabet'])).toEqual(['…alpha', '…alphabet'])
+    // Whitespace runs do not break the common run.
+    expect(distinctTasks(['a  b c d one', 'a b  c d two'])).toEqual(['…one', '…two'])
+  })
+
+  test('test_distinct_tasks_edge_cases', () => {
+    expect(distinctTasks([])).toEqual([])
+    // One task: unchanged.
+    expect(distinctTasks([PREAMBLE])).toEqual([PREAMBLE])
+    // No common run: unchanged.
+    expect(distinctTasks(['Find the loader', 'Review the map'])).toEqual(['Find the loader', 'Review the map'])
+    // A common run under 4 words: unchanged; exactly 4 words: stripped.
+    expect(distinctTasks(['Fix the bug alpha', 'Fix the bug beta'])).toEqual(['Fix the bug alpha', 'Fix the bug beta'])
+    expect(distinctTasks(['Fix the bug in alpha', 'Fix the bug in beta'])).toEqual(['…alpha', '…beta'])
+    // Identical tasks: nothing distinguishes them, so each keeps its full text.
+    expect(distinctTasks([PREAMBLE, PREAMBLE])).toEqual([PREAMBLE, PREAMBLE])
+    // An empty remainder falls back to the full task; the others still lose the run.
+    expect(distinctTasks(['a b c d', 'a b c d e'])).toEqual(['a b c d', '…e'])
+    // An empty task shares no run.
+    expect(distinctTasks(['', 'a b c d e'])).toEqual(['', 'a b c d e'])
+    // Korean: whole words split on spaces.
+    const ko = ['팀 발견 파이프라인을 실행하세요 대상 팀: 공통 채널', '팀 발견 파이프라인을 실행하세요 대상 팀: 카드 상품']
+    expect(distinctTasks(ko)).toEqual(['…공통 채널', '…카드 상품'])
+    for (const out of distinctTasks(['x y z w', 'x y z w', 'x y z w v'])) expect(out === '').toBe(false)
   })
 })

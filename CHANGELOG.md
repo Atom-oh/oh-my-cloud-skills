@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- agent-dash map cards are headlined by what the agent does: its name, else the Agent
+  call's description, else its type. The task line shows only when the headline is not
+  the description, and for agents without a name or description it drops the prompt
+  preamble they all share. Cards sit in a grid (two per line from 120 columns, three
+  from 180) with the child after its parent; every working card is drawn and the
+  focused pane scrolls instead of collapsing into `+N more`. The main loop's own latest
+  call dims after a minute and is hidden after ten. With `showDelegation` off the
+  headline never shows a description.
+
 ## [3.0.7] - 2026-10-28
 
 ### Added
