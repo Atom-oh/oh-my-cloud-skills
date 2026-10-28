@@ -1,6 +1,6 @@
 import { expect, test, describe } from 'claude-code/testing'
 import { row } from './fixtures/agents.ts'
-import { applyKiro, buildTree, kiroCounts, kiroFragment, kiroShort, kiroSummary, parseKiroCommand, recordKiro } from '../hooks/lib/model.ts'
+import { KIRO_STALE_MS, applyKiro, buildTree, kiroCounts, kiroFragment, kiroShort, kiroSummary, parseKiroCommand, recordKiro } from '../hooks/lib/model.ts'
 import type { AgentDetail, KiroTask } from '../hooks/lib/model.ts'
 import { buildMap, buildPane, cellWidth } from '../hooks/lib/view.ts'
 
@@ -50,7 +50,54 @@ describe('parseKiroCommand', () => {
   })
 })
 
+describe('parseKiroCommand: review cases', () => {
+  test('only a real redirect target names a task, quoted or not; an echoed string does not', () => {
+    expect(parseKiroCommand('kiro-cli chat x > "$R/task-a-attempt-0.log"; echo "> task-b-attempt-0.log"', [])).toEqual([{ kind: 'run', id: 'a', attempt: 1 }])
+    expect(parseKiroCommand('kiro-cli chat x > "/tmp/my dir/task-a-attempt-0.log" 2>&1', [])).toEqual([{ kind: 'run', id: 'a', attempt: 1 }])
+    expect(parseKiroCommand("kiro-cli chat 'go > /r/task-c-attempt-0.log'", [])).toEqual([])
+    expect(parseKiroCommand('echo "cd /w/task-d && kiro-cli chat go"', [])).toEqual([])
+  })
+
+  test('two runs of one id in a command keep the highest attempt', () => {
+    const c = 'kiro-cli chat x > /r/task-a-attempt-1.log 2>&1; kiro-cli chat x > /r/task-a-attempt-2.log 2>&1'
+    expect(parseKiroCommand(c, [])).toEqual([{ kind: 'run', id: 'a', attempt: 3 }])
+  })
+
+  test('git commit-tree is not a commit', () => {
+    const tasks = feed([RUN('1', 0), 'git apply "$R/task-1.patch"', 'git commit-tree HEAD^{tree} -m x'])
+    expect(tasks[0].state).toBe('verifying')
+  })
+
+  test('fallback and remove act only on the task path of their own command', () => {
+    let tasks = feed([RUN('1', 0), RUN('2', 0)])
+    tasks = applyKiro(tasks, parseKiroCommand('echo "task-2: claude fallback"', ['1', '2']), 2000)
+    expect(tasks[1].state).toBe('running')
+    tasks = applyKiro(tasks, parseKiroCommand('echo "claude fallback" > "$R/task-2-fallback.txt"', ['1', '2']), 2000)
+    expect(tasks[1].state).toBe('fallback')
+    tasks = applyKiro(tasks, parseKiroCommand('python3 "$SK/worktree.py" remove "$B/task-1"; echo "removed task-2 too"', ['1', '2']), 3000)
+    expect(tasks.map((t) => t.state)).toEqual(['done', 'fallback'])
+    // Reading a log that mentions the phrase is not a fallback.
+    tasks = feed([RUN('3', 0), 'grep -n "host fallback" "$R/task-3-attempt-0.log"'])
+    expect(tasks[0].state).toBe('running')
+  })
+
+  test('a long command is read up to its first 4,000 characters and stays fast', () => {
+    expect(parseKiroCommand(RUN('1', 0) + '; echo ' + 'x'.repeat(20_000), [])).toEqual([{ kind: 'run', id: '1', attempt: 1 }])
+    expect(parseKiroCommand('echo ' + 'x'.repeat(5_000) + '; ' + RUN('1', 0), [])).toEqual([])
+    const start = Date.now()
+    parseKiroCommand('"'.repeat(3) + '\\"'.repeat(20_000) + " '" + 'a'.repeat(20_000), ['1'])
+    expect(Date.now() - start).toBeLessThan(500)
+  })
+})
+
 describe('applyKiro', () => {
+  test('a later-attempt run never reopens a finished task', () => {
+    let tasks = feed([RUN('1', 0), 'echo claude fallback > "$R/task-1-note.txt"'])
+    expect(tasks[0].state).toBe('fallback')
+    tasks = applyKiro(tasks, parseKiroCommand(RUN('1', 2), ['1']), 5000)
+    expect(tasks[0]).toMatchObject({ state: 'fallback', attempt: 1 })
+  })
+
   test('retry prompt files count retries and the next run continues that attempt', () => {
     let tasks = feed([RUN('2', 0), RETRY('2', 1)], 2000)
     expect(tasks[0]).toMatchObject({ id: '2', attempt: 2, state: 'retrying' })
@@ -87,7 +134,7 @@ describe('applyKiro', () => {
   test('a fallback to Claude for a task is recorded; reading a log that says fallback is not', () => {
     let tasks = feed([RUN('3', 0), 'grep -i fallback "$R/task-3-attempt-0.log"'])
     expect(tasks[0].state).toBe('running')
-    tasks = applyKiro(tasks, parseKiroCommand('echo "task-3: fix loop exhausted, claude fallback"', ['3']), 2000)
+    tasks = applyKiro(tasks, parseKiroCommand('echo "fix loop exhausted, claude fallback" >> "$R/task-3-attempt-0.log"', ['3']), 2000)
     expect(tasks[0].state).toBe('fallback')
     tasks = applyKiro(tasks, parseKiroCommand('git apply "$R/task-3.patch" && git commit -m "wave"', ['3']), 3000)
     expect(tasks[0].state).toBe('fallback')
@@ -98,7 +145,7 @@ describe('applyKiro', () => {
   })
 
   test('starting a finished task again from its first attempt begins a new run', () => {
-    const tasks = feed([RUN('1', 0), RUN('2', 0), 'echo "task-2 host fallback"', 'python3 "$SK/worktree.py" remove "$B/task-1"', RUN('1', 0)], 9000)
+    const tasks = feed([RUN('1', 0), RUN('2', 0), 'echo host fallback > "$R/task-2-note.txt"', 'python3 "$SK/worktree.py" remove "$B/task-1"', RUN('1', 0)], 9000)
     expect(tasks.map((t) => [t.id, t.state])).toEqual([['1', 'running']])
   })
 
@@ -137,9 +184,17 @@ describe('kiro counts', () => {
 
   test('the status fragment counts only agents that are working', () => {
     const details = new Map<string, AgentDetail>([['K', { activity: [], kiro: tasks }]])
-    expect(kiroFragment([row({ id: 'K' })], details)).toBe('kiro 2/4')
-    expect(kiroFragment([row({ id: 'K', status: 'completed' })], details)).toBe('')
-    expect(kiroFragment([row({ id: 'K' })], new Map())).toBe('')
+    expect(kiroFragment([row({ id: 'K' })], details, 1000)).toBe('kiro 2/4')
+    expect(kiroFragment([row({ id: 'K', status: 'completed' })], details, 1000)).toBe('')
+    expect(kiroFragment([row({ id: 'K' })], new Map(), 1000)).toBe('')
+  })
+
+  test('a main-loop run with no activity for KIRO_STALE_MS no longer counts as active', () => {
+    const details = new Map<string, AgentDetail>([['main', { activity: [], kiro: tasks }]])
+    const last = Math.max(...tasks.map((t) => t.lastActivity))
+    expect(KIRO_STALE_MS).toBe(600_000)
+    expect(kiroFragment([], details, last + KIRO_STALE_MS)).toBe('kiro 2/4')
+    expect(kiroFragment([], details, last + KIRO_STALE_MS + 1)).toBe('')
   })
 })
 
@@ -199,6 +254,17 @@ describe('kiro rows in the pane', () => {
     const lines = texts(buildMap(els, buildTree([delegate]), [], d, [], { ...opts, columns: 40 })).filter((l) => l.startsWith('kiro task'))
     expect(lines.length).toBe(4)
     for (const l of lines) expect(cellWidth(l)).toBeLessThanOrEqual(40 - 4)
+  })
+
+  test('a Hangul task id is clipped by cells', () => {
+    const d = kiroDetails()
+    d.get('K')!.kiro![1].id = '작업-한글-아이디-매우-긴-이름-입니다'
+    const lines = texts(buildMap(els, buildTree([delegate]), [], d, [], { ...opts, columns: 60 })).filter((l) => l.startsWith('kiro task'))
+    const hangul = lines.find((l) => l.includes('작업'))
+    expect(hangul).toBeDefined()
+    expect(hangul!.includes('…')).toBe(true)
+    expect(hangul!.endsWith(' · running · try 2 · 4m12s')).toBe(true)
+    for (const l of lines) expect(cellWidth(l)).toBeLessThanOrEqual(60 - 1 - 4)
   })
 
   test('with showDelegation off only the counts show', () => {

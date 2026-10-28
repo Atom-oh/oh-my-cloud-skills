@@ -140,13 +140,13 @@ function toRows(list: any[], now: number): AgentRow[] {
 
 /** The agent summary, plus `kiro n/m` while a Kiro delegation run is active. */
 function summary(): string {
-  const kiro = kiroFragment(rows, details)
+  const kiro = kiroFragment(rows, details, Date.now())
   if (rows.length === 0 && kiro !== '') return kiro
   return kiro === '' ? summaryLine(rows, waits) : summaryLine(rows, waits) + ' · ' + kiro
 }
 
 function setStatus($) {
-  $.ui.status(watching && (rows.length > 0 || kiroFragment(rows, details) !== '') ? summary() : undefined)
+  $.ui.status(watching && (rows.length > 0 || kiroFragment(rows, details, Date.now()) !== '') ? summary() : undefined)
 }
 
 async function pull($, longWaitMs: number) {
@@ -334,7 +334,7 @@ export function register(on, options) {
 
   // The band shows only while an agent works; finished agents live in the status line.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (!watching || !(rows.some(isWorking) || kiroFragment(rows, details) !== '') || e.props?.hasSurvey === true) return next(e)
+    if (!watching || !(rows.some(isWorking) || kiroFragment(rows, details, Date.now()) !== '') || e.props?.hasSurvey === true) return next(e)
     return buildBand($.ui.resolve(e), summary())
   })
 }

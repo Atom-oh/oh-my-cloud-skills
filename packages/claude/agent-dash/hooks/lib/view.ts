@@ -1,7 +1,7 @@
 // Pure views for agent-dash: builds element trees from the element functions passed in.
 // No `$`, no Claude Code imports, no Node APIs.
 
-import { buildTree, distinctTasks, isWorking, kiroCounts, kiroShort, kiroSummary, labelOf, restLine, stripControls, summarizeText, summaryLine } from './model.ts'
+import { buildTree, distinctTasks, isWorking, kiroCounts, kiroMainActive, kiroShort, kiroSummary, labelOf, restLine, stripControls, summarizeText, summaryLine } from './model.ts'
 import type { AgentDetail, AgentRow, AgentStatus, KiroTask, SendRecord, TreeNode, WaitEdge } from './model.ts'
 
 type Color = 'green' | 'red' | 'yellow'
@@ -418,9 +418,9 @@ function mainLines(p: Painter, working: number, waits: WaitEdge[], details: Map<
     const age = p.opts.nowMs - own.activity[own.activity.length - 1].atMs
     if (age <= MAIN_HIDE_MS) out.push(doingLine(p, own, width, age > MAIN_DIM_MS))
   }
-  // A Kiro run in the main loop (the delegate skill) shows while a task is unfinished.
+  // A Kiro run in the main loop (the delegate skill) shows while it is active.
   const kiro = own?.kiro ?? []
-  if (kiroCounts(kiro).active > 0) out.push(...kiroLines(p, kiro, width))
+  if (kiroMainActive(kiro, p.opts.nowMs)) out.push(...kiroLines(p, kiro, width))
   return out
 }
 

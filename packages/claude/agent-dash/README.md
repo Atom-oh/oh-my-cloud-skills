@@ -59,8 +59,10 @@ Code 2.1.300 or later.
   `task-<id>-attempt-<n>.log` redirect or its `task-<id>` directory, the
   `task-<id>-retry-<k>` prompt files, `worktree.py capture-diff`, `scope_guard.py`,
   `git apply`, the wave's `git commit`, `worktree.py remove`, and a `claude fallback`
-  or `host fallback` note naming the task. A command that only mentions kiro (in
-  quotes, an argument or a heredoc) records nothing, and nothing is polled. With
+  or `host fallback` note whose own command names the task's path. Commands are read
+  as shell words, so a command that only mentions kiro (in quotes, an argument, an
+  echoed string or a heredoc) records nothing, and nothing is polled. A run in the main
+  loop stops counting as active after ten minutes without a step. With
   `showDelegation` off the card shows only the counts, never the task ids.
 - Notices appear when an agent finishes or fails and when a wait lasts longer than
   `longWaitMs` (120000 by default).
