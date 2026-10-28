@@ -701,7 +701,8 @@ describe('headline and grid', () => {
       expect(cs.length).toBe(6)
       const tasks = cs.map((c) => texts(c).find((t) => t.startsWith('task: '))!)
       TEAMS.forEach((t, i) => expect(tasks[i]).toBe('task: …' + t + '.'))
-      for (const c of cs) expect(titleOf(c).startsWith('general-purpose · running')).toBe(true)
+      // Six cards share the type headline, so each carries its id suffix.
+      cs.forEach((c, i) => expect(titleOf(c).startsWith('general-purpose (T' + i + ') · running')).toBe(true))
       expect(texts(map).some((t) => t.includes('Work in'))).toBe(false)
     }
     // A named agent's task is not part of the comparison and keeps its full text.
@@ -783,8 +784,9 @@ describe('headline and grid', () => {
       const map = buildMap(els, buildTree(rs), [], ds, [], { ...mapBase, columns, showDelegation: false })
       for (const secret of ['SECRET', 'Work in', 'Read']) expect(strings(map).some((s) => s.includes(secret))).toBe(false)
       const titles = cards(map).map(titleOf)
-      expect(titles[0].startsWith('general-purpose · running')).toBe(true)
-      expect(titles[1].startsWith('general-purpose · running')).toBe(true)
+      // Both fall back to the type, which collides: the id suffix tells them apart.
+      expect(titles[0].startsWith('general-purpose (A) · running')).toBe(true)
+      expect(titles[1].startsWith('general-purpose (B) · running')).toBe(true)
       expect(titles[2].startsWith('scout · general-purpose · running')).toBe(true)
       for (const c of cards(map)) expect(texts(c)).toContain('task: (hidden)')
     }
@@ -835,5 +837,108 @@ describe('headline and grid', () => {
     expect(at(600_000).length).toBe(1)
     expect(at(600_001).length).toBe(0)
     expect(at(30 * 60_000).length).toBe(0)
+  })
+})
+
+describe('headline names and type', () => {
+  test('test_waits_and_messages_name_the_target_by_its_headline', () => {
+    const rs = [
+      row({ id: 'A', description: 'Collect the channel list', sinceMs: 1000 }),
+      row({ id: 'B', description: 'Review the channel list', parentId: 'A', background: false, sinceMs: 2000 }),
+      row({ id: 'C', description: 'Check the loaders', background: false, sinceMs: 3000 }),
+    ]
+    const sends: SendRecord[] = [{ fromId: 'A', to: 'B', atMs: 9000, text: 'look at row 4' }]
+    const ws = inferWaits(rs, sends, NOW)
+    for (const columns of [80, 200]) {
+      const map = buildMap(els, buildTree(rs), ws, new Map(), sends, { ...mapBase, columns })
+      const all = texts(map)
+      expect(all).toContain('main waits on Check the loaders (est.)')
+      const a = texts(cards(map)[0])
+      expect(a).toContain('⏳ waits on Review the channel list (est.)')
+      expect(a.some((t) => t.startsWith('→ Review the channel list: "look at row 4"'))).toBe(true)
+      for (const t of all.filter((x) => x.includes('waits on') || x.startsWith('→ '))) expect(t.includes('general-purpose')).toBe(false)
+    }
+    // With showDelegation off the names fall back to the type, told apart by the id suffix.
+    const off = texts(buildMap(els, buildTree(rs), ws, new Map(), sends, { ...mapBase, showDelegation: false }))
+    expect(off).toContain('main waits on general-purpose (C) (est.)')
+    expect(off).toContain('⏳ waits on general-purpose (B) (est.)')
+    expect(off.some((t) => t.includes('Review the channel list') || t.includes('Check the loaders'))).toBe(false)
+  })
+
+  test('test_colliding_headlines_get_an_id_suffix', () => {
+    const rs = [
+      row({ id: 'agent-1a2b', description: 'Discovery', sinceMs: 1000 }),
+      row({ id: 'agent-3c4d', description: 'Discovery', parentId: 'agent-1a2b', background: false, sinceMs: 2000 }),
+      row({ id: 'agent-9999', description: 'Other', sinceMs: 3000 }),
+      // A finished agent with the same headline has no card and does not collide.
+      row({ id: 'agent-dead', description: 'Other', status: 'completed', sinceMs: 500 }),
+    ]
+    const sends: SendRecord[] = [{ fromId: 'agent-1a2b', to: 'agent-3c4d', atMs: 9000, text: 'go' }]
+    for (const columns of [80, 200]) {
+      const map = buildMap(els, buildTree(rs), inferWaits(rs, sends, NOW), new Map(), sends, { ...mapBase, columns })
+      const titles = cards(map).map(titleOf)
+      expect(titles[0].startsWith('Discovery (1a2b) · ')).toBe(true)
+      expect(titles[1].startsWith('Discovery (3c4d) · ')).toBe(true)
+      expect(titles[2].startsWith('Other · ')).toBe(true)
+      const first = texts(cards(map)[0])
+      expect(first).toContain('⏳ waits on Discovery (3c4d) (est.)')
+      expect(first).toContain('→ Discovery (3c4d): "go"')
+      assertFitsCells(map, columns)
+    }
+  })
+
+  test('test_shared_description_keeps_the_distinguishing_task_line', () => {
+    const rs = [
+      row({ id: 'A', description: 'Discovery', sinceMs: 1000 }),
+      row({ id: 'B', description: 'Discovery', sinceMs: 2000 }),
+      row({ id: 'C', description: 'Unique job', sinceMs: 3000 }),
+    ]
+    const ds = new Map<string, AgentDetail>([
+      ['A', detail(PREAMBLE + ' Team: channels.')],
+      ['B', detail(PREAMBLE + ' Team: cards.')],
+      ['C', detail(PREAMBLE + ' Team: loans.')],
+    ])
+    const map = buildMap(els, buildTree(rs), [], ds, [], { ...mapBase, columns: 200 })
+    const [a, b, c] = cards(map).map(texts)
+    expect(a).toContain('task: …channels.')
+    expect(b).toContain('task: …cards.')
+    expect(c.some((t) => t.startsWith('task: '))).toBe(false)
+  })
+
+  test('test_description_equal_to_type_counts_as_absent', () => {
+    const rs = [row({ id: 'A', description: 'General-Purpose', sinceMs: 1000 })]
+    const ds = new Map<string, AgentDetail>([['A', detail('Do the thing')]])
+    const map = buildMap(els, buildTree(rs), [], ds, [], mapBase)
+    expect(titleOf(cards(map)[0]).startsWith('general-purpose · running')).toBe(true)
+    expect(texts(map)).toContain('task: Do the thing')
+    // The delegation's description equal to the type gives way to the listed one.
+    const own = new Map<string, AgentDetail>([['A', { ...detail('Do the thing'), description: 'general-purpose' }]])
+    const map2 = buildMap(els, buildTree([row({ id: 'A', description: 'Real one' })]), [], own, [], mapBase)
+    expect(titleOf(cards(map2)[0]).startsWith('Real one · ')).toBe(true)
+  })
+
+  test('test_type_shown_on_all_cards_or_none', () => {
+    // Six long descriptions at 200 columns: some titles cannot hold the type, so none shows it.
+    const { rs, ds } = sixAgents(true)
+    const wide = cards(buildMap(els, buildTree(rs), [], ds, [], { ...mapBase, columns: 200 })).map(titleOf)
+    expect(wide.some((t) => t.includes(' · general-purpose · '))).toBe(false)
+    const roomy = cards(buildMap(els, buildTree(rs), [], ds, [], { ...mapBase, columns: 100 })).map(titleOf)
+    expect(roomy.every((t) => t.includes(' · general-purpose · '))).toBe(true)
+    // Short headlines all fit with the type.
+    const short = TEAMS.map((_, i) => row({ id: 'S' + i, description: 'Job ' + i, sinceMs: 1000 + i }))
+    const titles = cards(buildMap(els, buildTree(short), [], new Map(), [], { ...mapBase, columns: 200 })).map(titleOf)
+    expect(titles.every((t) => t.includes(' · general-purpose · '))).toBe(true)
+  })
+
+  test('test_view_buttons_sit_under_main', () => {
+    const { rs, ds } = sixAgents(true)
+    const map = buildMap(els, buildTree(rs), [], ds, [], { ...mapBase, columns: 200 }) as El
+    const kids = map.children as El[]
+    const at = kids.findIndex((e) => walk(e).some((x) => x.type === 'Button' && x.key === 'view'))
+    const gridAt = kids.findIndex((e) => e.flexWrap === 'wrap')
+    expect(at > 0 && at < gridAt).toBe(true)
+    // Only main's lines come before the buttons.
+    for (const e of kids.slice(0, at)) expect(e.type).toBe('Text')
+    expect(walk(kids[gridAt]).some((x) => x.type === 'Button' && (x.key === 'view' || x.key === 'refresh'))).toBe(false)
   })
 })

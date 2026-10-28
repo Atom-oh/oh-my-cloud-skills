@@ -15,17 +15,23 @@ Code 2.1.300 or later.
   waiting). The main loop is one line on top: how many agents work, the idle and
   finished counts when there are any, `main waits on <agent> (est.)` when it probably
   waits, and its own latest tool call, dimmed once it is older than a minute and left
-  out after ten minutes. With nothing working the map says `No agents working`, the
-  counts and `View: List shows them`.
+  out after ten minutes. The `View: Map` and `Refresh` buttons sit right under it,
+  above the cards. With nothing working the map says `No agents working`, the counts
+  and `View: List shows them`.
 - Each working agent gets a compact card. Its title is a headline, the agent type,
   the status with its elapsed time and an `open` button. The headline is the agent's
   name; without a name it is what the agent was asked to do (the Agent call's short
-  description); without either it is the type. The type is left out when the title
-  would not fit with it. Below the title come the task on one line (left out when the
-  headline is already the description), the latest tool call (`doing:`, with the time
-  since it started), `waits on <agent> (est.)` when it probably waits, and the last
-  message it sent. When agents without a name or description share a prompt preamble,
-  the task line drops the leading words they all share and shows the rest after `…`.
+  description, unless it only repeats the type); without either it is the type. When
+  two drawn cards would have the same headline, both get the last four characters of
+  their agent id, for example `Discovery (a3f9)`. The type shows on every card or, when
+  any title would not fit with it, on none. Below the title come the task on one line
+  (left out when the headline is a description no other card shares), the latest tool
+  call (`doing:`, with the time since it started), `waits on <agent> (est.)` when it
+  probably waits, and the last message it sent. Waits and messages name their target
+  by the headline its card shows. When agents without a name or description, or
+  agents sharing one description, also share a prompt preamble, the task line drops the
+  leading words they all share and shows the rest after `…`. That shared part is worked
+  out over the cards drawn now, so it can change as agents start and finish.
 - Cards sit in a grid of equal widths: one per line below 120 columns, two from 120
   and three from 180. A working child follows its working parent with `└` on its title
   row; in the one-column layout it is also indented. Every working card is drawn. When
@@ -38,7 +44,8 @@ Code 2.1.300 or later.
   `running`; one with an estimated wait as `waiting (est.)`; then `idle` and `done`.
 - `View: Map` / `View: List` (hotkey `m`) switches to the list: one line per agent,
   finished ones included, in a delegation tree with status, elapsed time and
-  `waits on <agent> (est.)`. A foreground agent started by the main loop shows as
+  `waits on <agent> (est.)`; it names an agent by its name or type, not by its
+  description. A foreground agent started by the main loop shows as
   `main waits on <agent> (est.)` and counts in the waiting total. In both views an
   agent's `open` button opens its conversation.
 - Notices appear when an agent finishes or fails and when a wait lasts longer than
@@ -50,10 +57,11 @@ and two finished ones. Rendered from the map code:
 
 ```
 main · 3 working · 2 done
-main waits on code-reviewer (est.)
+main waits on Review view.ts for width bugs (est.)
 doing: Agent Review view.ts for width bugs (50s ago)
+m: View: Map  r: Refresh
 ╭─────────────────────────────────────────────────────────╮ ╭─────────────────────────────────────────────────────────╮
-│ ● lead · team-lead · running 80s open                   │ │ └ ● tester · general-purpose · running 60s open         │
+│ ● lead · running 80s open                               │ │ └ ● tester · running 60s open                           │
 │ task: Coordinate the map review and merge the findings  │ │ task: Run the unit tests and report failures            │
 │ doing: SendMessage tester: run only tests/vi… (40s ago) │ │ doing: Bash claude plugin test plugins/agent-… (8s ago) │
 │ ⏳ waits on tester (est.)                               │ │                                                         │
@@ -64,7 +72,6 @@ doing: Agent Review view.ts for width bugs (50s ago)
 │ doing: Read agent-dash/hooks/lib/view.ts (4s ago)       │
 ╰─────────────────────────────────────────────────────────╯
 waits are estimates from spawn and message events
-m: View: Map  r: Refresh
 ```
 
 With nothing working, the map keeps only the counts:
