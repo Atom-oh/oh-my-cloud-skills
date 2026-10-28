@@ -21,6 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an observed `git -C <dir>` or `cd <dir> &&` push instead of only the session
   directory, and its status text no longer repeats the `pr-dash:` prefix that the
   harness already adds.
+### Changed
+
+- agent-dash map cards are headlined by what the agent does: its name, else the Agent
+  call's description, else its type. The task line shows only when the headline is not
+  the description, and for agents without a name or description it drops the prompt
+  preamble they all share. Cards sit in a grid (two per line from 120 columns, three
+  from 180) with the child after its parent; every working card is drawn and the
+  focused pane scrolls instead of collapsing into `+N more`. The main loop's own latest
+  call dims after a minute and is hidden after ten. With `showDelegation` off the
+  headline never shows a description. Waits and messages in the map name their target
+  by its card headline; cards that share a headline get an id suffix such as
+  `(a3f9)`, and those sharing a description keep their distinguishing task line. A
+  description equal to the type counts as absent, the type shows on every card or on
+  none, and the view buttons sit under the main line above the cards.
 
 ## [3.0.7] - 2026-10-28
 

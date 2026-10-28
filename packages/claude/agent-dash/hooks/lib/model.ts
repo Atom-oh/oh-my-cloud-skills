@@ -449,6 +449,31 @@ export function recordTask(
   if (info.model !== undefined) d.model = info.model
 }
 
+// The shortest shared run of leading words worth removing from sibling tasks.
+const COMMON_MIN_WORDS = 4
+
+/**
+ * The part of each task that tells it apart from the others: with two or more tasks
+ * that share a leading run of at least four whole words, that run is removed and the
+ * trimmed remainder is prefixed with `…`. A single task, a shorter or absent run, and a
+ * task that would be left empty keep their full text, so the result is never an empty
+ * string for a non-empty task. Words split on whitespace; Hangul works the same way.
+ */
+export function distinctTasks(tasks: string[]): string[] {
+  const words = tasks.map((t) => t.trim().split(/\s+/).filter((w) => w !== ''))
+  if (words.length < 2) return tasks.map((t) => t.trim())
+  let run = Math.min(...words.map((w) => w.length))
+  for (let i = 0; i < run; i++) {
+    const w = words[0][i]
+    if (words.some((ws) => ws[i] !== w)) run = i
+  }
+  if (run < COMMON_MIN_WORDS) return tasks.map((t) => t.trim())
+  return words.map((ws, i) => {
+    const rest = ws.slice(run).join(' ')
+    return rest === '' ? tasks[i].trim() : '…' + rest
+  })
+}
+
 /** Drops the detail of every agent that is no longer listed. */
 export function pruneDetails(details: Map<string, AgentDetail>, liveIds: Set<string>): void {
   for (const id of [...details.keys()]) if (!liveIds.has(id)) details.delete(id)
