@@ -1,10 +1,10 @@
 {
   "host": "claude",
   "plugin": "agent-dash",
-  "version": "3.0.7",
+  "version": "3.0.8",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "6361b8d8f052f34d759b96a8348f9dd0bbae5899d7402a245292423cd47dffac",
+      "sha256": "59e0ae3e3ab498ee0ce228e3451b53c5bced90358247317c333f8f6d913a5394",
       "executable": false
     },
     ".gitignore": {

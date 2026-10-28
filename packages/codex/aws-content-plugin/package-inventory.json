@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "aws-content-plugin",
-  "version": "3.0.7",
+  "version": "3.0.8",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "6e53ed401fcef905a75363bcef1bdcaec17b852f672de9ff682a07f3c24317e1",
+      "sha256": "cd42bb0fb3b57e7f424547b548e22ed9b9ab7e7e10c367f7e763e05a5244824f",
       "executable": false
     },
     "CLAUDE.md": {
