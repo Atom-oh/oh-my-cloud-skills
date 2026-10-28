@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.8] - 2026-10-28
+
 ### Fixed
 
 - Stop pr-dash from raising a `failed to run git: fatal: not a git repository`
@@ -800,7 +802,8 @@ migration of configurations that selected it. All eight plugins share this versi
 - Add AWS Architecture Icons integration (4,224 files)
 - Add presenter view with speaker notes
 
-[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.7...HEAD
+[Unreleased]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.8...HEAD
+[3.0.8]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.7...v3.0.8
 [3.0.7]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.6...v3.0.7
 [3.0.6]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.5...v3.0.6
 [3.0.5]: https://github.com/Atom-oh/oh-my-cloud-skills/compare/v3.0.4...v3.0.5

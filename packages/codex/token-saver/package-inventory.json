@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "token-saver",
-  "version": "3.0.7",
+  "version": "3.0.8",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "166416d4ea8d843bbb82cf7942eacffb0054a7bdc80e27a36752e086f717f4fc",
+      "sha256": "e1c8c12c966a257a52cb7b9ed9051ac948ddd8932a70007d018f930e8e8d309b",
       "executable": false
     },
     "CLAUDE.md": {
