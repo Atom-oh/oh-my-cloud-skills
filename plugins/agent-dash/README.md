@@ -62,8 +62,12 @@ Code 2.1.300 or later.
   or `host fallback` note whose own command names the task's path. Commands are read
   as shell words, so a command that only mentions kiro (in quotes, an argument, an
   echoed string or a heredoc) records nothing, and nothing is polled. A run in the main
-  loop stops counting as active after ten minutes without a step. With
-  `showDelegation` off the card shows only the counts, never the task ids.
+  loop stops counting as active after ten minutes without a step; while it is active,
+  the pane draws the main line and its task lines even with no agent listed. These are
+  heuristics: a step counts when its call starts, so a step that then fails still
+  advances the task, and a phase step such as `capture-diff` applies to every task path
+  its whole command names. With `showDelegation` off the card shows only the counts,
+  never the task ids.
 - Notices appear when an agent finishes or fails and when a wait lasts longer than
   `longWaitMs` (120000 by default).
 

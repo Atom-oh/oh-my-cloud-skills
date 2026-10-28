@@ -189,8 +189,12 @@ export function buildPane(
   if (full.view === 'map') return buildMap(els, tree, waits, details, sends, full)
   const buttons = viewButtons(els, full)
   const lines = flatten(tree)
+  const mainKiro = details.get('main')?.kiro ?? []
+  // A main-loop Kiro run with no agent listed still gets its own line.
+  const mainRun = kiroMainActive(mainKiro, opts.nowMs)
   if (lines.length === 0) {
-    return els.Box({ flexDirection: 'column', children: [els.Text({ children: ['No agents yet'], dimColor: true }), buttons] })
+    const first = mainRun ? els.Text({ children: ['main · ' + kiroShort(mainKiro)], bold: true, wrap: 'truncate-end' }) : els.Text({ children: ['No agents yet'], dimColor: true })
+    return els.Box({ flexDirection: 'column', children: [first, buttons] })
   }
 
   const rows = lines.map((l) => l.row)
@@ -597,7 +601,8 @@ export function buildMap(
   const working = flatten(buildTree(rows.filter(isWorking)))
   const p: Painter = { els, rows, lines: all, opts, names: mapNames(rows, working, details, opts.showDelegation) }
   const children: unknown[] = []
-  if (working.length === 0) {
+  // A main-loop Kiro run keeps the main line and its task lines with no agent working.
+  if (working.length === 0 && !kiroMainActive(details.get('main')?.kiro ?? [], opts.nowMs)) {
     children.push(text(p, 'No agents working', { dimColor: true }))
     if (rows.length > 0) {
       const width = Math.max(1, opts.columns)

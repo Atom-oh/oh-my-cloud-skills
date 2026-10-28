@@ -482,15 +482,18 @@ export function distinctTasks(tasks: string[]): string[] {
 export type KiroPhase = 'implementing' | 'captured' | 'scope-checked' | 'verifying'
 export type KiroState = 'running' | 'verifying' | 'retrying' | 'done' | 'fallback'
 
-/** One Kiro task: `attempt` is 1 for the first run and grows by one per retry. */
-export type KiroTask = { id: string; phase: KiroPhase; attempt: number; state: KiroState; startedAt: number; lastActivity: number }
+/**
+ * One Kiro task: `attempt` is 1 for the first run and grows by one per retry. `key` is a
+ * hash of the raw slug that matches later steps; `id` is the redacted, clipped label.
+ */
+export type KiroTask = { key: string; id: string; phase: KiroPhase; attempt: number; state: KiroState; startedAt: number; lastActivity: number }
 
 export type KiroEvent =
-  | { kind: 'run'; id: string; attempt?: number }
-  | { kind: 'retry'; id: string; attempt: number }
-  | { kind: 'phase'; id: string; phase: KiroPhase }
-  | { kind: 'fallback'; id: string }
-  | { kind: 'done'; id: string }
+  | { kind: 'run'; key: string; label: string; attempt?: number }
+  | { kind: 'retry'; key: string; attempt: number }
+  | { kind: 'phase'; key: string; phase: KiroPhase }
+  | { kind: 'fallback'; key: string }
+  | { kind: 'done'; key: string }
   | { kind: 'commit' }
 
 const KIRO_TASKS_MAX = 50
@@ -684,19 +687,47 @@ function taskPart(value: string, target: boolean): string | undefined {
   return /^[A-Za-z0-9_.-]{1,80}$/.test(rest) ? rest : undefined
 }
 
-/** The longest known id a `task-` part names: `2-r1.patch` names task 2. */
-function knownIn(part: string, ids: string[]): string | undefined {
-  let best: string | undefined
-  for (const id of ids) {
-    const hit = part === id || part.startsWith(id + '-') || part.startsWith(id + '.')
-    if (hit && (best === undefined || id.length > best.length)) best = id
+/**
+ * The match key of a raw task slug: a 53-bit string hash, so later steps find the task
+ * even when its label was clipped or redacted, without keeping the raw slug.
+ */
+export function kiroKey(raw: string): string {
+  let h1 = 0xdeadbeef ^ raw.length
+  let h2 = 0x41c6ce57 ^ raw.length
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw.charCodeAt(i)
+    h1 = Math.imul(h1 ^ c, 2654435761)
+    h2 = Math.imul(h2 ^ c, 1597334677)
   }
-  return best
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36)
 }
 
-/** The id a stored task carries for a raw slug: redacted and clipped like any stored text. */
-function storedId(raw: string): string {
+/** The known key a `task-` part names, longest slug first: `2-r1.patch` names task 2. */
+function knownIn(part: string, keys: string[]): string | undefined {
+  const cuts = [part.length]
+  for (let i = part.length - 1; i > 0; i--) if (part[i] === '-' || part[i] === '.') cuts.push(i)
+  for (const cut of cuts) {
+    const key = kiroKey(part.slice(0, cut))
+    if (keys.includes(key)) return key
+  }
+  return undefined
+}
+
+/** The label a stored task shows for a raw slug: redacted and clipped like any stored text. */
+function kiroLabel(raw: string): string {
   return summarizeText(raw, KIRO_ID_MAX)
+}
+
+/** A helper script at the command position, directly or after `python`/`python3` and its flags. */
+function scriptOf(words: string[]): { name: string; args: string[] } {
+  let i = 0
+  if (/^python(?:3(?:\.\d+)?)?$/.test(base(words[0]))) {
+    i = 1
+    while (i < words.length && words[i].startsWith('-')) i += 1
+  }
+  return { name: base(words[i]), args: words.slice(i + 1) }
 }
 
 /**
@@ -706,16 +737,17 @@ function storedId(raw: string): string {
  * own redirect target is `task-<id>-attempt-<n>.log`, else whose last `cd` went to
  * `.../task-<id>`; two runs of one id keep the highest attempt. A retry prompt file
  * `task-<id>-retry-<k>`, `worktree.py capture-diff`, `scope_guard.py` and `git apply`
- * (without `--check`) refer to the known or running ids that any task path of the command
- * names; `worktree.py remove` and a `claude`/`host` fallback phrase only to the task paths
- * of their own simple command; `git commit` to none. `for` variables and plain assignments
- * expand once. Only the first 4,000 characters are read.
+ * (without `--check`) refer to the known or running tasks that any task path of the
+ * command names; `worktree.py remove` and a `claude`/`host` fallback phrase only to the
+ * task paths of their own simple command; `git commit` to none. A helper script counts
+ * only at the command position. `known` and the events carry `kiroKey` keys. `for`
+ * variables and plain assignments expand once. Only the first 4,000 characters are read.
  */
 export function parseKiroCommand(command: string, known: string[]): KiroEvent[] {
   const cmds = simpleCommands(tokenize(maskHeredocs(command.slice(0, INPUT_MAX))))
   const vars: Vars = { loops: new Map(), values: new Map() }
   const found: Array<{ at: number; ev: KiroEvent }> = []
-  const runs = new Map<string, { at: number; attempt?: number }>()
+  const runs = new Map<string, { at: number; label: string; attempt?: number }>()
   // The `task-` parts each simple command's words and redirect targets name, expanded.
   const parts: string[][] = []
   let lastCd: string[] = []
@@ -749,35 +781,37 @@ export function parseKiroCommand(command: string, known: string[]): KiroEvent[] 
     const logs = targets.map((p) => ATTEMPT_LOG.exec(p)).filter((m): m is RegExpExecArray => m !== null)
     const runsHere = logs.length > 0 ? logs.map((m) => ({ id: m[1], attempt: Number(m[2]) + 1 })) : lastCd.map((id) => ({ id, attempt: undefined }))
     for (const r of runsHere) {
-      const sid = storedId(r.id)
-      const have = runs.get(sid)
-      if (have === undefined) runs.set(sid, { at: c.at, attempt: r.attempt })
+      const key = kiroKey(r.id)
+      const have = runs.get(key)
+      if (have === undefined) runs.set(key, { at: c.at, label: kiroLabel(r.id), attempt: r.attempt })
       else if (r.attempt !== undefined && (have.attempt === undefined || r.attempt > have.attempt)) have.attempt = r.attempt
     }
   }
-  for (const [id, r] of runs) found.push({ at: r.at, ev: r.attempt === undefined ? { kind: 'run', id } : { kind: 'run', id, attempt: r.attempt } })
+  for (const [key, r] of runs) {
+    found.push({ at: r.at, ev: r.attempt === undefined ? { kind: 'run', key, label: r.label } : { kind: 'run', key, label: r.label, attempt: r.attempt } })
+  }
 
-  const ids = [...new Set([...known, ...runs.keys()])]
-  const refs = (list: string[]) => [...new Set(list.map((p) => knownIn(p, ids)).filter((x): x is string => x !== undefined))]
+  const keys = [...new Set([...known, ...runs.keys()])]
+  const refs = (list: string[]) => [...new Set(list.map((p) => knownIn(p, keys)).filter((x): x is string => x !== undefined))]
   const all = refs(parts.flat())
   cmds.forEach((c, i) => {
     for (const p of parts[i]) {
       const m = RETRY_FILE.exec(p)
-      if (m !== null && ids.includes(storedId(m[1]))) found.push({ at: c.at, ev: { kind: 'retry', id: storedId(m[1]), attempt: Number(m[2]) + 1 } })
+      if (m !== null && keys.includes(kiroKey(m[1]))) found.push({ at: c.at, ev: { kind: 'retry', key: kiroKey(m[1]), attempt: Number(m[2]) + 1 } })
     }
     const words = commandWords(c)
-    const helper = words.findIndex((w) => base(w) === 'worktree.py')
-    const sub = helper < 0 ? undefined : words[helper + 1]
+    const script = scriptOf(words)
+    const sub = script.name === 'worktree.py' ? script.args[0] : undefined
     const git = gitSub(words)
-    const add = (list: string[], make: (id: string) => KiroEvent) => {
-      for (const id of list) found.push({ at: c.at, ev: make(id) })
+    const add = (list: string[], make: (key: string) => KiroEvent) => {
+      for (const key of list) found.push({ at: c.at, ev: make(key) })
     }
-    if (sub === 'capture-diff') add(all, (id) => ({ kind: 'phase', id, phase: 'captured' }))
-    if (words.some((w) => base(w) === 'scope_guard.py')) add(all, (id) => ({ kind: 'phase', id, phase: 'scope-checked' }))
-    if (git === 'apply' && !words.includes('--check')) add(all, (id) => ({ kind: 'phase', id, phase: 'verifying' }))
+    if (sub === 'capture-diff') add(all, (key) => ({ kind: 'phase', key, phase: 'captured' }))
+    if (script.name === 'scope_guard.py') add(all, (key) => ({ kind: 'phase', key, phase: 'scope-checked' }))
+    if (git === 'apply' && !words.includes('--check')) add(all, (key) => ({ kind: 'phase', key, phase: 'verifying' }))
     if (git === 'commit') found.push({ at: c.at, ev: { kind: 'commit' } })
-    if (sub === 'remove') add(refs(parts[i]), (id) => ({ kind: 'done', id }))
-    if (!READERS.includes(base(words[0])) && FALLBACK.test(words.join(' '))) add(refs(parts[i]), (id) => ({ kind: 'fallback', id }))
+    if (sub === 'remove') add(refs(parts[i]), (key) => ({ kind: 'done', key }))
+    if (!READERS.includes(base(words[0])) && FALLBACK.test(words.join(' '))) add(refs(parts[i]), (key) => ({ kind: 'fallback', key }))
   })
 
   return found.sort((a, b) => a.at - b.at).map((f) => f.ev)
@@ -796,7 +830,7 @@ function finished(t: KiroTask): boolean {
  */
 export function applyKiro(tasks: KiroTask[], events: KiroEvent[], nowMs: number): KiroTask[] {
   let out = tasks.map((t) => ({ ...t }))
-  const find = (id: string) => out.find((t) => t.id === id)
+  const find = (key: string) => out.find((t) => t.key === key)
   for (const ev of events) {
     if (ev.kind === 'commit') {
       for (const t of out) {
@@ -806,7 +840,7 @@ export function applyKiro(tasks: KiroTask[], events: KiroEvent[], nowMs: number)
       }
       continue
     }
-    let t = find(ev.id)
+    let t = find(ev.key)
     if (ev.kind === 'run') {
       // A finished task only starts over from its first attempt; a fallback is final.
       if (t !== undefined && finished(t) && (ev.attempt ?? 1) !== 1) continue
@@ -818,7 +852,7 @@ export function applyKiro(tasks: KiroTask[], events: KiroEvent[], nowMs: number)
       }
       if (t === undefined) {
         if (out.length >= KIRO_TASKS_MAX) continue
-        out.push({ id: ev.id, phase: 'implementing', attempt: ev.attempt ?? 1, state: 'running', startedAt: nowMs, lastActivity: nowMs })
+        out.push({ key: ev.key, id: ev.label, phase: 'implementing', attempt: ev.attempt ?? 1, state: 'running', startedAt: nowMs, lastActivity: nowMs })
         continue
       }
       if (ev.attempt !== undefined) t.attempt = ev.attempt
@@ -852,7 +886,7 @@ export function applyKiro(tasks: KiroTask[], events: KiroEvent[], nowMs: number)
  */
 export function recordKiro(details: Map<string, AgentDetail>, agentId: string, command: string, nowMs: number, maxAgents = 200): boolean {
   const have = details.get(agentId)?.kiro ?? []
-  const events = parseKiroCommand(command, have.map((t) => t.id))
+  const events = parseKiroCommand(command, have.map((t) => t.key))
   if (events.length === 0) return false
   if (have.length === 0 && !events.some((e) => e.kind === 'run')) return false
   const next = applyKiro(have, events, nowMs)
@@ -891,16 +925,16 @@ export function kiroShort(tasks: KiroTask[]): string {
   return `kiro ${c.done}/${c.total}`
 }
 
-/**
- * The status line's `kiro n/m`, summed over working agents with Kiro tasks and the main
- * loop while `kiroMainActive`; empty when no delegation run is active.
- */
 /** Whether a main-loop run is active: an unfinished task and a step within `KIRO_STALE_MS`. */
 export function kiroMainActive(tasks: KiroTask[], nowMs: number): boolean {
   if (!tasks.some((t) => !finished(t))) return false
   return nowMs - Math.max(...tasks.map((t) => t.lastActivity)) <= KIRO_STALE_MS
 }
 
+/**
+ * The status line's `kiro n/m`, summed over working agents with Kiro tasks and the main
+ * loop while `kiroMainActive`; empty when no delegation run is active.
+ */
 export function kiroFragment(rows: AgentRow[], details: Map<string, AgentDetail>, nowMs: number): string {
   let done = 0
   let total = 0

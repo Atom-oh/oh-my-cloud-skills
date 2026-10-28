@@ -1,6 +1,6 @@
 import { expect, test, describe } from 'claude-code/testing'
 import { row } from './fixtures/agents.ts'
-import { KIRO_STALE_MS, applyKiro, expandWord, buildTree, kiroCounts, kiroFragment, kiroShort, kiroSummary, parseKiroCommand, recordKiro } from '../hooks/lib/model.ts'
+import { KIRO_STALE_MS, applyKiro, expandWord, kiroKey, buildTree, kiroCounts, kiroFragment, kiroShort, kiroSummary, parseKiroCommand, recordKiro } from '../hooks/lib/model.ts'
 import type { AgentDetail, KiroTask } from '../hooks/lib/model.ts'
 import { buildMap, buildPane, cellWidth } from '../hooks/lib/view.ts'
 
@@ -9,27 +9,30 @@ const RUN = (id: string, attempt: number) =>
   `cd "/w/.cache/kiro-delegate/demo/task-${id}" && timeout 600 kiro-cli chat "Read the prompt file and do it" --no-interactive --agent kiro-implementer > "$RUN_DIR/task-${id}-attempt-${attempt}.log" 2>&1`
 const RETRY = (id: string, k: number) => `python3 "$SK/prepare_worktree.py" write-prompt --worktree "$WT" < "$RUN_DIR/task-${id}-retry-${k}.txt"`
 
+const keys = (...ids: string[]) => ids.map(kiroKey)
+const parse = (c: string, known: string[]) => parseKiroCommand(c, known).map(({ key, ...rest }: any) => rest)
+
 function feed(commands: string[], nowMs = 1000): KiroTask[] {
   let tasks: KiroTask[] = []
-  for (const c of commands) tasks = applyKiro(tasks, parseKiroCommand(c, tasks.map((t) => t.id)), nowMs)
+  for (const c of commands) tasks = applyKiro(tasks, parseKiroCommand(c, tasks.map((t) => t.key)), nowMs)
   return tasks
 }
 
 describe('parseKiroCommand', () => {
   test('a headless run names its task from the attempt log, attempt counted from 1', () => {
-    expect(parseKiroCommand(RUN('2', 0), [])).toEqual([{ kind: 'run', id: '2', attempt: 1 }])
-    expect(parseKiroCommand(RUN('auth-api', 1), [])).toEqual([{ kind: 'run', id: 'auth-api', attempt: 2 }])
+    expect(parse(RUN('2', 0), [])).toEqual([{ kind: 'run', label: '2', attempt: 1 }])
+    expect(parse(RUN('auth-api', 1), [])).toEqual([{ kind: 'run', label: 'auth-api', attempt: 2 }])
   })
 
   test('without an attempt log the task directory names the task', () => {
-    expect(parseKiroCommand('cd /w/kiro-delegate/r1/task-7 && kiro-cli chat "go" --no-interactive', [])).toEqual([{ kind: 'run', id: '7' }])
+    expect(parse('cd /w/kiro-delegate/r1/task-7 && kiro-cli chat "go" --no-interactive', [])).toEqual([{ kind: 'run', label: '7' }])
   })
 
   test('a loop over task numbers registers each one', () => {
     const c = 'for n in 1 3; do (cd "$B/task-$n" && timeout 300 kiro-cli chat "go" > "$R/task-$n-attempt-0.log" 2>&1) & done; wait'
-    expect(parseKiroCommand(c, [])).toEqual([
-      { kind: 'run', id: '1', attempt: 1 },
-      { kind: 'run', id: '3', attempt: 1 },
+    expect(parse(c, [])).toEqual([
+      { kind: 'run', label: '1', attempt: 1 },
+      { kind: 'run', label: '3', attempt: 1 },
     ])
   })
 
@@ -52,15 +55,15 @@ describe('parseKiroCommand', () => {
 
 describe('parseKiroCommand: review cases', () => {
   test('only a real redirect target names a task, quoted or not; an echoed string does not', () => {
-    expect(parseKiroCommand('kiro-cli chat x > "$R/task-a-attempt-0.log"; echo "> task-b-attempt-0.log"', [])).toEqual([{ kind: 'run', id: 'a', attempt: 1 }])
-    expect(parseKiroCommand('kiro-cli chat x > "/tmp/my dir/task-a-attempt-0.log" 2>&1', [])).toEqual([{ kind: 'run', id: 'a', attempt: 1 }])
-    expect(parseKiroCommand("kiro-cli chat 'go > /r/task-c-attempt-0.log'", [])).toEqual([])
-    expect(parseKiroCommand('echo "cd /w/task-d && kiro-cli chat go"', [])).toEqual([])
+    expect(parse('kiro-cli chat x > "$R/task-a-attempt-0.log"; echo "> task-b-attempt-0.log"', [])).toEqual([{ kind: 'run', label: 'a', attempt: 1 }])
+    expect(parse('kiro-cli chat x > "/tmp/my dir/task-a-attempt-0.log" 2>&1', [])).toEqual([{ kind: 'run', label: 'a', attempt: 1 }])
+    expect(parse("kiro-cli chat 'go > /r/task-c-attempt-0.log'", [])).toEqual([])
+    expect(parse('echo "cd /w/task-d && kiro-cli chat go"', [])).toEqual([])
   })
 
   test('two runs of one id in a command keep the highest attempt', () => {
     const c = 'kiro-cli chat x > /r/task-a-attempt-1.log 2>&1; kiro-cli chat x > /r/task-a-attempt-2.log 2>&1'
-    expect(parseKiroCommand(c, [])).toEqual([{ kind: 'run', id: 'a', attempt: 3 }])
+    expect(parse(c, [])).toEqual([{ kind: 'run', label: 'a', attempt: 3 }])
   })
 
   test('git commit-tree is not a commit', () => {
@@ -70,11 +73,11 @@ describe('parseKiroCommand: review cases', () => {
 
   test('fallback and remove act only on the task path of their own command', () => {
     let tasks = feed([RUN('1', 0), RUN('2', 0)])
-    tasks = applyKiro(tasks, parseKiroCommand('echo "task-2: claude fallback"', ['1', '2']), 2000)
+    tasks = applyKiro(tasks, parseKiroCommand('echo "task-2: claude fallback"', keys('1', '2')), 2000)
     expect(tasks[1].state).toBe('running')
-    tasks = applyKiro(tasks, parseKiroCommand('echo "claude fallback" > "$R/task-2-fallback.txt"', ['1', '2']), 2000)
+    tasks = applyKiro(tasks, parseKiroCommand('echo "claude fallback" > "$R/task-2-fallback.txt"', keys('1', '2')), 2000)
     expect(tasks[1].state).toBe('fallback')
-    tasks = applyKiro(tasks, parseKiroCommand('python3 "$SK/worktree.py" remove "$B/task-1"; echo "removed task-2 too"', ['1', '2']), 3000)
+    tasks = applyKiro(tasks, parseKiroCommand('python3 "$SK/worktree.py" remove "$B/task-1"; echo "removed task-2 too"', keys('1', '2')), 3000)
     expect(tasks.map((t) => t.state)).toEqual(['done', 'fallback'])
     // Reading a log that mentions the phrase is not a fallback.
     tasks = feed([RUN('3', 0), 'grep -n "host fallback" "$R/task-3-attempt-0.log"'])
@@ -82,10 +85,10 @@ describe('parseKiroCommand: review cases', () => {
   })
 
   test('a long command is read up to its first 4,000 characters and stays fast', () => {
-    expect(parseKiroCommand(RUN('1', 0) + '; echo ' + 'x'.repeat(20_000), [])).toEqual([{ kind: 'run', id: '1', attempt: 1 }])
-    expect(parseKiroCommand('echo ' + 'x'.repeat(5_000) + '; ' + RUN('1', 0), [])).toEqual([])
+    expect(parse(RUN('1', 0) + '; echo ' + 'x'.repeat(20_000), [])).toEqual([{ kind: 'run', label: '1', attempt: 1 }])
+    expect(parse('echo ' + 'x'.repeat(5_000) + '; ' + RUN('1', 0), [])).toEqual([])
     const start = Date.now()
-    parseKiroCommand('"'.repeat(3) + '\\"'.repeat(20_000) + " '" + 'a'.repeat(20_000), ['1'])
+    parseKiroCommand('"'.repeat(3) + '\\"'.repeat(20_000) + " '" + 'a'.repeat(20_000), keys('1'))
     expect(Date.now() - start).toBeLessThan(500)
   })
 })
@@ -115,39 +118,75 @@ describe('expandWord', () => {
   })
 })
 
+describe('review round 3', () => {
+  test('ids longer than the label or masked by redaction still advance', () => {
+    const long = 'a'.repeat(30) + '-' + 'b'.repeat(30)
+    const secret = 'Ab3dEf9h1jKlMn0pQr5tUvWx7zAb3dEf9h1j'
+    for (const id of [long, secret]) {
+      const tasks = feed([RUN(id, 0), `python3 "$SK/worktree.py" capture-diff "$B/task-${id}" > "$R/task-${id}.patch"`, RETRY(id, 1)])
+      expect(tasks.length).toBe(1)
+      expect(tasks[0]).toMatchObject({ phase: 'captured', attempt: 2, state: 'retrying' })
+      expect(tasks[0].id.includes(secret)).toBe(false)
+    }
+  })
+
+  test('two masked ids stay two tasks', () => {
+    const a = 'Ab3dEf9h1jKlMn0pQr5tUvWx7zAb3dEf9h1j'
+    const b = 'Zz9yXx8wVv7uTt6sRr5qPp4oNn3mLl2kJj1i'
+    expect(feed([RUN(a, 0), RUN(b, 0)]).length).toBe(2)
+  })
+
+  test('helper scripts count only at the command position', () => {
+    let tasks = feed([RUN('1', 0)])
+    for (const c of [
+      'grep -n scope_guard.py "$R/task-1.patch"',
+      'echo worktree.py remove "$B/task-1"',
+      'cat worktree.py capture-diff "$B/task-1"',
+      'ls "$SK/worktree.py" "$B/task-1"',
+    ]) {
+      tasks = applyKiro(tasks, parseKiroCommand(c, tasks.map((t) => t.key)), 2000)
+      expect(tasks[0]).toMatchObject({ phase: 'implementing', state: 'running' })
+    }
+    tasks = applyKiro(tasks, parseKiroCommand('python3 -I "$SK/scope_guard.py" --plan p -- "$R/task-1.patch"', tasks.map((t) => t.key)), 3000)
+    expect(tasks[0].phase).toBe('scope-checked')
+    tasks = applyKiro(tasks, parseKiroCommand('"$SK/worktree.py" remove "$B/task-1"', tasks.map((t) => t.key)), 4000)
+    expect(tasks[0].state).toBe('done')
+  })
+})
+
 describe('applyKiro', () => {
   test('a later-attempt run never reopens a finished task', () => {
     let tasks = feed([RUN('1', 0), 'echo claude fallback > "$R/task-1-note.txt"'])
     expect(tasks[0].state).toBe('fallback')
-    tasks = applyKiro(tasks, parseKiroCommand(RUN('1', 2), ['1']), 5000)
+    tasks = applyKiro(tasks, parseKiroCommand(RUN('1', 2), keys('1')), 5000)
     expect(tasks[0]).toMatchObject({ state: 'fallback', attempt: 1 })
   })
 
   test('retry prompt files count retries and the next run continues that attempt', () => {
     let tasks = feed([RUN('2', 0), RETRY('2', 1)], 2000)
     expect(tasks[0]).toMatchObject({ id: '2', attempt: 2, state: 'retrying' })
-    tasks = applyKiro(tasks, parseKiroCommand(RUN('2', 1), ['2']), 3000)
+    tasks = applyKiro(tasks, parseKiroCommand(RUN('2', 1), keys('2')), 3000)
     expect(tasks[0]).toMatchObject({ attempt: 2, state: 'running', phase: 'implementing', lastActivity: 3000 })
-    tasks = applyKiro(tasks, parseKiroCommand(RETRY('2', 2), ['2']), 4000)
+    tasks = applyKiro(tasks, parseKiroCommand(RETRY('2', 2), keys('2')), 4000)
     expect(tasks[0]).toMatchObject({ attempt: 3, state: 'retrying' })
     // Reading an old retry file again does not move the count back.
-    tasks = applyKiro(tasks, parseKiroCommand(RETRY('2', 1), ['2']), 5000)
+    tasks = applyKiro(tasks, parseKiroCommand(RETRY('2', 1), keys('2')), 5000)
     expect(tasks[0].attempt).toBe(3)
   })
 
   test('capture, scope check, apply and commit move a task through its phases', () => {
     let tasks = feed([RUN('1', 0), RUN('2', 0)])
-    tasks = applyKiro(tasks, parseKiroCommand('python3 "$SK/worktree.py" capture-diff "$B/task-1" > "$R/task-1.patch"', ['1', '2']), 2000)
+    tasks = applyKiro(tasks, parseKiroCommand('python3 "$SK/worktree.py" capture-diff "$B/task-1" > "$R/task-1.patch"', keys('1', '2')), 2000)
     expect(tasks.map((t) => t.phase)).toEqual(['captured', 'implementing'])
-    tasks = applyKiro(tasks, parseKiroCommand('python3 "$SK/scope_guard.py" --plan "$PLAN" -- $(grep "^diff" "$R/task-1.patch")', ['1', '2']), 3000)
+    tasks = applyKiro(tasks, parseKiroCommand('python3 "$SK/scope_guard.py" --plan "$PLAN" -- $(grep "^diff" "$R/task-1.patch")', keys('1', '2')), 3000)
     expect(tasks[0]).toMatchObject({ phase: 'scope-checked', state: 'running' })
-    tasks = applyKiro(tasks, parseKiroCommand('git apply --check "$R/task-1.patch"', ['1', '2']), 3500)
+    tasks = applyKiro(tasks, parseKiroCommand('git apply --check "$R/task-1.patch"', keys('1', '2')), 3500)
     expect(tasks[0].state).toBe('running')
-    tasks = applyKiro(tasks, parseKiroCommand('git apply --check "$R/task-1.patch" && git apply "$R/task-1.patch"', ['1', '2']), 4000)
+    tasks = applyKiro(tasks, parseKiroCommand('git apply --check "$R/task-1.patch" && git apply "$R/task-1.patch"', keys('1', '2')), 4000)
     expect(tasks[0]).toMatchObject({ phase: 'verifying', state: 'verifying' })
-    tasks = applyKiro(tasks, parseKiroCommand('git add -A && git commit -m "wave 1"', ['1', '2']), 5000)
+    tasks = applyKiro(tasks, parseKiroCommand('git add -A && git commit -m "wave 1"', keys('1', '2')), 5000)
     expect(tasks.map((t) => t.state)).toEqual(['done', 'running'])
-    tasks = applyKiro(tasks, parseKiroCommand('python3 "$SK/worktree.py" remove "$B/task-2"', ['1', '2']), 6000)
+    tasks = applyKiro(tasks, parseKiroCommand('python3 "$SK/worktree.py" remove "$B/task-2"', keys('1', '2')), 6000)
     expect(tasks[1].state).toBe('done')
   })
 
@@ -159,9 +198,9 @@ describe('applyKiro', () => {
   test('a fallback to Claude for a task is recorded; reading a log that says fallback is not', () => {
     let tasks = feed([RUN('3', 0), 'grep -i fallback "$R/task-3-attempt-0.log"'])
     expect(tasks[0].state).toBe('running')
-    tasks = applyKiro(tasks, parseKiroCommand('echo "fix loop exhausted, claude fallback" >> "$R/task-3-attempt-0.log"', ['3']), 2000)
+    tasks = applyKiro(tasks, parseKiroCommand('echo "fix loop exhausted, claude fallback" >> "$R/task-3-attempt-0.log"', keys('3')), 2000)
     expect(tasks[0].state).toBe('fallback')
-    tasks = applyKiro(tasks, parseKiroCommand('git apply "$R/task-3.patch" && git commit -m "wave"', ['3']), 3000)
+    tasks = applyKiro(tasks, parseKiroCommand('git apply "$R/task-3.patch" && git commit -m "wave"', keys('3')), 3000)
     expect(tasks[0].state).toBe('fallback')
   })
 
@@ -246,10 +285,10 @@ const delegate = row({ id: 'K', name: 'kiro-delegate', type: 'kiro:kiro-delegate
 const opts = { columns: 100, maxRows: 20, nowMs: NOW, onOpen: () => {}, onRefresh: () => {}, onToggleView: () => {}, showDelegation: true, view: 'map' as const }
 function kiroDetails(): Map<string, AgentDetail> {
   const tasks: KiroTask[] = [
-    { id: '1', phase: 'verifying', attempt: 1, state: 'done', startedAt: NOW - 300_000, lastActivity: NOW - 120_000 },
-    { id: '2', phase: 'implementing', attempt: 2, state: 'running', startedAt: NOW - 252_000, lastActivity: NOW - 10_000 },
-    { id: '3', phase: 'captured', attempt: 2, state: 'retrying', startedAt: NOW - 30_000, lastActivity: NOW - 5_000 },
-    { id: '4', phase: 'implementing', attempt: 3, state: 'fallback', startedAt: NOW - 200_000, lastActivity: NOW - 1_000 },
+    { key: kiroKey('1'), id: '1', phase: 'verifying', attempt: 1, state: 'done', startedAt: NOW - 300_000, lastActivity: NOW - 120_000 },
+    { key: kiroKey('2'), id: '2', phase: 'implementing', attempt: 2, state: 'running', startedAt: NOW - 252_000, lastActivity: NOW - 10_000 },
+    { key: kiroKey('3'), id: '3', phase: 'captured', attempt: 2, state: 'retrying', startedAt: NOW - 30_000, lastActivity: NOW - 5_000 },
+    { key: kiroKey('4'), id: '4', phase: 'implementing', attempt: 3, state: 'fallback', startedAt: NOW - 200_000, lastActivity: NOW - 1_000 },
   ]
   return new Map([['K', { activity: [], kiro: tasks }]])
 }
@@ -311,6 +350,25 @@ describe('kiro rows in the pane', () => {
       const lines = texts(buildPane(els, buildTree([delegate]), [], { ...opts, view }, plain))
       expect(lines.some((l) => l.includes('kiro ') && !l.includes('kiro-delegate'))).toBe(false)
     }
+  })
+
+  test('a main-loop run with no agents draws the main line and its kiro tasks in the map', () => {
+    const main = new Map<string, AgentDetail>([['main', { activity: [], kiro: kiroDetails().get('K')!.kiro }]])
+    const lines = texts(buildMap(els, [], [], main, [], opts))
+    expect(lines.some((l) => l.startsWith('No agents'))).toBe(false)
+    expect(lines.some((l) => l.startsWith('main · '))).toBe(true)
+    expect(lines).toContain('kiro task 2 · running · try 2 · 4m12s')
+    // Stale: the empty state comes back.
+    const later = texts(buildMap(els, [], [], main, [], { ...opts, nowMs: NOW + 700_000 }))
+    expect(later).toContain('No agents working')
+  })
+
+  test('a main-loop run with no agents draws a main line in the list', () => {
+    const main = new Map<string, AgentDetail>([['main', { activity: [], kiro: kiroDetails().get('K')!.kiro }]])
+    const lines = texts(buildPane(els, [], [], { ...opts, view: 'list' }, main))
+    expect(lines).not.toContain('No agents yet')
+    expect(lines).toContain('main · kiro 1/4')
+    expect(texts(buildPane(els, [], [], { ...opts, view: 'list' }, new Map()))).toContain('No agents yet')
   })
 
   test('a finished delegate agent draws no kiro rows', () => {

@@ -16,7 +16,7 @@
       "executable": false
     },
     "README.md": {
-      "sha256": "caebcc9688dca3e4b5da9f09d9dae3e704804b0a09ad1e745ae0bfed38dcc36e",
+      "sha256": "68dc96f7fc26751b9f8c1a1f80596d904232397bb7ec22309ff800206a507c48",
       "executable": false
     },
     "hooks/hooks.json": {
@@ -24,11 +24,11 @@
       "executable": false
     },
     "hooks/lib/model.ts": {
-      "sha256": "38fab3899adbbef7bc0707a7f66dd58cbf6f598b443a8e23a414559a52eedcd4",
+      "sha256": "4a002b3e1930625fde55033d8e12e8f1017beea18069407793e63f7dc0a224c2",
       "executable": false
     },
     "hooks/lib/view.ts": {
-      "sha256": "65b887b86a98541d1cec8cb8456e0fe016d5758cca286b95ab6d307d6a34cfe2",
+      "sha256": "6e70b48daa4610c96e8647c26fdda71323c528999a5ace2fd92a84499ec9b8a2",
       "executable": false
     },
     "hooks/register.ts": {
@@ -48,7 +48,7 @@
       "executable": false
     },
     "tests/kiro.test.ts": {
-      "sha256": "8302df224330af31ab753a17ea7526479e6ca520b5f1a3294a0f8beb14d08103",
+      "sha256": "a4fc067a4a82e17f761668cf8e0b34c51f4da58fd8520238d70b11fa9e154917",
       "executable": false
     },
     "tests/model.test.ts": {
