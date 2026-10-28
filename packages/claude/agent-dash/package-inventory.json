@@ -24,7 +24,7 @@
       "executable": false
     },
     "hooks/lib/model.ts": {
-      "sha256": "d1741140e85e355c10a1937c0d893e0277e476d90cebc554cac1a47f61c7edb2",
+      "sha256": "38fab3899adbbef7bc0707a7f66dd58cbf6f598b443a8e23a414559a52eedcd4",
       "executable": false
     },
     "hooks/lib/view.ts": {
@@ -48,7 +48,7 @@
       "executable": false
     },
     "tests/kiro.test.ts": {
-      "sha256": "e4f91b81e398bf2f73ba8b579de1a7723d087f78f8dc515137c75b76fdec999f",
+      "sha256": "8302df224330af31ab753a17ea7526479e6ca520b5f1a3294a0f8beb14d08103",
       "executable": false
     },
     "tests/model.test.ts": {

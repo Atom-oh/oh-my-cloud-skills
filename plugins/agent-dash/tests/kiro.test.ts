@@ -1,6 +1,6 @@
 import { expect, test, describe } from 'claude-code/testing'
 import { row } from './fixtures/agents.ts'
-import { KIRO_STALE_MS, applyKiro, buildTree, kiroCounts, kiroFragment, kiroShort, kiroSummary, parseKiroCommand, recordKiro } from '../hooks/lib/model.ts'
+import { KIRO_STALE_MS, applyKiro, expandWord, buildTree, kiroCounts, kiroFragment, kiroShort, kiroSummary, parseKiroCommand, recordKiro } from '../hooks/lib/model.ts'
 import type { AgentDetail, KiroTask } from '../hooks/lib/model.ts'
 import { buildMap, buildPane, cellWidth } from '../hooks/lib/view.ts'
 
@@ -87,6 +87,31 @@ describe('parseKiroCommand: review cases', () => {
     const start = Date.now()
     parseKiroCommand('"'.repeat(3) + '\\"'.repeat(20_000) + " '" + 'a'.repeat(20_000), ['1'])
     expect(Date.now() - start).toBeLessThan(500)
+  })
+})
+
+describe('expandWord', () => {
+  test('each variable is replaced once; values with $ and long results are dropped', () => {
+    const vars = { loops: new Map([['n', ['1', '2']]]), values: new Map([['B', '/w'], ['X', '$B$B']]) }
+    expect(expandWord('$B/task-$n/$B', vars)).toEqual(['/w/task-1//w', '/w/task-2//w'])
+    // A value that holds `$` is never stored, and a stored one is not expanded again.
+    expect(expandWord('${X}', { loops: new Map(), values: new Map([['X', '$X$X']]) })).toEqual(['$X$X'])
+    expect(expandWord('$L$L', { loops: new Map(), values: new Map([['L', 'y'.repeat(2_500)]]) })).toEqual([])
+  })
+
+  test('a hostile command stays bounded and fast', () => {
+    const assigns = Array.from({ length: 60 }, (_, i) => `V${i}=${i === 0 ? 'z'.repeat(60) : '$V' + (i - 1) + '$V' + (i - 1)}`).join('; ')
+    const loop = 'for n in ' + Array.from({ length: 80 }, (_, i) => 't' + i).join(' ') + '; do'
+    const word = '"' + Array.from({ length: 60 }, (_, i) => '$V' + i + '$n').join('') + '/task-$n-attempt-0.log"'
+    const c = assigns + '; ' + loop + ' kiro-cli chat x > ' + word + ' 2>&1; done'
+    const start = Date.now()
+    const events = parseKiroCommand(c, [])
+    expect(Date.now() - start).toBeLessThan(500)
+    expect(events.length).toBeLessThanOrEqual(50)
+    const vars = { loops: new Map([['n', Array.from({ length: 80 }, (_, i) => 't' + i)]]), values: new Map([['V0', 'z'.repeat(60)]]) }
+    const out = expandWord(Array.from({ length: 60 }, () => '$V0$n').join(''), vars)
+    expect(out.length).toBeLessThanOrEqual(50)
+    for (const o of out) expect(o.length).toBeLessThanOrEqual(4_000)
   })
 })
 

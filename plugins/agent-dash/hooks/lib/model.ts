@@ -648,18 +648,26 @@ function gitSub(words: string[]): string | undefined {
   return words[i]
 }
 
-type Vars = { loops: Map<string, string[]>; values: Map<string, string> }
+export type Vars = { loops: Map<string, string[]>; values: Map<string, string> }
 
-/** Expands `$v` / `${v}` once: a `for` variable to each of its words, an assignment to its value. */
-function expand(v: string, vars: Vars): string[] {
-  let outs = [v]
-  for (const m of v.matchAll(/\$\{?([A-Za-z_]\w{0,31})\}?/g)) {
-    const value = vars.values.get(m[1])
-    const items = vars.loops.get(m[1]) ?? (value === undefined ? undefined : [value])
-    if (items === undefined) continue
-    outs = outs.flatMap((o) => items.map((x) => o.split(m[0]).join(x))).slice(0, EXPANSIONS_MAX)
+const VAR_REF = /\$\{?([A-Za-z_]\w{0,31})\}?/g
+
+/**
+ * Expands a word's `$v` / `${v}` in one replace pass over the original word: the first
+ * `for` variable it uses gives one result per loop word, an assignment gives its value,
+ * anything else stays as written. Stored values hold no `$`, so nothing expands twice;
+ * a result longer than 4,000 characters is dropped and at most 50 results are kept.
+ */
+export function expandWord(v: string, vars: Vars): string[] {
+  const names = new Set([...v.matchAll(VAR_REF)].map((m) => m[1]))
+  const loop = [...names].find((n) => vars.loops.has(n))
+  const choices: Array<string | undefined> = loop === undefined ? [undefined] : vars.loops.get(loop)!.slice(0, EXPANSIONS_MAX)
+  const out: string[] = []
+  for (const choice of choices) {
+    const r = v.replace(VAR_REF, (all: string, name: string) => (name === loop ? choice! : (vars.values.get(name) ?? all)))
+    if (r.length <= INPUT_MAX) out.push(r)
   }
-  return outs
+  return out
 }
 
 /**
@@ -714,7 +722,7 @@ export function parseKiroCommand(command: string, known: string[]): KiroEvent[] 
 
   for (const c of cmds) {
     const named = (toks: Tok[], target: boolean) =>
-      toks.flatMap((t) => expand(t.v, vars).map((v) => taskPart(v, target))).filter((p): p is string => p !== undefined)
+      toks.flatMap((t) => expandWord(t.v, vars).map((v) => taskPart(v, target))).filter((p): p is string => p !== undefined)
     const targets = named(c.targets, true)
     parts.push([...named(c.words, false), ...targets])
 
@@ -726,11 +734,13 @@ export function parseKiroCommand(command: string, known: string[]): KiroEvent[] 
     for (const w of raw) {
       const a = /^([A-Za-z_]\w{0,31})=(.*)$/.exec(w)
       if (a === null) break
-      vars.values.set(a[1], a[2])
+      // A value that refers to another variable is not kept, so expansion never nests.
+      if (a[2].includes('$')) vars.values.delete(a[1])
+      else vars.values.set(a[1], a[2])
     }
     const words = commandWords(c)
     if (words[0] === 'cd') {
-      lastCd = expand(words[1] ?? '', vars)
+      lastCd = expandWord(words[1] ?? '', vars)
         .map((v) => taskPart(v, true))
         .filter((p): p is string => p !== undefined && TASK_DIR.test(p))
       continue
