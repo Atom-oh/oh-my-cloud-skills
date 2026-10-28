@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an observed `git -C <dir>` or `cd <dir> &&` push instead of only the session
   directory, and its status text no longer repeats the `pr-dash:` prefix that the
   harness already adds.
+
 ### Changed
 
 - agent-dash map cards are headlined by what the agent does: its name, else the Agent
