@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- agent-dash shows what a Kiro delegation does on the Kiro CLI side: the delegate
+  agent's card lists one line per Kiro task (`kiro task 2 · running · try 2 · 4m12s`)
+  with its phase, retry count and `claude fallback`, its title adds
+  `kiro 2/4 done · 1 retry` once a task retried or fell back, the list adds `kiro 2/4`,
+  and the status line and band add `kiro n/m` while a run is active. The state is
+  inferred only from the agent's observed Bash calls, kept in memory, and reduced to
+  counts with `showDelegation` off.
+
 ## [3.0.8] - 2026-10-28
 
 ### Fixed

@@ -48,6 +48,20 @@ Code 2.1.300 or later.
   description. A foreground agent started by the main loop shows as
   `main waits on <agent> (est.)` and counts in the waiting total. In both views an
   agent's `open` button opens its conversation.
+- Kiro delegation: while an agent (usually `kiro:kiro-delegate-agent`) or the main loop
+  runs Kiro CLI tasks, its card lists one line per task, such as
+  `kiro task 2 · running · try 2 · 4m12s`. The state is `running`, `captured`,
+  `scope-checked`, `verifying`, `retrying`, `done` or `claude fallback`, and `try` counts
+  the first run as 1. Once a task needed a retry or fell back to Claude, the card's
+  title also reads `kiro 2/4 done · 1 retry · 1 fallback`. The list adds a short
+  `kiro 2/4`, and the status line and band add `kiro n/m` while a run is active. All
+  of it is inferred from the agent's own Bash calls: a `kiro-cli chat` run named by its
+  `task-<id>-attempt-<n>.log` redirect or its `task-<id>` directory, the
+  `task-<id>-retry-<k>` prompt files, `worktree.py capture-diff`, `scope_guard.py`,
+  `git apply`, the wave's `git commit`, `worktree.py remove`, and a `claude fallback`
+  or `host fallback` note naming the task. A command that only mentions kiro (in
+  quotes, an argument or a heredoc) records nothing, and nothing is polled. With
+  `showDelegation` off the card shows only the counts, never the task ids.
 - Notices appear when an agent finishes or fails and when a wait lasts longer than
   `longWaitMs` (120000 by default).
 
