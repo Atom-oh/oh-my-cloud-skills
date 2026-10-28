@@ -1,10 +1,10 @@
 {
   "host": "claude",
   "plugin": "agentcore-creator",
-  "version": "3.0.6",
+  "version": "3.0.7",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "95ee6ca699f7ad814482a4c2ff48bfa5466a7a8f8910ecad457d481b2831d2e1",
+      "sha256": "c286a96e0afb623cbdda0f4e0c38a630a057ede9c5d9929fcc52da83ae76702f",
       "executable": false
     },
     "CLAUDE.md": {
