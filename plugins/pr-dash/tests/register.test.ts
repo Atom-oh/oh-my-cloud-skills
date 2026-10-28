@@ -25,7 +25,7 @@ const PASSED_LINE = 'PR #253 · checks 3/3 pass · review PASSED (current head) 
 const passedOpen = { ...passed, state: 'OPEN' }
 const blockedOpen = { ...blocked, state: 'OPEN' }
 
-type StubOpts = { fail?: boolean; unplaced?: boolean; deny?: boolean; surfaces?: string[] }
+type StubOpts = { fail?: boolean; stderr?: string; unplaced?: boolean; deny?: boolean; surfaces?: string[] }
 
 /** Registers every stub the hooks module can reach. Call BEFORE the first `$` call. */
 function stubs(on, fixture, opts: StubOpts = {}) {
@@ -34,11 +34,13 @@ function stubs(on, fixture, opts: StubOpts = {}) {
   const toasts: string[] = []
   const opens: unknown[] = []
   const prompts: string[] = []
+  const cwds: (string | undefined)[] = []
 
   on('process.run', ($, e) => {
     argvs.push([...e.argv])
-    if (opts.fail) {
-      return { value: { exitCode: 1, stdout: '', stderr: 'no pull requests found' } }
+    cwds.push(e.init?.cwd)
+    if (opts.fail || opts.stderr) {
+      return { value: { exitCode: 1, stdout: '', stderr: opts.stderr ?? 'no pull requests found' } }
     }
     return { value: { exitCode: 0, stdout: JSON.stringify(fixture), stderr: '' } }
   })
@@ -64,7 +66,7 @@ function stubs(on, fixture, opts: StubOpts = {}) {
   on('session.start', () => ({ cwd: '/work' }))
   on('tool.call', () => (opts.deny ? { deny: 'no' } : { result: 'ok' }))
 
-  return { argvs, lines, toasts, opens, prompts }
+  return { argvs, cwds, lines, toasts, opens, prompts }
 }
 
 const SESSION = { surface: 'terminal', isInteractive: true, cwd: '/work' }
@@ -353,4 +355,63 @@ test('a gh timeout is reported as a timeout, not as a missing gh', async ($, on)
 
   const r = await $.command.run({ command: 'pr-dash', args: '253' })
   expect(r.text).toBe('gh pr view timed out after 20s')
+})
+
+const NOT_REPO = 'failed to run git: fatal: not a git repository (or any of the parent directories): .git'
+
+test('test_not_a_git_repository_is_not_an_error_and_stops_watching', async ($, on) => {
+  const { argvs, lines, toasts } = stubs(on, passedOpen, { stderr: NOT_REPO, surfaces: [] })
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  const r = await $.command.run({ command: 'pr-dash', args: '' })
+  expect(r.text).toBe('not in a git repository')
+  expect(lines.every((l) => l === undefined)).toBe(true)
+  expect(lines.some((l) => /pr-dash|failed/.test(String(l)))).toBe(false)
+  expect(toasts).toEqual([])
+
+  const before = argvs.length
+  await clock.advance(120_000)
+  expect(argvs).toHaveLength(before)
+})
+
+test('not in a git repository is shown dim in the pane', async ($, on) => {
+  stubs(on, passedOpen, { stderr: NOT_REPO })
+
+  await $.command.run({ command: 'pr-dash', args: '' })
+  const ui = await $.ui.mount(PANE)
+  expect(await ui.find({ type: 'Text', text: /not in a git repository/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('test_push_in_another_directory_polls_that_directory', async ($, on) => {
+  const { cwds } = stubs(on, passedOpen)
+  const clock = mock.clock(on)
+  await $.session.start(SESSION)
+
+  await $.tool.call({ tool: 'Bash', command: 'cd /work/repo && git push' })
+  await clock.settle()
+  expect(cwds[cwds.length - 1]).toBe('/work/repo')
+
+  await $.tool.call({ tool: 'Bash', command: 'git -C /other/repo push' })
+  await clock.settle()
+  expect(cwds[cwds.length - 1]).toBe('/other/repo')
+
+  await $.tool.call({ tool: 'Bash', command: 'git push' })
+  await clock.settle()
+  expect(cwds[cwds.length - 1]).toBeUndefined()
+
+  await $.tool.call({ tool: 'Bash', command: 'cd /work/repo && git push' })
+  await clock.settle()
+  await $.command.run({ command: 'pr-dash', args: '12' })
+  expect(cwds[cwds.length - 1]).toBeUndefined()
+})
+
+test('test_status_text_has_no_duplicate_prefix', async ($, on) => {
+  const { lines } = stubs(on, passedOpen, { fail: true })
+
+  await $.command.run({ command: 'pr-dash', args: '' })
+  const last = lines[lines.length - 1]
+  expect(last).toBe('no pull requests found')
+  expect(String(last)).not.toMatch(/pr-dash/)
 })

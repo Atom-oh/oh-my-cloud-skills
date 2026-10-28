@@ -345,3 +345,39 @@ export function hasFindings(s: Snapshot): boolean {
   const c = s.review.counts
   return c.CRITICAL > 0 || c.MAJOR > 0 || c.MINOR > 0
 }
+
+// Same boundary as the push observer's PUSH_RE: the push starts a command or follows ; & | ( or a newline.
+const PUSH_AT_RE = /(?:^|[;&|(\n])\s*(?:git(?:\s+-C\s+(?:'([^']*)'|"([^"]*)"|(\S+)))?\s+push|gh\s+pr\s+create)\b/
+const CD_RE = /(?:^|[;&|(\n])\s*cd\s+(?:'([^']*)'|"([^"]*)"|([^\s;&|'"]+))(?=\s*(?:&&|;))/g
+
+/** A directory is usable only when the shell would not have expanded it (`~`, `$VAR`, backticks). */
+function literalDir(d: string | undefined): string | undefined {
+  if (d === undefined || d === '' || d.startsWith('~') || d.includes('$') || d.includes('`')) return undefined
+  return d
+}
+
+/**
+ * The directory a `git push` / `gh pr create` Bash command ran in: the target of
+ * `git -C <dir>` or the last `cd <dir> &&` / `cd <dir>;` before the push. Returns
+ * undefined when the command names none (the session directory applies) or when the
+ * directory needs shell expansion. A relative `-C` after a `cd` is joined onto it.
+ */
+export function pushDir(command: string): string | undefined {
+  const m = PUSH_AT_RE.exec(command)
+  if (!m) return undefined
+  const dashC = m[1] ?? m[2] ?? m[3]
+  // The match starts at its boundary character (the second & of &&, a ;), which ends the cd segment.
+  const prefix = command.slice(0, m.index + (/[;&|(\n]/.test(command[m.index]) ? 1 : 0))
+  let cd: string | undefined
+  let invalidCd = false
+  for (const c of prefix.matchAll(CD_RE)) {
+    const raw = c[1] ?? c[2] ?? c[3]
+    cd = literalDir(raw)
+    invalidCd = cd === undefined
+  }
+  if (dashC === undefined) return invalidCd ? undefined : cd
+  const dir = literalDir(dashC)
+  if (dir === undefined) return undefined
+  if (cd !== undefined && !dir.startsWith('/')) return cd.replace(/\/+$/, '') + '/' + dir
+  return dir
+}

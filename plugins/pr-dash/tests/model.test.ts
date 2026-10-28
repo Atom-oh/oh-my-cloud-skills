@@ -9,6 +9,7 @@ import {
   diffNotices,
   isMergeReady,
   hasFindings,
+  pushDir,
 } from '../hooks/lib/model.ts'
 
 // Both fixtures are MERGED; OPEN copies exercise the merge-readiness and summary paths.
@@ -346,5 +347,31 @@ describe('findReview: severity headings count only inside ## Issues', () => {
     const tampered = { ...s, review: { ...s.review!, counts: { CRITICAL: 0, MAJOR: 1, MINOR: 0 } } }
     expect(isMergeReady(s)).toBe(true)
     expect(isMergeReady(tampered)).toBe(false)
+  })
+})
+
+describe('pushDir', () => {
+  test('test_push_dir_is_extracted_from_cd_and_git_c', () => {
+    expect(pushDir('cd /work/repo && git push')).toBe('/work/repo')
+    expect(pushDir('cd /work/repo; git push -u origin x')).toBe('/work/repo')
+    expect(pushDir("cd '/work/my repo' && git push")).toBe('/work/my repo')
+    expect(pushDir('cd "/work/my repo" && git push')).toBe('/work/my repo')
+    expect(pushDir('git -C /work/repo push')).toBe('/work/repo')
+    expect(pushDir('git -C "/work/my repo" push origin x')).toBe('/work/my repo')
+    expect(pushDir('cd /a && cd /b && git push')).toBe('/b')
+    expect(pushDir('cd /a && gh pr create --fill')).toBe('/a')
+    expect(pushDir('cd ../other && git push')).toBe('../other')
+    // Not expanded: the engine would receive a literal ~ or $VAR.
+    expect(pushDir('cd ~/repo && git push')).toBeUndefined()
+    expect(pushDir('cd $HOME/repo && git push')).toBeUndefined()
+    expect(pushDir('cd `pwd`/repo && git push')).toBeUndefined()
+    expect(pushDir('git -C $REPO push')).toBeUndefined()
+    // No directory, or no push.
+    expect(pushDir('git push -u origin x')).toBeUndefined()
+    expect(pushDir('cd /work/repo && ls')).toBeUndefined()
+    expect(pushDir('git -C=/work/repo push')).toBeUndefined()
+    // A cd after the push does not apply; a quoted mention is not a cd segment.
+    expect(pushDir('git push && cd /later')).toBeUndefined()
+    expect(pushDir('echo "cd /x && git push"')).toBeUndefined()
   })
 })

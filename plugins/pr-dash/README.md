@@ -25,6 +25,12 @@ an authenticated GitHub CLI (`gh auth status`).
 - `/pr-dash:pr-status` (Claude Code) or `pr-dash:pr-status` (Codex) prints the
   status as text.
 
+Where it looks: `gh pr view` runs in the session's directory, or in the directory of
+a `git -C <dir> push` or `cd <dir> && git push` that Claude ran (a `~` or `$VAR`
+directory is not expanded and is ignored). Outside a git repository pr-dash stays
+silent: no warning, no toast, no status line, polling stops, and `/pr-dash` or the
+pane says `not in a git repository`.
+
 The pane draws in the terminal and the Desktop app. Elsewhere `/pr-dash` returns a
 one-line summary.
 
