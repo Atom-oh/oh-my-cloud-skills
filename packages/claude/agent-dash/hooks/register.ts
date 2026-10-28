@@ -6,13 +6,16 @@
 
 import {
   DEFAULT_POLICY,
+  bashCommand,
   buildTree,
   delegationOn,
   diffNotices,
   inferWaits,
   isWorking,
+  kiroFragment,
   pruneDetails,
   recordActivity,
+  recordKiro,
   recordTask,
   resolveModel,
   stripControls,
@@ -135,12 +138,15 @@ function toRows(list: any[], now: number): AgentRow[] {
   return out
 }
 
+/** The agent summary, plus `kiro n/m` while a Kiro delegation run is active. */
 function summary(): string {
-  return summaryLine(rows, waits)
+  const kiro = kiroFragment(rows, details, Date.now())
+  if (rows.length === 0 && kiro !== '') return kiro
+  return kiro === '' ? summaryLine(rows, waits) : summaryLine(rows, waits) + ' · ' + kiro
 }
 
 function setStatus($) {
-  $.ui.status(watching && rows.length > 0 ? summary() : undefined)
+  $.ui.status(watching && (rows.length > 0 || kiroFragment(rows, details, Date.now()) !== '') ? summary() : undefined)
 }
 
 async function pull($, longWaitMs: number) {
@@ -258,12 +264,18 @@ export function register(on, options) {
 
   // Observer only: records a one-line summary of the call as it starts (so the pane shows
   // what runs now, `atMs` is the start), never touches `e`, and returns the chain's result.
+  // A Bash call also feeds the Kiro task state, which holds only ids, phases and counts
+  // and so is kept with `showDelegation` off too; the view then draws only its counts.
   on('tool.call', ($, e, next) => {
-    if (showDelegation && watching) {
+    if (watching) {
       try {
         const tool = String(e.tool)
-        recordActivity(details, e.agentId ?? 'main', { tool, summary: summarizeTool(tool, e), atMs: Date.now() })
-        scheduleRepaint($)
+        const agentId = e.agentId ?? 'main'
+        if (showDelegation) recordActivity(details, agentId, { tool, summary: summarizeTool(tool, e), atMs: Date.now() })
+        const command = bashCommand(tool, e)
+        const kiro = command !== undefined && recordKiro(details, agentId, command, Date.now())
+        if (kiro) setStatus($)
+        if (showDelegation || kiro) scheduleRepaint($)
       } catch {}
     }
     return next(e)
@@ -322,7 +334,7 @@ export function register(on, options) {
 
   // The band shows only while an agent works; finished agents live in the status line.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (!watching || !rows.some(isWorking) || e.props?.hasSurvey === true) return next(e)
+    if (!watching || !(rows.some(isWorking) || kiroFragment(rows, details, Date.now()) !== '') || e.props?.hasSurvey === true) return next(e)
     return buildBand($.ui.resolve(e), summary())
   })
 }

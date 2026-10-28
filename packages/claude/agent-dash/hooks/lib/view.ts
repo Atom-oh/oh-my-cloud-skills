@@ -1,8 +1,8 @@
 // Pure views for agent-dash: builds element trees from the element functions passed in.
 // No `$`, no Claude Code imports, no Node APIs.
 
-import { buildTree, distinctTasks, isWorking, labelOf, restLine, stripControls, summarizeText, summaryLine } from './model.ts'
-import type { AgentDetail, AgentRow, AgentStatus, SendRecord, TreeNode, WaitEdge } from './model.ts'
+import { buildTree, distinctTasks, isWorking, kiroCounts, kiroMainActive, kiroShort, kiroSummary, labelOf, restLine, stripControls, summarizeText, summaryLine } from './model.ts'
+import type { AgentDetail, AgentRow, AgentStatus, KiroTask, SendRecord, TreeNode, WaitEdge } from './model.ts'
 
 type Color = 'green' | 'red' | 'yellow'
 
@@ -124,7 +124,7 @@ function nameOf(lines: Line[], id: string): string {
   return hit === undefined ? stripControls(id) : labelOf(hit.row)
 }
 
-function agentRow(els: any, line: Line, waitsOn: WaitEdge[], lines: Line[], opts: PaneOpts): unknown {
+function agentRow(els: any, line: Line, waitsOn: WaitEdge[], lines: Line[], opts: PaneOpts, kiro: KiroTask[] = []): unknown {
   const { row, depth } = line
   const children: unknown[] = []
   if (depth > 0) children.push(els.Text({ children: ['  '.repeat(depth - 1) + '└'], dimColor: true }))
@@ -139,6 +139,7 @@ function agentRow(els: any, line: Line, waitsOn: WaitEdge[], lines: Line[], opts
   for (const w of waitsOn) {
     children.push(els.Text({ children: ['waits on ' + nameOf(lines, w.to) + ' (est.)'], color: 'yellow', wrap: 'truncate-end' }))
   }
+  if (kiro.length > 0) children.push(els.Text({ children: [kiroShort(kiro)], dimColor: true }))
   children.push(els.Button({ key: 'open:' + row.id, label: 'open', plain: true, onPress: () => opts.onOpen(row.id) }))
   return els.Box({ flexDirection: 'row', columnGap: 1, children })
 }
@@ -188,8 +189,12 @@ export function buildPane(
   if (full.view === 'map') return buildMap(els, tree, waits, details, sends, full)
   const buttons = viewButtons(els, full)
   const lines = flatten(tree)
+  const mainKiro = details.get('main')?.kiro ?? []
+  // A main-loop Kiro run with no agent listed still gets its own line.
+  const mainRun = kiroMainActive(mainKiro, opts.nowMs)
   if (lines.length === 0) {
-    return els.Box({ flexDirection: 'column', children: [els.Text({ children: ['No agents yet'], dimColor: true }), buttons] })
+    const first = mainRun ? els.Text({ children: ['main · ' + kiroShort(mainKiro)], bold: true, wrap: 'truncate-end' }) : els.Text({ children: ['No agents yet'], dimColor: true })
+    return els.Box({ flexDirection: 'column', children: [first, buttons] })
   }
 
   const rows = lines.map((l) => l.row)
@@ -202,7 +207,7 @@ export function buildPane(
   }
   for (const line of lines.slice(0, opts.maxRows)) {
     const own = waits.filter((w) => w.from === line.row.id)
-    children.push(agentRow(els, line, own, lines, opts))
+    children.push(agentRow(els, line, own, lines, opts, details.get(line.row.id)?.kiro))
   }
   if (lines.length > opts.maxRows) {
     children.push(els.Text({ children: ['+' + (lines.length - opts.maxRows) + ' more'], dimColor: true }))
@@ -323,6 +328,54 @@ function doingLine(p: Painter, detail: AgentDetail | undefined, width: number, d
   return text(p, lead + clipCells(call, Math.max(1, width - cellWidth(lead) - cellWidth(ago))) + ago, dim ? { dimColor: true } : {})
 }
 
+// Kiro task lines a card draws before `+N more kiro tasks`.
+const KIRO_LINES_MAX = 8
+
+/** `42s`, `4m12s`, `1h05m`: a Kiro task's age, finer than the card's own elapsed time. */
+function kiroElapsed(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000))
+  if (s < 60) return s + 's'
+  if (s < 3600) return Math.floor(s / 60) + 'm' + String(s % 60).padStart(2, '0') + 's'
+  return Math.floor(s / 3600) + 'h' + String(Math.floor((s % 3600) / 60)).padStart(2, '0') + 'm'
+}
+
+function kiroLabel(t: KiroTask): string {
+  if (t.state === 'fallback') return 'claude fallback'
+  if (t.state === 'running' && t.phase !== 'implementing') return t.phase
+  return t.state
+}
+
+/**
+ * One line per Kiro task (`kiro task 2 · running · try 2 · 4m12s`), the id cut first so
+ * the rest stays whole; a finished task's age stops at its last step. With
+ * `showDelegation` off only the counts line is drawn.
+ */
+function kiroLines(p: Painter, tasks: KiroTask[] | undefined, width: number): unknown[] {
+  if (tasks === undefined || tasks.length === 0) return []
+  if (!p.opts.showDelegation) return [text(p, clipCells(kiroSummary(tasks), width), { dimColor: true })]
+  const out: unknown[] = []
+  for (const t of tasks.slice(0, KIRO_LINES_MAX)) {
+    const done = t.state === 'done' || t.state === 'fallback'
+    const age = kiroElapsed((done ? t.lastActivity : p.opts.nowMs) - t.startedAt)
+    const head = 'kiro task '
+    const tail = ' · ' + kiroLabel(t) + ' · try ' + t.attempt + ' · ' + age
+    const id = clipCells(summarizeText(t.id), Math.max(1, width - cellWidth(head) - cellWidth(tail)))
+    const line = head + id + tail
+    const props: Record<string, unknown> = t.state === 'retrying' || t.state === 'fallback' ? { color: 'yellow' } : t.state === 'done' ? { dimColor: true } : {}
+    out.push(text(p, cellWidth(line) <= width ? line : clipCells(line, width), props))
+  }
+  if (tasks.length > KIRO_LINES_MAX) out.push(text(p, clipCells('+' + (tasks.length - KIRO_LINES_MAX) + ' more kiro tasks', width), { dimColor: true }))
+  return out
+}
+
+/** The title's status: elapsed time, plus the Kiro summary once a task retried or fell back. */
+function cardStatus(row: AgentRow, detail: AgentDetail | undefined, nowMs: number): string {
+  const tasks = detail?.kiro ?? []
+  const c = kiroCounts(tasks)
+  const kiro = c.retried > 0 || c.fallback > 0 ? ' · ' + kiroSummary(tasks) : ''
+  return statusText(row, nowMs) + kiro
+}
+
 /** One line per wait edge from `from`; the main loop's read `main waits on`. */
 function waitLines(p: Painter, from: string, waits: WaitEdge[], width: number): unknown[] {
   const out: unknown[] = []
@@ -369,6 +422,9 @@ function mainLines(p: Painter, working: number, waits: WaitEdge[], details: Map<
     const age = p.opts.nowMs - own.activity[own.activity.length - 1].atMs
     if (age <= MAIN_HIDE_MS) out.push(doingLine(p, own, width, age > MAIN_DIM_MS))
   }
+  // A Kiro run in the main loop (the delegate skill) shows while it is active.
+  const kiro = own?.kiro ?? []
+  if (kiroMainActive(kiro, p.opts.nowMs)) out.push(...kiroLines(p, kiro, width))
   return out
 }
 
@@ -496,7 +552,7 @@ function agentCard(p: Painter, line: Line, waits: WaitEdge[], details: Map<strin
   if (depth > 0) parts.push(text(p, CONNECTOR, { dimColor: true }))
   parts.push(symbol(els, row.status))
   const type = layout.showType ? typePart(name, stripControls(row.type)) : ''
-  parts.push(text(p, titleText(name, type, statusText(row, opts.nowMs), titleRoom(line, width)), { bold: true }))
+  parts.push(text(p, titleText(name, type, cardStatus(row, detail, opts.nowMs), titleRoom(line, width)), { bold: true }))
   parts.push(els.Button({ key: 'open:' + row.id, label: OPEN, plain: true, onPress: () => opts.onOpen(row.id) }))
   const title = els.Box({ flexDirection: 'row', columnGap: 1, children: parts })
 
@@ -510,6 +566,7 @@ function agentCard(p: Painter, line: Line, waits: WaitEdge[], details: Map<strin
     lines.push(one.length === 0 ? text(p, lead + '(unknown)', { dimColor: true }) : text(p, lead + one[0]))
   }
   lines.push(doingLine(p, detail, width))
+  lines.push(...kiroLines(p, detail?.kiro, width))
   lines.push(...waitLines(p, row.id, waits, width))
   lines.push(...messageLine(p, row.id, sends, width))
 
@@ -544,7 +601,8 @@ export function buildMap(
   const working = flatten(buildTree(rows.filter(isWorking)))
   const p: Painter = { els, rows, lines: all, opts, names: mapNames(rows, working, details, opts.showDelegation) }
   const children: unknown[] = []
-  if (working.length === 0) {
+  // A main-loop Kiro run keeps the main line and its task lines with no agent working.
+  if (working.length === 0 && !kiroMainActive(details.get('main')?.kiro ?? [], opts.nowMs)) {
     children.push(text(p, 'No agents working', { dimColor: true }))
     if (rows.length > 0) {
       const width = Math.max(1, opts.columns)
@@ -587,7 +645,7 @@ export function buildMap(
   // The type shows on every card or on none: only when each title fits with it whole.
   const showType = working.every((line, i) => {
     const n = nameFor(p, line.row.id)
-    const full = n.text + n.suffix + typePart(n, stripControls(line.row.type)) + ' · ' + statusText(line.row, opts.nowMs)
+    const full = n.text + n.suffix + typePart(n, stripControls(line.row.type)) + ' · ' + cardStatus(line.row, details.get(line.row.id), opts.nowMs)
     return cellWidth(full) <= titleRoom(line, layouts[i].width - CARD_FRAME)
   })
   const cards = working.map((line, i) => agentCard(p, line, waits, details, sends, { ...layouts[i], showType }))

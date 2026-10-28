@@ -591,3 +591,43 @@ test('test_pending_only_list_has_a_band_and_a_status_line', async ($, on) => {
   expect((await ui.find({ type: 'Text', text: /agents:/ }))?.text).toBe('agents: 1 running')
   await ui.unmount()
 })
+
+test('test_kiro_run_of_a_delegate_agent_reaches_the_card_and_the_status_line', async ($, on) => {
+  const DELEGATE = { id: 'K1', type: 'kiro:kiro-delegate-agent', description: 'Delegate the renewal tasks', status: 'running' }
+  const { lines, calls } = stubs(on, { list: [DELEGATE] })
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  await $.command.run({ command: 'agent-dash', args: '' })
+  const run = 'cd "/w/kiro-delegate/demo/task-1" && timeout 600 kiro-cli chat "go" --no-interactive > "$RUN_DIR/task-1-attempt-0.log" 2>&1'
+  await $.tool.call({ tool: 'Bash', command: run, agentId: 'K1' } as any)
+  await $.tool.call({ tool: 'Bash', command: 'grep -n "kiro-cli chat" notes.md', agentId: 'K1' } as any)
+  // The call itself passes through unchanged.
+  expect(calls[0].command).toBe(run)
+  await clock.advance(5_000)
+  expect(lines[lines.length - 1]).toBe('1 running · kiro 0/1')
+
+  const ui = await $.ui.mount(PANE)
+  const all = await paneTexts(ui)
+  expect(all.some((t) => t.startsWith('kiro task 1 · running · try 1 · '))).toBe(true)
+  expect(all.filter((t) => t.startsWith('kiro task')).length).toBe(1)
+  await ui.unmount()
+})
+
+test('test_kiro_with_show_delegation_off_draws_only_counts', { options: { showDelegation: false } }, async ($, on) => {
+  const DELEGATE = { id: 'K1', type: 'kiro:kiro-delegate-agent', description: 'Delegate the renewal tasks', status: 'running' }
+  const { lines } = stubs(on, { list: [DELEGATE] })
+  const clock = mock.clock(on)
+
+  await $.session.start(SESSION)
+  await $.command.run({ command: 'agent-dash', args: '' })
+  await $.tool.call({ tool: 'Bash', command: 'cd /w/kiro-delegate/demo/task-slugword && kiro-cli chat "go" > "$R/task-slugword-attempt-0.log" 2>&1', agentId: 'K1' } as any)
+  await clock.advance(5_000)
+  expect(lines[lines.length - 1]).toBe('1 running · kiro 0/1')
+
+  const ui = await $.ui.mount(PANE)
+  const all = await paneTexts(ui)
+  expect(all).toContain('kiro 0/1 done')
+  expect(all.some((t) => t.includes('slugword'))).toBe(false)
+  await ui.unmount()
+})

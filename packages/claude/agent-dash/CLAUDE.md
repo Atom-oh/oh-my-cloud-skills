@@ -14,7 +14,9 @@ agents of the running session: who works, who delegated to whom, and who is wait
   unchanged and swallow their own failures. The task text, tool summaries and message
   text they keep stay in memory only: never logged, written or sent, pruned with the
   agent list, cleared by `/agent-dash stop`, and not recorded at all with
-  `userConfig.showDelegation` off. Redaction and truncation live in `hooks/lib/model.ts` (`redact`, `summarizeText`,
+  `userConfig.showDelegation` off. The Kiro task state (`recordKiro`, from Bash calls
+  only) holds redacted task ids, phases and counts; it is kept with `showDelegation`
+  off, when the view draws only its counts. Redaction and truncation live in `hooks/lib/model.ts` (`redact`, `summarizeText`,
   `summarizeTool`, `recordTask`); store text only through those. Text bound for the
   screen or a notice passes `stripControls` (model.ts), applied in `clip`, `clipCells`,
   `wrapLines`, the map's `text` helper, `labelOf` and the listed rows in `toRows`.

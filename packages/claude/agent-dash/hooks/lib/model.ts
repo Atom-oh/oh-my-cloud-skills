@@ -279,6 +279,8 @@ export type AgentDetail = {
   description?: string
   model?: string
   activity: ToolActivity[]
+  /** Kiro CLI tasks this agent ran, in the order first seen; from its Bash calls only. */
+  kiro?: KiroTask[]
 }
 
 const TASK_MAX = 600
@@ -472,6 +474,481 @@ export function distinctTasks(tasks: string[]): string[] {
     const rest = ws.slice(run).join(' ')
     return rest === '' ? tasks[i].trim() : '…' + rest
   })
+}
+
+// Kiro delegation: what a kiro-delegate run does on the Kiro CLI side, inferred from the
+// Bash commands its agent runs. Nothing is polled and no process is inspected.
+
+export type KiroPhase = 'implementing' | 'captured' | 'scope-checked' | 'verifying'
+export type KiroState = 'running' | 'verifying' | 'retrying' | 'done' | 'fallback'
+
+/**
+ * One Kiro task: `attempt` is 1 for the first run and grows by one per retry. `key` is a
+ * hash of the raw slug that matches later steps; `id` is the redacted, clipped label.
+ */
+export type KiroTask = { key: string; id: string; phase: KiroPhase; attempt: number; state: KiroState; startedAt: number; lastActivity: number }
+
+export type KiroEvent =
+  | { kind: 'run'; key: string; label: string; attempt?: number }
+  | { kind: 'retry'; key: string; attempt: number }
+  | { kind: 'phase'; key: string; phase: KiroPhase }
+  | { kind: 'fallback'; key: string }
+  | { kind: 'done'; key: string }
+  | { kind: 'commit' }
+
+const KIRO_TASKS_MAX = 50
+const KIRO_ID_MAX = 40
+const EXPANSIONS_MAX = 50
+/** A main-loop Kiro run with no step for this long no longer counts as active. */
+export const KIRO_STALE_MS = 600_000
+// A task id is a slug: word runs joined by `-`, as the pipeline generates them.
+const ID = '[A-Za-z0-9_]{1,40}(?:-[A-Za-z0-9_]{1,40}){0,6}'
+const ATTEMPT_LOG = new RegExp(`^(${ID})-attempt-(\\d{1,3})\\.log$`)
+const RETRY_FILE = new RegExp(`^(${ID})-retry-(\\d{1,3})(?:\\.txt)?$`)
+const TASK_DIR = new RegExp(`^(${ID})$`)
+const FALLBACK = /\b(?:claude|host)[\s-]+fall[\s-]?back\b|\bfall(?:s|ing)?[\s-]?back\s+to\s+(?:the\s+)?(?:claude|host)\b/i
+// Commands that only read or list text: a fallback phrase they mention is not a fallback.
+const READERS = ['grep', 'egrep', 'fgrep', 'rg', 'cat', 'tail', 'head', 'less', 'sed', 'awk', 'wc', 'ls', 'find', 'diff']
+const PREFIXES = ['nohup', 'env', 'exec', 'command', 'time', 'sudo']
+
+function blank(s: string): string {
+  return s.replace(/[^\n]/g, ' ')
+}
+
+/** Heredoc bodies become spaces of the same length, so a script's text is never a command. */
+function maskHeredocs(t: string): string {
+  const re = /(?<!<)<<-?\s*(['"]?)([A-Za-z_]\w{0,31})\1/g
+  let out = ''
+  let last = 0
+  let m: RegExpExecArray | null
+  while ((m = re.exec(t)) !== null) {
+    const nl = t.indexOf('\n', re.lastIndex)
+    if (nl < 0) break
+    const end = new RegExp('\\n[\\t ]*' + m[2] + '[\\t ]*(?=\\n|$)').exec(t.slice(nl))
+    const stop = end === null ? t.length : nl + end.index + end[0].length
+    out += t.slice(last, nl) + blank(t.slice(nl, stop))
+    last = stop
+    re.lastIndex = stop
+  }
+  return out + t.slice(last)
+}
+
+/** A shell word with its quotes removed, or an operator; `at` is its offset. */
+type Tok = { v: string; at: number; op?: 'sep' | 'redir' | 'dup' | 'heredoc' }
+
+const WORD_END = new Set([' ', '\t', '\n', ';', '&', '|', '(', ')', '<', '>'])
+// Checked in order at each operator position: fd duplication, redirects, heredoc, separators.
+const OPERATORS: Array<[RegExp, Tok['op']]> = [
+  [/^\d?>&\d+/, 'dup'],
+  [/^(?:<<<|&>>?|\d?>[>|]?|<(?!<))/, 'redir'],
+  [/^<<-?/, 'heredoc'],
+  [/^(?:&&|\|\||[;&|()\n])/, 'sep'],
+]
+
+/** Splits shell text into words and operators in one linear pass, honouring quotes. */
+function tokenize(t: string): Tok[] {
+  const out: Tok[] = []
+  let i = 0
+  outer: while (i < t.length) {
+    if (t[i] === ' ' || t[i] === '\t') {
+      i += 1
+      continue
+    }
+    const head = t.slice(i, i + 4)
+    for (const [re, op] of OPERATORS) {
+      const m = re.exec(head)
+      if (m === null) continue
+      out.push({ v: m[0], at: i, op })
+      i += m[0].length
+      continue outer
+    }
+    const at = i
+    let v = ''
+    while (i < t.length && !WORD_END.has(t[i])) {
+      const ch = t[i]
+      if (ch === "'") {
+        const close = t.indexOf("'", i + 1)
+        const stop = close < 0 ? t.length : close
+        v += t.slice(i + 1, stop)
+        i = stop + 1
+      } else if (ch === '"') {
+        i += 1
+        while (i < t.length && t[i] !== '"') {
+          if (t[i] === '\\' && i + 1 < t.length) i += 1
+          v += t[i]
+          i += 1
+        }
+        i += 1
+      } else if (ch === '\\' && i + 1 < t.length) {
+        v += t[i + 1]
+        i += 2
+      } else {
+        v += ch
+        i += 1
+      }
+    }
+    out.push({ v, at })
+  }
+  return out
+}
+
+/** One simple command: its words and its redirect targets. */
+type Simple = { words: Tok[]; targets: Tok[]; at: number }
+
+const KEYWORDS = new Set(['do', 'then', 'else', 'elif', 'done', 'fi', '{', '}', '!'])
+
+function simpleCommands(toks: Tok[]): Simple[] {
+  const out: Simple[] = []
+  let cur: Simple = { words: [], targets: [], at: 0 }
+  const flush = () => {
+    if (cur.words.length > 0 || cur.targets.length > 0) out.push(cur)
+  }
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i]
+    if (t.op === 'sep') {
+      flush()
+      cur = { words: [], targets: [], at: t.at }
+    } else if (t.op === 'redir' || t.op === 'heredoc') {
+      const next = toks[i + 1]
+      if (next !== undefined && next.op === undefined) {
+        if (t.op === 'redir') cur.targets.push(next)
+        i += 1
+      }
+    } else if (t.op === undefined) {
+      if (cur.words.length === 0 && KEYWORDS.has(t.v)) continue
+      if (cur.words.length === 0 && cur.targets.length === 0) cur.at = t.at
+      cur.words.push(t)
+    }
+  }
+  flush()
+  return out
+}
+
+/** The command's words after variable assignments, `timeout <dur>` and other prefixes. */
+function commandWords(c: Simple): string[] {
+  const w = c.words.map((t) => t.v)
+  let i = 0
+  while (i < w.length) {
+    if (/^[A-Za-z_]\w*=/.test(w[i]) || PREFIXES.includes(w[i])) i += 1
+    else if (w[i] === 'timeout') {
+      i += 1
+      while (i < w.length && w[i].startsWith('-')) i += /^-[ks]$/.test(w[i]) ? 2 : 1
+      i += 1
+    } else break
+  }
+  return w.slice(i)
+}
+
+function base(word: string | undefined): string {
+  return word === undefined ? '' : word.slice(word.lastIndexOf('/') + 1)
+}
+
+/** `git [-C <dir>] <sub>`: the subcommand word, else undefined. */
+function gitSub(words: string[]): string | undefined {
+  if (base(words[0]) !== 'git') return undefined
+  let i = 1
+  while (words[i] === '-C' || words[i] === '-c') i += 2
+  return words[i]
+}
+
+export type Vars = { loops: Map<string, string[]>; values: Map<string, string> }
+
+const VAR_REF = /\$\{?([A-Za-z_]\w{0,31})\}?/g
+
+/**
+ * Expands a word's `$v` / `${v}` in one replace pass over the original word: the first
+ * `for` variable it uses gives one result per loop word, an assignment gives its value,
+ * anything else stays as written. Stored values hold no `$`, so nothing expands twice;
+ * a result longer than 4,000 characters is dropped and at most 50 results are kept.
+ */
+export function expandWord(v: string, vars: Vars): string[] {
+  const names = new Set([...v.matchAll(VAR_REF)].map((m) => m[1]))
+  const loop = [...names].find((n) => vars.loops.has(n))
+  const choices: Array<string | undefined> = loop === undefined ? [undefined] : vars.loops.get(loop)!.slice(0, EXPANSIONS_MAX)
+  const out: string[] = []
+  for (const choice of choices) {
+    const r = v.replace(VAR_REF, (all: string, name: string) => (name === loop ? choice! : (vars.values.get(name) ?? all)))
+    if (r.length <= INPUT_MAX) out.push(r)
+  }
+  return out
+}
+
+/**
+ * What follows `task-` in a path: its last `task-<...>` segment, when the part before it
+ * is empty or a directory without spaces (a redirect target may have spaces).
+ */
+function taskPart(value: string, target: boolean): string | undefined {
+  const i = value.lastIndexOf('task-')
+  if (i < 0) return undefined
+  const before = value.slice(0, i)
+  if (before !== '' && !before.endsWith('/')) return undefined
+  if (!target && /\s/.test(before)) return undefined
+  const rest = value.slice(i + 5).replace(/\/.*$/, '')
+  return /^[A-Za-z0-9_.-]{1,80}$/.test(rest) ? rest : undefined
+}
+
+/**
+ * The match key of a raw task slug: a 53-bit string hash, so later steps find the task
+ * even when its label was clipped or redacted, without keeping the raw slug.
+ */
+export function kiroKey(raw: string): string {
+  let h1 = 0xdeadbeef ^ raw.length
+  let h2 = 0x41c6ce57 ^ raw.length
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw.charCodeAt(i)
+    h1 = Math.imul(h1 ^ c, 2654435761)
+    h2 = Math.imul(h2 ^ c, 1597334677)
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36)
+}
+
+/** The known key a `task-` part names, longest slug first: `2-r1.patch` names task 2. */
+function knownIn(part: string, keys: string[]): string | undefined {
+  const cuts = [part.length]
+  for (let i = part.length - 1; i > 0; i--) if (part[i] === '-' || part[i] === '.') cuts.push(i)
+  for (const cut of cuts) {
+    const key = kiroKey(part.slice(0, cut))
+    if (keys.includes(key)) return key
+  }
+  return undefined
+}
+
+/** The label a stored task shows for a raw slug: redacted and clipped like any stored text. */
+function kiroLabel(raw: string): string {
+  return summarizeText(raw, KIRO_ID_MAX)
+}
+
+/** A helper script at the command position, directly or after `python`/`python3` and its flags. */
+function scriptOf(words: string[]): { name: string; args: string[] } {
+  let i = 0
+  if (/^python(?:3(?:\.\d+)?)?$/.test(base(words[0]))) {
+    i = 1
+    while (i < words.length && words[i].startsWith('-')) i += 1
+  }
+  return { name: base(words[i]), args: words.slice(i + 1) }
+}
+
+/**
+ * The Kiro steps one Bash command shows, in command order. The command is split into
+ * shell words (quotes honoured, heredoc bodies dropped), so quoted text, arguments and
+ * echoed strings are never commands or redirects. A run is a `kiro-cli chat` command whose
+ * own redirect target is `task-<id>-attempt-<n>.log`, else whose last `cd` went to
+ * `.../task-<id>`; two runs of one id keep the highest attempt. A retry prompt file
+ * `task-<id>-retry-<k>`, `worktree.py capture-diff`, `scope_guard.py` and `git apply`
+ * (without `--check`) refer to the known or running tasks that any task path of the
+ * command names; `worktree.py remove` and a `claude`/`host` fallback phrase only to the
+ * task paths of their own simple command; `git commit` to none. A helper script counts
+ * only at the command position. `known` and the events carry `kiroKey` keys. `for`
+ * variables and plain assignments expand once. Only the first 4,000 characters are read.
+ */
+export function parseKiroCommand(command: string, known: string[]): KiroEvent[] {
+  const cmds = simpleCommands(tokenize(maskHeredocs(command.slice(0, INPUT_MAX))))
+  const vars: Vars = { loops: new Map(), values: new Map() }
+  const found: Array<{ at: number; ev: KiroEvent }> = []
+  const runs = new Map<string, { at: number; label: string; attempt?: number }>()
+  // The `task-` parts each simple command's words and redirect targets name, expanded.
+  const parts: string[][] = []
+  let lastCd: string[] = []
+
+  for (const c of cmds) {
+    const named = (toks: Tok[], target: boolean) =>
+      toks.flatMap((t) => expandWord(t.v, vars).map((v) => taskPart(v, target))).filter((p): p is string => p !== undefined)
+    const targets = named(c.targets, true)
+    parts.push([...named(c.words, false), ...targets])
+
+    const raw = c.words.map((t) => t.v)
+    if (raw[0] === 'for' && raw[2] === 'in') {
+      vars.loops.set(raw[1], raw.slice(3).filter((w) => TASK_DIR.test(w)).slice(0, EXPANSIONS_MAX))
+      continue
+    }
+    for (const w of raw) {
+      const a = /^([A-Za-z_]\w{0,31})=(.*)$/.exec(w)
+      if (a === null) break
+      // A value that refers to another variable is not kept, so expansion never nests.
+      if (a[2].includes('$')) vars.values.delete(a[1])
+      else vars.values.set(a[1], a[2])
+    }
+    const words = commandWords(c)
+    if (words[0] === 'cd') {
+      lastCd = expandWord(words[1] ?? '', vars)
+        .map((v) => taskPart(v, true))
+        .filter((p): p is string => p !== undefined && TASK_DIR.test(p))
+      continue
+    }
+    if (base(words[0]) !== 'kiro-cli' || words[1] !== 'chat') continue
+    const logs = targets.map((p) => ATTEMPT_LOG.exec(p)).filter((m): m is RegExpExecArray => m !== null)
+    const runsHere = logs.length > 0 ? logs.map((m) => ({ id: m[1], attempt: Number(m[2]) + 1 })) : lastCd.map((id) => ({ id, attempt: undefined }))
+    for (const r of runsHere) {
+      const key = kiroKey(r.id)
+      const have = runs.get(key)
+      if (have === undefined) runs.set(key, { at: c.at, label: kiroLabel(r.id), attempt: r.attempt })
+      else if (r.attempt !== undefined && (have.attempt === undefined || r.attempt > have.attempt)) have.attempt = r.attempt
+    }
+  }
+  for (const [key, r] of runs) {
+    found.push({ at: r.at, ev: r.attempt === undefined ? { kind: 'run', key, label: r.label } : { kind: 'run', key, label: r.label, attempt: r.attempt } })
+  }
+
+  const keys = [...new Set([...known, ...runs.keys()])]
+  const refs = (list: string[]) => [...new Set(list.map((p) => knownIn(p, keys)).filter((x): x is string => x !== undefined))]
+  const all = refs(parts.flat())
+  cmds.forEach((c, i) => {
+    for (const p of parts[i]) {
+      const m = RETRY_FILE.exec(p)
+      if (m !== null && keys.includes(kiroKey(m[1]))) found.push({ at: c.at, ev: { kind: 'retry', key: kiroKey(m[1]), attempt: Number(m[2]) + 1 } })
+    }
+    const words = commandWords(c)
+    const script = scriptOf(words)
+    const sub = script.name === 'worktree.py' ? script.args[0] : undefined
+    const git = gitSub(words)
+    const add = (list: string[], make: (key: string) => KiroEvent) => {
+      for (const key of list) found.push({ at: c.at, ev: make(key) })
+    }
+    if (sub === 'capture-diff') add(all, (key) => ({ kind: 'phase', key, phase: 'captured' }))
+    if (script.name === 'scope_guard.py') add(all, (key) => ({ kind: 'phase', key, phase: 'scope-checked' }))
+    if (git === 'apply' && !words.includes('--check')) add(all, (key) => ({ kind: 'phase', key, phase: 'verifying' }))
+    if (git === 'commit') found.push({ at: c.at, ev: { kind: 'commit' } })
+    if (sub === 'remove') add(refs(parts[i]), (key) => ({ kind: 'done', key }))
+    if (!READERS.includes(base(words[0])) && FALLBACK.test(words.join(' '))) add(refs(parts[i]), (key) => ({ kind: 'fallback', key }))
+  })
+
+  return found.sort((a, b) => a.at - b.at).map((f) => f.ev)
+}
+
+function finished(t: KiroTask): boolean {
+  return t.state === 'done' || t.state === 'fallback'
+}
+
+/**
+ * Applies parsed steps to an agent's tasks and returns the new list. A run of a new id
+ * adds a task (capped at 50); a first-attempt run of a finished id starts that task over,
+ * and when every task had finished it starts a new delegation run, so the list restarts. A retry moves the attempt forward only. A
+ * phase marks an unfinished task running, or verifying once its patch is applied; a
+ * commit makes every verifying task done. A fallback is final.
+ */
+export function applyKiro(tasks: KiroTask[], events: KiroEvent[], nowMs: number): KiroTask[] {
+  let out = tasks.map((t) => ({ ...t }))
+  const find = (key: string) => out.find((t) => t.key === key)
+  for (const ev of events) {
+    if (ev.kind === 'commit') {
+      for (const t of out) {
+        if (t.state !== 'verifying') continue
+        t.state = 'done'
+        t.lastActivity = nowMs
+      }
+      continue
+    }
+    let t = find(ev.key)
+    if (ev.kind === 'run') {
+      // A finished task only starts over from its first attempt; a fallback is final.
+      if (t !== undefined && finished(t) && (ev.attempt ?? 1) !== 1) continue
+      if (t !== undefined && finished(t)) {
+        // Every task finished: a new delegation run. Otherwise the task alone starts over.
+        if (out.every(finished)) out = []
+        else out = out.filter((x) => x !== t)
+        t = undefined
+      }
+      if (t === undefined) {
+        if (out.length >= KIRO_TASKS_MAX) continue
+        out.push({ key: ev.key, id: ev.label, phase: 'implementing', attempt: ev.attempt ?? 1, state: 'running', startedAt: nowMs, lastActivity: nowMs })
+        continue
+      }
+      if (ev.attempt !== undefined) t.attempt = ev.attempt
+      t.phase = 'implementing'
+      t.state = 'running'
+      t.lastActivity = nowMs
+      continue
+    }
+    if (t === undefined || finished(t)) continue
+    if (ev.kind === 'retry') {
+      if (ev.attempt <= t.attempt) continue
+      t.attempt = ev.attempt
+      t.state = 'retrying'
+    } else if (ev.kind === 'phase') {
+      t.phase = ev.phase
+      t.state = ev.phase === 'verifying' ? 'verifying' : 'running'
+    } else if (ev.kind === 'fallback') {
+      t.state = 'fallback'
+    } else {
+      t.state = 'done'
+    }
+    t.lastActivity = nowMs
+  }
+  return out
+}
+
+/**
+ * Records what one Bash command tells about an agent's Kiro tasks. Returns whether
+ * anything changed; a command that starts no task on an agent without tasks leaves
+ * `details` untouched.
+ */
+export function recordKiro(details: Map<string, AgentDetail>, agentId: string, command: string, nowMs: number, maxAgents = 200): boolean {
+  const have = details.get(agentId)?.kiro ?? []
+  const events = parseKiroCommand(command, have.map((t) => t.key))
+  if (events.length === 0) return false
+  if (have.length === 0 && !events.some((e) => e.kind === 'run')) return false
+  const next = applyKiro(have, events, nowMs)
+  if (JSON.stringify(next) === JSON.stringify(have)) return false
+  detailFor(details, agentId, maxAgents).kiro = next
+  return true
+}
+
+/** The Bash command of a tool call, or undefined for any other tool or shape. */
+export function bashCommand(tool: string, input: unknown): string | undefined {
+  if (tool !== 'Bash') return undefined
+  const o = obj(input)
+  return str(o.command) ?? str(obj(o.input).command)
+}
+
+export type KiroCounts = { total: number; done: number; retried: number; fallback: number; active: number }
+
+export function kiroCounts(tasks: KiroTask[]): KiroCounts {
+  const done = tasks.filter((t) => t.state === 'done').length
+  const fallback = tasks.filter((t) => t.state === 'fallback').length
+  return { total: tasks.length, done, retried: tasks.filter((t) => t.attempt > 1).length, fallback, active: tasks.length - done - fallback }
+}
+
+/** `kiro 2/4 done`, then the tasks that needed a retry and the fallbacks; zeros left out. */
+export function kiroSummary(tasks: KiroTask[]): string {
+  const c = kiroCounts(tasks)
+  const parts = [`kiro ${c.done}/${c.total} done`]
+  if (c.retried > 0) parts.push(`${c.retried} retry`)
+  if (c.fallback > 0) parts.push(`${c.fallback} fallback`)
+  return parts.join(' · ')
+}
+
+/** `kiro 2/4`: done tasks over all tasks. */
+export function kiroShort(tasks: KiroTask[]): string {
+  const c = kiroCounts(tasks)
+  return `kiro ${c.done}/${c.total}`
+}
+
+/** Whether a main-loop run is active: an unfinished task and a step within `KIRO_STALE_MS`. */
+export function kiroMainActive(tasks: KiroTask[], nowMs: number): boolean {
+  if (!tasks.some((t) => !finished(t))) return false
+  return nowMs - Math.max(...tasks.map((t) => t.lastActivity)) <= KIRO_STALE_MS
+}
+
+/**
+ * The status line's `kiro n/m`, summed over working agents with Kiro tasks and the main
+ * loop while `kiroMainActive`; empty when no delegation run is active.
+ */
+export function kiroFragment(rows: AgentRow[], details: Map<string, AgentDetail>, nowMs: number): string {
+  let done = 0
+  let total = 0
+  for (const [id, d] of details) {
+    const tasks = d.kiro ?? []
+    if (tasks.length === 0) continue
+    const r = rows.find((x) => x.id === id)
+    const active = id === 'main' ? kiroMainActive(tasks, nowMs) : r !== undefined && isWorking(r)
+    if (!active) continue
+    const c = kiroCounts(tasks)
+    done += c.done
+    total += c.total
+  }
+  return total === 0 ? '' : `kiro ${done}/${total}`
 }
 
 /** Drops the detail of every agent that is no longer listed. */
