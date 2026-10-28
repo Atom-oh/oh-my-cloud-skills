@@ -1,10 +1,10 @@
 {
   "host": "claude",
   "plugin": "pr-dash",
-  "version": "3.0.6",
+  "version": "3.0.7",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "5905cc7e937a397cc86228cbe2b3af073b06ab3929d8bace4c10ebc71309d715",
+      "sha256": "5f6de8abe3c5cfced3aece9a3c5d10e886df254bab1a73dd5943b05c9b547f0e",
       "executable": false
     },
     ".gitignore": {
