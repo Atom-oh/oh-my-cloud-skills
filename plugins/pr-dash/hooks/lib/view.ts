@@ -61,6 +61,7 @@ function reviewSection(els: any, headSha: string, review: Review): unknown[] {
 export function buildPane(els: any, snap: Snapshot | null, opts: {
   columns: number
   error: string | null
+  notice?: string | null
   fetchedAt: number | null
   onRefresh(): void
   onFix(): void
@@ -79,6 +80,16 @@ export function buildPane(els: any, snap: Snapshot | null, opts: {
       flexDirection: 'column',
       children: [
         els.Text({ children: [opts.error], color: 'red' }),
+        els.Box({ flexDirection: 'row', columnGap: 2, children: [refreshButton] }),
+      ],
+    })
+  }
+
+  if (snap === null && opts.notice) {
+    return els.Box({
+      flexDirection: 'column',
+      children: [
+        els.Text({ children: [opts.notice], dimColor: true }),
         els.Box({ flexDirection: 'row', columnGap: 2, children: [refreshButton] }),
       ],
     })

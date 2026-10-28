@@ -9,6 +9,7 @@ import {
   diffNotices,
   isMergeReady,
   hasFindings,
+  pushDir,
 } from '../hooks/lib/model.ts'
 
 // Both fixtures are MERGED; OPEN copies exercise the merge-readiness and summary paths.
@@ -348,3 +349,42 @@ describe('findReview: severity headings count only inside ## Issues', () => {
     expect(isMergeReady(tampered)).toBe(false)
   })
 })
+
+describe('pushDir', () => {
+  test('test_push_dir_is_extracted_from_cd_and_git_c', () => {
+    expect(pushDir('cd /work/repo && git push')).toBe('/work/repo')
+    expect(pushDir('cd /work/repo; git push -u origin x')).toBe('/work/repo')
+    expect(pushDir("cd '/work/my repo' && git push")).toBe('/work/my repo')
+    expect(pushDir('cd "/work/my repo" && git push')).toBe('/work/my repo')
+    expect(pushDir('git -C /work/repo push')).toBe('/work/repo')
+    expect(pushDir('git -C "/work/my repo" push origin x')).toBe('/work/my repo')
+    expect(pushDir('cd /a && cd /b && git push')).toBe('/b')
+    expect(pushDir('cd /a && gh pr create --fill')).toBe('/a')
+    expect(pushDir('cd ../other && git push')).toBe('../other')
+    // Not expanded: the engine would receive a literal ~ or $VAR.
+    expect(pushDir('cd ~/repo && git push')).toBeUndefined()
+    expect(pushDir('cd $HOME/repo && git push')).toBeUndefined()
+    expect(pushDir('cd `pwd`/repo && git push')).toBeUndefined()
+    expect(pushDir('git -C $REPO push')).toBeUndefined()
+    // No directory, or no push.
+    expect(pushDir('git push -u origin x')).toBeUndefined()
+    expect(pushDir('cd /work/repo && ls')).toBeUndefined()
+    expect(pushDir('git -C=/work/repo push')).toBeUndefined()
+    // A cd after the push does not apply; a quoted mention is not a cd segment.
+    expect(pushDir('git push && cd /later')).toBeUndefined()
+    expect(pushDir('echo "cd /x && git push"')).toBeUndefined()
+  })
+
+  test('relative and newline-separated cds, cd -, and relative -C after cd', () => {
+    expect(pushDir('cd a && cd b && git push')).toBe('a/b')
+    expect(pushDir('cd /a && cd b && git push')).toBe('/a/b')
+    expect(pushDir('cd a && cd /b && git push')).toBe('/b')
+    expect(pushDir('cd /work\ngit push')).toBe('/work')
+    expect(pushDir('cd /work && git -C sub push')).toBe('/work/sub')
+    expect(pushDir('git -C sub push')).toBe('sub')
+    expect(pushDir('cd - && git push')).toBeUndefined()
+    expect(pushDir('cd /a && cd - && git push')).toBeUndefined()
+    expect(pushDir('cd $X && cd b && git push')).toBeUndefined()
+  })
+})
+
