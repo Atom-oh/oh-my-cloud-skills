@@ -346,36 +346,48 @@ export function hasFindings(s: Snapshot): boolean {
   return c.CRITICAL > 0 || c.MAJOR > 0 || c.MINOR > 0
 }
 
-// Same boundary as the push observer's PUSH_RE: the push starts a command or follows ; & | ( or a newline.
-const PUSH_AT_RE = /(?:^|[;&|(\n])\s*(?:git(?:\s+-C\s+(?:'([^']*)'|"([^"]*)"|(\S+)))?\s+push|gh\s+pr\s+create)\b/
-const CD_RE = /(?:^|[;&|(\n])\s*cd\s+(?:'([^']*)'|"([^"]*)"|([^\s;&|'"]+))(?=\s*(?:&&|;))/g
+// A push starts a command or follows ; & | ( or a newline, so an echo or grep that
+// mentions it does not count. Shared by the push observer and pushDir.
+export const PUSH_AT_RE = /(?:^|[;&|(\n])\s*(?:git(?:\s+-C\s+(?:'([^']*)'|"([^"]*)"|(\S+)))?\s+push|gh\s+pr\s+create)\b/
+const CD_RE = /(?:^|[;&|(\n])\s*cd\s+(?:'([^']*)'|"([^"]*)"|([^\s;&|'"]+))(?=\s*(?:&&|;|\n))/g
 
-/** A directory is usable only when the shell would not have expanded it (`~`, `$VAR`, backticks). */
+/** A directory is usable only when the shell would not have expanded it (`~`, `$VAR`, backticks, `cd -`). */
 function literalDir(d: string | undefined): string | undefined {
-  if (d === undefined || d === '' || d.startsWith('~') || d.includes('$') || d.includes('`')) return undefined
+  if (d === undefined || d === '' || d === '-' || d.startsWith('~') || d.includes('$') || d.includes('`')) return undefined
   return d
 }
 
 /**
  * The directory a `git push` / `gh pr create` Bash command ran in: the target of
- * `git -C <dir>` or the last `cd <dir> &&` / `cd <dir>;` before the push. Returns
- * undefined when the command names none (the session directory applies) or when the
- * directory needs shell expansion. A relative `-C` after a `cd` is joined onto it.
+ * `git -C <dir>` or the `cd <dir> &&` / `cd <dir>;` / `cd <dir>` newline segments before
+ * the push. Consecutive relative cds compose (`cd a && cd b` is `a/b`); an absolute cd
+ * starts over. Returns undefined when the command names no directory (the session
+ * directory applies) or when one needs shell expansion (`~`, `$VAR`, backtick, `cd -`).
+ * A relative result is not resolved here: the process engine resolves it against the
+ * session's working directory. A relative `-C` after a `cd` is joined onto it.
  */
 export function pushDir(command: string): string | undefined {
   const m = PUSH_AT_RE.exec(command)
   if (!m) return undefined
   const dashC = m[1] ?? m[2] ?? m[3]
-  // The match starts at its boundary character (the second & of &&, a ;), which ends the cd segment.
+  // The match starts at its boundary character (the second & of &&, a ; or a newline), which ends the cd segment.
   const prefix = command.slice(0, m.index + (/[;&|(\n]/.test(command[m.index]) ? 1 : 0))
   let cd: string | undefined
-  let invalidCd = false
+  let unknown = false
   for (const c of prefix.matchAll(CD_RE)) {
-    const raw = c[1] ?? c[2] ?? c[3]
-    cd = literalDir(raw)
-    invalidCd = cd === undefined
+    const dir = literalDir(c[1] ?? c[2] ?? c[3])
+    if (dir === undefined) {
+      cd = undefined
+      unknown = true
+    } else if (dir.startsWith('/')) {
+      cd = dir
+      unknown = false
+    } else if (!unknown) {
+      cd = cd === undefined ? dir : cd.replace(/\/+$/, '') + '/' + dir
+    }
   }
-  if (dashC === undefined) return invalidCd ? undefined : cd
+  if (unknown) return undefined
+  if (dashC === undefined) return cd
   const dir = literalDir(dashC)
   if (dir === undefined) return undefined
   if (cd !== undefined && !dir.startsWith('/')) return cd.replace(/\/+$/, '') + '/' + dir

@@ -374,4 +374,17 @@ describe('pushDir', () => {
     expect(pushDir('git push && cd /later')).toBeUndefined()
     expect(pushDir('echo "cd /x && git push"')).toBeUndefined()
   })
+
+  test('relative and newline-separated cds, cd -, and relative -C after cd', () => {
+    expect(pushDir('cd a && cd b && git push')).toBe('a/b')
+    expect(pushDir('cd /a && cd b && git push')).toBe('/a/b')
+    expect(pushDir('cd a && cd /b && git push')).toBe('/b')
+    expect(pushDir('cd /work\ngit push')).toBe('/work')
+    expect(pushDir('cd /work && git -C sub push')).toBe('/work/sub')
+    expect(pushDir('git -C sub push')).toBe('sub')
+    expect(pushDir('cd - && git push')).toBeUndefined()
+    expect(pushDir('cd /a && cd - && git push')).toBeUndefined()
+    expect(pushDir('cd $X && cd b && git push')).toBeUndefined()
+  })
 })
+

@@ -3,7 +3,7 @@
 // It never merges, pushes or denies anything; the only process it runs is
 // `gh pr view … --json …`.
 
-import { diffNotices, parseSnapshot, pushDir, summaryLine } from './lib/model.ts'
+import { diffNotices, parseSnapshot, PUSH_AT_RE, pushDir, summaryLine } from './lib/model.ts'
 import type { Snapshot } from './lib/model.ts'
 import { buildPane } from './lib/view.ts'
 
@@ -23,11 +23,11 @@ let generation = 0
 let timer: any = null
 
 const GH_FIELDS = 'number,title,url,state,headRefOid,headRefName,baseRefName,mergeable,statusCheckRollup,comments'
-// Matches git push / gh pr create at the start of a command or after ; & | ( or a newline,
-// so an echo or grep that mentions them does not start watching.
-const NOT_REPO_RE = /not a git repository|failed to run git|no git remotes/i
+// Only a genuine "not a git repository" is quiet; other git failures (dubious ownership, git missing, no remotes) are real errors.
+const NOT_REPO_RE = /not a git repository/i
 const NOT_REPO_NOTICE = 'not in a git repository'
-const PUSH_RE = /(?:^|[;&|(\n])\s*(?:git(?:\s+-C\s+\S+)?\s+push|gh\s+pr\s+create)\b/
+// The push observer and pushDir share one boundary (see PUSH_AT_RE in lib/model.ts).
+const PUSH_RE = PUSH_AT_RE
 
 // Pure helpers (take a Snapshot, never `$`)
 
@@ -196,10 +196,14 @@ export function register(on) {
     const result = await next(e)
     if (!result?.deny && !result?.isError && typeof e.command === 'string' && PUSH_RE.test(e.command)) {
       const was = watching
+      const dir = pushDir(e.command)
+      // The last poll found no repository and this push names no usable directory
+      // (none, or one needing shell expansion): polling again cannot do better, so no toast.
+      const quiet = notice !== null && dir === undefined
       watching = true
-      retarget(null, pushDir(e.command))
+      retarget(null, dir)
       void refresh($)
-      if (!was) $.ui.toast("pr-dash watching this branch's PR")
+      if (!was && !quiet) $.ui.toast("pr-dash watching this branch's PR")
     }
     return result
   }).catch(($, e, next) => next(e))

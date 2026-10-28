@@ -415,3 +415,36 @@ test('test_status_text_has_no_duplicate_prefix', async ($, on) => {
   expect(last).toBe('no pull requests found')
   expect(String(last)).not.toMatch(/pr-dash/)
 })
+
+for (const stderr of [
+  'failed to run git: fatal: detected dubious ownership in repository at /x',
+  'no git remotes found',
+]) {
+  test('NOT_REPO matching is narrow, so this surfaces as an error: ' + stderr.slice(0, 30), async ($, on) => {
+    const { lines } = stubs(on, passedOpen, { stderr, surfaces: [] })
+    const r = await $.command.run({ command: 'pr-dash', args: '' })
+    expect(lines[lines.length - 1]).toBe(stderr)
+    expect(r.text).toBe(stderr)
+  })
+}
+
+test('a quoted git -C path reaches the observer and polls that directory', async ($, on) => {
+  const { cwds } = stubs(on, passedOpen)
+  const clock = mock.clock(on)
+  await $.session.start(SESSION)
+
+  await $.tool.call({ tool: 'Bash', command: 'git -C "/my repo" push' })
+  await clock.settle()
+  expect(cwds[cwds.length - 1]).toBe('/my repo')
+})
+
+test('an unresolvable push dir in a non-repo session raises no watching toast', async ($, on) => {
+  const { toasts } = stubs(on, passedOpen, { stderr: NOT_REPO, surfaces: [] })
+  const clock = mock.clock(on)
+  await $.session.start(SESSION)
+
+  await $.command.run({ command: 'pr-dash', args: '' })
+  await $.tool.call({ tool: 'Bash', command: 'cd ~/repo && git push' })
+  await clock.settle()
+  expect(toasts).toEqual([])
+})
