@@ -1,10 +1,10 @@
 {
   "host": "claude",
   "plugin": "co-agent",
-  "version": "3.0.8",
+  "version": "3.0.9",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "9924fdc26e9b7692413ac355d3a49ac4ec08b20df52313d4d5950e40eb280bae",
+      "sha256": "d4592393a3285f7febc288519f09b34f5abaf280d77e71864fecad1e1a610d04",
       "executable": false
     },
     "CLAUDE.md": {
