@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "project-init",
-  "version": "3.0.8",
+  "version": "3.0.9",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "6e618b5c72acb9375e98eaa1e8b4654f16a8ef202f7ec8be2929a58375ff98dc",
+      "sha256": "f1d1648a2af6b526a1cdb9fe53735fa180b66f7917b70d2a200808d35d9f0d80",
       "executable": false
     },
     "CLAUDE.md": {
