@@ -3,24 +3,9 @@
 ## 1. Cost Overview
 
 ### Data Commands
-```bash
-# Monthly cost by service (last 30 days)
-aws ce get-cost-and-usage \
-  --time-period Start=$(date -d '30 days ago' +%Y-%m-%d),End=$(date +%Y-%m-%d) \
-  --granularity MONTHLY --metrics BlendedCost \
-  --group-by Type=DIMENSION,Key=SERVICE
-
-# Daily cost trend (7 days)
-aws ce get-cost-and-usage \
-  --time-period Start=$(date -d '7 days ago' +%Y-%m-%d),End=$(date +%Y-%m-%d) \
-  --granularity DAILY --metrics BlendedCost
-
-# Cost by tag (EKS cluster)
-aws ce get-cost-and-usage \
-  --time-period Start=$(date -d '30 days ago' +%Y-%m-%d),End=$(date +%Y-%m-%d) \
-  --granularity MONTHLY --metrics BlendedCost \
-  --group-by Type=TAG,Key=eks:cluster-name
-```
+Monthly/daily cost by service and the CE query syntax: see official
+`aws-core:aws-billing-and-cost-management` (`references/cost-explorer.md`, `cost-audit.md`).
+EKS-cluster cost: add `--group-by Type=TAG,Key=eks:cluster-name`.
 
 ### Scoring Thresholds
 | Condition | Severity |
@@ -43,15 +28,11 @@ aws ce get-cost-and-usage \
 ```bash
 # EC2 instance types and purchasing
 aws ec2 describe-instances --query 'Reservations[].Instances[].[InstanceId,InstanceType,Placement.AvailabilityZone,Architecture,State.Name]' --output table
-
-# Savings Plans coverage
-aws ce get-savings-plans-coverage \
-  --time-period Start=$(date -d '30 days ago' +%Y-%m-%d),End=$(date +%Y-%m-%d) \
-  --granularity MONTHLY
-
-# Right-sizing recommendations
-aws ce get-rightsizing-recommendation --service AmazonEC2 --configuration RecommendationTarget=SAME_INSTANCE_FAMILY,BenefitsConsidered=true
 ```
+
+Savings Plans coverage and rightsizing recommendations: see official
+`aws-core:aws-billing-and-cost-management` (`references/savings-plans.md`, `ec2-rightsizing.md`,
+`cost-optimization-hub.md`).
 
 ### Analysis Points
 - Instance type distribution: Family / Count / Cost / % Total

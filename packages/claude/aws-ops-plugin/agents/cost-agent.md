@@ -29,63 +29,25 @@ here attaches to each recommendation its effort, its risk, and the commitment it
 4. **Resource Optimization** — Idle resource detection, right-sizing, cleanup
 5. **CloudWatch Cost** — Metric/log cost optimization, retention tuning
 
-### Recent AWS cost launches (2025–2026 — confidence noted inline)
+### Recent AWS cost launches (2025–2026)
 
-- **Database Savings Plans** (GA 2025-12-02) — a 4th Savings Plan type (alongside
-  Compute, EC2 Instance, SageMaker): up to 35% off a consistent $/hour commit (1-yr, no
-  upfront) across Aurora / RDS / DynamoDB / ElastiCache / DocumentDB / Neptune /
-  Keyspaces / Timestream / DMS, applying across family/size, serverless vs provisioned,
-  and Region. Weigh DSP coverage across the data tier in FinOps planning.
-  Source: https://aws.amazon.com/about-aws/whats-new/2025/12/database-savings-plans-savings
-- **Cost Optimization Hub — Cost Efficiency metric** (GA 2025-11-19) — auto-computes the
-  % of spend optimizable via rightsizing/idle/commitment recs (score = 1 − potential
-  savings / optimizable spend), refreshed daily. (COH consolidates 18+ rec types
-  cross-account/Region, discount-aware.)
-- **Compute Optimizer — unused NAT Gateway recommendations** (GA 2025-11-26) — flags NAT
-  GWs with no traffic over 32 days (CloudWatch metrics + route-table checks) with savings
-  + utilization to verify before deleting. (Also powers the Trusted Advisor NAT check.)
-- **Compute Optimizer — automation rules** (GA 2025-11-21) — auto-apply EBS recommendations
-  on a schedule (delete unattached, upgrade gp2→gp3 / io1→io2).
-- **Cost Explorer — 18-month ML forecasting** (GA 2025-11-19; up to 36 months history) —
-  AI-generated forecast explanations in **public preview**.
-- **Cost Anomaly Detection — extended dimensional monitoring** (GA 2025-11-19, all
-  commercial regions, no extra charge) — one managed monitor tracks all values in a
-  dimension (linked accounts / tags / cost categories) — e.g. 500 teams, one monitor.
-
-> Dates Nov-19/21/26 2025 are the What's New dates (the week before re:Invent main-stage),
-> which AWS itself bundles as "re:Invent 2025" launches. Figures are AWS-stated "up to".
-> Sources: https://aws.amazon.com/about-aws/whats-new/2025/11/aws-cost-optimization-hub-cost-efficiency-metric-measure-track/ ·
-> https://aws.amazon.com/about-aws/whats-new/2025/11/aws-compute-optimizer-unused-nat-gateway-recommendations/ ·
-> https://aws.amazon.com/about-aws/whats-new/2025/11/aws-compute-optimizer-automation-rules/ ·
-> https://aws.amazon.com/about-aws/whats-new/2025/11/cost-explorer-18-month-forecasting-ai-powered-forecasts/ ·
-> https://aws.amazon.com/about-aws/whats-new/2025/11/aws-cost-anomaly-detection-managed-monitoring/
+Database Savings Plans, Cost Optimization Hub, Compute Optimizer (unused NAT Gateway, EBS
+automation rules), Cost Explorer forecasting and Cost Anomaly Detection are covered by official
+`aws-core:aws-billing-and-cost-management` references (`reserved-instances.md`,
+`service-optimization.md`, `cost-optimization-hub.md`, `cost-explorer.md`). Re-check
+availability against the live docs at use time.
 
 ---
+
 
 ## Analysis Commands
 
 ### Cost Overview
-```bash
-# Monthly cost by service
-aws ce get-cost-and-usage \
-  --time-period Start=$(date -d '30 days ago' +%Y-%m-%d),End=$(date +%Y-%m-%d) \
-  --granularity MONTHLY \
-  --metrics BlendedCost \
-  --group-by Type=DIMENSION,Key=SERVICE
 
-# Daily cost trend
-aws ce get-cost-and-usage \
-  --time-period Start=$(date -d '7 days ago' +%Y-%m-%d),End=$(date +%Y-%m-%d) \
-  --granularity DAILY \
-  --metrics BlendedCost
+Service/daily/tag cost queries (`aws ce get-cost-and-usage`, `--group-by`): see official
+`aws-core:aws-billing-and-cost-management` (`references/cost-explorer.md`, `cost-audit.md`).
+EKS-specific grouping: `--group-by Type=TAG,Key=eks:cluster-name`.
 
-# Cost by tag (EKS cluster)
-aws ce get-cost-and-usage \
-  --time-period Start=$(date -d '30 days ago' +%Y-%m-%d),End=$(date +%Y-%m-%d) \
-  --granularity MONTHLY \
-  --metrics BlendedCost \
-  --group-by Type=TAG,Key=eks:cluster-name
-```
 
 ### EKS Resource Usage
 ```bash
@@ -101,40 +63,20 @@ kubectl get pods -A -o json | jq '[.items[] | {ns:.metadata.namespace, name:.met
 kubectl get pvc -A -o json | jq '.items[] | select(.status.phase=="Bound") | {ns:.metadata.namespace, name:.metadata.name, size:.spec.resources.requests.storage}'
 ```
 
-### Savings Opportunities
-```bash
-# RI recommendations
-aws ce get-reservation-purchase-recommendation --service "Amazon Elastic Compute Cloud - Compute" --term-in-years ONE_YEAR --payment-option NO_UPFRONT
+### Savings Opportunities and Strategies
 
-# Savings Plan recommendations
-aws ce get-savings-plans-purchase-recommendation --savings-plans-type COMPUTE_SP --term-in-years ONE_YEAR --payment-option NO_UPFRONT
-
-# Right-sizing recommendations
-aws ce get-rightsizing-recommendation --service "AmazonEC2"
-```
-
----
-
-## Optimization Strategies
-
-The percentages below are typical published ranges, not predictions for this account. They
-exist to rank candidates by likely payoff before spending API calls; replace each one with a
-real figure from the `awspricing` MCP and this account's Cost Explorer data before it
-reaches a recommendation. Effort and risk are the columns that actually decide sequencing —
-a 60-90% lever nobody will accept the risk of is worth less than a 20% one they will.
-
-| Strategy | Typical range (verify per account) | Effort | Risk |
-|----------|------------------------------------|--------|------|
-| Right-size over-provisioned | 20-40% | Low | Low |
-| Spot instances (stateless) | 60-90% | Medium | Medium |
-| Graviton migration | 20-40% | Medium | Low |
-| Savings Plans (1yr) | 20-30% | Low | Low (commitment) |
-| Reserved Instances (1yr) | 30-40% | Low | Medium (commitment) |
-| Karpenter consolidation | 15-30% | Medium | Low |
-| CloudWatch log optimization | 30-50% | Low | Low |
-| Delete idle resources | 100% | Low | None |
+Savings Plans/RI purchase recommendations, rightsizing, Cost Optimization Hub, NAT/log-retention
+and Fargate Spot levers: see official `aws-core:aws-billing-and-cost-management`
+(`references/savings-plans.md`, `reserved-instances.md`, `ec2-rightsizing.md`,
+`cost-optimization-hub.md`, `service-optimization.md`). Published percentage ranges are
+estimates, not predictions; replace each with a figure from the `awspricing` MCP and this
+account's Cost Explorer data before it reaches a recommendation. Effort and risk decide
+sequencing: a 60-90% lever nobody will accept the risk of is worth less than a 20% one they
+will. EKS-specific levers kept here: Karpenter consolidation (15-30%), Spot for stateless
+node pools (60-90%), Graviton node groups (20-40%).
 
 ---
+
 
 ## Decision Tree
 

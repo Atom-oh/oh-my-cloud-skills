@@ -17,7 +17,7 @@ Error message → root cause → solution mapping for EKS operations.
 
 | Error Message | Root Cause | Solution |
 |--------------|------------|---------|
-| `NodeNotReady` | kubelet stopped, network issue | Check kubelet: `journalctl -u kubelet -n 100` |
+| `NodeNotReady` | kubelet stopped, network issue | Check kubelet: `journalctl -u kubelet -n 100`. Auto Mode: inspect NodeClaim conditions (`kubectl get nodeclaims`); nodes are replaced, not repaired. Hybrid node with Ready=Unknown: link to AWS is down, pods keep running; use `crictl pods/ps/logs` on the host |
 | `MemoryPressure` | Node memory exhaustion | Evict pods, increase node size |
 | `DiskPressure` | Disk full | Clean images: `crictl rmi --prune`, expand disk |
 | `PIDPressure` | Too many processes | Increase PID limit, check for fork bombs |
@@ -44,6 +44,7 @@ Error message → root cause → solution mapping for EKS operations.
 |--------------|------------|---------|
 | `InsufficientFreeAddressesInSubnet` | IP exhaustion | Add secondary CIDR, enable prefix delegation |
 | `ENI limit reached` | Instance type ENI limit | Use larger instance or prefix delegation |
+| `FailedCreatePodSandBox ... failed to assign an IP address` | CNI cannot allocate an IP (subnet, ENI/prefix limits) | See `vpc-cni-troubleshooting.md`; `Too many pods` at scheduling is the kubelet pod-count ceiling, not proof of IP exhaustion |
 | `dial tcp: lookup <service>: no such host` | DNS failure | Check CoreDNS, ndots setting |
 | `connection refused` | Service not listening | Check pod port, targetPort, service selector |
 | `context deadline exceeded` | Timeout | Check SG rules, network policy, routing |
@@ -64,7 +65,10 @@ Error message → root cause → solution mapping for EKS operations.
 | Error Message | Root Cause | Solution |
 |--------------|------------|---------|
 | `AccessDenied` | Missing IAM permission | Add policy to role |
-| `Forbidden: User "system:anonymous"` | Authentication failed | Fix aws-auth ConfigMap or access entries |
+| `Forbidden: User "system:anonymous"` | Authentication failed | Check `accessConfig.authenticationMode`, then fix the access entry (API modes) or aws-auth (CONFIG_MAP mode) |
 | `could not get token` (IRSA) | OIDC provider issue | Verify OIDC provider, trust policy |
 | `WebIdentityErr` | Trust policy mismatch | Fix condition in IAM trust policy |
-| `An error occurred (AccessDenied) when calling the AssumeRoleWithWebIdentity` | IRSA misconfigured | Check SA annotation, OIDC, trust policy |
+| `An error occurred (AccessDenied) when calling the AssumeRoleWithWebIdentity` | IRSA misconfigured | Check SA annotation, OIDC provider ARN, trust-policy `sub` (`system:serviceaccount:<ns>:<sa>`) and `aud` (`sts.amazonaws.com`); a recreated cluster has a new OIDC issuer |
+| Denied principal is the node role (`assumed-role/<node-role>/i-...`) | SDK fell back to node credentials | Check credential injection (`AWS_ROLE_ARN` / `AWS_CONTAINER_CREDENTIALS_FULL_URI` env), SDK version and provider precedence |
+| Pod Identity `AssumeRole` denied | Trust principal is not `pods.eks.amazonaws.com`, or `sts:TagSession` missing | Allow both `sts:AssumeRole` and `sts:TagSession` in the trust policy |
+| Pod Identity env present, SDK says `Unable to locate credentials` | SDK too old for the container credential provider | Upgrade the SDK |

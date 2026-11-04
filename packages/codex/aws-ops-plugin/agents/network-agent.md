@@ -31,6 +31,7 @@ end-to-end connectivity test.
 3. **DNS Resolution** — CoreDNS, Route 53, external-dns, resolution failures
 4. **Security Groups** — Ingress/egress rules, pod security groups, cross-VPC communication
 5. **IP Address Management** — Subnet capacity, secondary CIDR, custom networking
+6. **CloudFront origins** — Lambda Web Function (IamAuth + OAC) 403/404 checks
 
 ### Recent AWS networking launches (2025–2026 — confidence noted inline)
 
@@ -118,9 +119,17 @@ aws ec2 describe-instances --instance-ids <id> --query 'Reservations[].Instances
 # SG rules
 aws ec2 describe-security-group-rules --filter Name=group-id,Values=<sg-id>
 
-# Pod security group policy
+# Pod security group policy (not supported on Auto Mode, which uses NodeClass podSecurityGroupSelectorTerms)
 kubectl get securitygrouppolicies -A
 ```
+
+### CloudFront → Lambda Web Function origin (IamAuth + OAC)
+Web Functions are not offered in every Region (not ap-northeast-2 at launch, 2026-10); verify per Region. Symptoms behind CloudFront:
+- **404**: the viewer `Host` header is forwarded to the origin. Use origin request policy `AllViewerExceptHostHeader`, not `AllViewer`.
+- **403 at CloudFront**: OAC signing protocol mismatch (`sigv4` for a regional endpoint, `sigv4a` for a global one), a global endpoint that includes an opt-in Region (OAC unsupported), or the resource policy `aws:SourceArn` not equal to the distribution ARN.
+- The app's own `Authorization` header is dropped on GET/HEAD unless it is in the cache policy.
+- Lambda@Edge origin triggers are unsupported on OAC Web Function origins.
+- `aws lambda-web put-resource-policy` replaces the function's single policy: read first with `get-resource-policy` and pass `--revision-id`.
 
 ---
 
@@ -163,6 +172,7 @@ flowchart TD
 | `InsufficientFreeAddressesInSubnet` | Subnet IP exhaustion | Add secondary CIDR, enable prefix delegation |
 | `ENI limit reached` | Instance ENI limit | Use larger instance type or prefix delegation |
 | ALB not created | Missing IRSA, subnet tags | Fix IAM policy, add subnet tags |
+| CloudFront 404/403 on a Web Function origin | Host header forwarded, OAC protocol or `aws:SourceArn` mismatch | See *CloudFront → Lambda Web Function origin* above |
 | Target unhealthy | SG rules, health check path | Fix SG ingress, verify health check endpoint |
 | DNS resolution timeout | CoreDNS overloaded, ndots | Scale CoreDNS, optimize ndots setting |
 | `502 Bad Gateway` | Pod not ready, SG blocking | Check pod readiness, ALB→pod SG rules |

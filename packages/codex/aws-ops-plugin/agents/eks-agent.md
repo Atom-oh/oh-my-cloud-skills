@@ -28,27 +28,35 @@ closes with a verification command whose expected output is stated.
 1. **Cluster Management** — Status monitoring, configuration, endpoint access, logging
 2. **Node Group Operations** — Managed/self-managed node groups, scaling, AMI updates
 3. **Add-on Management** — VPC CNI, CoreDNS, kube-proxy, EBS CSI driver lifecycle
-4. **Upgrade Planning** — Version compatibility, deprecation checks, rolling upgrade execution
+4. **Upgrade Planning** — Version compatibility, upgrade insights, rolling upgrade execution, 7-day version rollback
 5. **Troubleshooting** — 5-minute triage, pod debugging, node diagnostics
+6. **Auto Mode / Capabilities** — NodeClass/NodeClaim operations, managed Argo CD / kro / ACK
 
-### Recent EKS Auto Mode features (verified 2025–2026)
+### Auto Mode operations (verified as of 2026-11-04, kubernetes-docs `en/eks-auto-mode/`)
 
-When a cluster runs **EKS Auto Mode**, these GA additions change the ops playbook:
+On a cluster running **EKS Auto Mode**, the ops playbook changes:
 
-- **Pod-level network isolation** (2025-06): `NodeClass.podSubnetSelectorTerms` puts app
-  pods on **separate subnets**, and `podSecurityGroupSelectorTerms` attaches **pod
-  security groups** (the Auto Mode replacement for native SGPP) — isolate app traffic
-  from node-infra traffic without leaving Auto Mode.
-- **Forward HTTP/HTTPS proxy** (2025-06): `advancedNetworking.httpsProxy`/`noProxy` (pair
-  with `certificateBundles` for self-signed certs; `noProxy` should include `169.254.169.254`
-  and `.internal`/`.eks.amazonaws.com`) — corporate-proxy compliance.
-- **SOCI parallel image pull** (2025-11): up to ~60% faster cold starts; **auto-enabled,
-  no config**, on G/P/Trainium instances **with local NVMe** (faster GPU/AI cold starts).
-- **Region expansion**: Auto Mode is now in all commercial EKS regions (excl. China), both
-  GovCloud regions, and AWS Local Zones.
+- **Nodes are replaced, not patched.** AWS manages node OS/component patches. Changing a NodeClass (kubelet, kernel sysctl) marks nodes drifted and EKS replaces them; review PDBs first. Default `expireAfter` is 336h, hard maximum node lifetime 21 days, NodeClaim `terminationGracePeriod` defaults to 24h (`07-node-lifecycle.md`).
+- **Kubelet overrides** only via `NodeClass.spec.advancedCompute.kubelet` (`maxPods` 1-110, `podPidsLimit`, `idsPerPod`, `singleProcessOOMKill` on k8s 1.32+, `eviction.*`, `logging.*`, `allowedUnsafeSysctls`); other Karpenter kubelet fields (kubeReserved, systemReserved, clusterDNS, podsPerCore) are not exposed. Kernel settings go in `advancedCompute.kernel.sysctl`. Confirm with `kubectl get node <n> -o jsonpath='{.status.capacity.pods}'` (`02-nodepool-configuration.md`).
+- **Diagnose with NodeClaim conditions**, not `.status.phase`: `kubectl get nodeclaims -o json | jq '[.items[]|{name:.metadata.name,pool:.metadata.labels["karpenter.sh/nodepool"],imageID:.status.imageID,conditions:[.status.conditions[]?|{type,status,reason}]}]'` (`05-operations.md`). Manual bulk node deletion is not a rolling update and ignores the NodePool budget.
+- **Absent standard add-on pods are expected**: CoreDNS runs as a node system service (a mixed cluster must keep the CoreDNS Deployment for non-Auto nodes), and Pod Identity needs no duplicate agent. aws-node / kube-proxy pods may not exist.
+- **Logs**: managed compute/storage/LB/IPAM logs need separately configured Vended Logs delivery; no automatic `Karpenter` CloudWatch namespace (`05-operations.md`).
+- **Pod-level network isolation**: `NodeClass.podSubnetSelectorTerms` + `podSecurityGroupSelectorTerms` must be set together, apply per NodeClass (not per namespace/ServiceAccount), and hostNetwork traffic still uses node networking; SNAT can change the source address. This is a distinct mechanism from native Security Groups for Pods, which is unsupported on Auto Mode (`02-nodepool-configuration.md`; `networking/01-vpc-cni.md`).
+- `certificateBundles` establishes node trust only; it does not change every container's trust store. Auto Mode is available in EKS regions excluding China, including GovCloud (US); verify per Region.
 
-> Source: AWS Containers blog + EKS User Guide (`auto-networking.html`, `create-node-class.html`,
-> `auto-change.html`). Re-check region/feature availability at use time.
+### Upgrades, rollback and cluster IAM keys (verified as of 2026-11-04, kubernetes-docs `en/eks/08-eks-upgrades.md`)
+
+- EKS upgrades one minor at a time. Check what EKS offers and the findings first, then track the exact update ID (ACTIVE does not prove the request succeeded):
+  `aws eks describe-cluster-versions --cluster-versions <target>`;
+  `aws eks list-insights --cluster-name $C --filter '{"categories":["UPGRADE_READINESS"],"kubernetesVersions":["<target>"]}'`;
+  `aws eks describe-update --name $C --update-id <id>`. A started control-plane upgrade cannot be paused; the `--force` enforcement for upgrade insights is currently rolled back, which does not make the findings ignorable.
+- `describe-addon-versions --kubernetes-version <target> --addon-name <n>` returns compatibility records (architecture, compute type, default flag); the first array element is not "latest". `describe-cluster` `upgradePolicy` (STANDARD/EXTENDED) controls what happens when standard support ends; check the live support calendar rather than a remembered date. EKS 1.35, 1.36 and 1.37 are available (AWS What's New).
+- **Rollback** (July 2026): only within 7 days of a completed in-place upgrade, only to the previous minor, not for clusters created at the current version. There is no separate command: `aws eks update-cluster-version --kubernetes-version <previous>`. Check `aws eks list-insights --filter '{"categories":["ROLLBACK_READINESS"]}'` first (ERROR/UNKNOWN block). Order: managed node groups via `update-nodegroup-version` first; Auto Mode rolls nodes before the control plane (`--rollback-config timeoutMinutes=...`, default 720; cancel only in the node phase); Fargate pods need a planned redeploy. The rollback `--force` bypasses insights only; add-ons are not reverted and data/application state is not restored.
+- New IAM condition keys for cluster APIs (2026-04, AWS What's New), usable in SCPs for CreateCluster / UpdateClusterConfig / UpdateClusterVersion / AssociateEncryptionConfig: `eks:endpointPublicAccess`, `eks:endpointPrivateAccess`, `eks:encryptionConfigProviderKeyArns`, `eks:kubernetesVersion`, `eks:deletionProtection`, `eks:controlPlaneScalingTier`, `eks:zonalShiftEnabled`.
+
+### EKS Capabilities (managed Argo CD, kro, ACK; kubernetes-docs `en/eks/13-eks-capabilities.md`)
+
+Controllers run in AWS-owned infrastructure: no pods on worker nodes, so `kubectl logs` does not work. Logs go to CloudWatch Vended Logs. One capability per type per cluster; the version is chosen by AWS and cannot be pinned (no user-side rollback). Inspect with `aws eks describe-capability --cluster-name $C --capability-name <n> --query 'capability.{status:status,version:version}'`. Apply changes one at a time (a change during UPDATING fails with ConflictException); delete only with `--delete-propagation-policy RETAIN`. Managed Argo CD does not register its own cluster (cluster Secret with the EKS ARN as `server`) and the auto-created access entry alone is too narrow to sync (`ComparisonError ... forbidden at the cluster scope`). Timings on that page come from 1-5 runs in one account.
 
 ---
 
@@ -66,7 +74,7 @@ kubectl describe node <node-name> | grep -A 20 "Conditions:"
 
 # System pods
 kubectl get pods -n kube-system -o wide
-kubectl get pods -n amazon-vpc-cni-system -o wide
+kubectl get ds aws-node -n kube-system   # standard nodes; absent on pure Auto Mode (expected)
 
 # Events
 kubectl get events -A --sort-by='.lastTimestamp' | tail -30
@@ -89,8 +97,9 @@ journalctl -u kubelet -n 100 --no-pager
 
 ### Pod Troubleshooting
 ```bash
-# CrashLoopBackOff pods
+# Non-running pods, plus Running-but-NotReady / CrashLooping ones that phase filters miss
 kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
+kubectl get pods -A -o json | jq -r '.items[]|select(any(.status.containerStatuses[]?; .ready==false))|.metadata.namespace+"/"+.metadata.name'
 
 # Pod details
 kubectl describe pod <pod> -n <namespace>
@@ -109,7 +118,10 @@ aws eks list-addons --cluster-name $CLUSTER_NAME
 # Check add-on status
 aws eks describe-addon --cluster-name $CLUSTER_NAME --addon-name <addon-name>
 
-# Update add-on
+# Compatible versions for the cluster (check architecture, compute type, default flag; first element is not "latest")
+aws eks describe-addon-versions --addon-name <addon-name> --kubernetes-version <cluster-version>
+
+# Update add-on (PRESERVE is not a backup; review OVERWRITE separately)
 aws eks update-addon --cluster-name $CLUSTER_NAME --addon-name vpc-cni --addon-version <version> --resolve-conflicts PRESERVE
 ```
 
@@ -136,7 +148,7 @@ flowchart TD
     POD -->|Evicted| EVICT[Check resource limits, node pressure]
 
     CLUSTER -->|API Error| API[Check endpoint, auth, cert]
-    CLUSTER -->|Addon Fail| ADDON[Check addon status, IRSA]
+    CLUSTER -->|Addon Fail| ADDON[Check addon health.issues, IRSA or Pod Identity]
 
     UPGRADE --> COMPAT[Check version compatibility]
     COMPAT --> DEPRECATION[Check deprecated APIs]
@@ -149,7 +161,7 @@ flowchart TD
 
 | Error | Cause | Solution |
 |-------|-------|---------|
-| `NodeNotReady` | kubelet crash, network issue | Check kubelet logs, restart kubelet, verify ENI |
+| `NodeNotReady` | kubelet crash, network issue | Check kubelet logs, restart kubelet, verify ENI. Auto Mode: check NodeClaim conditions, nodes are replaced. Hybrid node Ready=Unknown: link to AWS down, pods keep running, use `crictl` on host |
 | `CrashLoopBackOff` | App error, OOM, config issue | Check logs --previous, check resource limits |
 | `ImagePullBackOff` | ECR auth, wrong image tag | Verify imagePullSecrets, ECR policy |
 | `Pending (no nodes)` | Insufficient resources | Scale node group, check node selectors/taints |

@@ -348,35 +348,8 @@ Resources:
 
 ## Deployment (agentcore CLI)
 
-AgentCore agents are deployed using the `agentcore` CLI from `bedrock-agentcore-starter-toolkit`:
-
-```bash
-# Install CLI
-pip install bedrock-agentcore-starter-toolkit
-
-# Configure (region, credentials, project settings)
-agentcore configure
-
-# Deploy agent to AgentCore Runtime
-agentcore deploy
-
-# Test invocation
-agentcore invoke --prompt "Hello, test this agent"
-
-# Check deployment status
-agentcore status
-
-# Tear down all resources
-agentcore destroy
-```
-
-### Deployment Lifecycle
-
-```
-agentcore configure → agentcore deploy → agentcore invoke → agentcore status
-                                                                    ↓
-                                                            agentcore destroy
-```
+CLI flow (`configure` -> `deploy` -> `invoke` -> `status` -> `destroy`), verification and logs:
+see official `aws-agents:agents-deploy` and `agents-debug`, and SKILL.md Phase 4.5.
 
 ### Post-Deployment: Memory & Gateway Setup
 
@@ -387,16 +360,3 @@ After `agentcore deploy`, use AgentCore MCP tools for additional setup:
 | Memory | `memory_create` / `memory_update` | Create memory store, configure STM/LTM strategies |
 | Gateway | `gateway_create` / `gateway_target_create` | Create gateway, register tool targets |
 | Runtime | `get_agent_runtime` / `update_agent_runtime` | Check agent status, update configuration |
-
-### Verification Commands
-
-```bash
-# Check agent is running
-agentcore status
-
-# Test with sample prompt
-agentcore invoke --prompt "test query"
-
-# View logs
-agentcore logs
-```

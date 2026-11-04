@@ -51,7 +51,7 @@ cause to the debugging loop. The method stays with superpowers; we supply domain
 
 | Symptom | Route to |
 |---------------------|------------------------|
-| Node NotReady, pod crash/OOM, upgrade failure | `eks-agent` |
+| Node NotReady, pod crash/OOM, upgrade/rollback failure, Auto Mode NodeClass/NodeClaim, EKS Capabilities, hybrid nodes | `eks-agent` |
 | DNS failure, ALB/NLB, IP exhaustion, VPC CNI | `network-agent` |
 | AccessDenied, IRSA/Pod Identity, aws-auth, RBAC | `iam-agent` |
 | PVC pending, volume mount failure, CSI | `storage-agent` |
@@ -100,9 +100,9 @@ Also used when the user explicitly requests "in parallel/simultaneously".
 
 | Agent | Purpose |
 |-------|---------|
-| `eks-agent` | EKS cluster management, node groups, upgrades, add-ons, 5-minute triage |
-| `network-agent` | VPC CNI, ALB/NLB, DNS, Security Groups, IP exhaustion |
-| `iam-agent` | IRSA, Pod Identity, RBAC, aws-auth, policy validation |
+| `eks-agent` | EKS cluster management, node groups, upgrades/rollback, add-ons, Auto Mode, Capabilities, 5-minute triage |
+| `network-agent` | VPC CNI, ALB/NLB, DNS, Security Groups, IP exhaustion, CloudFront Web Function origins |
+| `iam-agent` | IRSA, Pod Identity, RBAC, access entries / aws-auth, policy validation |
 | `observability-agent` | CloudWatch, AMP, AMG, ADOT, Prometheus/Grafana, X-Ray |
 | `storage-agent` | EBS/EFS/FSx CSI, PVC binding, mount errors |
 | `database-agent` | RDS/Aurora connectivity, DynamoDB throttling, ElastiCache |
@@ -119,5 +119,7 @@ Also used when the user explicitly requests "in parallel/simultaneously".
 | `ops-health-check` | "health check", "상태 점검" (status check), "헬스체크" (health check) | Full infrastructure health assessment (includes analytics) |
 | `ops-network-diagnosis` | "network issue", "네트워크 오류" (network error), "연결 문제" (connection problem) | VPC CNI, LB, DNS deep diagnosis |
 | `ops-observability` | "monitoring", "모니터링" (monitoring), "로그 분석" (log analysis), "알람" (alarm), "opentelemetry", "clickhouse", "grafana", "devops agent", "데브옵스 에이전트" (devops agent) | CloudWatch/PromQL/logs + OSS stack (OTel, Loki, Tempo, ClickHouse, VictoriaMetrics) + AWS DevOps Agent incident escalation |
-| `ops-security-audit` | "security audit", "보안 점검" (security check), "compliance", "security agent", "penetration testing", "pentest" | IAM/network/CIS posture + AWS Security Agent (design/code review, on-demand pentest) |
+| `ops-security-audit` | "security audit", "보안 점검" (security check), "compliance", "security agent", "penetration testing", "pentest" | IAM/network/CIS posture and the security mandates; application-layer review routes to the official `aws-agents-for-devsecops` skills |
 | `ops-wellarchitected-review` | "well-architected", "WAF review", "인프라 진단" (infrastructure diagnosis), "아키텍처 리뷰" (architecture review) | 6-pillar assessment, 100-point scoring, AS-IS/TO-BE roadmap |
+
+> Serverless and AgentCore work (Lambda, Step Functions, Bedrock AgentCore) is covered by the official `aws-serverless:*`, `aws-agents:*` and `aws-core:*` plugins; this plugin does not duplicate it.

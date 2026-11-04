@@ -49,6 +49,10 @@ region and feature availability at use time.
 ## Diagnostic Commands
 
 ### Amazon OpenSearch Service
+Red/yellow cluster, unassigned-shard and JVM-pressure remediation order, shard-density math and
+disk watermarks are owned by official `aws-data-analytics:amazon-opensearch-service`
+(`references/provisioning-troubleshooting.md`). The collection commands below are the
+diagnostic starting points.
 ```bash
 # Cluster health
 aws opensearch describe-domain --domain-name $DOMAIN_NAME \
@@ -113,6 +117,8 @@ clickhouse-client --query "SELECT * FROM system.merges"
 ```
 
 ### Amazon Athena
+Workgroup selection and query execution: official `aws-data-analytics:querying-data-lake`
+(`references/workgroup-selection.md`). Cost/scan diagnostics below are kept.
 ```bash
 # List workgroups
 aws athena list-work-groups

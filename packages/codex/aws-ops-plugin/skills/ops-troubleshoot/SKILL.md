@@ -35,8 +35,9 @@ that loop. For a non-infra bug, use `superpowers:systematic-debugging` directly.
 kubectl cluster-info
 kubectl get nodes -o wide
 
-# 2. Failed workloads
+# 2. Failed workloads (phase!=Running misses Running-but-NotReady pods; also list unready containers)
 kubectl get pods -A --field-selector=status.phase!=Running
+kubectl get pods -A -o json | jq -r '.items[]|select(any(.status.containerStatuses[]?; .ready==false))|.metadata.namespace+"/"+.metadata.name'
 
 # 3. Recent events (last 50)
 kubectl get events -A --sort-by='.lastTimestamp' | tail -50
@@ -50,6 +51,9 @@ kubectl top pods -A --sort-by=memory | head -20
 
 # 6. AWS EKS cluster status
 aws eks describe-cluster --name $CLUSTER_NAME --query 'cluster.status'
+
+# 7. Recent upgrade/add-on change? ACTIVE does not prove a request succeeded; check the exact update ID
+aws eks describe-update --name $CLUSTER_NAME --update-id <id>   # add --nodegroup-name / --addon-name for those kinds
 ```
 
 ### Phase 2: Investigation

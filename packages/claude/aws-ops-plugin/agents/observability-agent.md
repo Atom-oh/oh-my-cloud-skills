@@ -68,55 +68,14 @@ aws cloudwatch list-metrics --namespace ContainerInsights --dimensions Name=Clus
 ```
 
 ### Key Logs Insights Queries
-```sql
--- API server errors
-fields @timestamp, @message
-| filter @logStream like /kube-apiserver/
-| filter @message like /error|Error|ERROR/
-| sort @timestamp desc
-| limit 50
-
--- Authentication failures
-fields @timestamp, @message
-| filter @logStream like /authenticator/
-| filter @message like /AccessDenied|Forbidden|unauthorized/
-| sort @timestamp desc
-
--- Pod restart detection
-fields @timestamp, @message, kubernetes.pod_name
-| filter @message like /Back-off restarting failed container/
-| stats count(*) as restart_count by kubernetes.pod_name
-| sort restart_count desc
-
--- Error rate by namespace
-fields @timestamp, @message, kubernetes.namespace_name
-| filter @message like /error/i
-| stats count(*) as error_count by kubernetes.namespace_name
-| sort error_count desc
-
--- Log volume analysis
-fields @timestamp
-| stats count(*) as log_count by bin(1h)
-| sort @timestamp
-```
+EKS control-plane, authenticator, pod-restart and namespace error-rate queries live in
+`{plugin-dir}/skills/ops-observability/references/log-analysis-queries.md`. Query syntax and
+generic library: official `aws-core:aws-observability` (`references/log-insights.md`).
 
 ### Alarm Management
-```bash
-# List alarms
-aws cloudwatch describe-alarms --state-value ALARM
-
-# Alarm history
-aws cloudwatch describe-alarm-history --alarm-name <name> --history-item-type StateUpdate
-
-# Get metric statistics
-aws cloudwatch get-metric-statistics \
-  --namespace ContainerInsights \
-  --metric-name cluster_cpu_utilization \
-  --dimensions Name=ClusterName,Value=$CLUSTER_NAME \
-  --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) \
-  --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
-  --period 60 --statistics Average
-```
+Alarm authoring, history and metric statistics: official `aws-core:aws-observability`
+(`references/alarms.md`, `references/metrics.md`). Container Insights alarm metrics for EKS:
+`{plugin-dir}/skills/ops-observability/references/cloudwatch-setup.md`.
 
 ### Amazon Managed Prometheus (AMP)
 ```bash

@@ -47,6 +47,12 @@ for ns in $(kubectl get ns -o jsonpath='{.items[*].metadata.name}'); do
 done
 ```
 
+### Enforcement Check
+A NetworkPolicy object alone enforces nothing. On EC2 Linux nodes the VPC CNI must have network policy enabled (`"enableNetworkPolicy": "true"` in the add-on configuration); Fargate and Windows nodes do not use that enforcement, and Auto Mode has its own managed implementation (verified as of 2026-11-04, kubernetes-docs en/networking/01-vpc-cni.md).
+```bash
+aws eks describe-addon --cluster-name "$CLUSTER_NAME" --addon-name vpc-cni --query 'addon.configurationValues'
+```
+
 ### Default Deny Policy Template
 ```yaml
 # Apply to every namespace for zero-trust

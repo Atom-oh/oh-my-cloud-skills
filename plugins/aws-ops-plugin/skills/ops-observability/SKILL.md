@@ -123,18 +123,8 @@ kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85
 aws eks create-addon --cluster-name $CLUSTER_NAME --addon-name amazon-cloudwatch-observability --addon-version v1.5.0-eksbuild.1
 ```
 
-### Essential Logs Insights Query
-```sql
-fields @timestamp, @message
-| filter @message like /error/i
-| sort @timestamp desc
-| limit 50
-```
-
-### Essential Alarm
-```bash
-aws cloudwatch put-metric-alarm --alarm-name "$CLUSTER_NAME-high-cpu" --namespace ContainerInsights --metric-name cluster_cpu_utilization --dimensions Name=ClusterName,Value=$CLUSTER_NAME --statistic Average --period 300 --evaluation-periods 2 --threshold 80 --comparison-operator GreaterThanThreshold --alarm-actions <sns-topic-arn>
-```
+Logs Insights syntax and alarm configuration (metric, composite, anomaly): see official
+`aws-core:aws-observability` (`references/log-insights.md`, `references/alarms.md`).
 
 ## References
 
@@ -142,5 +132,5 @@ aws cloudwatch put-metric-alarm --alarm-name "$CLUSTER_NAME-high-cpu" --namespac
 - `references/prometheus-queries.md` — PromQL alert rules for EKS
 - `references/log-analysis-queries.md` — CloudWatch Logs Insights query templates
 - `references/opensource-observability.md` — OpenTelemetry, Grafana, Loki, Tempo, ClickHouse, VictoriaMetrics, Thanos/Mimir on EKS
-- `references/aws-devops-agent.md` — AWS DevOps Agent incident escalation (Agent Spaces, CloudWatch→webhook wiring, `aws devopsagent` CLI, mitigation plans)
+- `references/aws-devops-agent.md` — AWS DevOps Agent incident escalation (escalation criteria, CloudWatch→webhook wiring; investigate/chat procedures are official `aws-agents-for-devsecops`)
 - `references/aws-analytics-launches.md` — OpenSearch/Athena/QuickSight/Kinesis/ClickHouse-as-OLAP launch notes. **`analytics-agent`-owned content, colocated here for now — not observability material**; read it only when a question crosses into the data-analytics side

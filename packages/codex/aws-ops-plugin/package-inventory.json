@@ -8,35 +8,35 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "f458d0a82862b796b19b2338b6aad40b2086a67d3f9f797ce603d0f1ae132e49",
+      "sha256": "6676e089c2da5483d466eb73c6c4ce81dc02fa7a2c664aded8dfb8bdf7570587",
       "executable": false
     },
     "agents/analytics-agent.md": {
-      "sha256": "fd16cb09338a2c529a536698afd4d8c3338b3e5f0de67f3b154429b0580df152",
+      "sha256": "7657aed24198f52e48bb79539286b3f1ecddbb020dc488c991e6e67867fd2c0a",
       "executable": false
     },
     "agents/cost-agent.md": {
-      "sha256": "4b9dfddd3d92e423b59a35dffc9af1bd4e9e3bf0b5e652f578740aceee19627f",
+      "sha256": "9873771ebc9b6e728eba6d6d78720733de5494654f0f5a2cca9f7b61967e0409",
       "executable": false
     },
     "agents/database-agent.md": {
-      "sha256": "dbbfb033b909551a618fcd121edf12cb6cd045dbc26927decdd97faa95ff1dbb",
+      "sha256": "a46644cfa616b7fad8668a82d2aa7846d8cf7ed2912e904e86a7739809c98f59",
       "executable": false
     },
     "agents/eks-agent.md": {
-      "sha256": "24d3b59a18ca6950762e7f23dbd16aee77e8d4e039855c9950916193ff0a6a05",
+      "sha256": "daf2afcc785f25817a7ccfc5bf6e47bebb1a2e7602b625763c21204688c59775",
       "executable": false
     },
     "agents/iam-agent.md": {
-      "sha256": "f5256de8b073a9fbb7b2b1ec3d01a5196dd64268f50835147aca0084590ba4a5",
+      "sha256": "7417cbf57029c307b5fd92eaa74881f0ad4e695cb9ae850cd527081db5dcd231",
       "executable": false
     },
     "agents/network-agent.md": {
-      "sha256": "9df7cb20a5ba4f27176437f13a2f6e08ae35280a277272319028527e7abf6289",
+      "sha256": "2afe862a143ef59c225556f89b8d6b4d0a81b6c5db1612160be4d6f400b5ad4d",
       "executable": false
     },
     "agents/observability-agent.md": {
-      "sha256": "31e2f6a35dbc2bd2a88da83376a46039ef638d4e6797937f24b9a75a340a1ef4",
+      "sha256": "c42f15bf28ecee49eeb2714b6d17fd16cc4190b22a77cbb754cd88275eb9d2d4",
       "executable": false
     },
     "agents/ops-coordinator-agent.md": {
@@ -44,7 +44,7 @@
       "executable": false
     },
     "agents/storage-agent.md": {
-      "sha256": "961828a16232db1169bcae1f8b819c08957dd2eb9095032f30419fd5a1e8fe8f",
+      "sha256": "d1896b706e00618237150ddf555d5d28ec407dbdf877e0ac29ee07914aa41ca8",
       "executable": false
     },
     "agents/wellarchitected-agent.md": {
@@ -80,23 +80,23 @@
       "executable": false
     },
     "skills/ops-network-diagnosis/references/vpc-cni-troubleshooting.md": {
-      "sha256": "e6617c0b45ebfd598722db8fd2822d773328e18aa85076feebc3ea8e08aff402",
+      "sha256": "1a461654e28290a1ad33727b213124d02b96cc2ffbe38d3d08468b29c8afc0d5",
       "executable": false
     },
     "skills/ops-observability/SKILL.md": {
-      "sha256": "d39b9973cfa70dcfdb6729b7ba71cec4f80d965621bdc2265ae5dbc3679e0037",
+      "sha256": "3bf8944932cb6b35cd00e665b940e411f5e0bd8b17d031c3592c95d0c557ead3",
       "executable": false
     },
     "skills/ops-observability/references/aws-analytics-launches.md": {
-      "sha256": "c8c92947239b0c39ceb50cc9a1caef2c6b01582dab2acab6a99a718a1ccff8bf",
+      "sha256": "fbdc0c43305962f4f46aeb321c667de1c7bccec34a156aacadf37f5ac9f0d6c7",
       "executable": false
     },
     "skills/ops-observability/references/aws-devops-agent.md": {
-      "sha256": "d56b536749e45c450e79b1ed717affc438f0e8effd0e5a68737e0424f50278d3",
+      "sha256": "af6f3cc380ff0ce5a6f38ae5c7493d957679d60eb791871d837b9becf1a4b8a7",
       "executable": false
     },
     "skills/ops-observability/references/cloudwatch-setup.md": {
-      "sha256": "4f78522e8c64ac6c16b1c78b3e469ed8af5ee40d65bf4b9c8cef29e530f85fa6",
+      "sha256": "29d6e95cdf77b70a7e8bf5b13d4befae8d256521573056bab8b36a0694aca66f",
       "executable": false
     },
     "skills/ops-observability/references/log-analysis-queries.md": {
@@ -112,35 +112,31 @@
       "executable": false
     },
     "skills/ops-security-audit/SKILL.md": {
-      "sha256": "480bf248d6233d45362a3ebf650b96d9cbd7cf648f747b2f4f08c9ac6d0c5bb2",
-      "executable": false
-    },
-    "skills/ops-security-audit/references/aws-security-agent.md": {
-      "sha256": "d632df4288d4fb9eb2cbe4cdf5b5ca9f663910d1acd424ae5b82ac7d624df49e",
+      "sha256": "2af742dab37e38b581ebaadb20eeae0df922e8e8613da9fe42854c819524c8d1",
       "executable": false
     },
     "skills/ops-security-audit/references/compliance-checklist.md": {
-      "sha256": "47a760f8ccc39834b339401710c3154750369ab92a92d119b023429e0f9df5ea",
+      "sha256": "10d3a7c6d08e346092eae6fff2b20bce7fd893105cd4a72b501f997472fe6ad6",
       "executable": false
     },
     "skills/ops-security-audit/references/iam-audit.md": {
-      "sha256": "3f21b99b19f5f31577ed8eca11b020bc9cb286430ffd6dc161f8cfe8bc7b3656",
+      "sha256": "a124fbe1d27f510f6382404ecd7b642834c578fffb940b049b6ed09a7f3cb945",
       "executable": false
     },
     "skills/ops-security-audit/references/network-security.md": {
-      "sha256": "dd67ff847facc73605e7e83bd99c1760b0282ba2ed881fdcdb0518407ff24d41",
+      "sha256": "2f409f01dd455d05271d02dbc62824ec4653bc9480b0aae4526034b7212faf4a",
       "executable": false
     },
     "skills/ops-troubleshoot/SKILL.md": {
-      "sha256": "fee9332f6e16c5151ac957c8e6d0a663fbd9a5768c292f629d08c6c4562a84fc",
+      "sha256": "25b464336562b6988e170eaf211d21996b5701098e7f73a2250bbcb03feda5d5",
       "executable": false
     },
     "skills/ops-troubleshoot/references/common-errors.md": {
-      "sha256": "789598e4ea0a707b52fede640232552c8c4f8baa32962d9dcc4729965cd219d9",
+      "sha256": "aab27bd40335ebbae48a6932d8464cac7befb766e176cc1595ed630895bfd883",
       "executable": false
     },
     "skills/ops-troubleshoot/references/decision-trees.md": {
-      "sha256": "5cd923df54666cb976bc6a5829038dd28c6021219314f2a7127c5ba416133d7d",
+      "sha256": "958a3bef41bd924f1616fd5cb2ec1953066ef5bdfcf70ba28fc41ba04cd56a30",
       "executable": false
     },
     "skills/ops-troubleshoot/references/incident-response.md": {
@@ -156,7 +152,7 @@
       "executable": false
     },
     "skills/ops-wellarchitected-review/references/pillar-cost-optimization.md": {
-      "sha256": "208f7a60342853414547c594cc3028c70cb7d7b2115f331452ff7f5ad1a31ef3",
+      "sha256": "ced4b6876ae9121a0a48bd78ff16a7e13882cd9986c94f811f45eb4f60a09442",
       "executable": false
     },
     "skills/ops-wellarchitected-review/references/pillar-performance-opex-sustainability.md": {

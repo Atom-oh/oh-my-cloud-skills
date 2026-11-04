@@ -28,8 +28,8 @@ a wildcard, and proves it with `kubectl auth can-i` and `sts get-caller-identity
 1. **IRSA (IAM Roles for Service Accounts)** — OIDC provider, trust policy, annotation validation
 2. **EKS Pod Identity** — Pod Identity associations, agent status, migration from IRSA
 3. **RBAC** — ClusterRole/Role, bindings, permission audit
-4. **aws-auth ConfigMap** — Node role mapping, user/group access management
-5. **Policy Validation** — IAM policy analysis, least privilege assessment
+4. **Cluster access (access entries / aws-auth)** — authentication mode decides where access is defined; node role mapping, user/group access
+5. **Policy Validation** — IAM policy analysis, least privilege assessment. Awareness: Lambda Web Function endpoints are invoked with `lambda:InvokeWebFunctionEndpoint` (SigV4 service `lambda`); the IAM Policy Simulator can also test SCPs (2026-07, per AWS What's New).
 
 ---
 
@@ -90,6 +90,12 @@ aws eks list-pod-identity-associations --cluster-name "$CLUSTER_NAME"
 aws eks describe-pod-identity-association --cluster-name "$CLUSTER_NAME" --association-id <id>
 ```
 
+Pod Identity requirements (kubernetes-docs en/ops/16-troubleshooting-playbook.md §8; en/eks/11-eks-advanced-debugging.md "Pod Identity Troubleshooting"):
+- Trust policy principal `pods.eks.amazonaws.com` must allow both `sts:AssumeRole` and `sts:TagSession`.
+- Env `AWS_CONTAINER_CREDENTIALS_FULL_URI` / `AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE` is injected only when an association exists and the pod was (re)created after it; an SDK too old for the container credential provider reports `Unable to locate credentials`.
+- Fargate does not support Pod Identity; Auto Mode has it built in (no duplicate agent); hybrid nodes need extra setup (`enableCredentialsFile` in nodeadm config plus the add-on's hybrid daemonset option, see `eks-hybrid-nodes/12-connectivity-validation.md`).
+- Telling the mechanism apart: `AWS_ROLE_ARN` + `AWS_WEB_IDENTITY_TOKEN_FILE` = IRSA; if the denied principal is the node role, the SDK fell back to node credentials. A recreated cluster has a new OIDC issuer, so the IRSA provider must be recreated.
+
 **Cross-account access (GA 2025-06, verified)** — a pod can now reach AWS resources in
 a *separate* account via **IAM role chaining**, no application code changes: the Pod
 Identity role assumes a **target role** in the resource account (pass `--target-role-arn`
@@ -133,9 +139,13 @@ kubectl describe clusterrole <role>
 kubectl describe clusterrolebinding <binding>
 ```
 
-### aws-auth ConfigMap
+### Access entries / aws-auth ConfigMap
+Authentication mode decides where to look: access entries in `API` / `API_AND_CONFIG_MAP`, aws-auth only in `CONFIG_MAP` mode. Do not switch modes or replace aws-auth to fix an unclassified 401/403 (kubernetes-docs en/eks/11-eks-advanced-debugging.md, "IAM Authentication Troubleshooting"). Managed node groups and Fargate create their own mappings; do not overwrite them.
 ```bash
-# View aws-auth
+# Authentication mode
+aws eks describe-cluster --name "$CLUSTER_NAME" --query 'cluster.accessConfig.authenticationMode'
+
+# View aws-auth (CONFIG_MAP / API_AND_CONFIG_MAP)
 kubectl get configmap aws-auth -n kube-system -o yaml
 
 # Check access entries (EKS API)
@@ -160,10 +170,10 @@ flowchart TD
     IRSA -->|Pod Identity| PI_CHECK[Check Agent → Association → IAM policy]
 
     K8S --> RBAC_WHO{Who?}
-    RBAC_WHO -->|User| RBAC_USER[Check aws-auth → ClusterRoleBinding]
+    RBAC_WHO -->|User| RBAC_USER[Check access entry / aws-auth by auth mode → ClusterRoleBinding]
     RBAC_WHO -->|ServiceAccount| RBAC_SA[Check Role → RoleBinding → namespace]
 
-    AUTH --> AUTH_TYPE{Auth Method?}
+    AUTH --> AUTH_TYPE{Auth mode? accessConfig.authenticationMode}
     AUTH_TYPE -->|aws-auth| AUTH_CM[Check ConfigMap mapping]
     AUTH_TYPE -->|Access Entry| AUTH_AE[Check EKS access entries]
     AUTH_TYPE -->|Token| AUTH_TOK[Check token expiry, OIDC]
@@ -177,10 +187,10 @@ flowchart TD
 |-------|-------|---------|
 | `AccessDenied` (AWS API) | Missing IAM policy | Add required permissions to role |
 | `Forbidden` (K8s API) | Missing RBAC binding | Create Role/ClusterRole + binding |
-| `401 Unauthorized` | Token expired, aws-auth wrong | Refresh token, fix aws-auth mapping |
+| `401 Unauthorized` | Token expired, or access entry / aws-auth mapping wrong for the auth mode | Refresh token, fix the mapping that the auth mode uses |
 | IRSA not working | Wrong OIDC, missing annotation | Verify OIDC provider, SA annotation |
-| Pod Identity fails | Agent not running | Install/restart Pod Identity Agent |
-| Node can't join | Missing aws-auth entry | Add node role to aws-auth ConfigMap |
+| Pod Identity fails | Agent not running (EC2 nodes), trust policy missing `sts:TagSession`, no association | Install/restart agent, fix trust policy, create association and recreate pods |
+| Node can't join | Missing node access entry / aws-auth entry | Add the node role entry per auth mode (use the role ARN, not an instance-profile ARN) |
 
 ---
 
@@ -195,7 +205,7 @@ flowchart TD
 ## Reference Files
 
 - `{plugin-dir}/skills/ops-security-audit/references/iam-audit.md`
-- `{plugin-dir}/skills/ops-security-audit/references/aws-security-agent.md` — application-layer security (design/code review, penetration testing) via AWS Security Agent; this agent covers IAM/RBAC posture only
+- Application-layer security (code review, pentest) is out of scope: use the official `aws-agents-for-devsecops` skills. This agent covers IAM/RBAC posture only.
 
 ---
 
