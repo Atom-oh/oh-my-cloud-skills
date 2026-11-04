@@ -347,7 +347,8 @@ defense-in-depth on top of the guard, not the other way around.
 
 ## Model + effort tiering
 
-- **Delegate (implementer) model** — `delegate.model` in `kiro.local.json`. Kiro is a
+- **Delegate (implementer) model** — `delegate.model`, default **`claude-opus-5.5`**,
+  with local overrides in `kiro.local.json`. Kiro is a
   flat-rate subscription CLI, so unlike a metered peer, there's no per-token cost to
   weigh — point it at whichever model actually finishes tasks correctly; fewer fix-rounds
   is pure wall-clock savings, same reasoning as co-agent's `implementer_model` guidance.
@@ -357,9 +358,10 @@ defense-in-depth on top of the guard, not the other way around.
   application applies here the same way it does to this repo's own
   `pr-autofix-implementer` tier. Raise it if a specific repo's tasks keep exhausting the
   fix loop — that's a wall-clock signal, not a cost one.
-- **Review model** — `review.model`, meant to be Kiro's **strongest/newest** available
-  model (the user's own example: `gpt-5.6-sol`). `/kiro:setup` runs
-  `kiro-cli chat --list-models --format json` and helps pick one.
+- **Review model** — `review.model`, default **`claude-opus-5.5`**. `/kiro:setup` runs
+  `kiro-cli chat --list-models --format json` to check availability and preserves
+  existing local overrides. Both roles pass their configured model explicitly;
+  an unavailable or ignored model is reported, never silently substituted.
 - **Review effort** — `review.effort`, default **`high`**, deliberately the opposite end
   of the ladder from delegate: this call's blocking verdict *is* its product, and a missed
   critical finding costs more than the extra reasoning. Applies to the single-pass commit

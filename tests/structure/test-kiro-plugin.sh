@@ -232,6 +232,8 @@ done
 
 # --- kiro_config.py: layered settings ---
 R=$(mktemp -d "${TMPDIR:-/tmp}/kiro-cfg.XXXXXX")
+assert_eq "claude-opus-5.5" "$(python3 "$CFG" delegate-model --root "$R" 2>&1)" "delegate model defaults to claude-opus-5.5"
+assert_eq "claude-opus-5.5" "$(python3 "$CFG" review-model --root "$R" 2>&1)" "review model defaults to claude-opus-5.5"
 assert_eq "1" "$(python3 "$CFG" default-delegate --root "$R" >/dev/null 2>&1; echo $?)" "default_delegate is off by default (exit 1)"
 assert_eq "1" "$(python3 "$CFG" review-on-commit --root "$R" >/dev/null 2>&1; echo $?)" "review-on-commit is off by default (exit 1) — security-motivated default, code-level fallback must agree with kiro.defaults.json, not just docs"
 python3 "$CFG" set default_delegate on --root "$R" >/dev/null 2>&1

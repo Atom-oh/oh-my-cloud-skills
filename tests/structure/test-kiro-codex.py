@@ -207,6 +207,9 @@ class CodexReviewTests(unittest.TestCase):
         self.assertEqual("max", argv[argv.index("--effort") + 1])
 
     def test_model_less_calls_run_on_the_v3_engine(self):
+        config = self.root / ".claude/kiro.local.json"
+        config.parent.mkdir()
+        config.write_text(json.dumps({"review": {"model": None}}))
         # The universal-format agents load on V3, so a model-less review and probe select
         # it explicitly with --agent-engine v3 (never the bare --v3 alias).
         status, result = self.invoke()

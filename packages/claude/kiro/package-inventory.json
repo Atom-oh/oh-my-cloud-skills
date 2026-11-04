@@ -16,7 +16,7 @@
       "executable": false
     },
     "commands/configure.md": {
-      "sha256": "d459d4cf56f3c1691942bf6d8cdcaf0f126841641297281479c6b2be8040d502",
+      "sha256": "567a06609136dec354a1c7721d63bb7a7ebff5ab2225d4ab891119355c33aef4",
       "executable": false
     },
     "commands/delegate.md": {
@@ -28,7 +28,7 @@
       "executable": false
     },
     "commands/setup.md": {
-      "sha256": "62590ddac8eb2934422b8a8d44b0913912dfd4bf09a78e92e4ab3bb7053ac19f",
+      "sha256": "4839c6dee16b8f298f1bc5bbb24b860e32accb68b67558128df698eef7a6d9c9",
       "executable": false
     },
     "hooks/pre-commit-review.sh": {
@@ -44,15 +44,15 @@
       "executable": true
     },
     "skills/kiro-delegate/SKILL.md": {
-      "sha256": "99b9a425170f6100e5ec81f4f8b0c72c4d685ee10b64021060916e024c57c9bd",
+      "sha256": "a7c2780d963282a719e253bece62061499d93bcd0335c584c43fce6c3807d188",
       "executable": false
     },
     "skills/kiro-delegate/kiro.defaults.json": {
-      "sha256": "ba64a91fa41b0acab1d1ca25145c67bd98842c887a39d79e2869663bd2d18e7a",
+      "sha256": "5220b8a35c01a8ea789855ce30211c4e3d3992346abb4997fd0b012f30c5572e",
       "executable": false
     },
     "skills/kiro-delegate/references/kiro-headless.md": {
-      "sha256": "42946a698e387dd7b6e42b8f5ee4048560e6a3b8de1f75979d4180b694bd2028",
+      "sha256": "072ff9044e0d45b9edafa18cc4d472031f68d0fab659f6ad61fa23ecb9006697",
       "executable": false
     },
     "skills/kiro-delegate/references/spec-format.md": {
