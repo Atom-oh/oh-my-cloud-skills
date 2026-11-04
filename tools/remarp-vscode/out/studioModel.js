@@ -52,6 +52,10 @@ function planEdit(manifest, intent) {
             if (node?.geometry && /"/.test(value)) {
                 throw new Error('Canvas labels cannot contain double quotes.');
             }
+            // A visual text edit must not add slide separators or open/close block fences; use the source editor for structure.
+            if (/^[ \t]*(?:(?:-[ \t]*){3,}|:{3,}.*)$/m.test(value)) {
+                throw new Error('Structural separator or fence lines are source-only; edit the source.');
+            }
             value = value.replace(/\r\n|\r|\n/g, slide.eol);
             patches = [patch(field, value)];
             break;

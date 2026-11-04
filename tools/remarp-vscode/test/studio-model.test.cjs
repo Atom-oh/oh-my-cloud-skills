@@ -92,3 +92,28 @@ test('asset ancestor cycles and in-root symlink components fail closed', t => {
         assert.throws(() => stageSnapshot(root,path.join(root,'snapshot'),new Map([['a.md',{text:`![Asset](${ref})`}]])),/symlinks/);
     }
 });
+
+const bodySource = '### Card\r\nOld body\r\n';
+const bodyManifest = { version:1, files:{'a.md':'hash'}, slides:[{id:'s0',file:'a.md',source:bodySource,range:{start:0,end:bodySource.length},eol:'\r\n',directives:{},css:null,cssEditable:true,nodes:[{id:'s0-card',kind:'card',label:'Card',body:{start:10,end:18,value:'Old body'}}]}]};
+test('body edit keeps the slide EOL and replaces only the mapped span', () => {
+    const { patches } = planEdit(bodyManifest,{slide:'s0',node:'s0-card',operation:'body',value:'Line 1\nLine 한글 😀'});
+    assert.equal(applyPatches(bodySource,patches),'### Card\r\nLine 1\r\nLine 한글 😀\r\n');
+});
+test('body and label edits cannot inject slide separators or block fences', () => {
+    for (const value of ['a\n---\nb', 'a\r\n- - -\r\nb', 'a\n:::notes\nb', 'a\n  :::\nb', '---']) {
+        assert.throws(() => planEdit(bodyManifest,{slide:'s0',node:'s0-card',operation:'body',value}), /structural|separator|fence/i, JSON.stringify(value));
+    }
+    assert.doesNotThrow(() => planEdit(bodyManifest,{slide:'s0',node:'s0-card',operation:'body',value:'em-dash — and a--b stay fine'}));
+});
+test('non-finite, fractional and oversized numbers are rejected before planning', () => {
+    const g = { id:'s0-box', kind:'box', label:'Box', geometry:{x:0,y:0,width:10,height:10,canvasWidth:960,canvasHeight:400,centered:false}, position:{start:0,end:1}, size:{start:2,end:3} };
+    const m = { ...bodyManifest, slides:[{ ...bodyManifest.slides[0], nodes:[g] }] };
+    for (const v of [NaN, Infinity, 1.5, -1, 1e9, '10', null]) {
+        assert.throws(() => planEdit(m,{slide:'s0',node:'s0-box',operation:'geometry',value:{x:v,y:0,width:10,height:10}}), /Invalid/);
+    }
+});
+test('malformed intents and unknown owners plan nothing', () => {
+    for (const intent of [null, 'x', {slide:'nope',operation:'text'}, {slide:'s0',node:'nope',operation:'text',value:'x'}, {slide:'s0',operation:'rm -rf'}]) {
+        assert.throws(() => planEdit(bodyManifest,intent));
+    }
+});
