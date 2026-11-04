@@ -51,9 +51,12 @@ preview with edits disabled. Source-only islands remain accessible through Revea
 Mapped heading/card text, first safe card body spans, allowlisted CSS/directives and
 simple Canvas box/icon geometry/reveal steps are editable. A card without body text has
 no body span, because an empty span could only be filled by gluing text onto a heading line;
-edit it in source. Visual text/body values containing a slide separator (`---`) or a `:::`
-fence line are rejected before planning, so a visual edit cannot change slide or block
-structure. Icon names, arrows,
+edit it in source. Visual text/body values are rejected before planning when any line is a
+slide separator (`---`), any line opens a code fence (up to three leading spaces, then three or
+more backticks or tildes, mirroring the compiler's `_fence_open`), the value contains `:::`
+anywhere (the compiler's `:::` block patterns are not line-anchored), or a body value contains a
+Markdown heading line (`#`, `##` or `###` followed by whitespace, which would start a new card).
+The guard covers only these structural shapes; it is not a general source validator. Icon names, arrows,
 complex domain-specific language (DSL) and arbitrary DOM/layout operations are not. CSS indexed card targets
 resolve to actual hyphenated renderer IDs. Canvas drags account for both editor and
 Canvas scales; pointer release commits once and Escape cancels.

@@ -52,9 +52,17 @@ function planEdit(manifest, intent) {
             if (node?.geometry && /"/.test(value)) {
                 throw new Error('Canvas labels cannot contain double quotes.');
             }
-            // A visual text edit must not add slide separators or open/close block fences; use the source editor for structure.
-            if (/^[ \t]*(?:(?:-[ \t]*){3,}|:{3,}.*)$/m.test(value)) {
-                throw new Error('Structural separator or fence lines are source-only; edit the source.');
+            // A visual text edit must not add slide separators, open or close a code or `:::` fence, or (in a body)
+            // start a heading line; use the source editor for structure. The rules are supersets of the compiler's:
+            // remarp_to_slides.py `_fence_open` accepts up to three leading spaces then three or more backticks or
+            // tildes and `_mask_code_fences` consumes an unclosed fence to end of input; its `:::` block patterns
+            // (NOTES_PATTERN and friends) match at any column; remarp_studio.py ends a card body at the next
+            // `^#{1,3}\s` heading and `_gen_cards_slide` starts a card at each `### ` line.
+            const separator = /^[ \t]*(?:-[ \t]*){3,}$/m.test(value);
+            const fence = /^ {0,3}(?:`{3,}|~{3,})/m.test(value) || value.includes(':::');
+            const heading = intent.operation === 'body' && /^ {0,3}#{1,3}[^\S\r\n]/m.test(value);
+            if (separator || fence || heading) {
+                throw new Error('Structural lines (slide separators, code or ::: fences, headings) are source-only; edit the source.');
             }
             value = value.replace(/\r\n|\r|\n/g, slide.eol);
             patches = [patch(field, value)];

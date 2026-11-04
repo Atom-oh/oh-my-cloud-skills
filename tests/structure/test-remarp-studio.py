@@ -216,6 +216,20 @@ class StudioTests(unittest.TestCase):
         self.assertIn(':::notes\nSpeaker context', manifest['slides'][0]['source'])
         self.assertIn('<div>Opaque HTML</div>', html)
 
+    def test_studio_planner_guard_assumptions_hold_in_the_compiler(self):
+        """tools/remarp-vscode/src/studioModel.ts rejects fence, `:::` and heading lines because of these compiler facts."""
+        self.assertIsNotNone(compiler._fence_open('   ```js'))
+        self.assertIsNotNone(compiler._fence_open('~~~'))
+        self.assertIsNone(compiler._fence_open('    ```'))
+        masked, _ = compiler._mask_code_fences('body\n```\n---\n## Next slide\n')
+        self.assertNotIn('---', masked)  # an unclosed fence swallows every later slide separator
+        self.assertIsNotNone(compiler.RemarpParser.NOTES_PATTERN.search('### Card :::notes\nbody\n:::'))  # not line-anchored
+        manifest, html = self.build(HEADER + CARDS.replace('First body', 'First body\n### Injected\nmore'))
+        cards = [n for n in manifest['slides'][0]['nodes'] if n['kind'] == 'card']
+        self.assertEqual([c['label'] for c in cards], ['First option', 'Injected', 'Second option'])
+        self.assertEqual(cards[0]['body']['value'], 'First body')
+        self.assertIn('Injected', html)
+
     def test_project_merged_handles_have_owning_files(self):
         (self.root / '_presentation.md').write_text(HEADER)
         (self.root / '01.remarp.md').write_text(HEADER + CARDS)
