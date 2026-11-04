@@ -47,14 +47,23 @@ export function planEdit(manifest: StudioManifest, intent: Intent): { file: stri
             if (intent.operation === 'text' && /[\r\n]/.test(value)) { throw new Error('Labels must be a single line.'); }
             if (node?.geometry && /"/.test(value)) { throw new Error('Canvas labels cannot contain double quotes.'); }
             // A visual text edit must not add slide separators, open or close a code or `:::` fence, or (in a body)
-            // start a heading line; use the source editor for structure. The rules are supersets of the compiler's:
-            // remarp_to_slides.py `_fence_open` accepts up to three leading spaces then three or more backticks or
-            // tildes and `_mask_code_fences` consumes an unclosed fence to end of input; its `:::` block patterns
-            // (NOTES_PATTERN and friends) match at any column; remarp_studio.py ends a card body at the next
-            // `^#{1,3}\s` heading and `_gen_cards_slide` starts a card at each `### ` line.
+            // start a heading line; use the source editor for structure. The compiler's line model comes first:
+            // remarp_to_slides.py `_mask_code_fences` and remarp_studio.py `visible_lines` iterate str.splitlines(),
+            // which also breaks on U+000B, U+000C, U+001C-U+001E, U+0085, U+2028 and U+2029, while the `m` regexes
+            // below only see LF, CR, U+2028 and U+2029 and the EOL normalisation after them rewrites only LF/CR/CRLF.
+            // Rejecting those characters keeps every compiler line start a line start here too.
+            if (/[\v\f\x1c-\x1e\x85\u2028\u2029]/.test(value)) { throw new Error('Structural line-boundary characters (vertical tab, form feed, U+001C-U+001E, U+0085, U+2028, U+2029) are source-only; edit the source.'); }
+            // The line rules are supersets of the compiler's. `_split_slides` splits on a literal LF-delimited `---`
+            // line only, so the separator rule deliberately over-rejects spaced forms such as `- - -`; do not narrow it.
+            // `_fence_open` accepts up to three leading spaces then three or more backticks or tildes and
+            // `_mask_code_fences` consumes an unclosed fence to end of input; the `:::` block patterns (NOTES_PATTERN
+            // and friends) match at any column; remarp_studio.py ends a card body at the next `^#{1,3}\s` heading and
+            // `_gen_cards_slide` starts a card at each `### ` line. A bare line of one to three hashes is a heading
+            // here as well: remarp_studio.py ends the body span at `.rstrip()`, so trailing source whitespace after
+            // the span survives beside the value and completes `### ` (an untitled card the Studio reader cannot map).
             const separator = /^[ \t]*(?:-[ \t]*){3,}$/m.test(value);
             const fence = /^ {0,3}(?:`{3,}|~{3,})/m.test(value) || value.includes(':::');
-            const heading = intent.operation === 'body' && /^ {0,3}#{1,3}[^\S\r\n]/m.test(value);
+            const heading = intent.operation === 'body' && /^ {0,3}#{1,3}(?:[^\S\r\n]|$)/m.test(value);
             if (separator || fence || heading) { throw new Error('Structural lines (slide separators, code or ::: fences, headings) are source-only; edit the source.'); }
             value = value.replace(/\r\n|\r|\n/g, slide.eol);
             patches = [patch(field, value)]; break;

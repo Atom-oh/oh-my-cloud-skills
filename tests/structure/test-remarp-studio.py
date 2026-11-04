@@ -230,6 +230,27 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(cards[0]['body']['value'], 'First body')
         self.assertIn('Injected', html)
 
+    def test_studio_planner_line_model_and_span_assumptions_hold_in_the_compiler(self):
+        """studioModel.ts rejects Python line-boundary characters and bare hash lines because of these compiler facts."""
+        for boundary in '\v\f\x1c\x1d\x1e\x85\u2028\u2029':
+            self.assertEqual(len(f'a{boundary}b'.splitlines()), 2, repr(boundary))  # str.splitlines() breaks here...
+            self.assertEqual(len(f'a{boundary}b'.split('\n')), 1, repr(boundary))  # ...but the generators' split('\n') does not
+        self.assertEqual('body\x85```\n'.splitlines(keepends=True), ['body\x85', '```\n'])
+        self.assertIsNotNone(compiler._fence_open('```\n'.rstrip('\r\n')))  # the second piece opens a fence in _mask_code_fences
+        masked, _ = compiler._mask_code_fences('body\x85```\n---\n## Next slide\n')
+        self.assertNotIn('---', masked)  # a guard that only sees LF/CR line starts would let this swallow later slides
+        parser = compiler.RemarpParser('')
+        self.assertEqual(len(parser._split_slides('a\x85---\x85b')), 1)  # slide separators need a literal LF-delimited line
+        self.assertEqual(len(parser._split_slides('a\n---\nb')), 2)
+        source = HEADER + CARDS.replace('First body', 'First body ')
+        manifest, _ = self.build(source)
+        body = [n for n in manifest['slides'][0]['nodes'] if n['kind'] == 'card'][0]['body']
+        self.assertEqual(text_at(source, body), 'First body')  # the span ends at rstrip(): the trailing space stays in the file
+        self.assertEqual(text_at(source, {'start': body['end'], 'end': body['end'] + 1}), ' ')
+        manifest, html = self.build(HEADER + CARDS.replace('First body', '### '))  # what a `###` body plus that space would leave
+        self.assertIn('data-remarp-id="s0-card-2"', html)  # _gen_cards_slide starts an untitled third card
+        self.assertEqual([n['id'] for n in manifest['slides'][0]['nodes'] if n['kind'] == 'card'], [])  # and the Studio reader drops every card mapping
+
     def test_project_merged_handles_have_owning_files(self):
         (self.root / '_presentation.md').write_text(HEADER)
         (self.root / '01.remarp.md').write_text(HEADER + CARDS)

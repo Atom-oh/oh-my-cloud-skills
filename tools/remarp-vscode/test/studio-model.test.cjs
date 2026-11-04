@@ -123,9 +123,33 @@ test('a ::: anywhere is rejected in labels and bodies: NOTES_PATTERN and the oth
 });
 test('body edits cannot start a heading line: the Studio reader ends a card body at ^#{1,3}\\s and the cards generator starts a card at ### ', () => {
     for (const value of ['a\n### New card\nb', '## Heading', '# H1\nmore', 'a\r\n### CRLF card\r\nb', 'a\n###\tTabbed\nb', 'a\n ### indented\nb']) assert.throws(body(value), guard, JSON.stringify(value));
-    // Hashes without a following space, four or more hashes, bare hash lines and labels are not card or heading lines.
-    for (const value of ['#hashtag at line start', 'C# and F#\nIssue #12', '#### four hashes is not a card', 'a\n#\nb']) assert.doesNotThrow(body(value), JSON.stringify(value));
+    // Bare hash lines are headings too: the body span ends at rstrip(), so retained source whitespace can complete `### `.
+    for (const value of ['###', 'a\n#\nb', 'a\r\n##\r\nb', 'text\n  ###', '#']) assert.throws(body(value), guard, JSON.stringify(value));
+    // Hashes without a following space, four or more hashes and labels are not card or heading lines.
+    for (const value of ['#hashtag at line start', 'C# and F#\nIssue #12', '#### four hashes is not a card', 'a\n####\nb']) assert.doesNotThrow(body(value), JSON.stringify(value));
     assert.doesNotThrow(() => planEdit(manifest,{slide:'s0',node:'s0-heading',operation:'text',value:'# Intro'}));
+});
+test('a bare hash body value cannot borrow trailing source whitespace: remarp_studio.py ends the body span at rstrip()', () => {
+    // bodyManifest's span {10,18} covers 'Old body'; the space after it stays in the file next to the replacement.
+    const spaced = '### Card\r\nOld body \r\n';
+    const m = { ...bodyManifest, slides:[{ ...bodyManifest.slides[0], source:spaced, range:{start:0,end:spaced.length} }] };
+    assert.equal(applyPatches(spaced, planEdit(m,{slide:'s0',node:'s0-card',operation:'body',value:'New'}).patches), '### Card\r\nNew \r\n');
+    // '###' plus that retained space would read `### ` to _gen_cards_slide and start an untitled card.
+    for (const value of ['###', 'Line 1\n###', 'Line 1\r\n ##']) assert.throws(() => planEdit(m,{slide:'s0',node:'s0-card',operation:'body',value}), guard, JSON.stringify(value));
+});
+test('Python line-boundary characters are rejected in labels and bodies: the compiler splits lines with str.splitlines()', () => {
+    // _mask_code_fences and visible_lines also break on U+000B, U+000C, U+001C-U+001E, U+0085, U+2028 and U+2029;
+    // a JavaScript `m` regex sees only LF, CR, U+2028 and U+2029, and the EOL normalisation rewrites only LF/CR/CRLF.
+    for (const boundary of ['\v', '\f', '\x1c', '\x1d', '\x1e', '\x85', '\u2028', '\u2029']) {
+        for (const value of ['text' + boundary + '```', 'text' + boundary + '---' + boundary + 'more', 'plain' + boundary + 'text']) {
+            assert.throws(body(value), guard, JSON.stringify(value));
+            for (const [m, node] of [[manifest, 's0-heading'], [bodyManifest, 's0-card']]) {
+                assert.throws(() => planEdit(m,{slide:'s0',node,operation:'text',value}), guard, `${node} ${JSON.stringify(value)}`);
+            }
+        }
+    }
+    assert.doesNotThrow(body('tabs\tand plain spaces stay fine'));
+    assert.doesNotThrow(() => planEdit(manifest,{slide:'s0',node:'s0-heading',operation:'text',value:'tabs\tand plain spaces stay fine'}));
 });
 test('non-finite, fractional and oversized numbers are rejected before planning', () => {
     const g = { id:'s0-box', kind:'box', label:'Box', geometry:{x:0,y:0,width:10,height:10,canvasWidth:960,canvasHeight:400,centered:false}, position:{start:0,end:1}, size:{start:2,end:3} };
