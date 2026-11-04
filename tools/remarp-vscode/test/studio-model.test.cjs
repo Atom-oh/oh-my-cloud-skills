@@ -92,3 +92,74 @@ test('asset ancestor cycles and in-root symlink components fail closed', t => {
         assert.throws(() => stageSnapshot(root,path.join(root,'snapshot'),new Map([['a.md',{text:`![Asset](${ref})`}]])),/symlinks/);
     }
 });
+
+const bodySource = '### Card\r\nOld body\r\n';
+const bodyManifest = { version:1, files:{'a.md':'hash'}, slides:[{id:'s0',file:'a.md',source:bodySource,range:{start:0,end:bodySource.length},eol:'\r\n',directives:{},css:null,cssEditable:true,nodes:[{id:'s0-card',kind:'card',label:'Card',text:{start:4,end:8,value:'Card'},body:{start:10,end:18,value:'Old body'}}]}]};
+test('body edit keeps the slide EOL and replaces only the mapped span', () => {
+    const { patches } = planEdit(bodyManifest,{slide:'s0',node:'s0-card',operation:'body',value:'Line 1\nLine 한글 😀'});
+    assert.equal(applyPatches(bodySource,patches),'### Card\r\nLine 1\r\nLine 한글 😀\r\n');
+});
+const guard = /structural|separator|fence/i;
+const body = value => () => planEdit(bodyManifest,{slide:'s0',node:'s0-card',operation:'body',value});
+test('body and label edits cannot inject slide separators or block fences', () => {
+    for (const value of ['a\n---\nb', 'a\r\n- - -\r\nb', 'a\n:::notes\nb', 'a\n  :::\nb', '---']) assert.throws(body(value), guard, JSON.stringify(value));
+    assert.doesNotThrow(body('em-dash — and a--b stay fine'));
+});
+test('body edits cannot open a code fence: the compiler masks an unclosed fence to end of input and loses later separators', () => {
+    // remarp_to_slides.py _fence_open: up to three leading spaces, then three or more backticks or tildes.
+    for (const value of ['some text\n```', '```', 'a\n~~~\nb', 'a\r\n   ```js\r\nb', 'a\n````python\nb', 'a\n~~~~\nb']) assert.throws(body(value), guard, JSON.stringify(value));
+    // Four leading spaces, shorter runs and inline code are not fences for the compiler either.
+    for (const value of ['a\n    ```\nb', 'inline `code` and ``two`` stay fine', 'a ~~ b', 'a\n``\nb']) assert.doesNotThrow(body(value), JSON.stringify(value));
+});
+test('a ::: anywhere is rejected in labels and bodies: NOTES_PATTERN and the other block patterns are unanchored', () => {
+    for (const [m, node] of [[manifest, 's0-heading'], [bodyManifest, 's0-card']]) {
+        for (const value of ['Card :::notes', ':::notes', 'Card :::', 'Card ::::notes', 'see `:::notes`']) {
+            assert.throws(() => planEdit(m,{slide:'s0',node,operation:'text',value}), guard, `${node} ${JSON.stringify(value)}`);
+        }
+        assert.doesNotThrow(() => planEdit(m,{slide:'s0',node,operation:'text',value:'Price #1 in C# :: ok'}), node);
+    }
+    for (const value of ['a :::notes\nb', 'a\n:::\nnotes\nb', 'a\n  :::  notes\nb']) assert.throws(body(value), guard, JSON.stringify(value));
+    assert.equal(applyPatches(bodySource, planEdit(bodyManifest,{slide:'s0',node:'s0-card',operation:'text',value:'New'}).patches), '### New\r\nOld body\r\n');
+});
+test('body edits cannot start a heading line: the Studio reader ends a card body at ^#{1,3}\\s and the cards generator starts a card at ### ', () => {
+    for (const value of ['a\n### New card\nb', '## Heading', '# H1\nmore', 'a\r\n### CRLF card\r\nb', 'a\n###\tTabbed\nb', 'a\n ### indented\nb']) assert.throws(body(value), guard, JSON.stringify(value));
+    // Bare hash lines are headings too: the body span ends at rstrip(), so retained source whitespace can complete `### `.
+    for (const value of ['###', 'a\n#\nb', 'a\r\n##\r\nb', 'text\n  ###', '#']) assert.throws(body(value), guard, JSON.stringify(value));
+    // Hashes without a following space, four or more hashes and labels are not card or heading lines.
+    for (const value of ['#hashtag at line start', 'C# and F#\nIssue #12', '#### four hashes is not a card', 'a\n####\nb']) assert.doesNotThrow(body(value), JSON.stringify(value));
+    assert.doesNotThrow(() => planEdit(manifest,{slide:'s0',node:'s0-heading',operation:'text',value:'# Intro'}));
+});
+test('a bare hash body value cannot borrow trailing source whitespace: remarp_studio.py ends the body span at rstrip()', () => {
+    // bodyManifest's span {10,18} covers 'Old body'; the space after it stays in the file next to the replacement.
+    const spaced = '### Card\r\nOld body \r\n';
+    const m = { ...bodyManifest, slides:[{ ...bodyManifest.slides[0], source:spaced, range:{start:0,end:spaced.length} }] };
+    assert.equal(applyPatches(spaced, planEdit(m,{slide:'s0',node:'s0-card',operation:'body',value:'New'}).patches), '### Card\r\nNew \r\n');
+    // '###' plus that retained space would read `### ` to _gen_cards_slide and start an untitled card.
+    for (const value of ['###', 'Line 1\n###', 'Line 1\r\n ##']) assert.throws(() => planEdit(m,{slide:'s0',node:'s0-card',operation:'body',value}), guard, JSON.stringify(value));
+});
+test('Python line-boundary characters are rejected in labels and bodies: the compiler splits lines with str.splitlines()', () => {
+    // _mask_code_fences and visible_lines also break on U+000B, U+000C, U+001C-U+001E, U+0085, U+2028 and U+2029;
+    // a JavaScript `m` regex sees only LF, CR, U+2028 and U+2029, and the EOL normalisation rewrites only LF/CR/CRLF.
+    for (const boundary of ['\v', '\f', '\x1c', '\x1d', '\x1e', '\x85', '\u2028', '\u2029']) {
+        for (const value of ['text' + boundary + '```', 'text' + boundary + '---' + boundary + 'more', 'plain' + boundary + 'text']) {
+            assert.throws(body(value), guard, JSON.stringify(value));
+            for (const [m, node] of [[manifest, 's0-heading'], [bodyManifest, 's0-card']]) {
+                assert.throws(() => planEdit(m,{slide:'s0',node,operation:'text',value}), guard, `${node} ${JSON.stringify(value)}`);
+            }
+        }
+    }
+    assert.doesNotThrow(body('tabs\tand plain spaces stay fine'));
+    assert.doesNotThrow(() => planEdit(manifest,{slide:'s0',node:'s0-heading',operation:'text',value:'tabs\tand plain spaces stay fine'}));
+});
+test('non-finite, fractional and oversized numbers are rejected before planning', () => {
+    const g = { id:'s0-box', kind:'box', label:'Box', geometry:{x:0,y:0,width:10,height:10,canvasWidth:960,canvasHeight:400,centered:false}, position:{start:0,end:1}, size:{start:2,end:3} };
+    const m = { ...bodyManifest, slides:[{ ...bodyManifest.slides[0], nodes:[g] }] };
+    for (const v of [NaN, Infinity, 1.5, -1, 1e9, '10', null]) {
+        assert.throws(() => planEdit(m,{slide:'s0',node:'s0-box',operation:'geometry',value:{x:v,y:0,width:10,height:10}}), /Invalid/);
+    }
+});
+test('malformed intents and unknown owners plan nothing', () => {
+    for (const intent of [null, 'x', {slide:'nope',operation:'text'}, {slide:'s0',node:'nope',operation:'text',value:'x'}, {slide:'s0',operation:'rm -rf'}]) {
+        assert.throws(() => planEdit(bodyManifest,intent));
+    }
+});
