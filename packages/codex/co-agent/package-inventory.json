@@ -156,7 +156,7 @@
       "executable": true
     },
     "skills/pr-autofix/SKILL.md": {
-      "sha256": "725ae9348cc0be57f64d10d2689557f687a493f5c73bd58e0d00a7378c333d79",
+      "sha256": "0b30f1aa69937bcd906e3598d5689e6d2f9eaacbeff943c7f2e64ad68f138374",
       "executable": false
     },
     "skills/pr-autofix/references/ci-workflow-setup.md": {
@@ -164,7 +164,7 @@
       "executable": false
     },
     "skills/pr-autofix/references/land-delta-pipeline.md": {
-      "sha256": "e52f503f95cf6728ff443eddc995a52f70b88b275faed94c69768fdb162a99d0",
+      "sha256": "7ac74a759d0568cec5db9a83168832375e6015fddad8f72619d2a326773488c1",
       "executable": false
     },
     "skills/pr-autofix/references/model-escalation.md": {
@@ -292,7 +292,7 @@
       "executable": false
     },
     ".codex-plugin/workflow.md": {
-      "sha256": "4eb9f5e04442b53366b8672d5b57499bcfed71d4d70e5e2abeeebd8420d51c3b",
+      "sha256": "5013d8ba6cde87ce935118ca1bb73f5cfffb3bcbc84961e1c9ca211f0c4ad2df",
       "executable": false
     },
     ".codex-plugin/hooks.json": {

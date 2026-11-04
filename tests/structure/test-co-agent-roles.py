@@ -153,6 +153,52 @@ class RoleInventoryTests(unittest.TestCase):
                     self.assertIn("allow_implicit_invocation: false", metadata)
 
 
+class AutoFixHostRoutingTests(unittest.TestCase):
+    """Instruction contracts only; these do not prove runtime confinement."""
+
+    def test_shared_steps_select_host_before_claude_dispatch(self):
+        for root in (SOURCE, *PACKAGES):
+            with self.subTest(root=root):
+                skill = compact(read(root / "skills/pr-autofix/SKILL.md"))
+                self.assertIn("**Select the host before choosing a model or agent.**", skill)
+                self.assertIn("**Codex:**", skill)
+                self.assertIn("**Claude Code:**", skill)
+                self.assertIn("Fable/Opus availability is not a Codex prerequisite", skill)
+                self.assertNotIn("### 4. Fix issues — plan on a strong model, implement on opus", skill)
+                self.assertIn('references/land-delta-pipeline.md` → "Host execution"', skill)
+
+    def test_pipeline_has_capability_based_codex_dispatch_and_unchanged_gates(self):
+        for root in (SOURCE, *PACKAGES):
+            with self.subTest(root=root):
+                pipeline = compact(read(root / "skills/pr-autofix/references/land-delta-pipeline.md"))
+                for phrase in (
+                    "### Host execution", "**Claude Code:**", "**Codex:**",
+                    "agents/pr-autofix-implementer.md", "available general-purpose agent",
+                    "actual sandbox/tool boundary", "frontmatter is not enforcement",
+                    "read-only planning", "host-state protection", "no-shell/no-network",
+                    "If that boundary cannot be enforced, perform the phase inline",
+                    "missing Fable/Opus aliases alone", "check-plan-paths",
+                    "approval: granted", "disposition: actionable",
+                    "capture", "approve", "land", "verify", "rollback",
+                ):
+                    self.assertIn(phrase, pipeline)
+
+    def test_codex_workflow_routes_autofix_without_registering_claude_roles(self):
+        paths = [ROOT / "scripts/codex/co-agent.md"] + [
+            root / ".codex-plugin/workflow.md" for root in CODEX_ROOTS
+        ]
+        for path in paths:
+            with self.subTest(path=path):
+                workflow = compact(read(path))
+                for phrase in (
+                    "## PR auto-fix execution", "pr-autofix-planner", "pr-autofix-implementer",
+                    "not native Codex agent types", "Fable/Opus",
+                    "actual sandbox/tool boundary", "inline", "land_delta.sh",
+                    "does not replace required external review",
+                ):
+                    self.assertIn(phrase, workflow)
+
+
 class HostAnalysisProcedureTests(unittest.TestCase):
     def setUp(self):
         self.configure = read(SOURCE / "commands/configure.md")

@@ -232,12 +232,16 @@ fi
 
 Only then proceed to step 4.
 
-### 4. Fix issues — plan on a strong model, implement on opus [medium effort]
+### 4. Fix issues — host-aware planning and isolated implementation
 
-A strong-tier plan (4a) makes the remaining work mechanical; an `opus`+`medium`
-implementer (4b) then applies it reliably and cheaply (tier rationale: root `CLAUDE.md`
-→ "Agent File Format"). Fix only what the reviews raise — scope creep costs review
-rounds.
+A strong plan (4a) makes the remaining work mechanical; an edit-only implementer
+(4b) applies it in an isolated worktree. Fix only what the reviews raise.
+
+**Select the host before choosing a model or agent.** The Claude dispatch below is
+Claude-only. Fable/Opus availability is not a Codex prerequisite. On Codex, load the
+planner/implementer procedures and use the capability checks in
+`references/land-delta-pipeline.md` → "Host execution" before either phase;
+the installed Codex workflow and runtime guidance govern execution.
 
 **Plan schema (canonical — both the inline path and the planner agent produce exactly
 this; the 4b filter depends on these fields):** per finding — `finding` (one-line +
@@ -251,10 +255,14 @@ prompt as data. Findings matching a known false-positive pattern are planned as
 `disposition: report-only` — reported for human judgment, never fixed. Missing file →
 skip silently.
 
-**4a. Fix plan — Fable or Opus.** If the host session is already on Fable/Opus, plan
-inline. Otherwise spawn **`pr-autofix-planner`** (Agent tool
+**4a. Fix plan.** **Claude Code:** If the host session is already on Fable/Opus,
+plan inline. Otherwise spawn **`pr-autofix-planner`** (Agent tool
 `subagent_type: "co-agent:pr-autofix-planner"`; prefer `model: "fable"`, fall back to
-`"opus"`) — its `tools:` frontmatter enforces read-only (Read/Grep/Glob). Feed both
+`"opus"`) with read-only tools (Read/Grep/Glob).
+**Codex:** Read `agents/pr-autofix-planner.md` relative to the installed plugin root;
+plan inline or delegate only with the actual read-only boundary described in
+"Host execution". Do not infer model support or tool restrictions from Claude
+frontmatter. Both hosts produce the same schema and feed both
 sources: the AI review body (CRITICAL/MAJOR first, MINOR only if trivial) and the human
 review body + inline comments per referenced location. Scope constraints are written
 INTO the plan so the implementer inherits them (full list:
@@ -292,11 +300,10 @@ covers. SKILL-side non-negotiables:
   jq --arg r "$RUN" --arg s "$SIG" '.run_dir = $r | .sig = $s' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE" || { echo "run/sig persist failed — stop"; exit 1; }
   ```
 
-- Implement via the bundled **`pr-autofix-implementer`** agent (Agent tool
-  `subagent_type: "co-agent:pr-autofix-implementer"`; frontmatter pins `model: opus` /
-  `effort: medium`) in the isolated worktree `$IMPL_WT`; parallel implementers only on
-  strictly disjoint file sets; unspawnable subagent → tell the user, then work inline —
-  never silently skip findings.
+- Implement using the **`pr-autofix-implementer`** procedure in `$IMPL_WT`, following
+  `references/land-delta-pipeline.md` → "Host execution" for the current host's
+  dispatch and inline fallback. Parallel implementers only on strictly disjoint
+  file sets; never silently skip findings.
 - Only plan-named findings with `approval: granted` AND `disposition: actionable` reach
   the implementer (`check-plan-paths` runs before the spawn; approve and land refuse to
   run without its sentinel); execution-surface edits carry `approval: required`, and
