@@ -23,7 +23,7 @@ Kiro CLI를 감지하고 시험하며 사용 가능한 모델 설정을 확인�
 
 ## /kiro:configure {#kiro-3}
 
-실제 적용 설정과 출처를 표시하거나 지원되는 위임, 검토, 웹 검색 필드를 갱신합니다. 기본 설정의 모델은 null일 수 있으며 설정 과정에서 결정됩니다. 오래된 모델 이름을 복사하지 말고 실제 설정을 사용합니다.
+실제 적용 설정과 출처를 표시하거나 지원되는 위임, 검토, 웹 검색 필드를 갱신합니다. 위임과 검토 모두 기본 모델은 `claude-opus-5.5`이며 Kiro CLI에 명시적으로 전달됩니다. 로컬 모델 재설정도 지원합니다. 설정 절차는 기존 재설정을 유지하고, 모델을 사용할 수 없으면 다른 모델로 조용히 바꾸지 않고 그 사실을 알립니다.
 
 [정확한 키 및 기본 설정](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/kiro/skills/kiro-delegate/kiro.defaults.json)
 

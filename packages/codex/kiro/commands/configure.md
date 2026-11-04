@@ -26,7 +26,7 @@ request into `set <section> <key> <value>` (or `show`) tokens yourself:
 
 ```bash
 # example — substitute the actual section/key/value the user asked for, each quoted:
-python3 "$SK/kiro_config.py" set review model "gpt-5.6-sol"
+python3 "$SK/kiro_config.py" set review model "claude-opus-5.5"
 ```
 
 If the request doesn't map cleanly to a known `set`/`show` form, ask the user to
@@ -38,8 +38,8 @@ Common examples:
 |---------|--------|
 | `set default_delegate on` | Route implementation work to Kiro automatically, no trigger phrase needed |
 | `set default_delegate off` | Only delegate when explicitly asked |
-| `set delegate model <m>` | Implementer model (flat-rate credits — pick whatever finishes tasks correctly) |
-| `set review model <m>` | Reviewer model — keep this Kiro's strongest/newest, even if the delegate model is lighter |
+| `set delegate model <m>` | Implementer model (default `claude-opus-5.5`; local overrides supported) |
+| `set review model <m>` | Reviewer model (default `claude-opus-5.5`; local overrides supported) |
 | `set delegate effort <low\|medium\|high\|xhigh\|max>` | kiro-cli `--effort` for the implementer (default `low` — the spec is already written; raise only if tasks keep exhausting the fix loop). `default` omits the flag |
 | `set review effort <low\|medium\|high\|xhigh\|max>` | Same flag for the reviewer, default `high` — the blocking verdict IS this call's product. Applies to the commit pass and each push lens |
 | `set delegate parallel_tasks <n>` | Max concurrent tasks per wave (default 3; `1` = sequential) |

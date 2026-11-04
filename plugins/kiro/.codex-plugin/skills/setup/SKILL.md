@@ -32,7 +32,8 @@ Keep the selected model, effort and empty tool trust unchanged.
 
 Read-only `kiro:review` works without writing project agent files or enabling
 hooks. Preserve existing model, effort, delegation and hook settings unless the
-user requests changes. To choose a model when none is configured, use the bundled
+user requests changes. Both delegate and review default to `claude-opus-5.5`,
+passed explicitly to Kiro CLI. To choose a model when none is configured, use the bundled
 `kiro_setup.py list-models` and `kiro_config.py set` helpers; do not guess model IDs.
 
 For implementation delegation, continue with the shared setup procedure's

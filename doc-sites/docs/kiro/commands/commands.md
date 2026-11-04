@@ -23,7 +23,7 @@ Review the selected scope on demand using the same review engine as the optional
 
 ## /kiro:configure {#kiro-3}
 
-Show effective settings and their source, or update the supported delegation, review, and web-search fields. Models may be null in defaults and resolved during setup; use actual configuration rather than copying a stale model name.
+Show effective settings and their source, or update the supported delegation, review, and web-search fields. Delegation and review both default to `claude-opus-5.5`, passed explicitly to Kiro CLI. Local model overrides remain supported; setup preserves them and reports unavailable models instead of silently substituting another model.
 
 [Exact keys and defaults](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/kiro/skills/kiro-delegate/kiro.defaults.json)
 

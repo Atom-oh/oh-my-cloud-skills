@@ -25,21 +25,18 @@ cwd's.
    | `NO_INGEST` | kiro-cli ran but didn't echo the probe's sentinel — report "responded but couldn't be verified usable" and offer one retry (some builds do this transiently) |
    | `TIMEOUT` / `ERROR` | Report the reason and offer one retry (cold-start CLIs can be slow on the first call) |
 
-2. On `READY`, list models and help pick two — a delegate (implement) model and a
-   review model:
+2. On `READY`, list models and confirm the effective delegate and review settings:
    ```bash
    python3 "$SK/kiro_setup.py" list-models
    ```
-   Use `AskUserQuestion` to offer the review-model choice explicitly — the plugin's whole
-   point is a strong reviewer behind a cost-efficient implementer:
-   - **Review model** — recommend the newest/strongest listed (e.g. `gpt-5.6-sol` if
-     present) — first option, `(Recommended)`.
-   - **Delegate model** — any model that reliably finishes tasks; default/CLI-routed is
-     fine (flat-rate credits, no cost trade-off to reason about).
-   Save with:
+   `delegate.model` and `review.model` both default to `claude-opus-5.5`. Keep these
+   explicit defaults and preserve existing local overrides. If an effective model
+   is unavailable, report that and ask for an available replacement; never silently
+   switch to another model or the CLI default. Use `AskUserQuestion` only when a
+   model choice is still needed. Save a requested override with:
    ```bash
    python3 "$SK/kiro_config.py" set review model "<chosen review model>"
-   python3 "$SK/kiro_config.py" set delegate model "<chosen delegate model>"   # or skip to keep CLI default
+   python3 "$SK/kiro_config.py" set delegate model "<chosen delegate model>"
    ```
 
 3. **Trust decision — ask before granting shell access (`AskUserQuestion`, mandatory,

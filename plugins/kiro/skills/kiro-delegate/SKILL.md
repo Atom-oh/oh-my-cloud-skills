@@ -153,8 +153,12 @@ doesn't persist between Bash tool calls, so `export` doesn't work as a bypass).
 
 | Setting | Default | Why |
 |---------|---------|-----|
-| `delegate.model` / `delegate.effort` | CLI-routed / `low` | Flat-rate credits — no per-token trade-off; the spec is already written, so applying it is mechanical. Raise effort only if tasks keep exhausting the fix loop (a wall-clock signal) |
-| `review.model` / `review.effort` | CLI-routed until set (setup recommends the strongest listed, e.g. `gpt-5.6-sol`) / `high` | The blocking verdict IS the product — the safety net shouldn't be the weak link. Applies to the commit pass and each push lens |
+| `delegate.model` / `delegate.effort` | `claude-opus-5.5` / `low` | The model is pinned explicitly; the spec is already written, so applying it is mechanical. Raise effort only if tasks keep exhausting the fix loop (a wall-clock signal) |
+| `review.model` / `review.effort` | `claude-opus-5.5` / `high` | The blocking verdict IS the product — the safety net shouldn't be the weak link. Applies to the commit pass and each push lens |
+
+Both roles pass the configured model explicitly to Kiro CLI. Local model overrides
+remain supported; a configured model that Kiro cannot use is reported rather than
+silently replaced.
 
 Full tiering rationale and the measured kiro-cli flag surface:
 `references/kiro-headless.md`.
