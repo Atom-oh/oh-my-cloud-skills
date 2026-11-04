@@ -40,16 +40,12 @@ cause, and verifies from the PVC's own events rather than by re-applying and hop
   policy name (e.g. `AmazonS3FilesCSIDriverPolicy`), doc path, and current region list
   against the live EKS User Guide (`s3files-csi.html`) before scripting** — identifiers
   here are from the launch and may drift.
-- **Amazon S3 Vectors** (GA 2025-12-02, 14 regions) — native vector store/query in
-  object storage (up to 2B vectors/index, 10K indexes/bucket): a cheap, durable vector
-  backing store for RAG/semantic search. Size/region-plan/cost-model it vs managed
-  vector DBs. (AWS-stated "up to 90% cheaper / ~100ms" are vendor figures; positioned as
-  complementary to vector DBs for cold/infrequent workloads.)
+- **Amazon S3 Vectors** — vector store in object storage: see official
+  `aws-data-analytics:storing-and-querying-vectors`.
 
 > Re-check region availability at use time.
 > Sources: https://docs.aws.amazon.com/eks/latest/userguide/s3files-csi.html ·
-> https://aws.amazon.com/about-aws/whats-new/2026/04/amazon-s3-files ·
-> https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-s3-vectors-generally-available/
+> https://aws.amazon.com/about-aws/whats-new/2026/04/amazon-s3-files
 
 ---
 

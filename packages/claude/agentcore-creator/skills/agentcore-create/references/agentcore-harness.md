@@ -40,59 +40,10 @@ announced as coming) so a harness can graduate to Runtime without starting over.
 
 ## API Surface
 
-Control plane (`bedrock-agentcore-control`): `CreateHarness`, `GetHarness`, `UpdateHarness`,
-`DeleteHarness`, `ListHarnesses`, `ListHarnessVersions`, plus endpoint CRUD
-(`CreateHarnessEndpoint` / `GetHarnessEndpoint` / `UpdateHarnessEndpoint` /
-`DeleteHarnessEndpoint` / `ListHarnessesEndpoints`).
-Data plane (`bedrock-agentcore`): `InvokeHarness`, `InvokeAgentRuntimeCommand` (direct shell
-into the session's microVM).
-
-Minimal create + invoke:
-
-```bash
-aws bedrock-agentcore-control create-harness \
-  --harness-name "MyHarness" \
-  --execution-role-arn "arn:aws:iam::<account>:role/MyHarnessRole"
-
-# create-harness returns harnessId (name + generated suffix) and arn — use those below
-# Poll until "status": "READY"
-aws bedrock-agentcore-control get-harness --harness-id "MyHarness-XyZ123"
-```
-
-```python
-import boto3
-client = boto3.client("bedrock-agentcore", region_name="us-west-2")
-
-response = client.invoke_harness(
-    harnessArn="arn:aws:bedrock-agentcore:us-west-2:<account>:harness/MyHarness-XyZ123",
-    runtimeSessionId="1234abcd-12ab-34cd-56ef-1234567890ab",  # MUST be >= 33 chars
-    messages=[{"role": "user", "content": [{"text": "..."}]}],
-)
-for event in response["stream"]:
-    if "contentBlockDelta" in event:
-        delta = event["contentBlockDelta"].get("delta", {})
-        if "text" in delta:
-            print(delta["text"], end="", flush=True)
-```
-
-- `runtimeSessionId` must be **at least 33 characters** (use a UUID). Reuse the same ID to
-  continue the conversation in the same environment; sessions are stateful by default.
-- If no model is specified, the harness defaults to **Claude Sonnet 4.6 on Bedrock**.
-
-### InvokeHarness streaming events
-
-`messageStart` → `contentBlockStart` → `contentBlockDelta` (text / `toolUse` input /
-`reasoningContent`) → `contentBlockStop` → `messageStop` (+ `metadata` usage/latency,
-`runtimeClientError` on failure). `stopReason` values in `messageStop`:
-
-| stopReason | Meaning |
-|---|---|
-| `end_turn` | Finished normally |
-| `tool_use` | Waiting on a client-side inline tool result |
-| `max_tokens` | Per-turn model token limit hit |
-| `max_iterations_exceeded` | `maxIterations` limit hit |
-| `timeout_exceeded` | `timeoutSeconds` limit hit |
-| `max_output_tokens_exceeded` | `maxTokens` budget exhausted |
+Control-plane/data-plane operations, the minimal create -> poll `READY` -> invoke flow, the
+`runtimeSessionId` (>=33 chars) rule, streaming events and `stopReason` values, versions and
+named endpoints: see official `aws-core:amazon-bedrock` `references/agentcore-harness.md`
+(Deployment Workflow, Versions and Endpoints, Streaming Response Format). Not repeated here.
 
 ## Skills — Four Sources
 
@@ -160,41 +111,17 @@ leading `/` or `..`); a glob matching nothing fails the invocation with a descri
   bucket) has nothing the harness can fetch — push it to a repo or upload the skill
   directories to S3 before the harness path is viable.
 
-## Models and Instructions
+## Models, Memory, Filesystem and Operations
 
-- Providers: Amazon Bedrock (default), OpenAI, Google Gemini, or any LiteLLM-compatible
-  provider. **Bedrock Mantle** unlocks non-Anthropic frontier models (e.g. GPT-5.5 / GPT-5.4)
-  on Bedrock through the same config.
-- **Mid-session provider switching** without losing context — plan with one model, execute
-  with another; harness preserves the conversation.
+Providers (Bedrock, OpenAI, Gemini, LiteLLM), execution limits, filesystem mounts (S3 Files /
+EFS), versions/endpoints, Step Functions, evaluations and observability: see official
+`aws-core:amazon-bedrock` `references/agentcore-harness.md`, `agentcore-memory-observability.md`
+and `agentcore-registry-evaluations.md`. Conversion-specific residue:
+
 - Instructions (system prompt) are a config field — for plugin conversion, merge the agent
   `.md` body per the standard system-prompt rules in `agentcore-mapping-rules.md`.
-- Execution limits are config: `maxIterations`, `timeoutSeconds`, `maxTokens`, idle/lifetime
-  timeouts, context-window truncation.
-
-## Memory and Filesystem
-
-- **Built-in memory by default** (GA behavior): short-term and long-term memory persist
-  across sessions even after the microVM expires. Bring-your-own AgentCore Memory resource
-  is supported for shared/custom strategies; per-user scoping via actor ID.
-- Each session gets its own filesystem and shell. Beyond managed session storage, mount
-  **S3 Files** (round-trip with a bucket) and/or **EFS access points** (low-latency shared
-  storage) — up to **5 mounts per harness**, attached at `CreateHarness`/`UpdateHarness`,
-  mounted into every session at a path you choose.
-
-## Operations
-
-- **Versioning + named endpoints**: versions are immutable; point an endpoint (e.g. `prod`)
-  at a version, roll back instantly by re-pointing.
-- **Step Functions**: native `InvokeHarness` state — run harnesses in parallel/sequence,
-  wrap with human approval or error handling; per-invocation overrides of model, system
-  prompt, and tools from the workflow.
-- **Evaluations / Optimization**: score live traffic with built-in evaluators, get prompt and
-  tool-description recommendations, validate with batch evaluations and A/B tests — all GA
-  and wired into harness without extra plumbing.
-- **Observability**: every action traced automatically with a unified cross-capability view;
-  `ActiveSessionCount` CloudWatch metric (`AWS/Bedrock-AgentCore` namespace, `Service`
-  dimension) for capacity monitoring.
+- Harness ships memory by default, so reference docs inside attached skills need no Memory
+  chunking (unlike the Runtime path).
 
 ## AgentCore CLI Flow (npm toolchain)
 

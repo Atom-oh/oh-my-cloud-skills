@@ -16,23 +16,23 @@
       "executable": false
     },
     "skills/agentcore-create/SKILL.md": {
-      "sha256": "9ca7985f719b5b945e95dabd0b8966ca7353d9259339335d3f1c235807dc6208",
+      "sha256": "7865680e59722f20340d8b3aadef52d50cc753539125aa9821bbc0847c1a210e",
       "executable": false
     },
     "skills/agentcore-create/references/agent-code-templates.md": {
-      "sha256": "96f4991130d174bc99d782b092f98e472a925289abebeeaac2dbe704a5cf89b9",
+      "sha256": "2ae102039847f8f4cf9d38bd8d804f5569e2e5685eb6eecb561379d8552c57ec",
       "executable": false
     },
     "skills/agentcore-create/references/agentcore-format-reference.md": {
-      "sha256": "101d49665394bdcea33e0c2fc45a5a741b60b9207daa72395e3e710831c320a1",
+      "sha256": "92bf3da18c02d728e6f1a655d188990877f8bf6b2840f4a751cd9cf9d389486b",
       "executable": false
     },
     "skills/agentcore-create/references/agentcore-harness.md": {
-      "sha256": "aabaaf663d9d108b6e5b98d99786ec07f8253e31315659b1a350abbc64fc5379",
+      "sha256": "7eb2c3d5d0d628695f44b941580af8f3c7f6045dd6a020cd45e6859e6272b467",
       "executable": false
     },
     "skills/agentcore-create/references/agentcore-mapping-rules.md": {
-      "sha256": "724744799502a18adeb6f8d94b25680e101bfe53e29f0818c58efd8259cf407a",
+      "sha256": "5b7947745fafa4674b3e17f3b32c5ac9e3ce2334f875af6eab92590d4b511946",
       "executable": false
     },
     "skills/agentcore-create/references/discovery-interview.md": {

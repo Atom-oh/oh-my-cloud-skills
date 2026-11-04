@@ -31,19 +31,14 @@ states the retry and failover behaviour the client needs, not only the server-si
 4. **Connection Troubleshooting** — Security groups, VPC routing, DNS resolution, IAM auth
 5. **Performance Analysis** — Slow queries, connection pool tuning, read replica routing
 
-### Recent AWS database launches (2025–2026 — confidence noted inline)
+### Recent AWS database launches (2025–2026)
 
-- **Amazon Aurora DSQL** (GA 2025-05-27) — serverless distributed SQL with active-active
-  HA and **multi-Region strong consistency** (designed for 99.99% single-/99.999%
-  multi-Region — design targets, not a contractual SLA). Changes failover/DR design vs
-  Aurora Global Database.
-- **Database Savings Plans** (GA 2025-12-02) — cross-database commitment lever spanning
-  Aurora/RDS/DynamoDB/ElastiCache/DocumentDB/Neptune/Keyspaces/Timestream/DMS.
-  **`cost-agent` is the single source** for the details (rates, term, scope).
+Aurora DSQL: see official `databases-on-aws:dsql`. Database Savings Plans: see official
+`aws-core:aws-billing-and-cost-management` (`reserved-instances.md`, `service-optimization.md`);
+`cost-agent` covers the commitment analysis.
 
 > (Not a real launch: ElastiCache-for-Valkey "Semantic Caching" was refuted — do not cite.)
-> Sources: https://aws.amazon.com/about-aws/whats-new/2025/05/amazon-aurora-dsql-generally-available ·
-> https://aws.amazon.com/about-aws/whats-new/2025/12/database-savings-plans-savings (DSP details in `cost-agent`).
+
 
 ---
 

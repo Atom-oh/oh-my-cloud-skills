@@ -58,13 +58,25 @@ aws ec2 describe-network-interfaces --filters Name=attachment.instance-id,Values
 kubectl exec -n kube-system ds/aws-node -c aws-node -- curl -s http://localhost:61678/v1/enis 2>/dev/null | jq .
 ```
 
+## Where Settings Live
+
+On an EKS-managed add-on, set options through the add-on so they are not reverted; `kubectl set env` below is a quick test only. Settings can also live in the add-on `configurationValues`, the DaemonSet, or Helm/GitOps; there is no single `aws-node` ConfigMap holding all of them.
+```bash
+aws eks describe-addon --cluster-name $CLUSTER_NAME --addon-name vpc-cni --query 'addon.{cfg:configurationValues,role:serviceAccountRoleArn,pi:podIdentityAssociations}'
+```
+
+## Not Applicable To
+
+- **Auto Mode**: no `WARM_*` / `ENIConfig`; networking is controlled through NodeClass subnet/security-group selectors.
+- **Hybrid nodes**: VPC CNI is not compatible; they use Cilium (kubernetes-docs en/eks-hybrid-nodes/02-network-configuration.md, "Choosing a CNI Design").
+
 ## Common Issues
 
 ### IP Exhaustion
 **Symptom**: Pods stuck in Pending with IP allocation failure
 
 **Solutions**:
-1. Enable Prefix Delegation: `kubectl set env daemonset aws-node -n kube-system ENABLE_PREFIX_DELEGATION=true`
+1. Enable Prefix Delegation (validate instance support and contiguous /28 availability first): `kubectl set env daemonset aws-node -n kube-system ENABLE_PREFIX_DELEGATION=true`
 2. Add Secondary CIDR: `aws ec2 associate-vpc-cidr-block --vpc-id <vpc-id> --cidr-block 100.64.0.0/16`
 3. Use Custom Networking with dedicated Pod subnets
 4. Tune WARM_IP_TARGET: `kubectl set env daemonset aws-node -n kube-system WARM_IP_TARGET=2 MINIMUM_IP_TARGET=4`
@@ -77,14 +89,8 @@ kubectl exec -n kube-system ds/aws-node -c aws-node -- curl -s http://localhost:
 2. Enable Prefix Delegation (16 IPs per slot instead of 1)
 3. Review and clean up branch ENIs from pod security groups
 
-### Recommended Prefix Delegation Settings
-```bash
-kubectl set env daemonset aws-node -n kube-system \
-  ENABLE_PREFIX_DELEGATION=true \
-  WARM_PREFIX_TARGET=1 \
-  WARM_IP_TARGET=5 \
-  MINIMUM_IP_TARGET=2
-```
+### Prefix Delegation Settings
+Derive `WARM_*` / `MINIMUM_IP_TARGET` values from the workload and subnet IP budget instead of copying fixed numbers. A minimum without positive warm headroom can block later allocation, and prefix mode needs contiguous /28 blocks, so a free-IP count alone does not prove a prefix is allocatable (verified as of 2026-11-04, kubernetes-docs en/eks/09-eks-troubleshooting.md "Distinguish allocation constraints").
 
 ## Subnet CIDR Planning Best Practice
 

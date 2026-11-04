@@ -85,64 +85,21 @@ aws eks update-cluster-config \
 /aws/containerinsights/$CLUSTER_NAME/performance    # Performance metrics
 ```
 
-## Log Retention Best Practices
+## Log Retention, Alarms and Cost
 
-```bash
-# Production: 30 days for app logs, 90 days for audit
-aws logs put-retention-policy --log-group-name /aws/containerinsights/$CLUSTER_NAME/application --retention-in-days 30
-aws logs put-retention-policy --log-group-name /aws/eks/$CLUSTER_NAME/cluster --retention-in-days 90
+Generic log retention, Infrequent Access class, alarm authoring and log-cost tuning are owned
+by official `aws-core:aws-observability` (`references/alarms.md`) and
+`aws-core:aws-billing-and-cost-management` (`references/service-optimization.md`). EKS-specific
+residue only:
 
-# Development: 7 days
-aws logs put-retention-policy --log-group-name /aws/containerinsights/dev-cluster/application --retention-in-days 7
+- Retention: keep `/aws/eks/$CLUSTER_NAME/cluster` (control-plane/audit) longer (e.g. 90 days)
+  than `/aws/containerinsights/$CLUSTER_NAME/application` (e.g. 30 days; 7 in dev).
+- Container Insights alarm metrics (namespace `ContainerInsights`, dimension `ClusterName`):
+  `cluster_cpu_utilization` (>80%), `cluster_memory_utilization` (>85%),
+  `cluster_failed_node_count` (>0, 60s period).
+- Cost levers specific to EKS: disable Enhanced Container Insights when not needed (20-40%),
+  filter health-check logs (10-30%), 60s instead of 30s collection interval (30%).
 
-# Use Infrequent Access for cost savings (50%)
-aws logs create-log-group --log-group-name /aws/containerinsights/$CLUSTER_NAME/audit --log-group-class INFREQUENT_ACCESS
-```
-
-## Essential Alarms
-
-```bash
-# High CPU
-aws cloudwatch put-metric-alarm \
-  --alarm-name "$CLUSTER_NAME-high-cpu" \
-  --namespace ContainerInsights \
-  --metric-name cluster_cpu_utilization \
-  --dimensions Name=ClusterName,Value=$CLUSTER_NAME \
-  --statistic Average --period 300 --evaluation-periods 2 \
-  --threshold 80 --comparison-operator GreaterThanThreshold \
-  --alarm-actions $SNS_TOPIC_ARN
-
-# High Memory
-aws cloudwatch put-metric-alarm \
-  --alarm-name "$CLUSTER_NAME-high-memory" \
-  --namespace ContainerInsights \
-  --metric-name cluster_memory_utilization \
-  --dimensions Name=ClusterName,Value=$CLUSTER_NAME \
-  --statistic Average --period 300 --evaluation-periods 2 \
-  --threshold 85 --comparison-operator GreaterThanThreshold \
-  --alarm-actions $SNS_TOPIC_ARN
-
-# Node Failures
-aws cloudwatch put-metric-alarm \
-  --alarm-name "$CLUSTER_NAME-node-failure" \
-  --namespace ContainerInsights \
-  --metric-name cluster_failed_node_count \
-  --dimensions Name=ClusterName,Value=$CLUSTER_NAME \
-  --statistic Maximum --period 60 --evaluation-periods 2 \
-  --threshold 0 --comparison-operator GreaterThanThreshold \
-  --alarm-actions $SNS_TOPIC_ARN
-```
-
-## Cost Optimization
-
-| Strategy | Savings | Effort |
-|----------|---------|--------|
-| Set log retention (vs. forever) | 50-80% | Low |
-| Use Infrequent Access log class | 50% | Low |
-| Filter health check logs | 10-30% | Low |
-| Reduce metric collection interval (60s vs 30s) | 30% | Low |
-| Disable Enhanced Container Insights when not needed | 20-40% | Low |
-| Consolidate dashboards (3 free) | 100% per dashboard | Low |
 
 ## Troubleshooting
 

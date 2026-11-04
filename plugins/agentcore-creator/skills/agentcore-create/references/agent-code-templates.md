@@ -305,14 +305,5 @@ See `references/agentcore-mapping-rules.md` → Model-Specific Compatibility Not
 
 ## Deployment CLI
 
-AgentCore agents are deployed using the `agentcore` CLI from `bedrock-agentcore-starter-toolkit`:
-
-```bash
-pip install bedrock-agentcore-starter-toolkit
-
-agentcore configure     # Initial setup (region, credentials)
-agentcore deploy        # Deploy agent to AgentCore Runtime
-agentcore invoke        # Test invocation
-agentcore status        # Check deployment status
-agentcore destroy       # Tear down all resources
-```
+Deploy with the `agentcore` CLI (`configure` / `deploy` / `invoke` / `status` / `destroy`): see
+official `aws-agents:agents-deploy` and SKILL.md Phase 4.5.

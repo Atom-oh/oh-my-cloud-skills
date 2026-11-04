@@ -13,7 +13,7 @@ Produces a severity-ranked list of posture findings for cluster, IAM, and networ
 against the global AWS security mandates below. The consumer is a reviewer gating an IaC or
 AWS change, or an operator auditing a running cluster, so each finding names the specific
 resource and the mandate or benchmark it violates. Excellent work here hands application-layer
-concerns to AWS Security Agent rather than guessing at them, and gives every CRITICAL a
+concerns to the official aws-agents-for-devsecops skills rather than guessing at them, and gives every CRITICAL a
 remediation concrete enough to apply.
 
 ## Global AWS Security Mandates
@@ -33,7 +33,7 @@ future edit against it.
 | 4 | No Route53 record pointing directly at an ALB or EC2 instance | A direct DNS name is a public entry point that skips CloudFront entirely, whatever the ALB's own rules say |
 | 5 | No IAM `Principal: "*"` — unconditionally, with or without a `Condition` | A wildcard principal opens the resource to every AWS account on earth; no `Condition` can make an unconditioned `Principal: "*"` acceptable |
 | 6 | Minimize IAM `Resource: "*"` — a `Condition` is required if it is used at all | An unconditioned resource wildcard is an account-wide grant in practice, whatever the intent was |
-| 7 | No Lambda function URL with `AuthType: NONE` | An unauthenticated endpoint is a public API with no identity, no rate limit, and no attribution in the audit trail |
+| 7 | No Lambda function URL with `AuthType: NONE`, and no Lambda Web Function endpoint with `ApplicationManaged` auth. The only allowed public-facing pattern is `IamAuth` + CloudFront OAC (origin type `lambda`, `SigningBehavior: always-amz-auth`, `sigv4` for a regional endpoint / `sigv4a` for a global one) + a resource policy on the function ARN (`aws lambda-web put-resource-policy`) granting `cloudfront.amazonaws.com` `lambda:InvokeWebFunctionEndpoint` with `StringEquals aws:SourceArn` = the distribution ARN, + application-level auth | An unauthenticated endpoint is a public API with no identity, no rate limit, and no attribution in the audit trail; Lambda does not evaluate the resource policy for `ApplicationManaged` invokes, so a policy cannot restrict callers. The SCP condition key `lambda:Request/WebFunctionAuthType` can block such endpoints org-wide |
 | 8 | No secrets in environment variables — use Secrets Manager or SSM Parameter Store | Env vars are readable by anyone holding `describe`-class permissions and they leak into logs, task definitions, and CI output |
 | 9 | PII in DynamoDB needs KMS + TTL; S3 Block Public Access always on; never delete CloudTrail logs | Data-layer defaults: encryption and expiry bound the blast radius of a leak, Block Public Access is the only setting that still holds when a bucket policy is wrong, and a deleted audit trail destroys the evidence of every other violation |
 
@@ -46,7 +46,7 @@ graph TD
     A[Security review request] --> B{Subject?}
     B -->|IaC / PR diff| C[Scan the diff against the nine mandates]
     B -->|Live cluster| D[Cluster posture audit: IAM + network + compliance]
-    B -->|App design / code / pentest| E[Delegate to AWS Security Agent]
+    B -->|App design / code / pentest| E[Official aws-agents-for-devsecops skills]
     B -->|Per-diff adversarial review| F[co-agent plugin]
     C --> G[Report: each violation CRITICAL, resource + mandate named]
     D --> G
@@ -65,12 +65,12 @@ Rank findings by severity in the Output Format. A mandate violation is always CR
 ### 1. IAM & Authentication
 - IRSA/Pod Identity configuration audit
 - RBAC role and binding review
-- aws-auth ConfigMap analysis
+- Authentication mode first (`accessConfig.authenticationMode`): access entries vs aws-auth
 - Least privilege assessment
 
 ### 2. Network Security
 - Security group rule review
-- Network policy coverage
+- Network policy coverage and enforcement (objects alone enforce nothing; see `references/network-security.md`)
 - VPC endpoint configuration
 - Public endpoint exposure
 
@@ -80,13 +80,11 @@ Rank findings by severity in the Output Format. A mandate violation is always CR
 - Pod security standards
 - Secret management
 
-### 4. Application Security — AWS Security Agent
-For application-layer security (beyond cluster/IAM posture), delegate to **AWS
-Security Agent** (frontier agent): design review, full-repo/PR code security
-review, and on-demand penetration testing validated with proof-based exploit
-paths + fix PRs. This skill covers cloud/cluster posture; Security Agent covers
-the app; the `co-agent` plugin covers per-diff adversarial review (the routing
-tree above). See `references/aws-security-agent.md`.
+### 4. Application Security
+Application-layer review is out of scope here; route to the official `aws-agents-for-devsecops`
+skills: `setup-security-agent`, `scanning-with-aws-security-agent`, `diff-scanning-with-aws-security-agent`,
+`pentesting-with-aws-security-agent`, `threat-modeling-with-aws-security-agent`, `remediating-with-aws-security-agent`.
+This skill covers cloud/cluster posture; `co-agent` covers per-diff adversarial review.
 
 ## Quick Audit Commands
 
@@ -138,4 +136,3 @@ kubectl get svc -A -o json | jq '[.items[] | select(.spec.type=="LoadBalancer") 
 - `references/iam-audit.md` — IAM, IRSA, Pod Identity, RBAC audit
 - `references/network-security.md` — Security groups, network policies, VPC endpoints
 - `references/compliance-checklist.md` — CIS benchmark, best practices checklist
-- `references/aws-security-agent.md` — AWS Security Agent: design/code review, on-demand penetration testing, org requirements, CI/CD API

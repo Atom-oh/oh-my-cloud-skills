@@ -52,7 +52,7 @@ AWS manages these for EKS — verify they're enabled:
 - [ ] Use IRSA or Pod Identity (never node IAM role for workloads)
 - [ ] Scope IRSA trust policies to specific namespace:serviceaccount
 - [ ] Minimize cluster-admin ClusterRoleBindings
-- [ ] Enable EKS access entries (migrate from aws-auth)
+- [ ] Enable EKS access entries (migrate from aws-auth); check `accessConfig.authenticationMode` first, mode switches are not freely reversible
 - [ ] Rotate IAM credentials regularly
 - [ ] Enable MFA for human users
 
@@ -60,7 +60,7 @@ AWS manages these for EKS — verify they're enabled:
 
 - [ ] Enable VPC endpoints for AWS services
 - [ ] Use private cluster endpoint (or restrict public CIDRs)
-- [ ] Deploy network policies in all namespaces
+- [ ] Deploy network policies in all namespaces and confirm enforcement is enabled (VPC CNI `enableNetworkPolicy`; not enforced on Fargate/Windows)
 - [ ] Use Security Groups for Pods where needed
 - [ ] Enable VPC Flow Logs for audit
 

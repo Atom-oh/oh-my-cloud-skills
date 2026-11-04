@@ -243,27 +243,15 @@ creating resources, so deployment does not stop halfway through post-deploy setu
 Node.js 20+) or raw AWS CLI — full flow in `references/agentcore-harness.md`.
 **Caution**: the Node CLI and the Python starter toolkit (Path B) both install a binary
 named `agentcore` — if both are present, disambiguate with `npx @aws/agentcore <cmd>` (or
-`which agentcore` first) so harness commands don't hit the Runtime CLI:
+`which agentcore` first) so harness commands don't hit the Runtime CLI.
 
-```bash
-agentcore create --name <agent> --model-provider bedrock
-agentcore add skill --harness <agent> --git <repo-url> --git-path <skill-subdir>   # per skill
-agentcore deploy
-```
+Flow (`agentcore create` -> `add skill` per skill -> `deploy`; or raw `create-harness` then
+poll `get-harness` until `READY`): `references/agentcore-harness.md` → AgentCore CLI Flow, and
+official `aws-core:amazon-bedrock` `references/agentcore-harness.md`. Memory is built-in by default;
+Gateway/Policy attach via config when the plugin had MCP servers or tool restrictions.
 
-Or without the CLI: `aws bedrock-agentcore-control create-harness --harness-name <agent>
---execution-role-arn <role-arn> --skills '<sources>'`, then poll `get-harness` until
-`"status": "READY"`. Memory is built-in by default; Gateway/Policy attach via config when
-the plugin had MCP servers or tool restrictions.
-
-**Path B — Runtime.** Uses the Python `agentcore` CLI:
-
-```bash
-aws sts get-caller-identity                      # prerequisites check
-pip install bedrock-agentcore-starter-toolkit
-agentcore configure
-agentcore deploy
-```
+**Path B — Runtime.** Uses the Python `agentcore` CLI. Check prerequisites with `aws sts get-caller-identity`, then follow the starter-toolkit flow
+(`agentcore configure` -> `agentcore deploy`) in official `aws-agents:agents-deploy`.
 
 Then, if enabled: Memory via AgentCore MCP tools `memory_create` / `memory_update`
 (store, STM/LTM strategies, knowledge namespaces); Gateway via `gateway_create` /

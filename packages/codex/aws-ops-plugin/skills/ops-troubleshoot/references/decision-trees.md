@@ -45,6 +45,8 @@ flowchart TD
     CHECK -->|NetworkUnavailable| NET[Check VPC CNI, ENI, security groups]
     CHECK -->|Unknown| UNK{kubelet Running?}
     UNK -->|No| KUBELET[Restart kubelet, check journal logs]
+    CHECK -->|Auto Mode node| AM[Check NodeClaim conditions; replace the node, do not repair]
+    CHECK -->|Hybrid node Unknown| HY[Check link to AWS; pods keep running; crictl on host]
     UNK -->|Yes| API[Check node→API server connectivity]
 ```
 
