@@ -61,7 +61,7 @@ kubectl auth can-i --list --as=system:serviceaccount:<ns>:<sa>
 ```
 
 ### Authentication Mode First
-The mode decides where access is defined: access entries in `API` / `API_AND_CONFIG_MAP`, the aws-auth ConfigMap in `CONFIG_MAP`. Do not switch modes or replace aws-auth to fix an unclassified 401/403; mode migration has irreversible transitions (kubernetes-docs en/eks/11-eks-advanced-debugging.md, "IAM Authentication Troubleshooting").
+The mode decides where access is defined: access entries in `API`, the aws-auth ConfigMap in `CONFIG_MAP`, and both in `API_AND_CONFIG_MAP`. Do not switch modes or replace aws-auth to fix an unclassified 401/403; mode migration has irreversible transitions (kubernetes-docs en/eks/11-eks-advanced-debugging.md, "IAM Authentication Troubleshooting").
 ```bash
 aws eks describe-cluster --name $CLUSTER_NAME --query 'cluster.accessConfig.authenticationMode'
 ```

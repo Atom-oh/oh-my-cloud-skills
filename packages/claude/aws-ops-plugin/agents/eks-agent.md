@@ -99,7 +99,7 @@ journalctl -u kubelet -n 100 --no-pager
 ```bash
 # Non-running pods, plus Running-but-NotReady / CrashLooping ones that phase filters miss
 kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
-kubectl get pods -A -o json | jq -r '.items[]|select(any(.status.containerStatuses[]?; .ready==false))|.metadata.namespace+"/"+.metadata.name'
+kubectl get pods -A -o json | jq -r '.items[]|select(.status.phase!="Succeeded" and .status.phase!="Failed")|select(any(.status.conditions[]?; .type=="Ready" and .status=="False"))|.metadata.namespace+"/"+.metadata.name'
 
 # Pod details
 kubectl describe pod <pod> -n <namespace>

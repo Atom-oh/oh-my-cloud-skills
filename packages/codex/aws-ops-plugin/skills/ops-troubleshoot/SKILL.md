@@ -35,9 +35,9 @@ that loop. For a non-infra bug, use `superpowers:systematic-debugging` directly.
 kubectl cluster-info
 kubectl get nodes -o wide
 
-# 2. Failed workloads (phase!=Running misses Running-but-NotReady pods; also list unready containers)
+# 2. Failed workloads (phase!=Running misses Running-but-NotReady pods; also list pods whose Ready condition is False, excluding finished Jobs)
 kubectl get pods -A --field-selector=status.phase!=Running
-kubectl get pods -A -o json | jq -r '.items[]|select(any(.status.containerStatuses[]?; .ready==false))|.metadata.namespace+"/"+.metadata.name'
+kubectl get pods -A -o json | jq -r '.items[]|select(.status.phase!="Succeeded" and .status.phase!="Failed")|select(any(.status.conditions[]?; .type=="Ready" and .status=="False"))|.metadata.namespace+"/"+.metadata.name'
 
 # 3. Recent events (last 50)
 kubectl get events -A --sort-by='.lastTimestamp' | tail -50

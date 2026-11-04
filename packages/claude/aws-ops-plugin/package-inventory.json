@@ -24,11 +24,11 @@
       "executable": false
     },
     "agents/eks-agent.md": {
-      "sha256": "e6949fc9ed09c6efc9c52355792d7aac306e8b76d662679daa5a62519a161dc3",
+      "sha256": "3cc4b64b91123f463c3fdabbbab888040041d59424b6af49b43c1325141df122",
       "executable": false
     },
     "agents/iam-agent.md": {
-      "sha256": "4f01696d2a5f557f39a85a2f41df3d259379315cbec8d57fb07edef39c22cc22",
+      "sha256": "5185699b87c5436a494667745db5e37d016034210ab981ce91b54a50f108ad58",
       "executable": false
     },
     "agents/network-agent.md": {
@@ -112,7 +112,7 @@
       "executable": false
     },
     "skills/ops-security-audit/SKILL.md": {
-      "sha256": "2af742dab37e38b581ebaadb20eeae0df922e8e8613da9fe42854c819524c8d1",
+      "sha256": "ef9ad97d7ffdbcb2709b89d1e7272eb8f965d104f8ef702732daa9ae97f1471b",
       "executable": false
     },
     "skills/ops-security-audit/references/compliance-checklist.md": {
@@ -120,7 +120,7 @@
       "executable": false
     },
     "skills/ops-security-audit/references/iam-audit.md": {
-      "sha256": "a124fbe1d27f510f6382404ecd7b642834c578fffb940b049b6ed09a7f3cb945",
+      "sha256": "74e1ce38e5cf7247549efe23d0fe14352762ebe59a1630302c6d722c0de001e7",
       "executable": false
     },
     "skills/ops-security-audit/references/network-security.md": {
@@ -128,11 +128,11 @@
       "executable": false
     },
     "skills/ops-troubleshoot/SKILL.md": {
-      "sha256": "25b464336562b6988e170eaf211d21996b5701098e7f73a2250bbcb03feda5d5",
+      "sha256": "47000cafb7d25c936954984d35f7a251d5ca65106f87fad406886e33f9df2f5e",
       "executable": false
     },
     "skills/ops-troubleshoot/references/common-errors.md": {
-      "sha256": "aab27bd40335ebbae48a6932d8464cac7befb766e176cc1595ed630895bfd883",
+      "sha256": "74d7c60e306c01fc9c3097b2bed8ccf85000f2014468185b9f6acffd9e501be6",
       "executable": false
     },
     "skills/ops-troubleshoot/references/decision-trees.md": {

@@ -24,11 +24,11 @@
       "executable": false
     },
     "agents/eks-agent.md": {
-      "sha256": "daf2afcc785f25817a7ccfc5bf6e47bebb1a2e7602b625763c21204688c59775",
+      "sha256": "bd52c8987380827b085a6cd7896c314d8f2268472e8dcc7d228daf1c2ab9d7d4",
       "executable": false
     },
     "agents/iam-agent.md": {
-      "sha256": "7417cbf57029c307b5fd92eaa74881f0ad4e695cb9ae850cd527081db5dcd231",
+      "sha256": "3e06fbfde83e928e646283982f0dababfd4722b2840f85b353bee4f33799c99d",
       "executable": false
     },
     "agents/network-agent.md": {
@@ -112,7 +112,7 @@
       "executable": false
     },
     "skills/ops-security-audit/SKILL.md": {
-      "sha256": "2af742dab37e38b581ebaadb20eeae0df922e8e8613da9fe42854c819524c8d1",
+      "sha256": "ef9ad97d7ffdbcb2709b89d1e7272eb8f965d104f8ef702732daa9ae97f1471b",
       "executable": false
     },
     "skills/ops-security-audit/references/compliance-checklist.md": {
@@ -120,7 +120,7 @@
       "executable": false
     },
     "skills/ops-security-audit/references/iam-audit.md": {
-      "sha256": "a124fbe1d27f510f6382404ecd7b642834c578fffb940b049b6ed09a7f3cb945",
+      "sha256": "74e1ce38e5cf7247549efe23d0fe14352762ebe59a1630302c6d722c0de001e7",
       "executable": false
     },
     "skills/ops-security-audit/references/network-security.md": {
@@ -128,11 +128,11 @@
       "executable": false
     },
     "skills/ops-troubleshoot/SKILL.md": {
-      "sha256": "25b464336562b6988e170eaf211d21996b5701098e7f73a2250bbcb03feda5d5",
+      "sha256": "47000cafb7d25c936954984d35f7a251d5ca65106f87fad406886e33f9df2f5e",
       "executable": false
     },
     "skills/ops-troubleshoot/references/common-errors.md": {
-      "sha256": "aab27bd40335ebbae48a6932d8464cac7befb766e176cc1595ed630895bfd883",
+      "sha256": "74d7c60e306c01fc9c3097b2bed8ccf85000f2014468185b9f6acffd9e501be6",
       "executable": false
     },
     "skills/ops-troubleshoot/references/decision-trees.md": {
@@ -244,7 +244,7 @@
       "executable": false
     },
     ".codex-plugin/skills/ops-security-audit/SKILL.md": {
-      "sha256": "c59763ca11cdc987e89e8435f4a7ae36fa698f66306fce59e0aec533c67b2cb2",
+      "sha256": "9ba5a7d563702912f1534461f34adb821903c5eaab139a335821bbf065fc9f12",
       "executable": false
     },
     ".codex-plugin/skills/ops-troubleshoot/SKILL.md": {

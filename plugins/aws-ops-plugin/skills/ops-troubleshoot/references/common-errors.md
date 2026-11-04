@@ -65,7 +65,7 @@ Error message → root cause → solution mapping for EKS operations.
 | Error Message | Root Cause | Solution |
 |--------------|------------|---------|
 | `AccessDenied` | Missing IAM permission | Add policy to role |
-| `Forbidden: User "system:anonymous"` | Authentication failed | Check `accessConfig.authenticationMode`, then fix the access entry (API modes) or aws-auth (CONFIG_MAP mode) |
+| `Forbidden: User "system:anonymous"` | Authentication failed | Check `accessConfig.authenticationMode`, then fix the access entry (`API`), aws-auth (`CONFIG_MAP`), or check both (`API_AND_CONFIG_MAP`) |
 | `could not get token` (IRSA) | OIDC provider issue | Verify OIDC provider, trust policy |
 | `WebIdentityErr` | Trust policy mismatch | Fix condition in IAM trust policy |
 | `An error occurred (AccessDenied) when calling the AssumeRoleWithWebIdentity` | IRSA misconfigured | Check SA annotation, OIDC provider ARN, trust-policy `sub` (`system:serviceaccount:<ns>:<sa>`) and `aud` (`sts.amazonaws.com`); a recreated cluster has a new OIDC issuer |
