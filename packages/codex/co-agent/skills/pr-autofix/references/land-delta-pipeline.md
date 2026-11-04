@@ -6,7 +6,7 @@ every stage persists its state under the run directory and refuses to run unless
 predecessor succeeded (`tests/structure/test-pr-autofix-land-delta.sh` is the
 executable spec). Read this file in full before running ANY stage in an iteration.
 
-## 4b. Implement — opus [medium effort], in an isolated worktree
+## 4b. Implement — in an isolated worktree
 
 ```bash
 LD="${CLAUDE_PLUGIN_ROOT}/skills/pr-autofix/scripts/land_delta.sh"
@@ -43,16 +43,46 @@ flip it to `approval: granted` in the plan and run it through the SAME loop
 (implementer → capture → approve → land); a grant is a plan edit, not a gate bypass,
 `report-only` findings never reach it.
 
-Spawn the bundled **`pr-autofix-implementer`** agent (Agent tool
-`subagent_type: "co-agent:pr-autofix-implementer"` — the agent's own frontmatter
-already pins `model: opus` / `effort: medium`; the Agent tool call itself takes no
-`effort` parameter) with the plan and `$IMPL_WT`. Its `tools:` frontmatter enforces
-edit-only (no Bash, no network); path confinement is instruction-level — the landing
-gates below are what hold. Parallel implementers only on strictly disjoint file sets.
-If the subagent cannot be spawned, TELL THE USER (inline mode loses the enforced tool
-guard), then apply the plan inline in the worktree — never silently skip findings.
-(4a fallback is the same: prefer `model: "fable"`, fall back to `"opus"`; planning
-subagent unspawnable → tell the user, plan inline.)
+### Host execution
+
+Apply this selection to both 4a planning and 4b implementation; it changes dispatch,
+not the plan schema, worktree isolation or landing gates.
+
+**Claude Code:** Spawn the bundled **`pr-autofix-implementer`** with the plan and
+`$IMPL_WT` (Agent tool `subagent_type: "co-agent:pr-autofix-implementer"`; installed
+agent settings pin `model: opus` / `effort: medium`). The Agent call itself takes no
+`effort` parameter. Its tool set is edit-only (no Bash, no network). For 4a, prefer
+Fable, fall back to Opus, and use the read-only planner when not planning inline.
+If a required subagent cannot be spawned, tell the user which guard is lost, then
+perform that phase inline; implementation still happens only in `$IMPL_WT`.
+
+**Codex:** Load `agents/pr-autofix-planner.md` or
+`agents/pr-autofix-implementer.md` relative to the installed plugin root as the phase
+procedure, not as a native agent registration. Use the current supported session
+configuration; Claude model aliases and frontmatter are not Codex settings.
+The Codex-owned reasoning intent is advisory (`xhigh` planning, `medium`
+implementation), not a requirement to invent model names or unsupported parameters.
+
+- Plan inline, or pass the planner procedure, prepared review inputs and constraints
+  to an available general-purpose agent only with an actual sandbox/tool boundary
+  enforcing read-only planning and host-state protection.
+- Delegate implementation only when actual controls enforce edit-only access in
+  `$IMPL_WT`, no-shell/no-network execution and host-state protection (including
+  `$STATE`, review memory and pipeline artifacts). Pass the procedure, filtered
+  plan and explicit worktree path. A role name, prompt, or Claude tools frontmatter
+  is not enforcement; an isolated worktree alone is not a sandbox.
+- If that boundary cannot be enforced, perform the phase inline in the host and
+  disclose the concrete limitation. Do not cite missing Fable/Opus aliases alone
+  as proof that Codex delegation is unavailable. Inline implementation uses only
+  file edits in `$IMPL_WT`; keep host orchestration, verification and Git operations
+  separate from applying the plan. Never claim an enforced worker boundary existed.
+
+For either host, keep parallel implementers on strictly disjoint file sets. Inline
+execution never bypasses `check-plan-paths`, filtering, capture, approve, land,
+verification, rollback, or host-only state/commit/push ownership. Missing required
+isolation or a failed gate stops the iteration; it does not authorize editing the
+real branch directly. Internal planning/implementation does not replace required
+external review or relax latest-HEAD acceptance.
 
 ## 4c. Verify and land — every gate is executable, staged, and tested
 
