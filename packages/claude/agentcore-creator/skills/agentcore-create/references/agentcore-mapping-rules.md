@@ -193,15 +193,12 @@ CLAUDE.md routing tables and workflow descriptions are synthesized into the agen
 
 ### agentcore CLI (Primary)
 
-```bash
-pip install bedrock-agentcore-starter-toolkit
-
-agentcore configure     # Initial setup
-agentcore deploy        # Deploy to AgentCore Runtime
-agentcore invoke        # Test invocation
-agentcore status        # Check status
-agentcore destroy       # Tear down
-```
+For Runtime (Path B), use the canonical [deployment procedure](../SKILL.md#45-deployment)
+and [verification procedure](../SKILL.md#phase-5-verification--next-steps): supported
+Python interpreter, isolated starter-toolkit CLI, generated dependencies and audited
+execution roles. Do not accept auto-created IAM role defaults or run unqualified
+CLI examples from generated helpers/READMEs. Harness uses its separate Node/AWS flow.
+Cleanup requires explicit user approval and the same selected Runtime CLI.
 
 ### AgentCore MCP Tools (Post-Deployment Setup)
 
@@ -313,4 +310,4 @@ below and take exact syntax from the official skill (or `search_agentcore_docs` 
 | Managed Knowledge Base | Phase 2/4, as an alternative to hand-rolled LTM chunking (`memory-chunking-strategy.md`) for large or structured source documents | official AgentCore docs |
 | Web Search tool (Gateway connector) | Phase 4, instead of hand-rolled search tooling | official AgentCore docs |
 | CDK L2 constructs (`aws-bedrockagentcore`) | Phase 5, for users managing infra in CDK | `aws-core:aws-cdk` |
-| CLI additions (`agentcore dev`, `logs`/`traces`, `export`) | Phase 5, `agentcore dev` for local iteration | `aws-agents:agents-deploy`, `agents-debug` |
+| CLI features (`agentcore dev`, `logs`/`traces`, `export`) | Check the selected CLI help; Python also has `dev`, but Node flags/config are not interchangeable | `aws-agents:agents-deploy`, `agents-debug` |

@@ -25,6 +25,16 @@ step runs with the user's explicit confirmation.
 Each phase ends with the user's sign-off before the next begins. Ask only what the
 request doesn't answer.
 
+## Companion availability
+
+Official `aws-core` / `aws-agents` skills are not bundled or automatically installed.
+Before a handoff, discover the requested skill in the active host session and read
+its actual installed procedure. A Claude cache does not establish Codex availability.
+If missing, stop that handoff, name the companion and ask the user to install/enable
+it for this host with the required trust. Do not invent skill-invocation shell commands
+or automatically install plugins. The explicit local Path B flow below does not
+require the Node deployment skill.
+
 ## Entry Point Detection
 
 | Input | Entry |
@@ -250,8 +260,45 @@ poll `get-harness` until `READY`): `references/agentcore-harness.md` → AgentCo
 official `aws-core:amazon-bedrock` `references/agentcore-harness.md`. Memory is built-in by default;
 Gateway/Policy attach via config when the plugin had MCP servers or tool restrictions.
 
-**Path B — Runtime.** Uses the Python `agentcore` CLI. Check prerequisites with `aws sts get-caller-identity`, then follow the starter-toolkit flow
-(`agentcore configure` -> `agentcore deploy`) in official `aws-agents:agents-deploy`.
+**Path B — Runtime.** Uses the Python `bedrock-agentcore-starter-toolkit`, not
+Node `@aws/agentcore`. Keep the generated Strands Runtime project on this path;
+do not send it to a Node/CDK deployment procedure or uninstall the Python CLI.
+Use Python 3.10+ (or the selected toolkit version's higher minimum). Select a
+supported `python3` interpreter before creating the environment; stop if unavailable.
+Before deployment, audit existing Runtime and CodeBuild execution roles against
+`ops-security-audit` and the repository mandates: no wildcard Principal; wildcard
+Resource requires a restrictive Condition. Provision/fix roles through reviewed IaC,
+not the toolkit's default role creation. Set their non-secret ARNs below only after
+review and the user's deployment approval. If either role is missing, stop.
+
+From the generated project root, after the user's installation/deployment approval:
+
+```bash
+set -euo pipefail
+aws sts get-caller-identity
+python3 -c 'import sys; assert sys.version_info >= (3, 10), "select a Python 3.10+ interpreter first"'
+python3 -m venv .venv-agentcore
+.venv-agentcore/bin/python -m pip install bedrock-agentcore-starter-toolkit
+.venv-agentcore/bin/python -m pip install -r agents/requirements.txt
+.venv-agentcore/bin/agentcore --help  # Confirm this environment's starter-toolkit CLI
+# Select the generated entrypoint under agents/ and its agents/requirements.txt.
+# Never accept auto-created execution-role defaults.
+: "${EXECUTION_ROLE_ARN:?Set the audited Runtime execution role ARN first}"
+: "${CODEBUILD_ROLE_ARN:?Set the audited CodeBuild execution role ARN first}"
+.venv-agentcore/bin/agentcore configure \
+  --execution-role "$EXECUTION_ROLE_ARN" \
+  --code-build-execution-role "$CODEBUILD_ROLE_ARN"
+.venv-agentcore/bin/agentcore deploy
+```
+
+Use the same explicit `.venv-agentcore/bin/agentcore` path for Runtime verification.
+Do not run the generated `deploy.sh` unchanged: its unqualified `agentcore` / `pip`
+commands and bare `configure` can select the wrong CLI or auto-create unaudited roles.
+Use the explicit flow above, or review/update the helper to use this environment and
+the same audited-role flags before enabling it.
+This avoids PATH collisions with the Node Harness CLI; Node-only flags and its
+`agentcore/agentcore.json` / CDK project layout do not apply here.
+Canonical Python CLI guidance: [starter toolkit](https://aws.github.io/bedrock-agentcore-starter-toolkit/).
 
 Then, if enabled: Memory via AgentCore MCP tools `memory_create` / `memory_update`
 (store, STM/LTM strategies, knowledge namespaces); Gateway via `gateway_create` /
@@ -259,11 +306,17 @@ Then, if enabled: Memory via AgentCore MCP tools `memory_create` / `memory_updat
 
 ## Phase 5: Verification & Next Steps
 
+For Path B, from the same generated project root:
+
 ```bash
-agentcore status        # Check deployment status
-agentcore invoke        # Test with sample prompt
-agentcore dev           # Optional: local inspector UI for faster iteration
+.venv-agentcore/bin/agentcore status
+.venv-agentcore/bin/agentcore invoke '{"prompt":"Deployment smoke test"}'
 ```
+
+Python starter-toolkit also supports `dev` in applicable versions; check
+`.venv-agentcore/bin/agentcore dev --help` before optional local iteration.
+Commands shared with Node (`dev`, logging/export workflows) do not make their flags
+or project configuration interchangeable; consult the selected CLI's help.
 
 Harness path: poll `get-harness` until `"status": "READY"`, then smoke-test with
 `invoke_harness` (note: `runtimeSessionId` must be ≥33 chars — use a UUID) and confirm the
@@ -278,6 +331,10 @@ If Phase 1 captured concrete success criteria, mention **AgentCore Evaluations**
 
 ### Deployment Summary (output format)
 
+The example below is Runtime-only. For Harness, report the verified harness ID,
+readiness and skill sources, using the separate Harness invocation/cleanup procedure.
+Do not apply Runtime commands to a Harness deployment.
+
 ```
 AgentCore Deployment Summary
 ════════════════════════════
@@ -291,15 +348,16 @@ Components:
   Gateway:  N tool targets registered
 
 Test command:
-  agentcore invoke --prompt "test query"
+  .venv-agentcore/bin/agentcore invoke '{"prompt":"test query"}'
 
 Cleanup command:
-  agentcore destroy
+  .venv-agentcore/bin/agentcore destroy  # Explicit user approval required
 ════════════════════════════
 ```
 
 Close with operational pointers: monitoring (CloudWatch), CI/CD for redeployment,
-multi-agent orchestration, scaling/concurrency, and `agentcore destroy` for cleanup.
+multi-agent orchestration and scaling/concurrency. Runtime cleanup uses
+`.venv-agentcore/bin/agentcore destroy` only with explicit user approval.
 
 ## Reference Files
 

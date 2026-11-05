@@ -1,6 +1,6 @@
 ---
 name: ops-security-audit
-description: "AWS/EKS security audit: IAM, network security, compliance checks, plus AWS Security Agent (design/code review, on-demand penetration testing). The mandatory security leg of superpowers:requesting-code-review for IaC/AWS changes — enforces the repo's global AWS security mandates (no 0.0.0.0/0 ingress; no IAM Principal:\"*\" or Resource:\"*\" without Condition; no Lambda AuthType:NONE; no secrets in env; S3 Block Public Access on; no ALB bypassing CloudFront) — and a shift-left security pre-check during superpowers:writing-plans. Triggers: security audit, security review, code security review, compliance check, penetration testing/pentest, AWS Security Agent, '보안 점검', '보안 감사', '취약점 점검', '시큐리티 에이전트'."
+description: "AWS/EKS security audit: IAM, network security, compliance checks, application security and AWS Security Agent requests route to separately installed aws-agents-for-devsecops skills. The mandatory security leg of superpowers:requesting-code-review for IaC/AWS changes — enforces the repo's global AWS security mandates (no 0.0.0.0/0 ingress; no IAM Principal:\"*\" at all; wildcard Resource requires Condition; no Lambda AuthType:NONE; no secrets in env; S3 Block Public Access on; no ALB bypassing CloudFront) — and a shift-left security pre-check during superpowers:writing-plans. Triggers: security audit, security review, code security review, compliance check, penetration testing/pentest, AWS Security Agent, '보안 점검', '보안 감사', '취약점 점검', '시큐리티 에이전트'."
 allowed-tools:
   - Bash
   - Read
@@ -81,6 +81,10 @@ Rank findings by severity in the Output Format. A mandate violation is always CR
 - Secret management
 
 ### 4. Application Security
+First apply [companion skill preflight](../../references/companion-skills.md).
+If the required skill is missing from the active session, stop this section and
+report the dependency; the cloud/cluster posture audit can continue independently.
+
 Application-layer review is out of scope here; route to the official `aws-agents-for-devsecops`
 skills: `setup-security-agent`, `scanning-with-aws-security-agent`, `diff-scanning-with-aws-security-agent`,
 `pentesting-with-aws-security-agent`, `threat-modeling-with-aws-security-agent`, `remediating-with-aws-security-agent`.

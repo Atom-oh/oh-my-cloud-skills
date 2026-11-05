@@ -61,7 +61,9 @@ title: "Security audit"
 
 # Security audit
 
-Assess AWS/EKS security controls and evidence, including optional AWS Security Agent workflows when requested and configured.
+Assess AWS/EKS cloud and cluster security controls and evidence. Application design/code review and penetration testing are delegated to the separately installed official `aws-agents-for-devsecops` skills; they are not bundled with this plugin.
+
+Before a handoff, verify the required skill is loaded in the active Claude Code or Codex session. If missing, report the companion plugin and stop that section until the user installs/enables it with the required host trust. The independent posture audit can continue.
 
 ## Workflow {#workflow}
 

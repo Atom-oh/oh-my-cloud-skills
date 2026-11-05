@@ -8,7 +8,7 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "6676e089c2da5483d466eb73c6c4ce81dc02fa7a2c664aded8dfb8bdf7570587",
+      "sha256": "d35dd37bc5efa8b6890c76412c74879d9ad1b16fb5d691a4ea2edc03a474804d",
       "executable": false
     },
     "agents/analytics-agent.md": {
@@ -24,11 +24,11 @@
       "executable": false
     },
     "agents/eks-agent.md": {
-      "sha256": "daf2afcc785f25817a7ccfc5bf6e47bebb1a2e7602b625763c21204688c59775",
+      "sha256": "b8eca2db431778eb8e082926c581ac55012a05a03694d7005955f4e584af4dc4",
       "executable": false
     },
     "agents/iam-agent.md": {
-      "sha256": "7417cbf57029c307b5fd92eaa74881f0ad4e695cb9ae850cd527081db5dcd231",
+      "sha256": "8fdbf995a212a731a6fb5dce308e55d8c49cd3f3e2a55025dcf09ee5aeda4116",
       "executable": false
     },
     "agents/network-agent.md": {
@@ -49,6 +49,10 @@
     },
     "agents/wellarchitected-agent.md": {
       "sha256": "1a5da94b2b13e919062375d5eea0ab424c30ddcc57ba164fefaef2a8de9c37e6",
+      "executable": false
+    },
+    "references/companion-skills.md": {
+      "sha256": "1e3f599fc661406a9305258cabb3bc9c7838cd0b4ab6a3d5df0d4b43975e6bea",
       "executable": false
     },
     "references/team-workflows.md": {
@@ -92,7 +96,7 @@
       "executable": false
     },
     "skills/ops-observability/references/aws-devops-agent.md": {
-      "sha256": "af6f3cc380ff0ce5a6f38ae5c7493d957679d60eb791871d837b9becf1a4b8a7",
+      "sha256": "302f6f04004ad2ebc4b5053b42d9a8fdb3b321af9c906cb5691d6334f89bfaba",
       "executable": false
     },
     "skills/ops-observability/references/cloudwatch-setup.md": {
@@ -112,7 +116,7 @@
       "executable": false
     },
     "skills/ops-security-audit/SKILL.md": {
-      "sha256": "2af742dab37e38b581ebaadb20eeae0df922e8e8613da9fe42854c819524c8d1",
+      "sha256": "00ee09d1919acc5cdc5422616f1dffb92d407809697195487be7a361709d6b75",
       "executable": false
     },
     "skills/ops-security-audit/references/compliance-checklist.md": {
@@ -120,7 +124,7 @@
       "executable": false
     },
     "skills/ops-security-audit/references/iam-audit.md": {
-      "sha256": "a124fbe1d27f510f6382404ecd7b642834c578fffb940b049b6ed09a7f3cb945",
+      "sha256": "9197cbb6e1f6ed2dab2b40728566b731e88cee275457b5ae720185ca66908ce6",
       "executable": false
     },
     "skills/ops-security-audit/references/network-security.md": {
@@ -128,11 +132,11 @@
       "executable": false
     },
     "skills/ops-troubleshoot/SKILL.md": {
-      "sha256": "25b464336562b6988e170eaf211d21996b5701098e7f73a2250bbcb03feda5d5",
+      "sha256": "f199c8e2f38a58d44cb4b387c04864b4d14dea8ed1ab6fa537d7476ecc67b7d9",
       "executable": false
     },
     "skills/ops-troubleshoot/references/common-errors.md": {
-      "sha256": "aab27bd40335ebbae48a6932d8464cac7befb766e176cc1595ed630895bfd883",
+      "sha256": "6fd6ab9d4d2648559a516d67092505dd33b7332e102abf8e07ed3d1928fcf7d6",
       "executable": false
     },
     "skills/ops-troubleshoot/references/decision-trees.md": {
@@ -244,7 +248,7 @@
       "executable": false
     },
     ".codex-plugin/skills/ops-security-audit/SKILL.md": {
-      "sha256": "c59763ca11cdc987e89e8435f4a7ae36fa698f66306fce59e0aec533c67b2cb2",
+      "sha256": "e2357b14d74447af911f453318897259f140a24270c761c6f80f68b64e029665",
       "executable": false
     },
     ".codex-plugin/skills/ops-troubleshoot/SKILL.md": {
@@ -284,7 +288,7 @@
       "executable": false
     },
     ".codex-plugin/workflow.md": {
-      "sha256": "857a6deaeaf78fc0077f0323039ba19a38668426ab801c9a0fedc48416e6f6fa",
+      "sha256": "c2c9bba5472a2393dbdd5a418a996589a12154490564e38e7f989eaedcc1dae8",
       "executable": false
     },
     ".codex-plugin/mcp.json": {

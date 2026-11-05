@@ -6,6 +6,11 @@ Uses AWS MCP servers for real-time documentation and resource analysis.
 
 ---
 
+## External companion skills
+
+Before any official-plugin handoff, follow [companion skill preflight](references/companion-skills.md).
+Companions are not bundled or automatically installed; availability is host/session-specific.
+
 ## MCP Integration
 
 This plugin bundles `awsdocs` and `awsapi`. Discover additional knowledge, pricing
