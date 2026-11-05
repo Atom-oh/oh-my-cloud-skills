@@ -125,14 +125,11 @@ artifact is a single `create-harness` definition:
 
 ## Deployment CLI
 
-```bash
-pip install bedrock-agentcore-starter-toolkit
-agentcore configure     # Initial setup
-agentcore deploy        # Deploy to Runtime
-agentcore invoke        # Test invocation
-agentcore status        # Check status
-agentcore destroy       # Tear down
-```
+For Runtime, follow the canonical [deployment procedure](../skills/agentcore-create/SKILL.md#45-deployment)
+and [verification procedure](../skills/agentcore-create/SKILL.md#phase-5-verification--next-steps).
+Use supported Python, the isolated starter-toolkit CLI and existing audited execution
+roles; do not accept default role creation. Harness follows its separate Node/AWS
+procedure. Check companion availability in the skill before any official handoff.
 
 ---
 
@@ -148,6 +145,8 @@ agentcore destroy       # Tear down
 
 ## Output Format
 
+Runtime-only example; use the skill's separate Harness reporting/invocation procedure for Path A.
+
 ```
 AgentCore Deployment Summary
 ════════════════════════════
@@ -161,8 +160,8 @@ Components:
   Gateway:  N tool targets registered
 
 Commands:
-  Test:     agentcore invoke --prompt "query"
-  Status:   agentcore status
-  Cleanup:  agentcore destroy
+  Test:     .venv-agentcore/bin/agentcore invoke '{"prompt":"query"}'
+  Status:   .venv-agentcore/bin/agentcore status
+  Cleanup:  .venv-agentcore/bin/agentcore destroy # Explicit user approval required
 ════════════════════════════
 ```

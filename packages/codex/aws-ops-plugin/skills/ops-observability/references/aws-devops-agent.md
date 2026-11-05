@@ -11,6 +11,10 @@ CloudWatch alarm wiring.
 > (+ its `REFERENCE.md`), `chatting-with-aws-devops-agent`,
 > `coordinating-multi-space-devops-agent`, `setup-devops-agent`. Use those, not a copy here.
 
+Before those handoffs, apply [companion skill preflight](../../../references/companion-skills.md).
+If the required skill is unavailable, stop the external investigation/setup section,
+report the dependency and continue only independent local diagnostics.
+
 > **Human-approval boundary**: the agent produces a mitigation plan but does **not** change
 > the environment on its own; execution needs human approval. Vendor metrics (e.g. lower
 > MTTR) are AWS-reported claims, not guarantees.
@@ -32,7 +36,10 @@ Chain: **CloudWatch Alarm -> EventBridge -> Lambda -> DevOps Agent webhook** (HM
 
 ```bash
 # 1. Create the webhook in the DevOps Agent console / Agent Space. Save the URL and
-#    secret key (the secret cannot be retrieved later).
+#    secret key (the secret cannot be retrieved later) in Secrets Manager or
+#    SSM Parameter Store SecureString, not Lambda environment variables.
+#    Lambda retrieves the value at runtime with least-privilege access; never print
+#    the secret or include it in diagnostic logs. An env var may hold only its ARN/name.
 # 2. Lambda forwards the payload. Required schema:
 #    { eventType: 'incident', incidentId, action: created|updated|closed|resolved,
 #      priority: CRITICAL|HIGH|MEDIUM|LOW|MINIMAL, title, ... }
@@ -43,11 +50,14 @@ aws cloudwatch set-alarm-state --alarm-name "$CLUSTER_NAME-high-cpu" \
 
 Other verified trigger sources: PagerDuty, Dynatrace, ServiceNow and generic webhooks.
 Confirm CLI parameter names with `aws devops-agent help` (new API surface).
+Service spelling verified locally with AWS CLI 2.35.11 on 2026-11-04:
+`aws devops-agent help` succeeds; `aws devopsagent help` is an invalid choice.
+This checks local CLI support, not account access or service readiness.
 
 ## Common issues
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Alarm fires but no investigation | Webhook signature mismatch | Re-check the HMAC secret in the Lambda env; resend a test payload |
+| Alarm fires but no investigation | Webhook signature mismatch | Check the secret reference and retrieval permissions in Secrets Manager or SSM Parameter Store; verify signing without logging the value, then resend an authorized test payload |
 | Investigation lacks context | Topology incomplete / no starting point | Attach account integrations to the Agent Space; pass a starting point |
 | Mitigation not actionable | Scope too broad | Narrow the starting point to the suspect alarm/resource |

@@ -56,7 +56,7 @@ On a cluster running **EKS Auto Mode**, the ops playbook changes:
 
 ### EKS Capabilities (managed Argo CD, kro, ACK; kubernetes-docs `en/eks/13-eks-capabilities.md`)
 
-Controllers run in AWS-owned infrastructure: no pods on worker nodes, so `kubectl logs` does not work. Logs go to CloudWatch Vended Logs. One capability per type per cluster; the version is chosen by AWS and cannot be pinned (no user-side rollback). Inspect with `aws eks describe-capability --cluster-name $C --capability-name <n> --query 'capability.{status:status,version:version}'`. Apply changes one at a time (a change during UPDATING fails with ConflictException); delete only with `--delete-propagation-policy RETAIN`. Managed Argo CD does not register its own cluster (cluster Secret with the EKS ARN as `server`) and the auto-created access entry alone is too narrow to sync (`ComparisonError ... forbidden at the cluster scope`). Timings on that page come from 1-5 runs in one account.
+Controllers run in AWS-owned infrastructure: no pods on worker nodes, so `kubectl logs` does not work. Logs go to CloudWatch Vended Logs. One capability per type per cluster; the version is chosen by AWS and cannot be pinned (no user-side rollback). Inspect with `aws eks describe-capability --cluster-name $C --capability-name <n> --query 'capability.{status:status,version:version}'`. Apply changes one at a time (a change during UPDATING fails with ConflictException); Before deletion, inspect the configured `deletePropagationPolicy` and plan ownership/cleanup of retained resources; deletion needs explicit user approval. `RETAIN` is currently the supported policy in `create-capability` input, not a `delete-capability` flag. Local AWS CLI 2.35.11 input skeletons verify this distinction (2026-11-04); `delete-capability` accepts cluster and capability names, not a deletion-policy option. Managed Argo CD does not register its own cluster (cluster Secret with the EKS ARN as `server`) and the auto-created access entry alone is too narrow to sync (`ComparisonError ... forbidden at the cluster scope`). Timings on that page come from 1-5 runs in one account.
 
 ---
 
@@ -97,9 +97,9 @@ journalctl -u kubelet -n 100 --no-pager
 
 ### Pod Troubleshooting
 ```bash
-# Non-running pods, plus Running-but-NotReady / CrashLooping ones that phase filters miss
+# Non-running, non-Succeeded pods, plus Running-but-NotReady pods (including readiness gates)
 kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
-kubectl get pods -A -o json | jq -r '.items[]|select(any(.status.containerStatuses[]?; .ready==false))|.metadata.namespace+"/"+.metadata.name'
+kubectl get pods -A -o json | jq -r '.items[] | select(.status.phase == "Running") | select(any(.status.conditions[]?; .type == "Ready" and .status == "True") | not) | .metadata.namespace+"/"+.metadata.name'
 
 # Pod details
 kubectl describe pod <pod> -n <namespace>

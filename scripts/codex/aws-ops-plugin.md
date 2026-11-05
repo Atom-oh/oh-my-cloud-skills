@@ -10,6 +10,8 @@ Preserve each runbook's evidence and remediation boundaries. A diagnosis is not
 authorization to change cloud resources. For infrastructure review, use both the
 Well-Architected procedure and `ops-security-audit` when their scopes apply.
 MCP availability and credentials must be checked from the active session.
+Before an official-plugin handoff, read the shared
+[companion skill preflight](../references/companion-skills.md).
 
 For a cross-domain incident, the host owns triage, the dependency/status list and
 the final evidence synthesis. Delegate independent read-only domain checks with

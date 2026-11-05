@@ -140,7 +140,7 @@ kubectl describe clusterrolebinding <binding>
 ```
 
 ### Access entries / aws-auth ConfigMap
-Authentication mode decides where to look: access entries in `API` / `API_AND_CONFIG_MAP`, aws-auth only in `CONFIG_MAP` mode. Do not switch modes or replace aws-auth to fix an unclassified 401/403 (kubernetes-docs en/eks/11-eks-advanced-debugging.md, "IAM Authentication Troubleshooting"). Managed node groups and Fargate create their own mappings; do not overwrite them.
+Authentication mode decides where to look: access entries in `API`, aws-auth in `CONFIG_MAP`, and both in `API_AND_CONFIG_MAP`. For the same IAM principal, the access entry takes precedence over its aws-auth mapping. Do not switch modes or replace aws-auth to fix an unclassified 401/403 (kubernetes-docs en/eks/11-eks-advanced-debugging.md, "IAM Authentication Troubleshooting"). Managed node groups and Fargate create their own mappings; do not overwrite them.
 ```bash
 # Authentication mode
 aws eks describe-cluster --name "$CLUSTER_NAME" --query 'cluster.accessConfig.authenticationMode'

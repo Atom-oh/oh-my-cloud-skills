@@ -44,7 +44,7 @@ Error message → root cause → solution mapping for EKS operations.
 |--------------|------------|---------|
 | `InsufficientFreeAddressesInSubnet` | IP exhaustion | Add secondary CIDR, enable prefix delegation |
 | `ENI limit reached` | Instance type ENI limit | Use larger instance or prefix delegation |
-| `FailedCreatePodSandBox ... failed to assign an IP address` | CNI cannot allocate an IP (subnet, ENI/prefix limits) | See `vpc-cni-troubleshooting.md`; `Too many pods` at scheduling is the kubelet pod-count ceiling, not proof of IP exhaustion |
+| `FailedCreatePodSandBox ... failed to assign an IP address` | CNI cannot allocate an IP (subnet, ENI/prefix limits) | See [VPC CNI troubleshooting](../../ops-network-diagnosis/references/vpc-cni-troubleshooting.md); `Too many pods` at scheduling is the kubelet pod-count ceiling, not proof of IP exhaustion |
 | `dial tcp: lookup <service>: no such host` | DNS failure | Check CoreDNS, ndots setting |
 | `connection refused` | Service not listening | Check pod port, targetPort, service selector |
 | `context deadline exceeded` | Timeout | Check SG rules, network policy, routing |
@@ -65,7 +65,7 @@ Error message → root cause → solution mapping for EKS operations.
 | Error Message | Root Cause | Solution |
 |--------------|------------|---------|
 | `AccessDenied` | Missing IAM permission | Add policy to role |
-| `Forbidden: User "system:anonymous"` | Authentication failed | Check `accessConfig.authenticationMode`, then fix the access entry (API modes) or aws-auth (CONFIG_MAP mode) |
+| `Forbidden: User "system:anonymous"` | Authentication failed | Check `accessConfig.authenticationMode`, then check access entries (`API`), aws-auth (`CONFIG_MAP`), or both (`API_AND_CONFIG_MAP`); for the same IAM principal the access entry takes precedence |
 | `could not get token` (IRSA) | OIDC provider issue | Verify OIDC provider, trust policy |
 | `WebIdentityErr` | Trust policy mismatch | Fix condition in IAM trust policy |
 | `An error occurred (AccessDenied) when calling the AssumeRoleWithWebIdentity` | IRSA misconfigured | Check SA annotation, OIDC provider ARN, trust-policy `sub` (`system:serviceaccount:<ns>:<sa>`) and `aud` (`sts.amazonaws.com`); a recreated cluster has a new OIDC issuer |
