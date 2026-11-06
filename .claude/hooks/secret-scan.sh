@@ -599,12 +599,12 @@ strip_pr_review_test_fixtures() {
 # review it, then add the literal.
 PROJECT_INIT_TEMPLATE_FIXTURE_LITERALS=(
     'DefaultEndpointsProtocol=https;AccountName=myaccount;AccountKey=abc123'
-    'DefaultEndpointsProtocol=https;AccountName=myaccount'
-    'DefaultEndpointsProtocol=https;Account'
+    '"DefaultEndpointsProtocol=https;AccountName=myaccount"'
+    "'DefaultEndpointsProtocol=https;Account'"
     'AKIAIOSFODNN7EXAMPLE'
     'ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij'
     'gho_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij'
-    'sk-ant-api03-xxxx'
+    'sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
     'SP_AWS_SECRET="wJalrXUtnFEMI/K7MDENG/""bPxRfiCYEXAMPLEKEY"'
     'password = "mysecretpassword123"'
     $'DB_PASSWORD: \'${SP_PW}\''

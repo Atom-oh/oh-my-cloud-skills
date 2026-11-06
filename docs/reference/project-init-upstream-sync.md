@@ -57,10 +57,10 @@ outweighed the benefit, so **all divergence was cleaned up**:
 ## Sync procedure
 
 ```bash
-git clone --depth 1 https://github.com/whchoi98/project-init.git $TMPDIR/project-init-upstream
+git clone --depth 1 https://github.com/whchoi98/project-init.git "${TMPDIR:?set TMPDIR to a non-tmpfs directory}"/project-init-upstream
 
 # 1) Inspect upstream-source changes; exclude the separately owned overlay
-diff -ru --exclude=.codex-plugin $TMPDIR/project-init-upstream/plugins/project-init/ plugins/project-init/
+diff -ru --exclude=.codex-plugin "${TMPDIR:?set TMPDIR to a non-tmpfs directory}"/project-init-upstream/plugins/project-init/ plugins/project-init/
 ```
 
 After reviewing that comparison:
@@ -69,7 +69,7 @@ After reviewing that comparison:
 set -e
 # 2) Replace mirrored source; rsync's exclusion also protects the overlay from --delete.
 # Do not add --delete-excluded.
-rsync -av --delete --exclude='/.codex-plugin/' $TMPDIR/project-init-upstream/plugins/project-init/ plugins/project-init/
+rsync -av --delete --exclude='/.codex-plugin/' "${TMPDIR:?set TMPDIR to a non-tmpfs directory}"/project-init-upstream/plugins/project-init/ plugins/project-init/
 
 # 3) Restore the only upstream-source delta: the marketplace-uniform version
 python3 - <<'PY'
@@ -89,6 +89,11 @@ python3 scripts/test-codex-plugins.py -p project-init
 python3 scripts/test-plugins.py -p project-init
 bash tests/run-all.sh
 ```
+
+The secret-scan hook blocks a commit that contains the scaffolder templates' fake credential
+fixtures unless their exact literals are listed in `PROJECT_INIT_TEMPLATE_FIXTURE_LITERALS`
+(`.claude/hooks/secret-scan.sh`). If a sync adds a fixture, review it and add the literal there;
+do not bypass the hook.
 
 An overlay preserved across a source update is not thereby fresh. Do not publish
 or report it ready until regeneration and applicable Codex checks pass. Those
