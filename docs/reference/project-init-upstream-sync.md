@@ -57,10 +57,11 @@ outweighed the benefit, so **all divergence was cleaned up**:
 ## Sync procedure
 
 ```bash
-git clone --depth 1 https://github.com/whchoi98/project-init.git "${TMPDIR:?set TMPDIR to a non-tmpfs directory}"/project-init-upstream
+U="$(mktemp -d "$U".XXXXXX)"  # fresh dir; keep $U for the next steps
+git clone --depth 1 https://github.com/whchoi98/project-init.git "$U"
 
 # 1) Inspect upstream-source changes; exclude the separately owned overlay
-diff -ru --exclude=.codex-plugin "${TMPDIR:?set TMPDIR to a non-tmpfs directory}"/project-init-upstream/plugins/project-init/ plugins/project-init/
+diff -ru --exclude=.codex-plugin "$U"/plugins/project-init/ plugins/project-init/
 ```
 
 After reviewing that comparison:
@@ -69,7 +70,7 @@ After reviewing that comparison:
 set -e
 # 2) Replace mirrored source; rsync's exclusion also protects the overlay from --delete.
 # Do not add --delete-excluded.
-rsync -av --delete --exclude='/.codex-plugin/' "${TMPDIR:?set TMPDIR to a non-tmpfs directory}"/project-init-upstream/plugins/project-init/ plugins/project-init/
+rsync -av --delete --exclude='/.codex-plugin/' "$U"/plugins/project-init/ plugins/project-init/
 
 # 3) Restore the only upstream-source delta: the marketplace-uniform version
 python3 - <<'PY'
