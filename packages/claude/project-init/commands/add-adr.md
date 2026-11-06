@@ -1,184 +1,49 @@
 ---
 description: Create a new Architecture Decision Record with auto-numbering
-allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(ls:*), Bash(find:*), Glob, Grep
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git log *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py *)
 argument-hint: ADR title (e.g. "use-postgresql", "adopt-rest-api", "switch-to-typescript")
 ---
 
 # Add ADR
 
-Create a new Architecture Decision Record with automatic numbering and update project-level docs.
+Record one architecture decision as a bilingual ADR at `docs/decisions/ADR-NNN-<kebab-title>.md`, so a later reader can see what was decided, what else was considered, and what the choice costs. Title: $ARGUMENTS (ask for one if it is empty).
 
-## Step 1: Determine ADR Title
+## Inputs
 
-Target: $ARGUMENTS
+- The current conversation. ADRs usually follow a plan-mode discussion, which often already holds the context, the options, and the reasoning.
+- Root `CLAUDE.md`, `docs/architecture.md`, and `git log --oneline -10`.
+- Structure: the project's `docs/decisions/.template.md` if it exists, because the team may have customized it; otherwise the `## ADR Template` section of `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/docs-templates.md`.
+- Layout, tone, and formatting: `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/writing-style-guide.md`. It applies even when the project's template is English-only; in that case mirror the template's sections in the Korean half.
 
-- If no title provided, ask the user for the ADR title
-- Convert to kebab-case for the filename
-- Check if `docs/decisions/` directory exists; create it if missing
+If a plugin file cannot be read (for example because `${CLAUDE_PLUGIN_ROOT}` was not substituted), stop and say so instead of writing from memory; a document written from memory is the drift ADR-003 exists to prevent.
 
-## Step 2: Auto-Number
+## Rules
 
-Find the next available ADR number:
+- Number: the highest existing `docs/decisions/ADR-NNN-*.md` plus one, zero-padded to three digits, or `001` when there is none. The slug is the title in kebab-case.
+- Draft from the inputs first. Ask the user once, in one round (see Asking), only for what you cannot find, usually the rejected alternatives and why they lost. Do not invent options or consequences to fill the template, because a fabricated alternative misleads every later reader. Anything still unknown becomes `<!-- TODO: ... -->` in the file.
+- Status is Accepted unless the user says the decision is still open (Proposed). Use the template's Korean status names in the Korean half.
+- If the decision replaces an earlier ADR, set that ADR's status to Superseded with a link to the new one, in both halves.
+- Length: what a later reader needs to follow the trade-off, usually a few short paragraphs or bullets per section.
 
-```bash
-find docs/decisions -name 'ADR-*.md' -not -name '.template.md' 2>/dev/null | sort | tail -1
-```
+## Asking
 
-- If no existing ADRs, start at `001`
-- Otherwise, take the highest number and add 1
-- Format: `ADR-NNN-<title>.md` (e.g. `ADR-001-use-postgresql.md`)
+Ask with the AskUserQuestion tool when it is available: its answers arrive in this turn, so the `allowed-tools` above still cover the writes and the check that follow, while a chat reply starts a new turn and the grant clears when the user sends it. Give each open item (the title when none was given, the rejected alternatives, Proposed or Accepted) its own question, up to 4 questions per call; offer what the inputs suggest as options, and let the user type anything else in the free-text "Other" answer. Without the tool, ask in one chat message.
 
-## Step 3: Gather Decision Details
+## Output contract
 
-Ask the user:
+- Context states the problem and the forces behind it, not the chosen solution.
+- Options Considered has at least two options, the chosen one included, each with pros and cons.
+- Decision names the chosen option and why it won over the others.
+- Consequences lists both positive and negative effects; a decision with no downside has not been examined yet.
+- References link the issues, PRs, commits, or docs the decision came from, when there are any.
+- Also update, only when it applies:
+  - `docs/architecture.md`, when the decision changes a component it describes: update that description in both halves and link the ADR.
+  - Root `CLAUDE.md`, when it already lists ADRs: add one line naming the ADR and the rule it sets.
 
-1. **Context**: What is the background? Why is a decision needed?
-2. **Options considered**: What alternatives were evaluated? (at least 2)
-3. **Decision**: Which option was chosen and why?
-4. **Consequences**: What are the positive and negative impacts?
-5. **Status**: Proposed, Accepted, Deprecated, or Superseded? (default: Accepted)
+## Check
 
-If the user provides minimal input:
-- Read `CLAUDE.md` and `docs/architecture.md` for project context
-- Read recent git log for related changes
-- Infer context from the ADR title
+Run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py <new ADR file>` (add `docs/architecture.md` if you edited it) and fix what it reports until it exits 0. The script checks layout, not meaning, so also confirm that each Korean paragraph says what its English counterpart says. If python3 or the script is unavailable, say "checker unavailable" in the report.
 
-```bash
-git log --oneline -10 2>/dev/null
-```
+## Report
 
-## Step 4: Read Templates and Style Guide
-
-Read the shared writing style guide and ADR template:
-
-```
-Read file: skills/project-scaffolder/references/writing-style-guide.md
-Read file: skills/project-scaffolder/references/docs-templates.md
-```
-
-Follow all bilingual structure, formatting, and style rules from the writing style guide.
-Use the ADR Template section as the base structure.
-
-## Step 5: Create Bilingual ADR
-
-Create `docs/decisions/ADR-NNN-<title>.md` with bilingual (English/Korean) structure:
-
-```markdown
-# ADR-NNN: <Title in Natural Language>
-
-<a href="#english"><img src="https://img.shields.io/badge/lang-English-blue.svg" alt="English"></a>
-<a href="#korean"><img src="https://img.shields.io/badge/lang-한국어-red.svg" alt="Korean"></a>
-
----
-
-<a id="english"></a>
-
-# English
-
-## Status
-<Proposed | Accepted | Deprecated | Superseded>
-
-## Context
-<background explaining why a decision is needed>
-
-## Options Considered
-
-### Option 1: <Name>
-- **Pros**: <advantages>
-- **Cons**: <disadvantages>
-
-### Option 2: <Name>
-- **Pros**: <advantages>
-- **Cons**: <disadvantages>
-
-## Decision
-<the decision that was made and the reasoning>
-
-## Consequences
-
-### Positive
-- <positive impact>
-
-### Negative
-- <negative impact or trade-off>
-
-## References
-- <links to relevant docs, issues, or discussions>
-
----
-
-<a id="korean"></a>
-
-# 한국어
-
-## 상태
-<제안됨 | 승인됨 | 더 이상 사용되지 않음 | 대체됨>
-
-## 배경
-<결정이 필요한 이유를 설명하는 배경>
-
-## 검토한 옵션
-
-### 옵션 1: <이름>
-- **장점**: <이점>
-- **단점**: <단점>
-
-### 옵션 2: <이름>
-- **장점**: <이점>
-- **단점**: <단점>
-
-## 결정
-<내려진 결정과 그 근거>
-
-## 영향
-
-### 긍정적
-- <긍정적 영향>
-
-### 부정적
-- <부정적 영향 또는 트레이드오프>
-
-## 참고 자료
-- <관련 문서, 이슈, 또는 논의 링크>
-```
-
-Key principles:
-- Context must explain the **problem**, not the solution
-- At least 2 options must be listed (including the chosen one)
-- Consequences must include **both positive and negative** impacts
-- References should link to relevant issues, PRs, or external docs
-- Both language sections must contain identical information
-- English uses imperative mood; Korean uses 경어체 (~합니다)
-- No emojis; code blocks must specify the language
-
-## Step 6: Update docs/architecture.md
-
-Read `docs/architecture.md`. If the decision impacts the architecture:
-- Add or update the relevant component description
-- Reference the ADR in the appropriate section
-
-## Step 7: Update Root CLAUDE.md
-
-If the root `CLAUDE.md` has an Architecture Decisions or Conventions section, add a reference to the new ADR.
-
-## Step 8: Validate Bilingual Output
-
-After writing the ADR, verify:
-
-- [ ] Language toggle uses HTML `<a><img></a>` with `#english` and `#korean` anchors
-- [ ] Explicit `<a id="english">` and `<a id="korean">` tags before each language heading
-- [ ] Both language sections have identical structure and information
-- [ ] No emojis in the document
-- [ ] Code blocks specify the language
-- [ ] Status values are correctly translated in both sections
-
-## Step 9: Summary
-
-Display:
-- Created ADR file path (e.g. `docs/decisions/ADR-003-use-postgresql.md`)
-- Status of the decision
-- Components affected
-- Suggested follow-up actions:
-  - Update related module CLAUDE.md files
-  - Create a runbook if the decision requires operational changes
-  - Review and update if the decision is still in Proposed status
+The file path and status, the other files you changed, and anything you inferred rather than were told, including each TODO left in the file.

@@ -146,8 +146,8 @@ Codex roles. Preserve the repository's role-based model/effort policy:
 
 `hosts/claude/*/agents.json` owns installed agent assignments; do not infer a vendor model ID
 from these host aliases. Project-init's mirrored `doc-sync-checker` keeps its
-upstream `model: opus` without a local effort override. Its host configuration remains
-outside the upstream mirror. Codex reasoning intent belongs to its own execution source. The policy separates
+upstream settings (no `model`, so it inherits the session; `effort: medium`). Its host
+configuration remains outside the upstream mirror. Codex reasoning intent belongs to its own execution source. The policy separates
 judgment from mechanical application; its dated cost-efficiency rationale remains
 in [the prior instruction record](https://github.com/Atom-oh/oh-my-cloud-skills/blob/0e5aee83c9718e31b6cd86c321ed59cce5148686/CLAUDE.md#agent-file-format).
 

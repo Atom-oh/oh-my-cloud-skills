@@ -1,213 +1,56 @@
 ---
 description: Generate or update a bilingual (English/Korean) CHANGELOG.md following Keep a Changelog and Semantic Versioning
-allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(git log:*), Bash(git remote:*), Bash(git describe:*), Bash(git tag:*), Bash(git diff:*), Glob, Grep
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git log *), Bash(git show *), Bash(git diff *), Bash(git remote get-url *), Bash(git describe --tags *), Bash(git tag --list *), Bash(git for-each-ref *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py *)
 argument-hint: "Optional: version to release (e.g. 1.2.0) or 'unreleased' to add to unreleased section"
 ---
 
 # Generate CHANGELOG
 
-Generate or update a bilingual (English/Korean) `CHANGELOG.md` based on git history, following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Create or update the bilingual `CHANGELOG.md` at the project root from git history, following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html), so users can see what changed in each release in either language.
 
-## Step 1: Determine Operation Mode
+## Inputs
 
-Target: $ARGUMENTS
+Argument: $ARGUMENTS
 
-Three modes of operation:
+The argument and the state of `CHANGELOG.md` select the mode:
 
-1. **New**: No existing `CHANGELOG.md` — generate from full git tag history
-2. **Update unreleased**: Argument is `unreleased` or empty — add new commits to `[Unreleased]` section
-3. **Release version**: Argument is a version number (e.g. `1.2.0`) — move `[Unreleased]` items to a new version section
+| Argument | `CHANGELOG.md` | Mode |
+|---|---|---|
+| empty or `unreleased` | missing | New: one section per version tag, newest first, plus `[Unreleased]` for commits after the latest tag |
+| empty or `unreleased` | present | Update: add the commits since the latest tag that are not yet listed to `[Unreleased]` |
+| `X.Y.Z` | present | Release: turn `[Unreleased]` into version X.Y.Z (steps below) |
+| `X.Y.Z` | missing | New, then Release |
 
-```bash
-ls CHANGELOG.md 2>/dev/null
-```
+Read before writing:
 
-## Step 2: Gather Repository Information
+- `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/changelog-template.md`: the layout, intro statement, version heading, and reference link formats; the Change Type Categories table (commit prefix to category); Entry Writing Guidelines; What to Leave Out; the git commands in Git Log Analysis; Update Rules; and the Complete Template Example.
+- `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/writing-style-guide.md`: bilingual layout, tone, and formatting.
+- The existing `CHANGELOG.md`, and `git remote get-url origin` for compare links. Convert an SSH remote such as `git@github.com:user/repo.git` to `https://github.com/user/repo`.
 
-**GitHub URL:**
-```bash
-git remote get-url origin 2>/dev/null
-```
+If a plugin file cannot be read (for example because `${CLAUDE_PLUGIN_ROOT}` was not substituted), stop and say so instead of writing from memory; a document written from memory is the drift ADR-003 exists to prevent.
 
-Convert SSH URL to HTTPS format for comparison links:
-- `git@github.com:user/repo.git` -> `https://github.com/user/repo`
+## Rules
 
-**Version tags:**
-```bash
-git tag --sort=-v:refname 2>/dev/null
-```
+- Follow the template's Update Rules: released version sections never change, because readers and compare links depend on them. Only `[Unreleased]` and the link block change, and every change is applied to both language halves.
+- Categorize commits with the template's Change Type Categories table. Skip internal-only changes (tests, CI, docs, refactors with no user impact) and group related commits into one entry, because the changelog is written for users, not as a commit log.
+- When a commit's user impact is unclear from its message, read its diff (`git show <sha>`). If it is still unclear, ask the user, collecting all such questions into one round.
+- An existing `CHANGELOG.md` with no Korean half: ask whether to add one, in the same round as any commit questions. With a yes, write the Korean half with the same version headings, exactly as the English half writes them, and the same entries, translating only the entry text; the English half stays unchanged. Otherwise update only the English half and report that the checker's bilingual-layout findings predate this run.
+- Ask with the AskUserQuestion tool when it is available: its answers arrive in this turn, so the `allowed-tools` above still cover the writes and the check that follow, while a chat reply starts a new turn and the grant clears when the user sends it. Give each commit or decision its own question, up to 4 per call; offer the likely categories (or "Skip: internal only") as options, and let the user type anything else in the free-text "Other" answer. Without the tool, ask in one chat message.
 
-**Project name:**
-- Read from existing CHANGELOG.md title, or manifest file, or `CLAUDE.md`
+## Release mode
 
-## Step 3: Analyze Git History
+Order matters, and a mistake here rewrites history readers rely on:
 
-### For New CHANGELOG
+1. If `## [X.Y.Z]` already exists, stop and report it: that version is released and immutable. If `[Unreleased]` is empty, collect the commits since the latest tag into it first, as in Update mode.
+2. In both halves, move every entry under `## [Unreleased]` into a new `## [X.Y.Z] - <today, YYYY-MM-DD>` section directly below it, and keep the `## [Unreleased]` heading, now empty, above it.
+3. In both halves' link blocks, point `[Unreleased]` at `vX.Y.Z...HEAD` and add an `[X.Y.Z]` line comparing the previous version with `vX.Y.Z` (the first release links to its tag instead).
 
-Analyze the full tag history to build version entries:
+Do not create the git tag yourself; tagging is the user's release step.
 
-```bash
-# Get all tags sorted by version
-git tag --sort=-v:refname
+## Check
 
-# For each consecutive tag pair, get commits between them
-git log --oneline v1.0.0...v1.1.0
+Run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py CHANGELOG.md`; it also checks that release headings match `## [x.y.z] - YYYY-MM-DD`. Fix every issue in what this run wrote (`[Unreleased]`, the link blocks, and any section or half you added) and run it again until only pre-existing issues remain. An issue inside a released section, such as an existing heading `## v1.2.0 (2024-01-01)` or an emoji in a released entry, stays as it is, because released sections never change; list each one in the report with its line as pre-existing. The script checks layout, not meaning, so also confirm that each Korean entry says what its English counterpart says. If python3 or the script is unavailable, say "checker unavailable" in the report.
 
-# Get the date of each tag
-git log -1 --format=%aI v1.0.0
+## Report
 
-# Get commits before the first tag
-git log --oneline v1.0.0
-```
-
-### For Update (Unreleased)
-
-Get commits since the last tag:
-
-```bash
-# Find the latest tag
-git describe --tags --abbrev=0 2>/dev/null
-
-# Get commits since last tag
-git log --oneline $(git describe --tags --abbrev=0 2>/dev/null)...HEAD 2>/dev/null
-
-# If no tags exist, get recent commits
-git log --oneline -20
-```
-
-### For Release
-
-Read existing `CHANGELOG.md` and move `[Unreleased]` content to the new version heading.
-
-## Step 4: Categorize Changes
-
-Classify each commit into the 6 standard categories based on commit message patterns:
-
-| Commit Pattern | Category |
-|----------------|----------|
-| `feat:`, `feature:`, `add:` | Added |
-| `change:`, `update:`, `refactor:` (user-facing) | Changed |
-| `deprecate:` | Deprecated |
-| `remove:`, `delete:` | Removed |
-| `fix:`, `bugfix:`, `hotfix:` | Fixed |
-| `security:`, `vuln:` | Security |
-
-Rules:
-- Skip commits that are internal only (test additions, CI changes, docs, refactoring with no user impact)
-- If commit messages don't follow Conventional Commits, analyze the diff context to categorize
-- Group related commits into a single entry when they address the same feature or fix
-- Ask the user to clarify ambiguous changes if needed
-
-## Step 5: Read Style Guide and Template
-
-Read the shared writing style guide and CHANGELOG template:
-
-```
-Read file: skills/project-scaffolder/references/writing-style-guide.md
-Read file: skills/project-scaffolder/references/changelog-template.md
-```
-
-Follow all bilingual structure, formatting, and style rules from the writing style guide.
-Follow all generation rules and entry writing guidelines defined in the CHANGELOG template.
-
-## Step 6: Read Existing CHANGELOG
-
-If `CHANGELOG.md` exists, read it to:
-
-1. **Preserve** all existing version entries (never modify released versions)
-2. **Identify** the current `[Unreleased]` content
-3. **Extract** the reference link format and GitHub URL pattern
-4. **Detect** which language sections exist
-
-## Step 7: Generate or Update CHANGELOG.md
-
-### New CHANGELOG
-
-Create `CHANGELOG.md` following the template structure:
-
-1. **Title**: `# Changelog` (h1)
-2. **Language badges**: English and Korean toggle
-3. **Horizontal rule**
-4. **`# English`** section:
-   - Introductory statement
-   - `## [Unreleased]`
-   - Version sections (newest first)
-   - Reference links
-5. **Horizontal rule**
-6. **`# 한국어`** section:
-   - Introductory statement (Korean)
-   - `## [Unreleased]`
-   - Version sections (newest first, Korean descriptions)
-   - Reference links
-
-### Update Unreleased
-
-1. Read existing `CHANGELOG.md`
-2. Add new commit entries to both English and Korean `[Unreleased]` sections
-3. Categorize under appropriate h3 headings (Added, Changed, Fixed, etc.)
-4. Do not modify any existing version entries
-
-### Release Version
-
-1. Read existing `CHANGELOG.md`
-2. In both language sections:
-   - Create new version heading: `## [X.Y.Z] - YYYY-MM-DD` (use today's date)
-   - Move all `[Unreleased]` items under the new version heading
-   - Clear the `[Unreleased]` section (keep the heading)
-3. Update reference links:
-   - `[Unreleased]` now compares from the new version to HEAD
-   - Add the new version comparison link
-
-### Entry Writing Style
-
-**English entries:**
-- Start with imperative verb: "Add feature", "Fix bug", "Remove deprecated API"
-- Breaking changes: `- **BREAKING:** Change config format from YAML to TOML`
-
-**Korean entries:**
-- End with 명사형 종결: "기능 추가", "버그 수정", "더 이상 사용되지 않는 API 제거"
-- Breaking changes: `- **BREAKING:** 설정 파일 포맷을 YAML에서 TOML로 변경`
-
-## Step 8: Build Reference Links
-
-At the bottom of each language section, generate comparison URLs:
-
-```markdown
-[Unreleased]: https://github.com/<user>/<repo>/compare/v<latest>...HEAD
-[<latest>]: https://github.com/<user>/<repo>/compare/v<previous>...v<latest>
-[<first>]: https://github.com/<user>/<repo>/releases/tag/v<first>
-```
-
-- The first (oldest) version links to its release tag
-- All subsequent versions link to comparison with the previous version
-- Unreleased always compares the latest version to HEAD
-
-## Step 9: Validate Output
-
-After writing CHANGELOG.md, verify:
-
-- [ ] Title is `# Changelog`
-- [ ] Language toggle uses HTML `<a><img></a>` with `#english` and `#korean` anchors
-- [ ] Explicit `<a id="english">` and `<a id="korean">` tags before each language heading
-- [ ] Both language sections have identical version entries
-- [ ] Versions are in reverse chronological order
-- [ ] `[Unreleased]` section is present in both language sections
-- [ ] All entries use bullet (`-`) list format
-- [ ] Category headings (Added, Fixed, etc.) are in English in both sections
-- [ ] Reference links are present and correctly formatted
-- [ ] No emojis in the document
-- [ ] Dates use ISO 8601 format (YYYY-MM-DD)
-- [ ] Previously released versions are unchanged (for updates)
-
-## Step 10: Summary
-
-Display:
-- Created or updated file path
-- Operation performed (new / update unreleased / release version)
-- Number of entries added per category
-- Version history overview (list of versions with dates)
-- Suggested follow-up actions:
-  - Review generated entries for accuracy
-  - Run `/generate-readme` to ensure README version badge is in sync
-  - Create a git tag if releasing a version (`git tag v<version>`)
-  - Consider creating a GitHub Release from the changelog entry
+The path, the mode, the number of entries added per category, any commits you skipped or asked about, each pre-existing checker issue left in a released section (or "checker unavailable"), and for Release the command for the user to run: `git tag -a vX.Y.Z -m "vX.Y.Z"`.

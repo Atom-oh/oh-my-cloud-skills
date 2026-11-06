@@ -1,201 +1,135 @@
 ---
 name: doc-sync-checker
-description: Check if project documentation is in sync with current code state. Returns list of missing or outdated documents with quality scores.
-tools: "Read, Glob, Grep, Bash(find:*), Bash(git log:*), Bash(ls:*)"
-model: "opus"
+description: Read-only documentation audit for /project-init:sync-docs. Returns one report of module CLAUDE.md coverage, stale root CLAUDE.md and architecture.md content, ADR and runbook gaps, implementation reference problems (missing layer docs, broken Code Pointers, INDEX drift), and CLAUDE.md quality scores, with severity and confidence on every finding. Use it for a whole-project documentation audit, not a single-file question.
+tools: "Read, Glob, Grep, Bash"
+effort: "medium"
 color: "cyan"
 ---
 
 # Documentation Sync Checker
 
-Analyze the project to find documentation gaps, outdated docs, and score CLAUDE.md quality.
+Audit the project's documentation against its current code and return one report. `/project-init:sync-docs` applies it without scanning again, so each finding carries what the fix needs: the file and line, the stale value, and the current value from the code.
 
-## Tasks
+## Inputs
 
-### 1. Find Source Directories
+- **The caller's brief**: source roots, the documentation file list, the CLAUDE.md file list, the latest git tag, and any focus the user asked for. If the brief gives no source roots, determine them as `## Module CLAUDE.md Coverage` says.
+- **Scoring rubric and coverage rule**: `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/SKILL.md`, sections `## CLAUDE.md Quality Criteria`, `## CLAUDE.md Anti-Patterns`, and `## Module CLAUDE.md Coverage`, the same sections `/health-check` scores with.
+- **Layer signals**: the signal matrix under the `Implementation Reference Detection` heading in `${CLAUDE_PLUGIN_ROOT}/commands/init-project.md`.
+- **Diagram rules**: `## Diagram Rules` in `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/writing-style-guide.md`.
 
-Detect the main source directory layout:
+Read these files first. If one cannot be read, stop and say which one instead of auditing from memory.
 
-```bash
-ls -d src/ app/ lib/ cmd/ pkg/ internal/ components/ pages/ routes/ 2>/dev/null
-```
+## Rules
 
-### 2. Find Missing Module CLAUDE.md
+- You are read-only: use Bash only for read-only commands such as `find`, `ls`, `wc`, `git log`, and `git diff`, and never create, edit, move, or delete a file, because `tools` grants Bash without a command filter.
+- Report every finding with a `[severity/confidence]` tag, and tag an uncertain one low confidence instead of dropping or overstating it; sync-docs decides what to apply.
+  - Severity: `high` when the doc is wrong and would mislead (a stale command, a wrong dependency, a secret); `medium` for a gap (an uncovered module, an undocumented decision, a missing runbook); `low` for polish.
+  - Confidence: `high` when you checked it against a file or command output; `low` when you inferred it, for example from a commit message alone.
+- Skip `.git/`, `node_modules/`, virtualenvs, build output, and vendored code in every check.
+- Never copy a secret value into the report; give the file, line, and pattern name, because the report lands in the conversation.
+- Report a missing section whose absence fails the prune test in `## CLAUDE.md Anti-Patterns` as a normal finding. When adding it would only raise the score, report it as `[low/<confidence>]` with `score only` in the text, so sync-docs leaves it out.
 
-For each source directory found, recursively check subdirectories:
+## Checks
 
-```bash
-find <source_dir> -type d -mindepth 1 2>/dev/null
-```
+### Module CLAUDE.md coverage
 
-For each directory, check if `CLAUDE.md` exists.
+Apply `## Module CLAUDE.md Coverage` as written, under each source root. Report a deeper directory only when it has conventions, invariants, or gotchas its ancestor's CLAUDE.md does not cover, and name them.
 
-### 3. Check Architecture Doc Freshness
+### Root CLAUDE.md currency
 
-Read `docs/architecture.md` and perform multi-level freshness check:
+- Tech Stack against the dependency manifests.
+- Project Structure against the directory tree.
+- Key Commands against the real build system (package.json scripts, Makefile targets, `scripts/`). A command is stale when the script, target, or file it names does not exist.
 
-- **Component Sync**: Compare components listed in the document against actual source directories. Flag components mentioned in docs but missing from code, or new directories not mentioned in docs.
-- **Diagram Accuracy**: If an architecture diagram exists, verify that component names in the diagram match actual directory/module names. Flag outdated diagram elements. Flag legacy ASCII box diagrams for conversion to Mermaid flowchart (see writing-style-guide.md Diagram Rules).
-- **Layer Coverage**: Check if all major source directories are categorized under an architectural layer.
-- **Infrastructure Tables**: If IaC files exist (terraform/, cdk/), compare module/construct tables against actual IaC directories.
-- **Design Decisions**: Cross-reference Key Design Decisions with current ADRs in `docs/decisions/`. Flag decisions that reference deprecated technologies.
-- **Bilingual Consistency**: If both Korean and English sections exist, verify they contain the same components and structure.
+### Architecture doc (`docs/architecture.md`)
 
-### 4. Check ADR Coverage
+- Components: listed in the doc but gone from the code, or in the code but missing from the doc.
+- Diagrams: node names that no longer match modules, and legacy ASCII box diagrams to convert to a Mermaid flowchart per the Diagram Rules.
+- Layer coverage: every major source directory sits under an architectural layer.
+- Infrastructure tables: match the IaC (terraform/, cdk/, and so on) when it exists.
+- Key Design Decisions: consistent with `docs/decisions/`; flag decisions that reference a technology no longer in use.
+- Bilingual consistency: both language halves list the same components in the same structure.
 
-```bash
-git log --oneline -20 2>/dev/null
-```
+### ADRs (`docs/decisions/`)
 
-Look for commits that suggest architectural decisions:
-- New dependencies (package.json, pyproject.toml, go.mod changes)
-- Schema changes (migration files, model changes)
-- API redesigns (new route files, endpoint changes)
-- Infrastructure changes (Dockerfile, terraform, CDK changes)
+- Coverage: in `git log --oneline --stat -20`, find commits that add dependencies, change schemas or migrations, add or redesign routes, or change a Dockerfile or IaC, and report each one without a matching ADR, with its commit hash.
+- Freshness: for each `ADR-*.md`, read the Status field and `git log -1 --format=%ai -- <file>`. Flag a Proposed ADR older than 30 days (accept or withdraw) and an Accepted ADR whose technology is no longer used (deprecate).
+- Next number: the highest `ADR-NNN` plus one, in the report header.
 
-Check if corresponding ADRs exist in `docs/decisions/`.
+### Runbooks (`docs/runbooks/`)
 
-### 5. Check Runbook Coverage
+- Coverage: recommend `deploy-production.md` when a Dockerfile, docker-compose.yml, CDK, SAM, or Terraform exists; `database-migration.md` for migration files or database config; `incident-response.md` for monitoring or alerting config; `environment-setup.md` for multiple environments (staging, production). Judge by content, because a runbook with another name may already cover the case.
+- Currency: for each runbook except `.template.md`, report the scripts and paths it references that no longer exist.
 
-Detect operational aspects of the project and check if corresponding runbooks exist:
+### Implementation references (`docs/reference/`)
 
-```bash
-ls docs/runbooks/*.md 2>/dev/null
-```
+- Missing layer docs: detect the project's layers with the signal matrix, and report each detected layer without a `docs/reference/<layer>.md`. Report a layer whose INDEX.md row is `declined` (`제외` in the Korean region) as `ℹ <layer>: declined in INDEX.md` instead of `❌`, because the user turned it down.
+- Code Pointers: in each `docs/reference/*.md` except `INDEX.md`, take the `### 4. Code Pointers` section and its Korean twin `### 4. 코드 포인터`. Report, once per file, each path-like token that matches `[A-Za-z0-9_./-]+\.[A-Za-z0-9]+`, contains a `/`, and does not exist on disk.
+- TODO markers: count the `<!-- TODO` markers in each layer file (informational).
+- INDEX drift: compare the table inside each `<!-- AUTO-MANAGED:index -->` ... `<!-- /AUTO-MANAGED -->` region of `docs/reference/INDEX.md` with the actual `docs/reference/*.md` listing. Report each layer row whose File or Status differs, and a missing INDEX.md or missing markers. A `declined` row for a layer that has no file is not drift. The Korean statuses `있음` / `제외` / `해당 없음` mean `present` / `declined` / `not applicable` (`## INDEX.md` in `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/reference-doc-template.md`).
 
-Recommend runbooks based on project characteristics:
-- Has `Dockerfile`, `docker-compose.yml`, CDK, SAM, or Terraform -> recommend `deploy-production.md`
-- Has migration files or database config -> recommend `database-migration.md`
-- Has monitoring/alerting config -> recommend `incident-response.md`
-- Has multiple environments (staging, production) -> recommend `environment-setup.md`
+### CLAUDE.md quality
 
-### 6. Check ADR Freshness
-
-Review existing ADRs for staleness:
-
-```bash
-find docs/decisions -name 'ADR-*.md' -not -name '.template.md' 2>/dev/null
-```
-
-For each ADR:
-- Read the Status field (Proposed, Accepted, Deprecated, Superseded)
-- Check last modified date via `git log -1 --format="%ai" -- <adr-file>`
-- Flag ADRs in "Proposed" status older than 30 days
-- Flag ADRs in "Accepted" status where the referenced technology is no longer in use
-
-### 7. Check Root CLAUDE.md Freshness
-
-- Compare Tech Stack section against actual dependency files
-- Compare Project Structure section against actual directory tree
-- Compare Key Commands against actual build system (package.json scripts, Makefile, etc.)
-
-### 8. CLAUDE.md Anti-Pattern Detection
-
-For each CLAUDE.md file, check for these anti-patterns and apply score deductions:
-
-| Anti-Pattern | Detection | Deduction |
-|-------------|-----------|-----------|
-| Over 500 lines | `wc -l` > 500 | -15 (causes context bloat) |
-| Vague instructions | Contains "write good code", "follow best practices" without specifics | -10 |
-| Duplicated docs | Embeds full content instead of linking (e.g., repeats README sections) | -10 |
-| No test guidance | No mention of testing commands, frameworks, or patterns | -10 |
-| No error patterns | No mention of error handling conventions | -5 |
-| Contains secrets | Patterns matching API keys, passwords, tokens | -20 (CRITICAL) |
-| Stale dependencies | Lists dependencies not in current package.json/pyproject.toml/go.mod | -10 |
-
-Detection commands:
-
-```bash
-wc -l <claude_md_file>
-```
-
-Use Grep to search for vague patterns:
-- "write good code", "follow best practices", "use common sense"
-- "TODO", "FIXME" (indicating incomplete documentation)
-
-Use Grep to search for secret patterns:
-- `AKIA[0-9A-Z]{16}`, `sk-`, `password\s*[:=]`, `api[_-]?key\s*[:=]`
-
-### 9. Score Each CLAUDE.md
-
-For each CLAUDE.md file found, score against these criteria (total 100):
-
-| Criterion | Max Score | Check |
-|-----------|-----------|-------|
-| Commands/workflows | 20 | Build/test/deploy commands present and correct? |
-| Architecture clarity | 20 | Codebase structure understandable? |
-| Non-obvious patterns | 15 | Gotchas and quirks documented? |
-| Conciseness | 15 | No verbose or obvious info? |
-| Currency | 15 | Reflects current codebase state? |
-| Actionability | 15 | Instructions copy-paste ready? |
-
-**Grades:** A (90-100), B (70-89), C (50-69), D (30-49), F (0-29)
+Score every CLAUDE.md, root and module, with `## CLAUDE.md Quality Criteria`, then apply each `## CLAUDE.md Anti-Patterns` deduction and cite the line that triggers it. For the secrets deduction, run the secrets greps under that heading on each CLAUDE.md, so this audit and `/health-check` flag the same lines.
 
 ## Output
 
-Return a structured report:
+Return only the report below, with no preamble or description of your method. Write one line per finding, keep every section heading, and write `- none` under a heading with no findings, so the caller parses the report the same way every time. The headings and line formats are the contract; the values are illustrative.
+
+The `### Implementation References` lines use fixed formats because sync-docs relays them verbatim. The symbol is the severity (`❌` high, `⚠` medium, `ℹ` info), and they carry no `[severity/confidence]` tag because each is checked on disk.
 
 ```
 ## Documentation Sync Report
+
+Source roots: src/, lib/ (from check-doc-sync.sh)
+Next ADR number: ADR-004
 
 ### Quality Scores
 
 | File | Score | Grade | Key Issues |
 |------|-------|-------|------------|
-| ./CLAUDE.md | 72/100 | B | Commands outdated |
-| ./src/api/CLAUDE.md | 45/100 | D | Missing endpoints list |
-| ./src/auth/CLAUDE.md | -- | F | FILE MISSING |
+| ./CLAUDE.md | 72/100 | B | Key Commands outdated; -10 volatile counts (L12) |
+| ./src/api/CLAUDE.md | 45/100 | D | Restates the file list; no gotchas |
 
-### Missing Module CLAUDE.md
-- src/newmodule/ - no CLAUDE.md found
-- src/utils/helpers/ - no CLAUDE.md found
+### Module CLAUDE.md Coverage
+- [medium/high] src/newmodule/ - uncovered (neither src/newmodule/CLAUDE.md nor src/CLAUDE.md exists)
+- [low/medium] src/api/handlers/ - retry-ordering invariant not covered by src/api/CLAUDE.md
 
 ### Stale Documents
-- docs/architecture.md - mentions "oldservice" component which no longer exists
-- CLAUDE.md - Tech Stack lists "express" but package.json shows "fastify"
-- CLAUDE.md - Key Commands reference "npm run build" but script is "npm run compile"
+- [high/high] CLAUDE.md:14 - Tech Stack lists "express"; package.json has "fastify"
+- [high/high] CLAUDE.md:31 - Key Commands use "npm run build"; the script is "npm run compile"
+- [medium/high] docs/architecture.md:40 - component "oldservice" no longer exists in code
 
 ### Suggested ADRs
-- Commit abc1234 added Redis dependency - no ADR found
-- Commit def5678 changed auth from JWT to session-based - no ADR found
-
-### Runbook Coverage
-- docs/runbooks/ contains N runbook(s)
-- Missing recommended runbooks:
-  - No deployment runbook found (project has Dockerfile/CDK/SAM)
-  - No incident-response runbook found
-  - No database-migration runbook found (project has migration files)
+- [medium/medium] abc1234 added a Redis dependency (package.json) - no ADR found
+- [medium/low] def5678 "switch auth to sessions" - no ADR found
 
 ### ADR Freshness
 - docs/decisions/ contains N ADR(s)
-- ADR-001-use-postgresql.md - Status: Accepted - last modified 30 days ago - CURRENT
-- ADR-002-rest-api-design.md - Status: Accepted - last modified 90 days ago - REVIEW RECOMMENDED
+- [low/high] ADR-002-rest-api-design.md - Proposed, last modified 90 days ago - accept or withdraw
+
+### Runbook Coverage
+- docs/runbooks/ contains N runbook(s)
+- [medium/high] no deployment runbook (Dockerfile, cdk.json present) - recommend deploy-production.md
+- [high/high] docs/runbooks/rollback.md:22 - references scripts/rollback.sh, which does not exist
+
+### Implementation References
+❌ api: docs/reference/api.md missing — run /add-reference-doc api
+⚠ data: Code Pointer "src/db/schema.ts" not found
+ℹ infrastructure: 5 TODO markers
+ℹ security: declined in INDEX.md
+⚠ INDEX.md: AUTO-MANAGED:index drift — data listed as "not applicable", actual "present"
 
 ### Anti-Patterns Detected
-- ./CLAUDE.md: 523 lines (over 500 limit) - consider splitting into module CLAUDE.md files
-- ./src/api/CLAUDE.md: Contains vague instruction "follow best practices" at line 15
-- ./CLAUDE.md: Lists "express" in Tech Stack but package.json shows "fastify"
+- [medium/high] ./CLAUDE.md:12 - hardcoded count "169 tests" (volatile specifics, -10)
+- [medium/high] ./src/api/CLAUDE.md:15 - vague instruction "follow best practices" (-10)
 
 ### Summary
-- X modules missing documentation
-- Y documents potentially stale
-- Z architectural decisions undocumented
-- R recommended runbooks missing
+- X modules uncovered
+- Y documents stale
+- Z decisions without an ADR
+- R runbooks missing or stale
+- I implementation reference issues
 - P anti-patterns detected
-- Average quality score: XX/100 (after anti-pattern deductions)
+- Average quality score: XX/100 (after deductions)
 ```
-
-## Implementation Reference Validation
-
-In addition to CLAUDE.md and existing documents, examine `docs/reference/`:
-
-1. Enumerate `docs/reference/*.md` (excluding `INDEX.md`).
-2. For each file, parse the `### 4. Code Pointers` section. Extract path-like
-   tokens matching `[A-Za-z0-9_./-]+\.[A-Za-z0-9]+` containing at least one
-   `/`. Verify each exists on disk; report missing ones.
-3. Compare `docs/reference/INDEX.md` table inside the
-   `<!-- AUTO-MANAGED:index -->` block against the actual directory
-   listing. Report any mismatch.
-4. Report `<!-- TODO -->` marker counts per file (informational).
-
-Report findings in the same structured format used elsewhere in the agent.

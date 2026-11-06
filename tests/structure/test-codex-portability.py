@@ -372,12 +372,14 @@ class PortabilityTests(unittest.TestCase):
             shutil.copytree(self.generated, root, dirs_exist_ok=True)
             source = root / "plugins/project-init/agents/doc-sync-checker.md"
             original = source.read_text()
-            source.write_text(original.replace("model: opus", "model: haiku\nmemory: project\neffort: low"))
+            injected = original.replace("\ntools:", "\nmodel: haiku\nmemory: project\neffort: low\ntools:", 1)
+            self.assertNotEqual(original, injected)
+            source.write_text(injected)
             subprocess.run([sys.executable, str(GENERATOR), "--root", str(root)], check=True, capture_output=True)
             installed = root / "packages/claude/project-init/agents/doc-sync-checker.md"
-            self.assertRegex(installed.read_text(), r'(?m)^model: "opus"$')
-            self.assertNotRegex(installed.read_text(), r"(?m)^(memory|effort):")
-            self.assertEqual(original.replace("model: opus", "model: haiku\nmemory: project\neffort: low"), source.read_text())
+            self.assertRegex(installed.read_text(), r'(?m)^effort: "medium"$')
+            self.assertNotRegex(installed.read_text(), r"(?m)^(model|memory):")
+            self.assertEqual(injected, source.read_text())
 
     def test_codex_hook_changes_do_not_change_claude_package(self):
         with tempfile.TemporaryDirectory() as tmp:

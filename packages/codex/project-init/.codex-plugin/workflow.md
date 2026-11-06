@@ -60,3 +60,8 @@ invalid skill metadata, failed tests, or unverified hook trust are gaps, not pas
 `migrate-hooks` retains a Claude-only migration source. The Codex entry explicitly
 checks the target and routes native hook inspection/repair to the trust sequence
 above. An absent `.claude/` directory is not evidence of a successful Codex migration.
+
+The bundled `scripts/harness-check.sh` and `scripts/check-bilingual.py` (resolve them
+through the installed plugin path) score only a Claude `.claude/` harness. For a Codex
+target, treat their percentage and `--contract-only` result as Claude-harness evidence,
+not Codex health; native hook trust and `/hooks` inspection still apply.

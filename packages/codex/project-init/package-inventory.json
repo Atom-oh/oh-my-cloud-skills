@@ -8,107 +8,115 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "8a7592088664b4052f218266f243c7002d6e9adaa8d4fc57934ea51c60a4b8fe",
+      "sha256": "d7c50677d46d328c13208ee3a0cc65403e4a48c377275f0381cea4eafe3ea723",
       "executable": false
     },
     "agents/doc-sync-checker.md": {
-      "sha256": "8f031cf8a7786f632e6c0c969e2a821ccc7ce74a8bf9e2ddd052f6682c3a275e",
+      "sha256": "fda530d9546a669490078ed950fae8a2011b2ba7148467e3f56a156219129e6b",
       "executable": false
     },
     "commands/add-adr.md": {
-      "sha256": "ae98af148cb57cab38fcc92cb3b5820b0486104912f1903f52722a465ef9d38d",
+      "sha256": "281cfcab6c8eaa8af690e75f522390a4d20039babd619177b1a7832b4c8b4abe",
       "executable": false
     },
     "commands/add-module.md": {
-      "sha256": "cf8385faac53b3e570bef08d3a0176cecb8bc87bfdeba5d8088f433222a5379f",
+      "sha256": "b176afbfeb4130f69e5b61e4eb4f12fb14ea54d38579b29dcc7f5809f28a6fff",
       "executable": false
     },
     "commands/add-reference-doc.md": {
-      "sha256": "56952194415376279236d93a763a8013a9c526ad393a3607d64809c3881c012f",
+      "sha256": "2bf75a2d749c32517641c22b71118dccfcd3db3bc88f24f0e53166f9d4a044e5",
       "executable": false
     },
     "commands/add-runbook.md": {
-      "sha256": "830541f38dd671ccc0047244141d99891cbfa3b5f0ade16749adcbc1ba582a20",
+      "sha256": "2f33746fddf9e1afe087dc8b02816376a7f3f8a5119631f1605882e2af03e65b",
       "executable": false
     },
     "commands/generate-changelog.md": {
-      "sha256": "e4d800dab075a7a1816684849fdb215e747b4d9c0e006af96f9da26a599a00dd",
+      "sha256": "eb5c2eb73c11e37a17db27c645ee95aedc6f64767d1172808d83420a3bccd3b5",
       "executable": false
     },
     "commands/generate-readme.md": {
-      "sha256": "2b57d6618c3f8ffa99adfb14eef9dd376d1b75ca645d9c1d7b53385636811760",
+      "sha256": "1a2986869452622ca87190eb475c88d4fdd734b0812301885dc62c2893a029d5",
       "executable": false
     },
     "commands/health-check.md": {
-      "sha256": "d378639d619f8f95a2db767136d8f09966fe40d3b75e4db7766b3d67ec6da592",
+      "sha256": "ee4edaa98b28523fef597d444f37b8e1a399e6d1599c4b42ed6a20cb32c6ce48",
       "executable": false
     },
     "commands/init-project.md": {
-      "sha256": "f2599694d8e91169b257181f6db2b27c17bf2e37dbffbdb91869386fbece65cc",
+      "sha256": "3510058b67364a86e60f400b8dfc144680d4e014afc7c9e796bfcbe55cdb7127",
       "executable": false
     },
     "commands/migrate-hooks.md": {
-      "sha256": "e551d5b3a993b18939c89d187a64170ff1b35b3d1f1c073a8f50768755744508",
+      "sha256": "9422216d1462b9e3da18489133784ed75b1c018a81b5167f7d6fd0518143a6d4",
       "executable": false
     },
     "commands/sync-docs.md": {
-      "sha256": "3e846795e0f11522fe5f89fd9c86ee1f2f38b09eab31d8dbb8f257fc29c20f66",
+      "sha256": "c3ded5353cdb059c43eb9edc6f4542856060d0fd9129b2f5dc8846fea2c4087f",
       "executable": false
     },
+    "scripts/check-bilingual.py": {
+      "sha256": "007f6018e6759507bb1601ab0c8d6da8e47ac6f2df349184985135bbd4cc7fca",
+      "executable": true
+    },
+    "scripts/harness-check.sh": {
+      "sha256": "1471f1f7ff4d261039aa7edf9388891fbce7b603fc68ab235b50b44cff124b0d",
+      "executable": true
+    },
     "skills/project-scaffolder/SKILL.md": {
-      "sha256": "f11e010941092a7caf243866ee8e2ad20845764944b1c36a5323ba770ea99242",
+      "sha256": "ee4378a0993b238108b0ab69538875e555f4c0fe31a06a6c1629925e9534881b",
       "executable": false
     },
     "skills/project-scaffolder/references/agents-templates.md": {
-      "sha256": "32c63238c411e177dbaebf6413b7cbbba70985294ac87aed3f8008eb37e0c4d6",
+      "sha256": "1838e581dbc88268fd6e625d9febf9901e35bc73a1072eeb53edc1e8e738477b",
       "executable": false
     },
     "skills/project-scaffolder/references/changelog-template.md": {
-      "sha256": "4fee04f9a3ceec13ae01e6578e29cc01f091583014c4cae7533db5bf0989f009",
+      "sha256": "a5369b57b57ec67db8d70a9b88f70aaaba90b3a3850e759ea487f3188fc48d16",
       "executable": false
     },
     "skills/project-scaffolder/references/claude-md-template.md": {
-      "sha256": "a64340463c3c70ae32476f8fb82c5c65bdf3690ccc48be9bb1fa8a223e385e41",
+      "sha256": "a423f59e66afa71da75110ac89ebe13e3225b1fc79ac1c68a88e996f16a0ccac",
       "executable": false
     },
     "skills/project-scaffolder/references/docs-templates.md": {
-      "sha256": "48985d320feaa6c6c1a07fa0e3b5806720f441cf7672b46baf6133cff2a0031d",
+      "sha256": "742424a03e8afc3cca955de1fdeff6dd120aaa5da7e1b3b3d0ab885111d42c83",
       "executable": false
     },
     "skills/project-scaffolder/references/hook-scripts.md": {
-      "sha256": "4c96792032d2bcefa22a0dec45ac9a79950030391e05200abaa8093c8a3317da",
+      "sha256": "2eff2c7a1e7193409ea35ad4df815b6919fd8f9cf9ed21dfb05fb45a6ec0c75d",
       "executable": false
     },
     "skills/project-scaffolder/references/mcp-json-template.md": {
-      "sha256": "4b922d70b140cbd6252aa348b65e9e187c80ba927c4913182e6fbcfa42973b98",
+      "sha256": "8008abad0486573f82a824c8f0f0ce385de5acf8b765e8b39556ba1de8dce5e4",
       "executable": false
     },
     "skills/project-scaffolder/references/readme-template.md": {
-      "sha256": "dfeb380fd9458ccb0eebbb1cb5d80d989252469724ba6e46c4c53466b360342b",
+      "sha256": "1c889aef3ff0494accca90f7271acb233b22335d3657176de175de4b09e4b2d4",
       "executable": false
     },
     "skills/project-scaffolder/references/reference-doc-template.md": {
-      "sha256": "21437ffe8bf58569f8ff7917d4e88e7894715c9c84e7c33594637d658e48f5be",
+      "sha256": "370e8e232e0108cd95eb5c0f8b33298a00e8c4a001b5687421889b88a4b99aa7",
       "executable": false
     },
     "skills/project-scaffolder/references/scripts-templates.md": {
-      "sha256": "295f8d81b85a7cb5ecf3cee0dcdc8b4768ded6f3df7490543b5a84e814271b86",
+      "sha256": "8cd0150af6c8312dffb106ccc4ba66142e726eca217a341aaad2e419d99c9682",
       "executable": false
     },
     "skills/project-scaffolder/references/settings-json-template.md": {
-      "sha256": "8449562e5c3ef2560e348364a3802ada4a1dd8efc721b9a2ff71b3744306de9f",
+      "sha256": "8d4296a3c05bde3af1f92be9724f88dd335ab7ebf050c74813530d85eff8754d",
       "executable": false
     },
     "skills/project-scaffolder/references/skills-templates.md": {
-      "sha256": "a742a919ea7ddcae73ae5a3d9d701922c93ea4c905cddd3eb55058b05f2ff652",
+      "sha256": "e474636b0eea4f113d9a843c65de5d62a4a4bc29a1b650b374af1290265ea262",
       "executable": false
     },
     "skills/project-scaffolder/references/tests-templates.md": {
-      "sha256": "17bf51aa085af1a1cb90d71bdd3c884fe1d684329a465dc898f0693dc2bea50b",
+      "sha256": "935bdf3104f14e8355f9e7e0d0c68134ef61883a0c9920462f095be6ff6bec8a",
       "executable": false
     },
     "skills/project-scaffolder/references/writing-style-guide.md": {
-      "sha256": "80bca45d798092b16451dbe1affa3344d8358cd6d1a37b6a42063ba2852eb746",
+      "sha256": "c36dd6d372f9b85943d9d99111f5141872464cf48d4786cbc5d245a9b4710099",
       "executable": false
     },
     ".codex-plugin/skills/add-adr/SKILL.md": {
@@ -176,7 +184,7 @@
       "executable": false
     },
     ".codex-plugin/workflow.md": {
-      "sha256": "4dbcba415f4a55c39e8ae11678f85c8bfd4f42ed30bac04f5f09c6aaeb9c319a",
+      "sha256": "6e6daa685829037f3520930fee5c8009038278ae62296e78387a3cc6dd3b3645",
       "executable": false
     },
     ".codex-plugin/project-template/.codex/hooks.json": {

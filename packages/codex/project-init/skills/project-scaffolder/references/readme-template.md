@@ -1,20 +1,12 @@
 # README Template
 
-Template for generating bilingual (English/Korean) `README.md` files following GitHub open-source best practices.
+Structure for bilingual (English/Korean) `README.md` files following GitHub open-source practice. Bilingual layout, tone, formatting, and Mermaid rules come from `writing-style-guide.md` in this directory; this file adds only what is specific to a README.
 
 ---
 
-## Generation Rules
+## Auto-Detection Sources
 
-When generating or updating `README.md`, Claude should:
-
-1. **Detect** the project's name, description, tech stack, license, and structure from `CLAUDE.md`, `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, or other manifest files
-2. **Scan** the repository for existing README.md content to preserve user-specific information
-3. **Collect** project information from the user for fields that cannot be auto-detected
-4. **Generate** a bilingual document with English and Korean sections containing identical information
-5. **Validate** that all required sections are present and properly formatted
-
-### Auto-Detection Sources
+Fill each field from these sources before asking the user.
 
 | Field | Detection Source |
 |-------|-----------------|
@@ -26,76 +18,38 @@ When generating or updating `README.md`, Claude should:
 | Prerequisites | Manifest `engines` field, `.tool-versions`, Dockerfile base image |
 | Install command | Manifest `scripts.install`, `Makefile install` target |
 | Test command | Manifest `scripts.test`, `Makefile test` target |
+| Configuration | `.env.example`, `.env.sample` |
+| Build status | CI config (`.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci/config.yml`) |
+| Repository URL | `git remote get-url origin` |
 
 ---
 
 ## Top Layout
 
-The file starts with these elements in order:
-
-1. Project name as h1
-2. Badge line: license, build status, version, language toggle (all shields.io)
-3. One-line description in both languages
-
-### Badge Format
+The file starts with the project name, the badge line, and a one-line description in both languages, then the first `---`. The English and Korean halves follow as the style guide lays them out.
 
 ```markdown
 # <Project Name>
 
 [![License](https://img.shields.io/badge/License-<LICENSE>-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-<VERSION>-green.svg)]()
+[![Version](https://img.shields.io/badge/Version-<VERSION>-green.svg)](CHANGELOG.md)
 <a href="#english"><img src="https://img.shields.io/badge/lang-English-blue.svg" alt="English"></a>
 <a href="#korean"><img src="https://img.shields.io/badge/lang-한국어-red.svg" alt="Korean"></a>
 
 <English one-line description> | <Korean one-line description>
+
+---
 ```
 
-- Language badges use HTML `<a><img></a>` linking to `#english` and `#korean` anchors
-- Explicit `<a id="english">` and `<a id="korean">` tags placed before each language heading
-- License and version values must reflect actual project data
-- Build status badge is optional (include if CI config is detected)
-
----
-
-## Bilingual Structure
-
-```markdown
-# <Project Name>
-
-<a href="#english"><img src="https://img.shields.io/badge/lang-English-blue.svg" alt="English"></a>
-<a href="#korean"><img src="https://img.shields.io/badge/lang-한국어-red.svg" alt="Korean"></a>
-
-<one-line description (EN) | one-line description (KR)>
-
----
-
-<a id="english"></a>
-
-# English
-
-<all English sections>
-
----
-
-<a id="korean"></a>
-
-# 한국어
-
-<all Korean sections>
-```
-
-Rules:
-- Horizontal rule (`---`) separates badges from English section, and English from Korean section
-- Explicit `<a id="english">` and `<a id="korean">` tags are placed before `# English` and `# 한국어` headings for reliable anchor navigation
-- Both language sections must have identical structure, order, and information
-- Code blocks, tables, and directory structures are duplicated identically in both sections
-- Only descriptive text is translated; code and technical terms remain unchanged
+- License and version values come from the project. Leave out a badge you cannot fill rather than showing a placeholder.
+- Add a build status badge only when CI config is detected.
+- Link the version badge to `CHANGELOG.md` when it exists, otherwise to the repository's releases page.
 
 ---
 
 ## Section Structure
 
-Apply the following sections in order within each language block. Omit optional sections if the condition is not met.
+Apply these sections in order within each language half. Omit a conditional section when its condition is not met.
 
 | Order | English Heading | Korean Heading | Condition |
 |-------|----------------|----------------|-----------|
@@ -118,22 +72,17 @@ Apply the following sections in order within each language block. Omit optional 
 ## Section Guidelines
 
 ### Overview / 개요
-- 2-3 sentences describing the project's purpose and the problem it solves
-- Insert demo image/GIF here if provided
-- English: imperative/declarative style
-- Korean: 경어체 (~합니다)
+- 2-3 sentences on the project's purpose and the problem it solves
+- Insert the demo image or GIF here if one was provided
 
 ### Features / 주요 기능
-- Format: `- **Feature name** — Description` (use em-dash `—` between name and description)
-- List 3-5 key features
-- Be specific about what each feature does, not vague marketing language
+- Format: `- **Feature name** — Description` (em-dash `—` between name and description)
+- 3-5 key features, each saying what it does rather than marketing language
 
 ### Architecture / 아키텍처
-- Show the critical architecture flow as a Mermaid flowchart in a fenced ```mermaid block (see writing-style-guide.md Diagram Rules)
-- Use `flowchart LR` for a simple critical path; use `flowchart TB` with `subgraph` per layer if layers matter
-- Keep it concise (roughly 5-10 nodes); this is a summary, not the full diagram
-- Link to `docs/architecture.md` for the full architecture document if it exists
-- The diagram is identical in both language sections; node labels stay in English
+- A Mermaid flowchart of the critical path: `flowchart LR` for a simple chain, `flowchart TB` with one `subgraph` per layer when layers matter
+- When `docs/architecture.md` exists, derive the flowchart from its Data Flow Summary and link the document, so the summary and the full document agree. Otherwise draw the critical path from the code: entry point, processing, storage or output
+- Roughly 5-10 nodes; this is a summary, not the full diagram
 
 ```mermaid
 flowchart LR
@@ -141,13 +90,11 @@ flowchart LR
 ```
 
 ### Prerequisites / 사전 요구 사항
-- List required runtimes, tools, and minimum versions
-- Format as a bulleted list
+- Required runtimes, tools, and minimum versions, as a bulleted list
 
 ### Installation / 설치 방법
-- Provide step-by-step commands in a bash code block
-- Add comments for each step
-- Include clone, install dependencies, and build if applicable
+- Step-by-step commands in a bash code block, with a comment per step
+- Clone, install dependencies, and build if applicable
 
 ```bash
 # Clone the repository
@@ -159,42 +106,38 @@ cd <repo>
 ```
 
 ### Usage / 사용법
-- Show basic usage examples in appropriate code blocks
-- Include expected output as comments where possible
+- Basic usage examples in code blocks, with expected output as comments where possible
 - Start with the simplest use case, then show advanced options
 
 ### Configuration / 환경 설정
-- Present environment variables in a table
+- Environment variables in a table
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `VAR_NAME` | What it controls | `default_value` |
 
 ### Project Structure / 프로젝트 구조
-- Use a tree-style code block
-- English section uses English comments, Korean section uses Korean comments
-- Show only the most important directories and files (not exhaustive)
+- A tree in a `text` code block with only the most important directories and files, not an exhaustive listing
+- The tree is the same in both halves; only the comments are translated (in the Korean half: `# 소스 코드`, `# 테스트 파일`, `# 문서`)
 
-```
+```text
 project-root/
-  src/           # Source code          (or: # 소스 코드)
-  tests/         # Test files           (or: # 테스트 파일)
-  docs/          # Documentation        (or: # 문서)
+  src/           # Source code
+  tests/         # Test files
+  docs/          # Documentation
 ```
 
 ### Testing / 테스트
-- Provide commands for running tests, coverage, and specific test files
-- Use bash code blocks
+- Commands for running tests, coverage, and a single test file, in bash code blocks
 
 ### API Documentation / API 문서
-- Brief overview of available endpoints or API surface
-- Link to detailed API docs if they exist
+- A brief overview of the endpoints or API surface, with a link to detailed API docs if they exist
 
 ### Contributing / 기여 방법
-- 5-step numbered list: Fork, Branch, Commit, Push, PR
-- Include Conventional Commits example (feat:, fix:, docs:, etc.)
+- When `CONTRIBUTING.md` exists, or the repository is private or internal: describe the project's actual branch and pull request flow and link `CONTRIBUTING.md` if it exists
+- Otherwise (a public GitHub repository): the fork flow below, with a Conventional Commits example
 
-```
+```markdown
 1. Fork the repository
 2. Create your branch (`git checkout -b feat/amazing-feature`)
 3. Commit changes (`git commit -m 'feat: add amazing feature'`)
@@ -203,35 +146,22 @@ project-root/
 ```
 
 ### License / 라이선스
-- State the license name and link to LICENSE file
+- The license name and a link to the LICENSE file
 
 ### Contact / 연락처
-- Maintainer GitHub profile link
-- Issues page link
-- Email (if provided)
-
----
-
-## Style Rules
-
-- No emojis anywhere in the document
-- Code blocks must specify the language (```bash, ```typescript, etc.)
-- Concise, practical writing style (no filler text)
-- Korean uses 경어체 (~합니다)
-- English uses imperative mood ("Run the following command")
-- Badges use shields.io format only
-- No emoji in section headings
+- The maintainer's GitHub profile link, the issues page link, and an email if one was provided
 
 ---
 
 ## Update Rules
 
-When updating an existing README.md:
+When updating an existing README.md, the user's own writing is the reason to update rather than regenerate:
 
 1. **Preserve** user-written content that doesn't conflict with the template structure
 2. **Merge** new auto-detected information with existing content
 3. **Reorder** sections to match the standard order if they are out of order
 4. **Add** missing required sections
-5. **Keep** additional custom sections the user may have added (place them after the standard sections)
-6. **Update** badges to reflect current version and license
-7. **Sync** both language sections to contain identical information
+5. **Keep** additional custom sections the user added, placed after the standard sections
+6. **Update** badges to reflect the current version and license
+7. **Sync** both language halves so they contain the same information
+8. **Report** a `check-bilingual.py` issue inside the user's own prose that existed before this update (an emoji, an untagged code fence) as pre-existing instead of rewriting that prose

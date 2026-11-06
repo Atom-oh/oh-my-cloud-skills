@@ -1,7 +1,7 @@
 {
   "doc-sync-checker.md": {
-    "tools": "Read, Glob, Grep, Bash(find:*), Bash(git log:*), Bash(ls:*)",
-    "model": "opus",
+    "tools": "Read, Glob, Grep, Bash",
+    "effort": "medium",
     "color": "cyan"
   }
 }
