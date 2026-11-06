@@ -4,7 +4,7 @@
 > **only when syncing** (the root `CLAUDE.md` holds only a summary of the source).
 
 - **Source**: `git@github.com:whchoi98/project-init.git` (path: `plugins/project-init/`) · **Author**: whchoi98
-- **Last synced**: 2026-09-25, upstream `13ee3e1` (v2.4.0)
+- **Last synced**: 2026-11-06, upstream `a6a1622` (v3.0.0)
 
 ## Maintenance policy
 
@@ -49,17 +49,18 @@ outweighed the benefit, so **all divergence was cleaned up**:
   during mirror cleanup. The approved replacement is a generated Codex overlay and
   marketplace entry, maintained separately from the mirrored sources.
 - The local model-tier adjustment (`sonnet`+`low` in `agents/doc-sync-checker.md`) was
-  also reverted. The upstream value (`model: opus`, no `effort` specified) is kept as-is,
-  because this file belongs to the upstream mirror. Host-specific model/effort
+  also reverted. The upstream values (v3.0.0: no `model`, so the agent inherits the
+  session; `effort: medium`; bare `Bash`) are kept as-is, because this file belongs to
+  the upstream mirror; `hosts/claude/project-init/agents.json` restates them. Host-specific model/effort
   choices belong in repository-owned adapters, not patches to mirrored procedures.
 
 ## Sync procedure
 
 ```bash
-git clone --depth 1 https://github.com/whchoi98/project-init.git /tmp/project-init-upstream
+git clone --depth 1 https://github.com/whchoi98/project-init.git $TMPDIR/project-init-upstream
 
 # 1) Inspect upstream-source changes; exclude the separately owned overlay
-diff -ru --exclude=.codex-plugin /tmp/project-init-upstream/plugins/project-init/ plugins/project-init/
+diff -ru --exclude=.codex-plugin $TMPDIR/project-init-upstream/plugins/project-init/ plugins/project-init/
 ```
 
 After reviewing that comparison:
@@ -68,7 +69,7 @@ After reviewing that comparison:
 set -e
 # 2) Replace mirrored source; rsync's exclusion also protects the overlay from --delete.
 # Do not add --delete-excluded.
-rsync -av --delete --exclude='/.codex-plugin/' /tmp/project-init-upstream/plugins/project-init/ plugins/project-init/
+rsync -av --delete --exclude='/.codex-plugin/' $TMPDIR/project-init-upstream/plugins/project-init/ plugins/project-init/
 
 # 3) Restore the only upstream-source delta: the marketplace-uniform version
 python3 - <<'PY'

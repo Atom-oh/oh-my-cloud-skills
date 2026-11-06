@@ -1,107 +1,48 @@
 ---
 description: Add an implementation reference doc skeleton for one or more layers under docs/reference/
-allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(grep:*), Bash(git config:*), Bash(date:*), Glob
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py *)
 argument-hint: One or more layer names — infrastructure, data, api, iac, frontend, ui, security, agent-llm
 ---
 
 # Add Implementation Reference Doc
 
-Append a skeleton implementation reference document for the given layer(s) under `docs/reference/`.
+Create `docs/reference/<layer>.md` for each requested layer, then update `docs/reference/INDEX.md` and the `## Implementation References` block in the root `CLAUDE.md`. /init-project and /sync-docs write and parse the same files, so follow the template's formats exactly.
 
-## Step 1: Validate Layer Names
+Layers: $ARGUMENTS
 
-Target layers: $ARGUMENTS
+## Inputs
 
-Valid layers (enum):
-- `infrastructure`
-- `data`
-- `api`
-- `iac`
-- `frontend`
-- `ui`
-- `security`
-- `agent-llm`
+- `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/reference-doc-template.md`, read in full: its header says how to fill the placeholders, and its `## Layer: <layer>`, `## INDEX.md`, and `## Root CLAUDE.md Block` sections hold the output formats. If the file cannot be read, stop and say so instead of writing from memory.
+- The repo, for the paths that fill `{{COMPONENTS_TABLE}}` and `{{CODE_POINTERS_AUTO}}`.
 
-If any argument is not in the enum, abort with: `Unknown layer "<name>". Valid: infrastructure, data, api, iac, frontend, ui, security, agent-llm`.
+## Asking
 
-## Step 2: Ensure Target Directory
+Ask with the AskUserQuestion tool when it is available, so the `allowed-tools` above still cover the writes and the check that follow. Each call holds at most 4 questions of 4 options:
+- Layer choice (no argument): `multiSelect` questions of at most four layers each, covering all eight.
+- Conflicts: one question per existing file, with the options `overwrite`, `skip`, and `abort`.
 
-```bash
-mkdir -p docs/reference
-```
+Without the tool, ask everything in one chat message.
 
-## Step 3: For Each Layer — Generate Skeleton
+## Steps
 
-For every requested layer:
+Write nothing until every argument is valid and every conflict is resolved.
 
-1. **Check existence** at `docs/reference/{layer}.md`:
-   - If exists: prompt the user `overwrite / skip / abort`. On `skip` skip this layer; on `abort` abort the whole command.
-2. **Extract skeleton** from `plugins/project-init/skills/project-scaffolder/references/reference-doc-template.md` — read the fenced block under `## Layer: {layer}`.
-3. **Substitute variables**:
-   - `{{COMPONENTS_TABLE}}` → empty table row `| <!-- TODO: component --> | <!-- path --> | <!-- purpose --> |`
-   - `{{CODE_POINTERS_AUTO}}` → `<!-- TODO: add 3-7 code pointers -->`
-4. **Write** to `docs/reference/{layer}.md`.
+1. **Validate.** Valid layers: `infrastructure`, `data`, `api`, `iac`, `frontend`, `ui`, `security`, `agent-llm`. If any argument is not one of them, stop with exactly: `Unknown layer "<name>". Valid: infrastructure, data, api, iac, frontend, ui, security, agent-llm`.
+2. **Resolve conflicts.** Ask about every requested layer whose `docs/reference/<layer>.md` exists, all in one round. `skip` keeps the file; `abort` ends the command with nothing written.
+3. **Write the layer files.** For each remaining layer, write the fenced block under `## Layer: <layer>` (without the fence) to `docs/reference/<layer>.md`, with the placeholders replaced as the template header specifies. Write creates `docs/reference/` if it is missing.
+4. **Refresh `docs/reference/INDEX.md`** from the `## INDEX.md` section: one row per layer, from the layer files that exist now, keeping each `declined` (`제외`) row whose layer still has no file. If the file has an `<!-- AUTO-MANAGED:index -->` region in both language halves, replace only those regions; otherwise write the whole file from the template and carry over any user text outside the markers.
+5. **Refresh the root `CLAUDE.md`** from the `## Root CLAUDE.md Block` section: replace the lines between `<!-- AUTO-MANAGED:references -->` and `<!-- /AUTO-MANAGED -->`, or append the section near the end of the file if the markers are absent.
 
-## Step 4: Regenerate `docs/reference/INDEX.md`
+## Check
 
-Read the current directory listing of `docs/reference/*.md` (excluding INDEX.md itself).
-Rewrite the file with this structure:
+Run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py docs/reference/INDEX.md docs/reference/<layer>.md` on every file you wrote and fix what it reports until it exits 0. If python3 or the script is unavailable, say "checker unavailable" in the report.
 
-```markdown
-# Implementation Reference Index / 구현 참조 인덱스
+## Report
 
-[![English](https://img.shields.io/badge/Language-English-blue)](#english)
-[![한국어](https://img.shields.io/badge/Language-한국어-red)](#korean)
-
-<a id="english"></a>
-## English
-
-Layer-by-layer implementation guides. Each file follows the same 5-section
-structure (Overview / Components / Key Decisions / Code Pointers / Cross-references).
-
-<!-- AUTO-MANAGED:index -->
-| Layer | File | Status |
-|---|---|---|
-| Infrastructure | [infrastructure.md](infrastructure.md) | present |
-| Data | — | not applicable |
-| API | — | not applicable |
-| IaC | — | not applicable |
-| Frontend | — | not applicable |
-| UI | — | not applicable |
-| Security | — | not applicable |
-| Agent · LLM | — | not applicable |
-<!-- /AUTO-MANAGED -->
-
-Last updated: <today's date in YYYY-MM-DD> (managed by /init-project, /add-reference-doc, /sync-docs)
-
-<a id="korean"></a>
-## 한국어
-(same structure, Korean section headings)
-```
-
-The table cells reflect actual file presence. Files outside the AUTO-MANAGED region must be preserved if the file already existed.
-
-## Step 5: Update Root CLAUDE.md AUTO-MANAGED Region
-
-Locate the block between `<!-- AUTO-MANAGED:references -->` and `<!-- /AUTO-MANAGED -->` in the root `CLAUDE.md`. If absent, append a new `## Implementation References` section near the end:
-
-```markdown
-## Implementation References
-<!-- AUTO-MANAGED:references -->
-Layer-by-layer implementation guides in `docs/reference/`. See [INDEX](docs/reference/INDEX.md).
-- <link line per present layer>
-<!-- /AUTO-MANAGED -->
-```
-
-Rewrite the content between the markers based on the current INDEX status.
-
-## Step 6: Report
-
-Output a summary:
-```
+```text
 Added reference docs:
   ✓ docs/reference/<layer>.md  (skeleton)
-  ...
+  - docs/reference/<layer>.md  (existing, kept)
 Updated:
   - docs/reference/INDEX.md
   - CLAUDE.md (## Implementation References)

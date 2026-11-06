@@ -1,163 +1,82 @@
 ---
-description: Validate entire project setup - files, hooks, permissions, CLAUDE.md quality, and configuration
-allowed-tools: Read, Glob, Grep, Bash(find:*), Bash(ls:*), Bash(git log:*), Bash(wc:*), Bash(bash -n:*), Bash(python3 -m json.tool:*)
+description: Validate the project's Claude Code harness - files, hooks and the hook contract, skills/commands/agents, docs, security, tests - and score CLAUDE.md quality
+allowed-tools: Read, Glob, Grep, Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/harness-check.sh *), Bash(bash tests/run-all.sh *), Bash(grep *)
 ---
 
 # Health Check
 
-Validate the entire Claude Code project setup and report issues.
+Report how healthy this project's Claude Code harness is and what to fix first. `harness-check.sh` has already run every deterministic check; its output is in Context. Your part is the judgment it cannot make: CLAUDE.md quality, whether an uncovered module needs a CLAUDE.md, whether a secret-pattern match is a real secret, the test run, and the Recommended Actions. Do not re-check by hand what the script reported, because a hand count can disagree with the score. This command only reports; it changes no files.
 
-## Step 1: Check Core Files
+## Context
 
-Verify required files exist:
+- Harness check: !`bash ${CLAUDE_PLUGIN_ROOT}/scripts/harness-check.sh`
 
-```bash
-ls CLAUDE.md README.md .gitignore LICENSE 2>/dev/null
-ls .claude/settings.json 2>/dev/null
-ls docs/architecture.md 2>/dev/null
-```
+Each line is `<STATUS> <id> <earned>/<max> <detail>` (PASS, FAIL, WARN, INFO, SKIP; INFO and SKIP carry 0/0), then one `CATEGORY <name> <earned>/<max>` line per category, then `TOTAL <earned>/<max> <percent>%`. If the script did not run in the project root (you have `cd`'d, or the output reports a missing CLAUDE.md the repo has), run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/harness-check.sh <project root>` and use that output instead.
 
-Score:
-- CLAUDE.md exists: +20
-- .claude/settings.json exists: +10
-- docs/architecture.md exists: +10
-- README.md exists: +5
-- .gitignore exists: +5
-- LICENSE exists: +5
+## Inputs
 
-## Step 2: Check Hook Configuration
+- `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/SKILL.md`, sections `## CLAUDE.md Quality Criteria` and `## CLAUDE.md Anti-Patterns` (the CLAUDE.md rubric) and `## Module CLAUDE.md Coverage`. If the file cannot be read, stop and say so instead of scoring from memory.
+- The root `CLAUDE.md`, the modules that `docs-modules` lists as uncovered, and the files and lines that a `sec-scan` or `sec-mcp` WARN names.
 
-Verify hooks are properly configured:
+## Rules
 
-```bash
-ls .claude/hooks/*.sh 2>/dev/null
-ls .git/hooks/commit-msg 2>/dev/null
-```
+- **Score**: the TOTAL percent is the score. Copy it and the CATEGORY points as printed, adding or removing none, so every run and model gives the same score. The harness Grade comes from the TOTAL percent: A >= 80%, B >= 60%, C >= 40%, D >= 20%, F < 20%.
+- **CLAUDE.md quality**: score the root CLAUDE.md out of 100 with the SKILL.md criteria minus the anti-pattern deductions, and give it that section's letter grade. Report it on its own line, not inside the harness score.
+- **Module coverage**: for each directory `docs-modules` lists, skim its code and apply SKILL.md `## Module CLAUDE.md Coverage`. Recommend `/project-init:add-module <dir>` only for a module that section says needs one, naming the rules or gotchas it would record.
+- **Secrets**: for each `file:line` that `sec-scan` lists and each `.mcp.json` entry a `sec-mcp` WARN describes, read the value in place and judge whether it is a real credential or a sample, pattern definition, or test value. Never print a matched value, because reports get pasted into issues and chats. In CLAUDE.md, the rubric's secrets greps also catch forms the script misses, such as an unquoted value.
+- **Tests**: if `tests/run-all.sh` exists, run `bash tests/run-all.sh` once and report the passed and failed counts from its summary plus the names of failing tests.
+- **Status**, first match wins:
+  - CRITICAL: any `contract-*` line is FAIL, you judged a committed secret real, or the harness Grade is D or F.
+  - NEEDS ATTENTION: `secret-scan-scope` or `doc-sync-scope` is WARN; `hook-reg-secret-scan`, `hook-reg-verify-on-stop`, `hook-python3`, or `hook-disable-all` is WARN, because then a gate may not run; any other line is FAIL; the test run failed; the harness Grade is B or C; or the CLAUDE.md grade is D or F.
+  - HEALTHY: otherwise.
 
-Check `.claude/settings.json` has hook registrations:
-- PostToolUse hook for doc-sync: +10
-- PreToolUse hook for secret scanning: +10
-- SessionStart hook: +5
-- commit-msg Git hook (Claude exclusion): +10
+## Recommended Actions
 
-Verify hooks are executable:
-```bash
-find .claude/hooks -name '*.sh' ! -perm -u+x 2>/dev/null
-```
+Give an action for every FAIL and WARN line and every CLAUDE.md deduction, one line each, naming the file and the command or edit (the fix the detail names, where it names one), and mark the minor ones `(minor)` instead of leaving them out. Order by impact: contract findings first, because a hook on the old contract silently does nothing; then a real secret; then FAIL lines; then WARN lines; then modules you judged to need a CLAUDE.md; then CLAUDE.md deductions. INFO lines are notes and SKIP lines are not findings, so neither is an action; `docs-modules` becomes one only through your judgment under **Module coverage**.
 
-### Step 2.5: Check Hook Contract (pre-v2.3 detection)
+| Finding | Action |
+|---------|--------|
+| `contract-settings-json` FAIL | Fix the JSON syntax in `.claude/settings.json` before the other contract actions |
+| any other `contract-*` FAIL, or `secret-scan-scope` or `doc-sync-scope` WARN | Run `/project-init:migrate-hooks` |
+| a real secret | Rotate the credential first, since it is in git history; then move it to `.env` (`.env.example` is the template) |
+| missing Core files, hooks, docs, or tests | Run `/project-init:init-project`, which keeps existing files, or name the one file to add |
+| `hook-reg-*` FAIL or WARN | Register the hook, or rewrite its `command` in `.claude/settings.json`, in the form `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/settings-json-template.md` shows |
+| `hook-python3` WARN | Install python3, or replace the `python3` on PATH that does not run (such as the Windows Store alias) |
+| `hook-disable-all` WARN | Remove `"disableAllHooks": true` from the file the detail names, unless the user set it on purpose |
+| `hook-verify-cmd` WARN | Set `VERIFY_CMD=` in `.claude/hooks/verify-on-stop.sh` to the project's fast check, or remove the hook and its Stop registration |
+| `core-commit-msg` WARN | Run `bash scripts/install-hooks.sh` |
+| an uncovered module you judged to need a CLAUDE.md | `/project-init:add-module <dir>`, naming the rule or gotcha it will record |
+| `components-dup`, `components-plugin-dup` | Delete the duplicate the detail names, keeping one path |
+| `compat-*` WARN | Fix the frontmatter key or model pin the detail names |
+| failing tests | Name the failing test; `/test-all` if the project has it |
 
-Hooks generated before project-init v2.3 never run: Claude Code passes hook events as JSON on stdin and never sets `$TOOL_INPUT_PATH`, `$EVENT`, or `$MESSAGE`; only exit 2 blocks a tool call; `.yml` subagents are not loaded.
+## Report
 
-```bash
-grep -l 'TOOL_INPUT_PATH\|\$EVENT\|\$MESSAGE' .claude/settings.json .claude/hooks/*.sh 2>/dev/null
-grep -n 'secret-scan.sh.*|| true' .claude/settings.json 2>/dev/null
-grep -L 'tool_input' .claude/hooks/check-doc-sync.sh .claude/hooks/secret-scan.sh 2>/dev/null
-grep -n 'exit 1' .claude/hooks/secret-scan.sh 2>/dev/null
-ls .claude/agents/*.yml .claude/agents/*.yaml 2>/dev/null
-```
-
-Any hit is a **pre-v2.3 hook contract** finding. Deduct 10 points per affected hook or agent (maximum -35, the whole Hook configuration category), mark the hook `STALE CONTRACT` in the Hooks table, and add `Run /project-init:migrate-hooks` as the first Recommended Action. Passing hooks that read `tool_input` and a `secret-scan.sh` registration without `|| true` score full points.
-
-## Step 3: Check Skills
-
-```bash
-find .claude/skills -name 'SKILL.md' 2>/dev/null
-```
-
-- code-review skill: +5
-- refactor skill: +5
-- release skill: +5
-- sync-docs skill: +5
-
-## Step 4: Check Documentation Coverage
-
-Count module CLAUDE.md files:
-
-```bash
-find src/ app/ lib/ cmd/ -name 'CLAUDE.md' 2>/dev/null
-```
-
-Count source directories without CLAUDE.md:
-
-```bash
-find src/ app/ lib/ cmd/ -type d -mindepth 1 2>/dev/null
-```
-
-- All modules have CLAUDE.md: +10
-- docs/decisions/ has at least one ADR: +5
-- docs/runbooks/ has at least one runbook: +5
-
-## Step 5: Check Security
-
-- `.env` is in `.gitignore`: +5
-- `.env.example` exists (if project uses env vars): +5
-- No secrets detected in CLAUDE.md or committed files: +10
-- `.mcp.json` does not contain real tokens: +5
-
-## Step 6: Check CLAUDE.md Quality
-
-Run a quick quality assessment on root CLAUDE.md:
-- Under 500 lines: +5
-- Has Tech Stack section: +5
-- Has Key Commands section: +5
-- Has Project Structure section: +5
-- Commands are copy-paste ready: +5
-- No vague instructions detected: +5
-
-## Step 7: Check Tests Structure
-
-```bash
-ls -d tests/ test/ spec/ __tests__/ 2>/dev/null
-```
-
-- Test directory exists: +5
-- Test CLAUDE.md exists: +5
-
-## Step 8: Report
-
-Present a comprehensive health report:
+The table, the CLAUDE.md line, the actions, and nothing else. The values below are illustrative.
 
 ```
 ## Project Health Report
 
-### Score: XX/200
+Score: 94% (165/175), Grade A
+Status: NEEDS ATTENTION
 
-### Status: HEALTHY | NEEDS ATTENTION | CRITICAL
+| Category | Points | Findings |
+|----------|--------|----------|
+| Core files | 37/37 | OK |
+| Hooks | 33/38 | WARN hook-reg-secret-scan: path not anchored at $CLAUDE_PROJECT_DIR |
+| Hook contract | 38/43 | WARN secret-scan-scope: predates the commit-scope fix (run /project-init:migrate-hooks) |
+| Harness components | 20/20 | 3 load, no duplicates |
+| Compatibility | 2/2 | notes: alias pin in .claude/agents/code-reviewer.md |
+| Documentation | 9/9 | OK; modules: src/utils/ uncovered, needs none |
+| Security | 16/16 | no secret-pattern matches |
+| Tests | 10/10 | tests/run-all.sh: 58/58 passed |
 
-### Core Files
-| File | Status |
-|------|--------|
-| CLAUDE.md | OK / MISSING |
-| .claude/settings.json | OK / MISSING |
-| docs/architecture.md | OK / MISSING |
-| .gitignore | OK / MISSING |
-
-### Hooks
-| Hook | Type | Status |
-|------|------|--------|
-| check-doc-sync.sh | PostToolUse | OK / MISSING / NOT EXECUTABLE / STALE CONTRACT |
-| secret-scan.sh | PreToolUse | OK / MISSING / STALE CONTRACT |
-| session-context.sh | SessionStart | OK / MISSING |
-| commit-msg | Git Hook | OK / MISSING |
-
-### Hook Contract: v2.3 OK / N pre-v2.3 findings (run /project-init:migrate-hooks)
-### Skills: X/4 installed
-### Documentation: X/Y modules covered
-### Security: PASS / X issues found
-### CLAUDE.md Quality: XX/100 (Grade: X)
+CLAUDE.md Quality: 78/100 (Grade B) - largest deduction: hardcoded test count in Key Commands (-10)
 
 ### Recommended Actions
-1. [action 1]
-2. [action 2]
+1. Run /project-init:migrate-hooks: secret-scan.sh predates the commit-scope fix and its registration uses a relative path
+2. CLAUDE.md: replace "58 tests" in Key Commands with the command that prints the count
+3. (minor) CLAUDE.md: drop the dependency list copied from package.json in Tech Stack
 ```
 
-### Health Grades
-
-| Score | Grade | Status |
-|-------|-------|--------|
-| 160-200 | A | HEALTHY - Project is well configured |
-| 120-159 | B | GOOD - Minor improvements recommended |
-| 80-119 | C | NEEDS ATTENTION - Several gaps to address |
-| 40-79 | D | POOR - Significant setup issues |
-| 0-39 | F | CRITICAL - Project needs initialization |
+Category rows come from the CATEGORY lines in this order: `core` Core files, `hooks` Hooks, `contract` Hook contract, `components` Harness components, `compat` Compatibility, `docs` Documentation, `security` Security, `tests` Tests. In Findings, list the FAIL and WARN ids with their detail shortened, or `OK`. For Hook contract with no FAIL or WARN, write `OK (current hook contract)`. For Documentation, add your `docs-modules` judgment: the uncovered modules that need a CLAUDE.md, or that none do. For Security, add your verdict on each secret match (`real: <file:line>`, or `sample only`). For Tests, give the run result, or `not run (no tests/run-all.sh)`.

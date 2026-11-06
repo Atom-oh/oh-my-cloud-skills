@@ -30,9 +30,8 @@ MIRRORED_PLUGINS = {"project-init"}
 NON_AGENT_FILES = {"README.md", "CLAUDE.md"}
 
 # Tools whose `tools:` entry may carry a `(scope)` suffix. Upstream's mirrored
-# doc-sync-checker ships `tools: Read, Glob, Grep, Bash(find:*), Bash(git log:*),
-# Bash(ls:*)` (arriving with the mirroring in #138 — the copy in THIS tree still declares
-# a bare `Bash`), so the parser has to accept the form. Whether Claude Code actually
+# doc-sync-checker shipped `Bash(find:*), Bash(git log:*), Bash(ls:*)` before v3.0.0 and
+# now declares a bare `Bash`; the parser still accepts the scoped form. Whether Claude Code actually
 # honors a scope in a subagent's `tools:` — as opposed to a command's `allowed-tools`,
 # where the syntax is documented — is NOT established, so a scoped Bash gets a warning
 # rather than being silently blessed as a narrowing that may not exist at runtime.

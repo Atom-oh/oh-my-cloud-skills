@@ -591,6 +591,40 @@ strip_pr_review_test_fixtures() {
     printf '%s' "$content"
 }
 
+# The mirrored project-init scaffolder templates (hook-scripts.md, tests-templates.md)
+# ship this hook's own detection patterns and its true/false-positive fixtures.
+# Same approach as above: strip only these exact fake literals, so a real
+# credential pasted anywhere else in those files still matches PATTERNS. A fixture
+# added upstream later that is not listed here blocks the commit on purpose —
+# review it, then add the literal.
+PROJECT_INIT_TEMPLATE_FIXTURE_LITERALS=(
+    'DefaultEndpointsProtocol=https;AccountName=myaccount;AccountKey=abc123'
+    'DefaultEndpointsProtocol=https;AccountName=myaccount'
+    'DefaultEndpointsProtocol=https;Account'
+    'AKIAIOSFODNN7EXAMPLE'
+    'ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij'
+    'gho_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij'
+    'sk-ant-api03-xxxx'
+    'SP_AWS_SECRET="wJalrXUtnFEMI/K7MDENG/""bPxRfiCYEXAMPLEKEY"'
+    'password = "mysecretpassword123"'
+    $'DB_PASSWORD: \'${SP_PW}\''
+    'password: "${DB_PASSWORD}"'
+    'password = "%(db_password)s"'
+    'password = os.environ["DB_PASSWORD"]'
+    'password = os.environ[...]'
+    'api_key = "sk_abcdefghijklmnop"'
+    $'apiKey: \'abcdefghijklmnop\''
+    'api_key = "<your-api-key-here>"'
+)
+
+strip_project_init_template_fixtures() {
+    local content="$1" lit
+    for lit in "${PROJECT_INIT_TEMPLATE_FIXTURE_LITERALS[@]}"; do
+        content="${content//"$lit"/}"
+    done
+    printf '%s' "$content"
+}
+
 is_skipped() {
     local f="$1" s
     for s in "${SKIP_FILES[@]}"; do
@@ -608,6 +642,15 @@ scan_content() {
         tests/pr-review/test-lib.sh|*/tests/pr-review/test-lib.sh| \
         tests/pr-review/test-synthesize.sh|*/tests/pr-review/test-synthesize.sh)
             content="$(strip_pr_review_test_fixtures "$content")"
+            ;;
+        # Mirrored project-init scaffolder templates (source tree and both
+        # generated packages) — same exact-literal strip, see
+        # PROJECT_INIT_TEMPLATE_FIXTURE_LITERALS.
+        plugins/project-init/skills/project-scaffolder/references/hook-scripts.md| \
+        plugins/project-init/skills/project-scaffolder/references/tests-templates.md| \
+        packages/*/project-init/skills/project-scaffolder/references/hook-scripts.md| \
+        packages/*/project-init/skills/project-scaffolder/references/tests-templates.md)
+            content="$(strip_project_init_template_fixtures "$content")"
             ;;
     esac
     case "$file" in
