@@ -57,7 +57,7 @@ outweighed the benefit, so **all divergence was cleaned up**:
 ## Sync procedure
 
 ```bash
-U="$(mktemp -d "$U".XXXXXX)"  # fresh dir; keep $U for the next steps
+U="$(mktemp -d "${TMPDIR:?set TMPDIR to a non-tmpfs directory}"/project-init-upstream.XXXXXX)"  # fresh dir; keep $U for the next steps
 git clone --depth 1 https://github.com/whchoi98/project-init.git "$U"
 
 # 1) Inspect upstream-source changes; exclude the separately owned overlay
