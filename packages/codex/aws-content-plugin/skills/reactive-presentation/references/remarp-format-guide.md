@@ -613,6 +613,7 @@ Slide directives control individual slide behavior. Place them on the line immed
 | `@timing` | `Xmin` or `Xs` | Target duration for this slide |
 | `@canvas-id` | identifier | Canvas element ID for `@type: canvas` |
 | `@fit` | `auto`, `shrink`, `off` | Autofit mode for `.slide-body` content (emits `data-fit` on the slide; overrides frontmatter `fit`). `auto` scales 0.82–1.35, `shrink` only reduces (0.82–1.0), `off` leaves the layout untouched. Unknown values → `INVALID_FIT` warning in `validate` |
+| `@hidden` | `true`, `false` | Emits `data-hidden="true"`. Navigation skips the slide; it stays reachable from the sidebar (dimmed), overview (HIDDEN badge), search and `#N`. Presenters can toggle any slide at runtime with `H`, the eye icon on a sidebar thumbnail, or the presenter window's "Hide slide" button (stored per deck in localStorage). `export_pptx.py` skips hidden slides unless `--include-hidden`. Unknown values → `INVALID_HIDDEN` warning in `validate` |
 | `@img` | `path [align] [size]` | Insert styled image (see below) |
 
 ### @img Directive

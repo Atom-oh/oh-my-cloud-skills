@@ -120,7 +120,7 @@ class DeckNavTests(DeckOverlayFixture):
 
     def test_overlay_hidden_in_overview(self):
         page = self.open()
-        page.keyboard.press("o")
+        page.keyboard.press("g")
         page.wait_for_timeout(400)
         self.assertFalse(page.is_visible("#rp-agenda-hotzone"))
         page.keyboard.press("Meta+K")

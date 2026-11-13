@@ -356,11 +356,11 @@
       else setActive(true);
     }
 
-    function chordAction(code) {
+    function keyAction(code) {
       if (MODE_CODES[code]) {
         return function () { selectMode(MODE_CODES[code], code === 'KeyP'); };
       }
-      if (code === 'KeyT') {
+      if (code === 'KeyC') {
         return function () {
           model.end();
           model.clear(getSlide());
@@ -401,19 +401,21 @@
       togglePen: function () { setActive(!controller.active); },
       setActive: setActive,
       // Consumes (preventDefault + stopImmediatePropagation) and returns true for
-      // Option chords of the key map and for plain Esc while pen mode is on.
+      // plain keys of the pen key map and for plain Esc while pen mode is on.
       handleKey: function (event) {
         if (isTypingTarget(event.target)) return false;
         if (event.ctrlKey || event.metaKey) return false;
-        // Match Alt chords by code before the IME guard: on macOS Option+U and
-        // Option+I are dead keys that Chromium may report as keyCode 229 or
-        // isComposing. preventDefault() also suppresses the dead-key mark.
-        if (event.altKey) {
-          var action = chordAction(event.code);
-          if (!action) return false;
-          consume(event);
-          if (!event.repeat) action();
-          return true;
+        // Pen keys are plain keys (no modifier), matched by physical key position
+        // (event.code) and before the IME guard so they also work while a Korean or
+        // Japanese IME is active (Chromium reports keyCode 229 for those letters).
+        // Alt/Shift chords are left to the browser and OS.
+        if (!event.altKey && !event.shiftKey) {
+          var action = keyAction(event.code);
+          if (action) {
+            consume(event);
+            if (!event.repeat) action();
+            return true;
+          }
         }
         if (event.isComposing || event.keyCode === 229) return false;
         if (event.key === 'Escape' && controller.active) {

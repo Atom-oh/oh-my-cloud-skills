@@ -7,7 +7,7 @@ sys.dont_write_bytecode = True
 
 from reactive_overlay_fixture import DeckOverlayFixture
 
-# A deck may bind plain digits through window.__remarpKeys; the pen must leave them alone.
+# A deck may bind plain digits through window.__remarpKeys; the pen owns plain 1-9 and wins.
 KEYS = "<script>window.__remarpKeys = { '3': 'last' };</script>\n"
 
 SLIDES_PEN = """<div class="slide-deck">
@@ -19,7 +19,7 @@ SLIDES_PEN = """<div class="slide-deck">
 
 CHORD = """([code, key]) => {
   const target = document.activeElement || document.body;
-  const ev = new KeyboardEvent('keydown', { code, key, altKey: true, bubbles: true, cancelable: true });
+  const ev = new KeyboardEvent('keydown', { code, key, bubbles: true, cancelable: true });
   target.dispatchEvent(ev);
   return ev.defaultPrevented;
 }"""
@@ -87,48 +87,51 @@ class DeckPenTests(DeckOverlayFixture):
         page.mouse.up()
 
     # --- tests -----------------------------------------------------------
-    def test_option_p_toggles_pen_and_does_not_open_presenter(self):
+    def test_p_toggles_pen_and_does_not_open_presenter(self):
         page = self.open_pen()
         self.assertTrue(self.chord(page, "KeyP", "π"))
         self.assertEqual(self.state(page)["active"], True)
         self.assertEqual(self.state(page)["mode"], "laser")
         self.assertTrue(self.chord(page, "KeyP", "p"))
         self.assertEqual(self.state(page)["active"], False)
-        # The real Linux/Windows path: Alt+P reports key 'p'.
-        page.keyboard.press("Alt+KeyP")
+        # A real key press (no modifier) behaves the same.
+        page.keyboard.press("KeyP")
         self.assertEqual(self.state(page)["active"], True)
-        page.keyboard.press("Alt+KeyP")
+        page.keyboard.press("KeyP")
         self.assertEqual(self.state(page)["active"], False)
         page.wait_for_timeout(300)
         self.assertEqual(self.popups, [])
         self.assertEqual(len(self.ctx.pages), 1)
 
-    def test_option_chords_do_not_trigger_framework_keys(self):
+    def test_pen_keys_do_not_trigger_framework_keys(self):
         page = self.open_pen()
         for code, key in (("KeyO", "o"), ("KeyI", "i"), ("KeyU", "u"), ("KeyY", "y"),
-                          ("KeyT", "t"), ("Digit1", "1"), ("Digit4", "4"), ("Digit3", "3")):
+                          ("KeyC", "c"), ("Digit1", "1"), ("Digit4", "4"), ("Digit3", "3")):
             self.assertTrue(self.chord(page, code, key), code)
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         page.wait_for_timeout(300)
         self.assertEqual(self.popups, [])
         self.assertFalse(page.evaluate(
             "() => document.querySelector('.slide-deck').classList.contains('overview-mode')"))
         self.assertEqual(self.active(page), 0)
 
-    def test_plain_keys_keep_working_in_pen_mode(self):
+    def test_framework_keys_keep_working_in_pen_mode(self):
         page = self.open_pen()
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.assertTrue(self.state(page)["active"])
-        page.keyboard.press("o")
+        page.keyboard.press("g")
         self.assertTrue(page.evaluate(
             "() => document.querySelector('.slide-deck').classList.contains('overview-mode')"))
-        page.keyboard.press("o")
+        page.keyboard.press("g")
         self.assertFalse(page.evaluate(
             "() => document.querySelector('.slide-deck').classList.contains('overview-mode')"))
         self.assertTrue(self.state(page)["active"])
+        # Plain digits belong to the pen (thickness/colour) even when a deck maps
+        # '3' to another action: the pen wins and the slide does not change.
         page.keyboard.press("3")
         page.wait_for_timeout(450)
-        self.assertEqual(self.active(page), 2)
+        self.assertEqual(self.active(page), 0)
+        self.assertEqual(self.state(page)["size"], 3)
         page.evaluate("""() => {
           window.__escSeen = 0;
           document.addEventListener('keydown', e => { if (e.key === 'Escape') window.__escSeen++; });
@@ -140,14 +143,14 @@ class DeckPenTests(DeckOverlayFixture):
         page.keyboard.press("Escape")
         self.assertEqual(page.evaluate("() => window.__escSeen"), 1,
                          "Esc while pen mode is off reaches the framework")
-        page.keyboard.press("ArrowLeft")
+        page.keyboard.press("ArrowRight")
         page.wait_for_timeout(450)
         self.assertEqual(self.active(page), 1)
 
     def test_drawing_in_pen_mode_paints_the_canvas_and_does_not_navigate(self):
         page = self.open_pen()
         self.assertEqual(self.inked(page), 0)
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.stroke(page, [(0.3, 0.5), (0.5, 0.55), (0.7, 0.5)])
         page.wait_for_timeout(100)
         self.assertGreater(self.inked(page), 0)
@@ -159,17 +162,17 @@ class DeckPenTests(DeckOverlayFixture):
 
     def test_laser_fades_and_pen_persists(self):
         page = self.open_pen()
-        page.keyboard.press("Alt+KeyP")
+        page.keyboard.press("KeyP")
         self.stroke(page, [(0.2, 0.2), (0.4, 0.2)])
         self.assertGreater(self.inked(page), 0)
         page.wait_for_timeout(450)
         self.assertEqual(self.inked(page), 0, "laser ink fades out")
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.stroke(page, [(0.2, 0.6), (0.4, 0.6)])
         page.wait_for_timeout(450)
         pen_pixels = self.inked(page)
         self.assertGreater(pen_pixels, 0, "pen ink persists")
-        page.keyboard.press("Alt+KeyP")
+        page.keyboard.press("KeyP")
         self.stroke(page, [(0.6, 0.3), (0.8, 0.3)])
         page.keyboard.press("ArrowRight")
         page.wait_for_timeout(450)
@@ -184,49 +187,49 @@ class DeckPenTests(DeckOverlayFixture):
 
     def test_mode_size_colour_keys(self):
         page = self.open_pen()
-        page.keyboard.press("Alt+KeyO")
-        page.keyboard.press("Alt+Digit3")
-        page.keyboard.press("Alt+Digit5")
+        page.keyboard.press("KeyO")
+        page.keyboard.press("Digit3")
+        page.keyboard.press("Digit5")
         self.assertEqual(self.state(page),
                          {"active": True, "mode": "pen", "size": 3, "colorIndex": 1})
-        page.keyboard.press("Alt+Digit9")
+        page.keyboard.press("Digit9")
         self.assertEqual(self.state(page)["colorIndex"], 5)
-        page.keyboard.press("Alt+Digit1")
+        page.keyboard.press("Digit1")
         self.assertEqual(self.state(page)["size"], 1)
         page.keyboard.press("Escape")
         self.assertFalse(self.state(page)["active"])
-        page.keyboard.press("Alt+KeyI")
+        page.keyboard.press("KeyI")
         self.assertEqual(self.state(page)["active"], True)
         self.assertEqual(self.state(page)["mode"], "highlighter")
         # Pen was set to black; the Highlighter keeps its own default yellow.
         self.assertEqual(self.state(page)["colorIndex"], 1)
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.assertEqual(self.state(page)["colorIndex"], 5)
-        page.keyboard.press("Alt+KeyI")
-        page.keyboard.press("Alt+KeyU")
+        page.keyboard.press("KeyI")
+        page.keyboard.press("KeyU")
         self.assertEqual(self.state(page)["mode"], "eraser")
         self.assertEqual(page.evaluate(
             "() => document.getElementById('rp-pen-canvas').style.cursor"), "cell")
-        page.keyboard.press("Alt+KeyP")
+        page.keyboard.press("KeyP")
         self.assertEqual(self.state(page)["mode"], "laser")
         self.assertTrue(self.state(page)["active"])
 
     def test_eraser_removes_one_stroke_and_option_t_clears(self):
         page = self.open_pen()
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.stroke(page, [(0.2, 0.3), (0.6, 0.3)])
         self.stroke(page, [(0.2, 0.7), (0.6, 0.7)])
         visible = "() => DeckPen.controller.model.visible(0).length"
         self.assertEqual(page.evaluate(visible), 2)
-        page.keyboard.press("Alt+KeyU")
+        page.keyboard.press("KeyU")
         self.stroke(page, [(0.4, 0.25), (0.4, 0.35)])
         self.assertEqual(page.evaluate(visible), 1)
         self.assertEqual(page.evaluate(
             "() => DeckPen.controller.model.visible(0)[0].points[0].y"), 0.7)
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.stroke(page, [(0.2, 0.5), (0.6, 0.5)])
         self.assertEqual(page.evaluate(visible), 2)
-        page.keyboard.press("Alt+KeyT")
+        page.keyboard.press("KeyC")
         page.wait_for_timeout(100)
         self.assertEqual(page.evaluate(visible), 0)
         self.assertEqual(self.inked(page), 0)
@@ -235,9 +238,9 @@ class DeckPenTests(DeckOverlayFixture):
         page = self.open_pen()
         visible = "() => DeckPen.controller.model.visible(0).length"
         zoom = "() => DeckPen.controller.model.zoom"
-        page.keyboard.press("Alt+KeyO")
-        page.keyboard.press("Alt+Digit3")
-        page.keyboard.press("Alt+Digit7")
+        page.keyboard.press("KeyO")
+        page.keyboard.press("Digit3")
+        page.keyboard.press("Digit7")
         self.stroke(page, [(0.2, 0.3), (0.6, 0.3)])
         self.assertEqual(page.evaluate(visible), 1)
         page.keyboard.press("Escape")
@@ -246,7 +249,7 @@ class DeckPenTests(DeckOverlayFixture):
         self.assertTrue(self.chord(page, "KeyY", "y"))
         self.assertEqual(self.state(page)["active"], True)
         self.assertEqual(self.state(page)["mode"], "magnifier")
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         page.wait_for_timeout(100)
         self.assertEqual(self.state(page)["mode"], "magnifier", "Option+Y is not a toggle")
         self.assertTrue(self.state(page)["active"])
@@ -260,25 +263,25 @@ class DeckPenTests(DeckOverlayFixture):
         self.assertTrue(self.chord(page, "Digit2", "2"))
         self.assertEqual(page.evaluate(zoom), 3)
         self.assertEqual(self.state(page)["size"], 3, "pen size unchanged")
-        page.keyboard.press("Alt+Digit1")
+        page.keyboard.press("Digit1")
         self.assertEqual(page.evaluate(zoom), 2)
-        page.keyboard.press("Alt+Digit3")
+        page.keyboard.press("Digit3")
         self.assertEqual(page.evaluate(zoom), 4)
-        page.keyboard.press("Alt+Digit2")
+        page.keyboard.press("Digit2")
         self.assertEqual(page.evaluate(zoom), 3)
         self.assertTrue(self.chord(page, "Digit5", "5"))
         self.assertEqual(page.evaluate(zoom), 3)
         self.assertEqual(self.state(page)["size"], 3)
         self.assertEqual(self.state(page)["colorIndex"], 3, "Option+5 left the colours alone")
         # Back to Pen: the previous size and colour return.
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.assertEqual(self.state(page),
                          {"active": True, "mode": "pen", "size": 3, "colorIndex": 3})
         # Zoom is remembered across modes.
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         self.assertEqual(page.evaluate(zoom), 3)
-        # Option+T clears all ink on the current slide.
-        page.keyboard.press("Alt+KeyT")
+        # C clears all ink on the current slide.
+        page.keyboard.press("KeyC")
         page.wait_for_timeout(100)
         self.assertEqual(page.evaluate(visible), 0)
         self.assertEqual(self.inked(page), 0)
@@ -292,27 +295,27 @@ class DeckPenTests(DeckOverlayFixture):
           return { hidden: s.hidden, neutral: s.classList.contains('rp-pen-swatch-neutral'),
                    inline: s.style.backgroundColor };
         }"""
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         self.assertTrue(page.locator("#rp-pen-badge").is_visible())
         self.assertEqual(page.evaluate(label), "Magnifier 2x")
         self.assertEqual(page.evaluate(swatch), {"hidden": False, "neutral": True, "inline": ""})
-        page.keyboard.press("Alt+Digit3")
+        page.keyboard.press("Digit3")
         self.assertEqual(page.evaluate(label), "Magnifier 4x")
-        page.keyboard.press("Alt+Digit2")
+        page.keyboard.press("Digit2")
         self.assertEqual(page.evaluate(label), "Magnifier 3x")
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.assertEqual(page.evaluate(label), "Pen, medium")
         info = page.evaluate(swatch)
         self.assertFalse(info["neutral"])
         self.assertNotEqual(info["inline"], "")
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         self.assertEqual(page.evaluate(label), "Magnifier 3x")
 
     def test_changing_mode_hides_the_lens_state(self):
         page = self.open_pen()
         lens = "() => Object.assign({}, DeckPen.controller.lens)"
         self.assertEqual(page.evaluate(lens)["visible"], False)
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         changes = page.evaluate("""() => {
           window.__changes = 0;
           DeckPen.controller.onChange(() => { window.__changes++; });
@@ -322,23 +325,23 @@ class DeckPenTests(DeckOverlayFixture):
         self.assertEqual(changes, 1, "setLens emits a change")
         self.assertEqual(page.evaluate(lens), {"x": 0.25, "y": 0.75, "visible": True})
         # Option+Y again keeps Magnifier and does not hide the lens.
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         self.assertTrue(page.evaluate(lens)["visible"])
         # Zoom keys do not hide it either.
-        page.keyboard.press("Alt+Digit2")
+        page.keyboard.press("Digit2")
         self.assertTrue(page.evaluate(lens)["visible"])
         for code in ("KeyP", "KeyO", "KeyI", "KeyU"):
-            page.keyboard.press("Alt+KeyY")
+            page.keyboard.press("KeyY")
             page.evaluate("() => DeckPen.controller.setLens(0.5, 0.5, true)")
-            page.keyboard.press("Alt+" + code)
+            page.keyboard.press(code)
             self.assertFalse(page.evaluate(lens)["visible"], code)
             self.assertTrue(self.state(page)["active"], code)
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         page.evaluate("() => DeckPen.controller.setLens(0.5, 0.5, true)")
         page.keyboard.press("Escape")
         self.assertFalse(self.state(page)["active"])
         self.assertFalse(page.evaluate(lens)["visible"])
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         page.evaluate("() => DeckPen.controller.setLens(0.5, 0.5, true)")
         page.evaluate("() => DeckPen.controller.setActive(false)")
         self.assertFalse(page.evaluate(lens)["visible"])
@@ -346,40 +349,45 @@ class DeckPenTests(DeckOverlayFixture):
     def test_pen_ignores_typing_targets(self):
         page = self.open_pen()
         page.focus("#pen-input")
-        page.keyboard.press("Alt+KeyO")
-        page.keyboard.press("Alt+KeyU")
-        page.keyboard.press("Alt+KeyP")
+        page.keyboard.press("KeyO")
+        page.keyboard.press("KeyU")
+        page.keyboard.press("KeyP")
         self.assertEqual(self.state(page)["active"], False)
         self.assertEqual(self.state(page)["mode"], "laser")
         page.evaluate("() => document.activeElement.blur()")
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.assertTrue(self.state(page)["active"])
         page.focus("#pen-input")
         page.keyboard.press("Escape")
         self.assertTrue(self.state(page)["active"], "Esc inside an input is left to the input")
 
-    def test_option_chords_work_when_the_browser_reports_dead_key_229(self):
+    def test_pen_keys_work_under_an_ime_and_ignore_alt_shift(self):
         page = self.open_pen()
-        send = """([code, keyCode, key, alt, composing]) => {
-          const ev = new KeyboardEvent('keydown', { code, key, altKey: alt, isComposing: composing,
-            keyCode, bubbles: true, cancelable: true });
+        send = """([code, keyCode, key, mods, composing]) => {
+          const ev = new KeyboardEvent('keydown', Object.assign({ code, key, isComposing: composing,
+            keyCode, bubbles: true, cancelable: true }, mods));
           document.body.dispatchEvent(ev);
           return ev.defaultPrevented;
         }"""
-        self.assertTrue(page.evaluate(send, ["KeyU", 229, "Dead", True, False]))
+        # Korean/Japanese IME reports keyCode 229 for letters: pen keys still work.
+        self.assertTrue(page.evaluate(send, ["KeyU", 229, "Process", {}, False]))
         self.assertEqual(self.state(page)["mode"], "eraser")
         self.assertTrue(self.state(page)["active"])
-        self.assertTrue(page.evaluate(send, ["KeyI", 229, "Dead", True, True]))
+        self.assertTrue(page.evaluate(send, ["KeyI", 229, "Process", {}, True]))
         self.assertEqual(self.state(page)["mode"], "highlighter")
-        # A plain key during IME composition is left alone, Esc included.
-        self.assertFalse(page.evaluate(send, ["Escape", 229, "Escape", False, True]))
-        self.assertFalse(page.evaluate(send, ["Escape", 229, "Escape", False, False]))
+        # Alt/Shift chords are left to the browser and OS.
+        self.assertFalse(page.evaluate(send, ["KeyO", 79, "o", {"altKey": True}, False]))
+        self.assertFalse(page.evaluate(send, ["Digit1", 49, "!", {"shiftKey": True}, False]))
+        self.assertEqual(self.state(page)["mode"], "highlighter")
+        # Esc during IME composition is left alone.
+        self.assertFalse(page.evaluate(send, ["Escape", 229, "Escape", {}, True]))
+        self.assertFalse(page.evaluate(send, ["Escape", 229, "Escape", {}, False]))
         self.assertTrue(self.state(page)["active"])
 
     def test_overview_mode_makes_the_canvas_inert(self):
         page = self.open_pen()
-        page.keyboard.press("Alt+KeyO")
-        page.keyboard.press("o")
+        page.keyboard.press("KeyO")
+        page.keyboard.press("g")
         page.wait_for_timeout(200)
         self.assertTrue(self.state(page)["active"])
         thumb = page.evaluate("""() => {
@@ -414,7 +422,7 @@ class DeckPenTests(DeckOverlayFixture):
           const orig = window.requestAnimationFrame.bind(window);
           window.requestAnimationFrame = f => { window.__raf++; return orig(f); };
         }""")
-        page.keyboard.press("Alt+KeyP")
+        page.keyboard.press("KeyP")
         self.stroke(page, [(0.2, 0.2), (0.5, 0.4)])
         self.assertGreater(page.evaluate("() => window.__raf"), 0, "the loop runs while drawing")
         page.wait_for_timeout(600)
@@ -427,16 +435,16 @@ class DeckPenTests(DeckOverlayFixture):
         page = self.open_pen()
         badge = page.locator("#rp-pen-badge")
         self.assertFalse(badge.is_visible())
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.assertTrue(badge.is_visible())
         self.assertIn("Pen", badge.inner_text())
-        page.keyboard.press("Alt+KeyI")
+        page.keyboard.press("KeyI")
         self.assertIn("Highlighter", badge.inner_text())
         page.keyboard.press("Escape")
         self.assertFalse(badge.is_visible())
 
         page = self.open_pen("pen-nobadge.html")
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.assertTrue(self.state(page)["active"])
         self.assertFalse(page.locator("#rp-pen-badge").is_visible())
 
@@ -452,7 +460,7 @@ class DeckPenTests(DeckOverlayFixture):
         for item in info:
             self.assertEqual(item, {"overlay": True, "bodyChild": True,
                                     "inSlide": False, "pointer": "none"})
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.assertEqual(page.evaluate(
             "() => getComputedStyle(document.getElementById('rp-pen-canvas')).pointerEvents"),
             "auto")
@@ -478,7 +486,7 @@ class DeckPenTests(DeckOverlayFixture):
         }""")
         self.assertEqual(info, {"role": "status", "live": "polite", "classes": True,
                                 "parts": ["rp-pen-swatch", "rp-pen-label"], "surfaces": 1})
-        page.keyboard.press("Alt+KeyU")
+        page.keyboard.press("KeyU")
         self.assertEqual(page.evaluate(
             "() => document.querySelector('#rp-pen-badge .rp-pen-label').textContent"),
             "Eraser, medium")
@@ -580,13 +588,13 @@ class DeckLensTests(DeckOverlayFixture):
         self.assertEqual(self.active(page), index)
 
     def check_centre(self, page, label):
-        page.keyboard.press("Alt+Digit1")
+        page.keyboard.press("Digit1")
         info = self.hover_lens(page, "#sq-corner")
         corner = (0, 170, 0)
         self.assertColor(self.pixel(page, info["cx"], info["cy"]), corner, label + " corner lens")
         self.assertNotEqual(self.pixel(page, info["cx"], info["cy"] + info["h"] / 2 + 20)[:3],
                             corner, label + " below the lens is not the square")
-        page.keyboard.press("Alt+Digit3")
+        page.keyboard.press("Digit3")
         info = self.hover_lens(page, "#sq-mid")
         mid = (170, 0, 170)
         self.assertColor(self.pixel(page, info["cx"], info["cy"]), mid, label + " mid lens")
@@ -597,7 +605,7 @@ class DeckLensTests(DeckOverlayFixture):
     # --- tests -----------------------------------------------------------
     def test_lens_centre_shows_the_slide_point_under_the_pointer(self):
         page = self.open("lens.html")
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         self.check_centre(page, "16:9")
         info = self.lens(page)
         deck_h = page.evaluate("() => document.querySelector('.slide-deck').getBoundingClientRect().height")
@@ -612,7 +620,7 @@ class DeckLensTests(DeckOverlayFixture):
         self.check_centre(page, "16:9 resized")
 
         page = self.open("lens-43.html")
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         self.check_centre(page, "4:3")
         page.set_viewport_size({"width": 900, "height": 800})
         page.wait_for_timeout(200)
@@ -621,7 +629,7 @@ class DeckLensTests(DeckOverlayFixture):
     def test_lens_is_inert_and_clone_has_no_ids(self):
         page = self.open("lens.html")
         self.go(page, 1)
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         self.hover_lens(page, "#term")
         info = page.evaluate("""() => {
           const l = document.querySelector('.rp-lens');
@@ -666,7 +674,7 @@ class DeckLensTests(DeckOverlayFixture):
     def test_lens_reclones_within_200ms_under_continuous_class_churn(self):
         page = self.open("lens.html")
         self.go(page, 1)
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         info = self.hover_lens(page, "#frag")
         self.assertNotEqual(self.pixel(page, info["cx"], info["cy"]), (0, 0, 200))
         # A class toggles on the live slide every 20 ms for 800 ms; the fragment
@@ -687,8 +695,8 @@ class DeckLensTests(DeckOverlayFixture):
         page = self.open("lens.html")
         # Pen ink on slide 1, bottom-left, then the Magnifier over it.
         self.go(page, 1)
-        page.keyboard.press("Alt+KeyO")
-        page.keyboard.press("Alt+Digit3")
+        page.keyboard.press("KeyO")
+        page.keyboard.press("Digit3")
         box = page.evaluate("""() => {
           const r = document.querySelector('.slide-deck').getBoundingClientRect();
           return [r.left, r.top, r.width, r.height];
@@ -698,7 +706,7 @@ class DeckLensTests(DeckOverlayFixture):
         page.mouse.down()
         page.mouse.move(*at(0.3, 0.9), steps=6)
         page.mouse.up()
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         page.mouse.move(*at(0.1, 0.88))
         page.mouse.move(*at(0.1, 0.9), steps=2)
         page.wait_for_timeout(120)
@@ -725,7 +733,7 @@ class DeckLensTests(DeckOverlayFixture):
         page = self.open("lens.html")
         page.set_viewport_size({"width": 1600, "height": 1000})
         page.wait_for_timeout(200)
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         self.assertIsNone(self.lens(page), "the lens is created lazily")
         self.hover_lens(page, "#sq-mid")
         page.mouse.move(800, 10, steps=3)
@@ -733,10 +741,10 @@ class DeckLensTests(DeckOverlayFixture):
         self.assertTrue(self.lens(page)["hidden"], "pointer left the slide")
         self.assertFalse(page.evaluate("() => DeckPen.controller.lens.visible"))
         self.hover_lens(page, "#sq-mid")
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         page.wait_for_timeout(100)
         self.assertTrue(self.lens(page)["hidden"], "mode change")
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         page.wait_for_timeout(100)
         self.assertTrue(self.lens(page)["hidden"], "reappears only on the next move")
         self.hover_lens(page, "#sq-mid")
@@ -749,10 +757,10 @@ class DeckLensTests(DeckOverlayFixture):
         self.assertTrue(page.evaluate(
             "() => Boolean(document.querySelector('.rp-lens .slide.active #term, .rp-lens .slide.active .rp-detail'))"),
             "the lens shows the new slide")
-        page.keyboard.press("o")
+        page.keyboard.press("g")
         page.wait_for_timeout(200)
         self.assertTrue(self.lens(page)["hidden"], "overview mode")
-        page.keyboard.press("o")
+        page.keyboard.press("g")
         page.wait_for_timeout(200)
         self.hover_lens(page, "#term")
         page.keyboard.press("Escape")
@@ -767,20 +775,20 @@ class DeckLensTests(DeckOverlayFixture):
           const orig = window.requestAnimationFrame.bind(window);
           window.requestAnimationFrame = f => { window.__raf++; return orig(f); };
         }""")
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         self.hover_lens(page, "#term")
         page.evaluate("() => { window.__raf = 0; }")
         page.wait_for_timeout(200)
         self.assertGreater(page.evaluate("() => window.__raf"), 3,
                            "the loop copies the slide canvas while the lens is visible")
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         page.wait_for_timeout(50)
         page.evaluate("() => { window.__raf = 0; }")
         page.wait_for_timeout(250)
         self.assertEqual(page.evaluate("() => window.__raf"), 0, "no frames after hide")
         # A slide without canvases needs no loop even while the lens is visible.
         self.go(page, 0)
-        page.keyboard.press("Alt+KeyY")
+        page.keyboard.press("KeyY")
         self.hover_lens(page, "#sq-mid")
         page.wait_for_timeout(50)
         page.evaluate("() => { window.__raf = 0; }")

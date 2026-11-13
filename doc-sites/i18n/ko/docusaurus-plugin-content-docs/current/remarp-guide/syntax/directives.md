@@ -46,6 +46,7 @@ title: "지시문"
 | `@transition` | none, fade, slide, convex, concave, zoom 등의 진입 전환 |
 | `@background` | 슬라이드의 단색, 그라데이션 또는 이미지 배경 |
 | `@timing` | `3min` 또는 `90s` 등의 발표 시간 |
+| `@hidden` | `true`이면 방향키/Space 이동에서 슬라이드를 건너뜁니다. 사이드바, 전체 보기, 검색, `#N`으로는 계속 이동할 수 있습니다. 발표 중 `H`로 바로 전환할 수도 있으며 PPTX 내보내기는 `--include-hidden`이 없으면 제외합니다 |
 | `@canvas-id` | 고유한 Canvas 요소 식별자 |
 | `@ref` | 따옴표로 감싼 출처 URL과 레이블; 여러 참조는 반복 지정 |
 | `@class` | 추가 CSS 클래스 |

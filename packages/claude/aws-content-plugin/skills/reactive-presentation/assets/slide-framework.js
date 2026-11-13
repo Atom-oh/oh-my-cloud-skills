@@ -2,6 +2,9 @@
  * Reactive Presentation - Slide Navigation Framework
  * Keyboard (←→, Space, F, Esc) + button navigation, progress bar, slide transitions
  */
+const EYE_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 19C5 19 1 12 1 12a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22"/></svg>';
+
 class SlideFramework {
   constructor(options = {}) {
     this.currentSlide = 0;
@@ -34,6 +37,8 @@ class SlideFramework {
     this.sidebar = null;
     // Custom key mappings
     this.keyMappings = {};
+    // Runtime hide overrides keyed by slide id: { [id]: true|false }. Beats data-hidden.
+    this.hiddenOverrides = {};
     this.init();
   }
 
@@ -69,6 +74,8 @@ class SlideFramework {
         if (window.__remarpTheme.pagination !== undefined) this.pagination = window.__remarpTheme.pagination;
       }
 
+      this.loadHiddenOverrides();
+      this.loadTheme();
       this.createProgressBar();
       if (!this.pagination) this.createSlideCounter();
       this.createNavHint();
@@ -86,11 +93,17 @@ class SlideFramework {
       this.bindKeys();
       this.bindTouch();
       this.handleHash();
+      // Without an explicit #hash, never open on a hidden slide.
+      if (!window.location.hash && this.isHidden(this.currentSlide)) {
+        const first = this.nextVisibleIndex(-1, 1);
+        if (first !== -1) this.currentSlide = first;
+      }
       this.bindDeckScale();
       if (this.footer) this.createFooter();
       if (this.logoSrc) this.createLogo();
       this.positionNavHint();
       this.initFragments(this.currentSlide);
+      this.applyHiddenState();
       this.showSlide(this.currentSlide, false);
       if (window.ReactiveFit) {
         window.ReactiveFit.fitAll();
@@ -236,8 +249,18 @@ class SlideFramework {
       number.className = 'sidebar-thumb-number';
       number.textContent = idx + 1;
 
+      // Eye toggle: hide/unhide this slide from sequential navigation.
+      const eye = document.createElement('button');
+      eye.type = 'button';
+      eye.className = 'sidebar-thumb-hide';
+      eye.addEventListener('click', (ev) => {
+        ev.stopPropagation(); // do not also navigate to the slide
+        this.toggleHidden(idx);
+      });
+
       thumb.appendChild(content);
       thumb.appendChild(number);
+      thumb.appendChild(eye);
       thumb.addEventListener('click', () => this.goTo(idx));
       sidebar.appendChild(thumb);
     });
@@ -340,14 +363,18 @@ class SlideFramework {
       'ArrowUp': 'up',
       'Home': 'first',
       'End': 'last',
-      'p': 'presenter',
-      'P': 'presenter',
+      'n': 'presenter',
+      'N': 'presenter',
       'f': 'fullscreen',
       'F': 'fullscreen',
-      'o': 'overview',
-      'O': 'overview',
+      'g': 'overview',
+      'G': 'overview',
       's': 'sidebar',
       'S': 'sidebar',
+      'h': 'hide',
+      'H': 'hide',
+      't': 'theme',
+      'T': 'theme',
       'Escape': 'escape'
     };
     return defaults[key] || null;
@@ -505,7 +532,7 @@ class SlideFramework {
   createNavHint() {
     const hint = document.createElement('div');
     hint.className = 'nav-hint';
-    hint.textContent = '← → Space  |  F: Fullscreen  |  P: Presenter  |  O: Overview';
+    hint.textContent = '← → Space  |  F: Fullscreen  |  N: Presenter  |  G: Overview';
     // Footer occupies the same bottom-left corner — lift the hint above it
     if (this.footer) hint.style.bottom = '2.2rem';
     (this.getDeck() || document.body).appendChild(hint);
@@ -565,6 +592,16 @@ class SlideFramework {
           e.preventDefault();
           if (!document.fullscreenElement) this.toggleSidebar();
           break;
+        case 'theme':
+          if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) break;
+          e.preventDefault();
+          this.toggleTheme();
+          break;
+        case 'hide':
+          if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) break;
+          e.preventDefault();
+          this.toggleHidden();
+          break;
         case 'escape':
           // A held Esc repeats keydown; only the first press acts.
           if (e.repeat) break;
@@ -605,12 +642,16 @@ class SlideFramework {
           if (!this.revealPrevFragment()) this.prev();
         }
         break;
-      case 'first':
-        this.goTo(0);
+      case 'first': {
+        const i = this.nextVisibleIndex(-1, 1);
+        this.goTo(i === -1 ? 0 : i);
         break;
-      case 'last':
-        this.goTo(this.totalSlides - 1);
+      }
+      case 'last': {
+        const i = this.nextVisibleIndex(this.totalSlides, -1);
+        this.goTo(i === -1 ? this.totalSlides - 1 : i);
         break;
+      }
     }
   }
 
@@ -709,9 +750,145 @@ class SlideFramework {
     }
   }
 
-  next() { this.showSlide(this.currentSlide + 1); }
-  prev() { this.showSlide(this.currentSlide - 1); }
+  // Sequential navigation skips hidden slides; goTo() (sidebar, overview,
+  // search, #hash) still reaches them. No visible slide ahead: stay put.
+  next() {
+    const i = this.nextVisibleIndex(this.currentSlide, 1);
+    if (i !== -1) this.showSlide(i);
+  }
+  prev() {
+    const i = this.nextVisibleIndex(this.currentSlide, -1);
+    if (i !== -1) this.showSlide(i);
+  }
   goTo(index) { this.showSlide(index); }
+
+  // --- Dark/light theme toggle (T) -------------------------------------------
+  // Flips the deck-level `theme-dark` class. Slides that pin a theme with `@theme`
+  // keep it. The choice is a per-viewer convenience stored in localStorage.
+  themeStorageKey() { return 'rp-theme:' + window.location.pathname; }
+
+  loadTheme() {
+    try {
+      const saved = window.localStorage.getItem(this.themeStorageKey());
+      if (saved === 'dark' || saved === 'light') this.applyTheme(saved === 'dark');
+    } catch (e) { /* storage unavailable: authored theme */ }
+  }
+
+  isDarkTheme() {
+    const deck = this.getDeck();
+    return Boolean(deck && deck.classList.contains('theme-dark'));
+  }
+
+  applyTheme(dark) {
+    const deck = this.getDeck();
+    if (!deck) return;
+    deck.classList.toggle('theme-dark', dark);
+    // Sidebar thumbnails are clones outside the deck: mirror the deck theme unless
+    // the slide pins its own.
+    if (this.sidebar) {
+      this.sidebar.querySelectorAll('.sidebar-thumb').forEach(thumb => {
+        const slide = this.slides[Number(thumb.dataset.index)];
+        const content = thumb.querySelector('.sidebar-thumb-content');
+        if (!slide || !content) return;
+        if (slide.classList.contains('theme-dark') || slide.classList.contains('theme-light')) return;
+        content.classList.toggle('theme-dark', dark);
+      });
+    }
+    const current = this.slides[this.currentSlide];
+    if (current) this.updateFooterVisibility(current); // dark/light logo swap
+  }
+
+  toggleTheme() {
+    const dark = !this.isDarkTheme();
+    this.applyTheme(dark);
+    try { window.localStorage.setItem(this.themeStorageKey(), dark ? 'dark' : 'light'); } catch (e) { /* ignore */ }
+    document.dispatchEvent(new CustomEvent('rp:themechange', { detail: { dark } }));
+    if (this.presenterView) this.presenterView.updatePresenterView();
+  }
+
+  // --- Hidden slides -------------------------------------------------------
+  // Build-time `data-hidden="true"` (Remarp `@hidden: true`) plus a per-viewer
+  // runtime toggle (H key) persisted in localStorage per deck page.
+  nextVisibleIndex(from, dir) {
+    for (let i = from + dir; i >= 0 && i < this.totalSlides; i += dir) {
+      if (!this.isHidden(i)) return i;
+    }
+    return -1;
+  }
+
+  slideId(index) {
+    const slide = this.slides[index];
+    return (slide && slide.dataset.remarpId) || String(index);
+  }
+
+  isHidden(index) {
+    const slide = this.slides[index];
+    if (!slide) return false;
+    const override = this.hiddenOverrides[this.slideId(index)];
+    if (override !== undefined) return override;
+    return slide.dataset.hidden === 'true';
+  }
+
+  hiddenStorageKey() { return 'rp-hidden:' + window.location.pathname; }
+
+  loadHiddenOverrides() {
+    try {
+      const raw = window.localStorage.getItem(this.hiddenStorageKey());
+      const parsed = raw ? JSON.parse(raw) : {};
+      if (parsed && typeof parsed === 'object') {
+        Object.keys(parsed).forEach(k => {
+          if (typeof parsed[k] === 'boolean') this.hiddenOverrides[k] = parsed[k];
+        });
+      }
+    } catch (e) { /* storage unavailable: build-time state only */ }
+  }
+
+  saveHiddenOverrides() {
+    try {
+      const key = this.hiddenStorageKey();
+      if (Object.keys(this.hiddenOverrides).length === 0) window.localStorage.removeItem(key);
+      else window.localStorage.setItem(key, JSON.stringify(this.hiddenOverrides));
+    } catch (e) { /* ignore */ }
+  }
+
+  setHidden(index, hidden) {
+    const slide = this.slides[index];
+    if (!slide) return;
+    const id = this.slideId(index);
+    // Store only deviations from the authored state.
+    if (hidden === (slide.dataset.hidden === 'true')) delete this.hiddenOverrides[id];
+    else this.hiddenOverrides[id] = hidden;
+    this.saveHiddenOverrides();
+    this.applyHiddenState();
+    document.dispatchEvent(new CustomEvent('rp:hiddenchange', { detail: { index, hidden } }));
+    if (this.presenterView) this.presenterView.updatePresenterView();
+  }
+
+  toggleHidden(index) {
+    const i = index === undefined ? this.currentSlide : index;
+    this.setHidden(i, !this.isHidden(i));
+  }
+
+  applyHiddenState() {
+    this.slides.forEach((slide, idx) => {
+      const hidden = this.isHidden(idx);
+      slide.classList.toggle('is-skipped', hidden);
+      if (this.sidebar) {
+        const thumb = this.sidebar.querySelector('.sidebar-thumb[data-index="' + idx + '"]');
+        if (thumb) {
+          thumb.classList.toggle('is-skipped', hidden);
+          const eye = thumb.querySelector('.sidebar-thumb-hide');
+          if (eye) {
+            eye.innerHTML = hidden ? EYE_OFF_SVG : EYE_SVG;
+            const label = hidden ? 'Show slide ' + (idx + 1) : 'Hide slide ' + (idx + 1);
+            eye.setAttribute('aria-label', label);
+            eye.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+            eye.title = label + ' (H)';
+          }
+        }
+      }
+    });
+  }
 
   updateProgress() {
     const pct = ((this.currentSlide + 1) / this.totalSlides) * 100;

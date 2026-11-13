@@ -225,6 +225,7 @@ Use `---` lines to separate slides. Place `@directive`s right after the `---`.
 | `@timing` | Presentation time | 3min, 90s |
 | `@canvas-id` | Canvas ID | Identifier |
 | `@fit` | Autofit of the slide body (see `references/remarp-format-guide.md`) | auto, shrink, off |
+| `@hidden` | Hide the slide from sequential navigation (arrows/Space/PageDown skip it; sidebar, overview, search and `#N` still reach it; PPTX export skips it unless `--include-hidden`) | true, false |
 
 ### Fragment Animation (`{.click}`)
 
@@ -470,9 +471,9 @@ Export options:
 | / | Search when focus is not in a form control |
 | F | Fullscreen |
 | P | Presenter view (new window) |
-| O | Slide overview (grid) |
+| G | Slide overview (grid) |
 | Esc | Close search or detail, then exit fullscreen/overview |
-| Option+P | Pen mode (laser first); see references/keyboard-shortcuts.md |
+| P | Pen mode (laser first); see references/keyboard-shortcuts.md |
 
 Keyboard customization is configured in the `keys:` section of frontmatter.
 Hover the top-right corner to open the agenda. Agenda, search, tooltips and the

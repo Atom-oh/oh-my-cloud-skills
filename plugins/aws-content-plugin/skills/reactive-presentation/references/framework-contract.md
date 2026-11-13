@@ -204,8 +204,8 @@ deck.goTo(i) / deck.next() / deck.prev()
   `id` so `getElementById()` keeps returning the live slide element, and carry the slide's
   `theme-dark`/`theme-light` class).
 - **Key map** (default): `←→ Space PageUp/Down` move + fragment · `↑↓` slideAction →
-  interactive cycling (canvas step/tabs/compare) → fragment · `Home/End` · `P` presenter ·
-  `F` fullscreen · `O` overview · `S` sidebar · `Esc`. Remap via `window.__remarpKeys`.
+  interactive cycling (canvas step/tabs/compare) → fragment · `Home/End` · `N` presenter ·
+  `F` fullscreen · `G` overview · `S` sidebar · `H` hide slide · `T` dark/light theme · `Esc`. Remap via `window.__remarpKeys`.
 - Footer/logo/page number/refs are auto-hidden only on a **full-bleed** slide: the slide (or an
   element in it) carries `data-hide-chrome` or `.full-bleed`, or one `<img>` covers at least 60% of
   the slide area. Inline images — service icons, a diagram or screenshot in a column — keep the

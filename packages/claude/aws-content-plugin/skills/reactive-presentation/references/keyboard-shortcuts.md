@@ -10,37 +10,41 @@ Shortcuts the generated slideshow supports at viewing time.
 | Cmd+K / Ctrl+K | Open slide search |
 | / | Open slide search when focus is not in a form control |
 | F | Toggle fullscreen |
-| P | Open presenter view (new window with notes, timer, slide sync; clicks in its current-slide preview are forwarded to the audience window, and the preview follows text-only changes) |
-| O | Toggle overview mode (slide grid thumbnails) |
+| N | Open presenter view / notes (new window with notes, timer, slide sync; clicks in its current-slide preview are forwarded to the audience window, and the preview follows text-only changes) |
+| G | Toggle overview mode (slide grid thumbnails) |
 | S | Toggle slide sidebar (non-fullscreen only) |
+| T | Toggle dark/light theme for the whole deck (slides pinned with `@theme` keep theirs). Stored per deck in localStorage; works in the presenter window too |
+| H | Hide/unhide the current slide (also the eye icon on each sidebar thumbnail and the presenter window's "Hide slide" button; skipped by arrows/Space; still reachable from sidebar, overview, search). Stored per deck in localStorage; works in the presenter window too |
 | Esc | Close search or detail / exit overview / leave pen mode while it is on / exit fullscreen when nothing else is open (see Pen mode for fullscreen) |
 | Home/End | First/Last slide |
 
-There is no default binding for plain `N`, `B` or the digits `1`-`9`; they do nothing
-unless a deck remaps them to an existing action (verified against `getKeyAction()` in
-`slide-framework.js` and a search of the other runtime scripts).
+Plain `P`, `O`, `I`, `U`, `Y`, `C` and the digits `1`-`9` belong to the pen (see below);
+the pen handler runs first, so a deck cannot remap them through `window.__remarpKeys`.
+`B` has no default binding.
 
 ## Pen mode
 
-`deck-pen.js` draws ink over the slide. Every pen key is an Option (Alt) chord matched
-by QWERTY key position, so on Dvorak or AZERTY-like layouts press the key in that
-position (digits use the number row positions). Plain `P`, `O`, `S`, Space and the arrow keys
-keep their meaning.
+`deck-pen.js` draws ink over the slide. Every pen key is a plain key (no Option/Alt, no
+Shift) matched by QWERTY key position, so on Dvorak or AZERTY-like layouts press the key
+in that position (digits use the number row positions). The keys also work while a
+Korean or Japanese IME is active. Alt and Shift chords are left to the browser. Pen keys
+are ignored while focus is in a text field.
+`N`, `G`, `F`, `S`, `H`, `T`, Space and the arrow keys keep their meaning.
 
 | Key | Action |
 |-----|--------|
-| Option+P | Laser: off -> on in Laser; on in another mode -> Laser; on in Laser -> off |
-| Option+O | Pen (stays on) |
-| Option+I | Highlighter (translucent, wide, stays on) |
-| Option+U | Eraser (removes whole strokes) |
-| Option+Y | Magnifier: a round lens follows the mouse (stays on) |
-| Option+T | Clear all ink on the current slide |
-| Option+1 / 2 / 3 | Thin / medium / thick; in Magnifier mode 2x / 3x / 4x zoom |
-| Option+4 / 5 / 6 / 7 / 8 / 9 | Red / yellow / green / blue / white / black; nothing in Magnifier mode |
+| P | Laser: off -> on in Laser; on in another mode -> Laser; on in Laser -> off |
+| O | Pen (stays on) |
+| I | Highlighter (translucent, wide, stays on) |
+| U | Eraser (removes whole strokes) |
+| Y | Magnifier: a round lens follows the mouse (stays on) |
+| C | Clear all ink on the current slide |
+| 1 / 2 / 3 | Thin / medium / thick; in Magnifier mode 2x / 3x / 4x zoom |
+| 4 / 5 / 6 / 7 / 8 / 9 | Red / yellow / green / blue / white / black; nothing in Magnifier mode |
 | Esc | Leave pen mode (see the fullscreen note below) |
 
-- Option+O, I, U and Y each turn pen mode on when it is off.
-- Clearing ink moved from Option+Y to Option+T when the Magnifier took Option+Y.
+- `O`, `I`, `U` and `Y` each turn pen mode on when it is off.
+- Clearing ink is `C`.
 - Defaults are red, medium. The Highlighter defaults to yellow. Each of Laser, Pen and
   Highlighter remembers its own colour; the eraser has none.
 - Esc leaves pen mode, and while pen mode is on it wins over an open agenda or detail
@@ -53,7 +57,7 @@ keep their meaning.
   background first, to exit. Fullscreen entered from the browser menu or with
   Cmd+Ctrl+F or F11 is not changed by the lock; whether Esc reaches the page there
   depends on the browser (not verified). In Safari and Firefox, Esc in
-  Fullscreen-API fullscreen exits fullscreen before the page sees it. Option+P always
+  Fullscreen-API fullscreen exits fullscreen before the page sees it. `P` always
   leaves pen mode; press it again from Pen, Highlighter, Eraser or Magnifier, which
   first switches to Laser.
 - While pen mode is on the canvas takes all pointer input over the slide, so tabs, quiz
@@ -61,13 +65,8 @@ keep their meaning.
 - Laser strokes fade after 3 seconds (`pen.fadeMs`). Pen and highlighter ink stays per
   slide for the session and is never saved.
 - Ink is mirrored between the deck window and the presenter window popup (opened with
-  `P`): ink drawn in the presenter's current-slide preview shows on the deck window at
+  `N`): ink drawn in the presenter's current-slide preview shows on the deck window at
   the same slide position. Two separate deck windows or tabs sync only the slide position.
-- Linux and Windows caveat (not verified here): Chrome or Firefox on Linux may reserve
-  Alt+1-9 for tab switching, so the thickness and colour keys may not reach the page
-  there. On Firefox for Windows, Alt+T (Option+T, clear ink) is a menu accelerator; the
-  pen handler calls `preventDefault()`, which should suppress the menu, but this was not
-  verified.
 
 ### Magnifier
 
@@ -81,9 +80,9 @@ keep their meaning.
 - The lens hides when the mouse leaves the slide, on a mode change, on a slide change
   (until the mouse moves again) and in overview mode.
 - In Magnifier mode clicks and hover do not reach the slide: no stroke, no slide
-  change, no tooltip. Option+P, O, I and U only change the mode and keep pen mode on,
+  change, no tooltip. `P`, `O`, `I` and `U` only change the mode and keep pen mode on,
   and the canvas still takes all pointer input. Clicks and hover reach the slide only
-  after pen mode is off: press Esc (where Esc reaches the page) or press Option+P twice (the first
+  after pen mode is off: press Esc (where Esc reaches the page) or press `P` twice (the first
   press switches to Laser, the second turns pen mode off).
 
 Magnifier limits:

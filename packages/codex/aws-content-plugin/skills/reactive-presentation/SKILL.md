@@ -81,7 +81,7 @@ After generating content, present the user with options: ① edit Remarp directl
 Rules: edit only the affected Remarp source; preserve Canvas/quiz/interactions in its source blocks. Never patch generated HTML independently. `sync` currently regenerates the whole project to include global configuration and asset dependencies. For VS Code, use **Approximate Text Preview** for text, **Build and Preview Compiled HTML** for saved-source output, or **Open Design Studio** (extension 0.2.0+) for compiler-backed unsaved snapshots and bounded source edits. Studio maps headings/cards, selected styles/directives and simple Canvas box/icon geometry; complex blocks remain source-editable. Its AI request is a clipboard handoff, not an automatic provider call; pasted replacement slide source is compiled as a candidate with a read-only diff before Apply/Reject. Configure `remarp.buildScriptPath` with this version of the compiler if the installed plugin lacks the `studio` command. Studio does not replace the content-review or deployment gates.
 
 ### Phase 5 — Enhancement
-Implement Canvas animations (animation-utils.js) on `@type: canvas` slides · enhance complex interactions · verify presenter view (P) notes.
+Implement Canvas animations (animation-utils.js) on `@type: canvas` slides · enhance complex interactions · verify presenter view (N) notes.
 
 ### Phase 6 — Set Up Structure
 The compiler copies the framework and referenced official icons into the output's `common/`. A project build produces `{slug}/index.html` (merged deck), `{slug}/toc.html`, `{slug}/NN-block.html`, and `{slug}/common/`. `--output DIR` changes that output root. A single-file build defaults to `slides/default.html` and `slides/common/`. Keep referenced project-local images available relative to the output; custom images are not bundled automatically.
@@ -130,7 +130,7 @@ GitHub Pages: Settings → Pages → main / root.
 ## Authoring Rules & Patterns (detailed — read while authoring/validating)
 - **[references/authoring-rules.md](references/authoring-rules.md)** — Validation rules (§1) · Forbidden AI-tells (§2) · Slide Title Voice (§3) · Interactive patterns + tab templates + color tokens (§4) · Slide Type decisions + Canvas vs html/diagram (§5) · HTML Architecture flow patterns (§6)
 - Before using `:::canvas`, always read **[references/canvas-authoring-guide.md](references/canvas-authoring-guide.md)** (DSL syntax, required coordinate formulas, fragment ordering). `validate` backstops this with CANVAS_OVERLAP.
-- Viewer keyboard shortcuts (←→ Space ↑↓ F P O S Esc; pen mode on Option+P and the magnifier on Option+Y, see its Pen mode section): [references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
+- Viewer keyboard shortcuts (←→ Space ↑↓ F N G S H T Esc; pen mode on P and the magnifier on Y, see its Pen mode section): [references/keyboard-shortcuts.md](references/keyboard-shortcuts.md).
 
 ## Quality Assurance
 - **Copy style check**: before completion, inspect authored text in Remarp and the built deck, including HTML/Canvas labels, quizzes, footers and speaker notes, for the prohibited punctuation in authoring-rules.md §2.

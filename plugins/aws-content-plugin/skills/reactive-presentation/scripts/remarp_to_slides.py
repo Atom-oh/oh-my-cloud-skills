@@ -319,6 +319,17 @@ def _load_archify_icons():
 FIT_MODES = ('auto', 'shrink', 'off')
 
 
+# `@hidden: true` marks a slide the audience skips during sequential navigation
+# (data-hidden="true"); it stays reachable via sidebar, overview, search, #hash.
+_HIDDEN_TRUE = ('true', 'yes', 'on', '1')
+_HIDDEN_FALSE = ('false', 'no', 'off', '0')
+
+
+def _is_hidden(value) -> bool:
+    """True when a raw `@hidden` directive value requests a hidden slide."""
+    return str(value).strip().lower() in _HIDDEN_TRUE
+
+
 def _normalize_fit(value) -> str:
     """Normalize a raw `fit` value to a lowercase string mode.
 
@@ -1974,6 +1985,7 @@ class RemarpHTMLGenerator:
         if _fit_mode not in FIT_MODES:
             _fit_mode = self.default_fit
         _fit_attr = f' data-fit="{_fit_mode}"' if _fit_mode in FIT_MODES else ''
+        _hidden_attr = ' data-hidden="true"' if _is_hidden(slide.directives.get('hidden', '')) else ''
         _block_attr = ''
         if self.block_key:
             _block_attr = (
@@ -1985,7 +1997,7 @@ class RemarpHTMLGenerator:
             r'<div class="slide([^"]*)"',
             lambda m: (
                 f'<div class="slide{_theme_cls}{m.group(1)}"'
-                f' data-remarp-id="s{slide.index}"{_fit_attr}{_block_attr}'),
+                f' data-remarp-id="s{slide.index}"{_fit_attr}{_hidden_attr}{_block_attr}'),
             html, count=1)
 
         # Code examples remain literal even during HTML fragment post-processing.
@@ -5683,6 +5695,14 @@ def _validate_slide(slide: Slide, md_file: Path, block_name: str) -> List[Dict[s
             add('WARNING', 'INVALID_FIT',
                 f'Unknown @fit value "{raw_fit}" — expected auto, shrink or off',
                 'Use @fit: auto|shrink|off')
+
+    # --- Rule 0b: @hidden directive value ---
+    if 'hidden' in slide.directives:
+        raw_hidden = str(slide.directives.get('hidden')).strip().lower()
+        if raw_hidden not in _HIDDEN_TRUE + _HIDDEN_FALSE:
+            add('WARNING', 'INVALID_HIDDEN',
+                f'Unknown @hidden value "{slide.directives.get("hidden")}" — expected true or false',
+                'Use @hidden: true (or remove the directive)')
 
     detail_ids = [detail['id'] for detail in slide.details]
     duplicates = sorted({

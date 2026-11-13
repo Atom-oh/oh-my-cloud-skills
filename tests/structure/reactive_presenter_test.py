@@ -260,7 +260,7 @@ class _PresenterBase(unittest.TestCase):
     # The popup helper: plain P in the deck opens the presenter window.
     def open_presenter(self):
         with self.ctx.expect_page() as info:
-            self.page.keyboard.press("p")
+            self.page.keyboard.press("n")
         self.pv = info.value
         self.pv.on("pageerror", lambda exc: self.errors.append(str(exc)))
         self.pv.set_viewport_size({"width": 1600, "height": 900})
@@ -606,7 +606,7 @@ class PresenterPenTests(_PresenterBase):
     # --- tests -----------------------------------------------------------
     def test_presenter_ink_survives_preview_rerender(self):
         self.goto(2)
-        self.pv.keyboard.press("Alt+KeyO")
+        self.pv.keyboard.press("KeyO")
         self.assertTrue(self.state())
         self.stroke(self.pv, self.preview_box(), 0.4, 0.4)
         self.assertGreater(self.pv.evaluate(INK)["n"], 0)
@@ -639,7 +639,7 @@ class PresenterPenTests(_PresenterBase):
         self.assertEqual(self.errors, [])
 
     def test_ink_drawn_in_presenter_appears_in_deck_window_at_same_slide_position(self):
-        self.pv.keyboard.press("Alt+KeyO")
+        self.pv.keyboard.press("KeyO")
         self.stroke(self.pv, self.preview_box(), 0.5, 0.5)
         self.assert_ink_at(self.page, self.deck_box(), 0.5, 0.5)
         pts = self.page.evaluate("() => DeckPen.controller.model.visible(0)[0].points.map(p => [p.x, p.y])")
@@ -649,7 +649,7 @@ class PresenterPenTests(_PresenterBase):
         self.assertAlmostEqual((pts[0][0] + pts[-1][0]) / 2 * box["w"], 0.5 * box["w"], delta=2)
 
     def test_ink_position_matches_across_windows_and_ratios(self):
-        self.pv.keyboard.press("Alt+KeyO")
+        self.pv.keyboard.press("KeyO")
         self.assert_round_trip()
         self.pv.set_viewport_size({"width": 900, "height": 1000})
         self.pv.wait_for_timeout(300)
@@ -660,7 +660,7 @@ class PresenterPenTests(_PresenterBase):
             " return Math.round(r.width / r.height * 100); }"), 133)
         self.assertEqual(self.pv.evaluate(
             "() => document.querySelector('#p-current .slide-scaler').offsetWidth"), 1440)
-        self.pv.keyboard.press("Alt+KeyO")
+        self.pv.keyboard.press("KeyO")
         self.assert_round_trip()
         self.pv.set_viewport_size({"width": 1500, "height": 600})
         self.pv.wait_for_timeout(300)
@@ -671,21 +671,21 @@ class PresenterPenTests(_PresenterBase):
           window.__changes = 0;
           DeckPen.controller.onChange(() => { window.__changes++; });
         }""")
-        self.pv.keyboard.press("Alt+KeyP")
+        self.pv.keyboard.press("KeyP")
         self.assertTrue(self.state())
         self.assertEqual(self.page.evaluate("() => DeckPen.controller.model.mode"), "laser")
         self.assertEqual(self.page.evaluate("() => window.__changes"), 1, "handled exactly once")
         self.pv.keyboard.press("ArrowRight")
         self.assert_slide_sync(1)
         self.assertTrue(self.state())
-        self.pv.keyboard.press("Alt+KeyO")
+        self.pv.keyboard.press("KeyO")
         self.assertEqual(self.page.evaluate("() => DeckPen.controller.model.mode"), "pen")
-        self.pv.keyboard.press("Alt+Digit3")
+        self.pv.keyboard.press("Digit3")
         self.assertEqual(self.page.evaluate("() => DeckPen.controller.model.size"), 3)
         self.pv.keyboard.press("Escape")
         self.assertFalse(self.state())
-        self.pv.keyboard.press("Alt+KeyP")
-        self.pv.keyboard.press("Alt+KeyP")
+        self.pv.keyboard.press("KeyP")
+        self.pv.keyboard.press("KeyP")
         self.assertFalse(self.state())
         self.pv.keyboard.press("ArrowLeft")
         self.assert_slide_sync(0)
@@ -701,7 +701,7 @@ class PresenterPenTests(_PresenterBase):
                     self.open_deck(name)
                 badge = self.pv.locator("#rp-pen-badge")
                 self.assertFalse(badge.is_visible())
-                self.pv.keyboard.press("Alt+KeyI")
+                self.pv.keyboard.press("KeyI")
                 self.assertTrue(badge.is_visible())
                 self.assertIn("Highlighter", badge.inner_text())
                 self.assertEqual(self.page.locator("#rp-pen-badge").is_visible(),
@@ -732,7 +732,7 @@ class PresenterPenTests(_PresenterBase):
         }""")
         self.assertEqual(info, {"overlay": True, "pen": True, "parent": "p-current-wrap",
                                 "position": "fixed", "pointer": "none", "penLinks": 1})
-        self.pv.keyboard.press("Alt+KeyO")
+        self.pv.keyboard.press("KeyO")
         self.assertEqual(self.pv.evaluate(
             "() => getComputedStyle(document.getElementById('rp-pen-canvas')).pointerEvents"), "auto")
         # Clicking the preview while pen mode is on draws instead of doing anything else.
@@ -748,7 +748,7 @@ class PresenterPenTests(_PresenterBase):
         self.assertEqual(info, {"penLinks": 1, "position": "fixed"})
 
     def test_closing_presenter_window_keeps_deck_ink(self):
-        self.page.keyboard.press("Alt+KeyO")
+        self.page.keyboard.press("KeyO")
         self.stroke(self.page, self.deck_box(), 0.3, 0.3)
         self.stroke(self.pv, self.preview_box(), 0.6, 0.6)
         self.assertEqual(self.page.evaluate("() => DeckPen.controller.model.visible(0).length"), 2)
@@ -776,7 +776,7 @@ class PresenterPenTests(_PresenterBase):
           const orig = window.requestAnimationFrame.bind(window);
           window.requestAnimationFrame = f => { window.__raf++; return orig(f); };
         }""")
-        self.pv.keyboard.press("Alt+KeyP")
+        self.pv.keyboard.press("KeyP")
         self.stroke(self.pv, self.preview_box(), 0.5, 0.5)
         self.assertGreater(self.pv.evaluate("() => window.__raf"), 0, "presenter frames while drawing")
         self.pv.wait_for_timeout(700)
@@ -856,7 +856,7 @@ class PresenterLensTests(_PresenterBase):
 
     # --- tests -----------------------------------------------------------
     def test_lens_mirrors_between_windows(self):
-        self.pv.keyboard.press("Alt+KeyY")
+        self.pv.keyboard.press("KeyY")
         self.assertEqual(self.page.evaluate("() => DeckPen.controller.model.mode"), "magnifier")
         self.assert_mirrored("16:9")
         self.pv.set_viewport_size({"width": 1100, "height": 760})
@@ -865,13 +865,13 @@ class PresenterLensTests(_PresenterBase):
         self.open_deck("lens-43.html")
         self.assertEqual(self.pv.evaluate(
             "() => document.querySelector('#p-current .slide-scaler').offsetWidth"), 1440)
-        self.page.keyboard.press("Alt+KeyY")
+        self.page.keyboard.press("KeyY")
         self.assert_mirrored("4:3")
         self.assertEqual(self.errors, [])
 
     def test_presenter_lens_survives_preview_rerender(self):
         self.goto(2)
-        self.pv.keyboard.press("Alt+KeyY")
+        self.pv.keyboard.press("KeyY")
         self.hover(self.pv, self.preview_box(), 0.5, 0.5)
         before = self.pv.evaluate(LENS_INFO)
         self.assertFalse(before["hidden"])
@@ -894,7 +894,7 @@ class PresenterLensTests(_PresenterBase):
         self.assertEqual(self.errors, [])
 
     def test_closing_presenter_window_keeps_deck_lens(self):
-        self.page.keyboard.press("Alt+KeyY")
+        self.page.keyboard.press("KeyY")
         mark = self.frac("#lens-mark")
         self.hover(self.page, self.deck_box(), *mark)
         deck_lens, pv_lens = self.lenses()
@@ -920,7 +920,7 @@ class PresenterLensTests(_PresenterBase):
 
     def test_lens_svg_id_references_in_both_windows(self):
         """The clone drops ids; url(#id) and <use href> still resolve in both windows."""
-        self.pv.keyboard.press("Alt+KeyY")
+        self.pv.keyboard.press("KeyY")
         for selector, colour in (("#lens-svg-grad", (0, 120, 255)), ("#lens-svg-use", (255, 140, 0))):
             fx, fy = self.frac(selector)
             for source in ("presenter", "deck"):
@@ -1103,7 +1103,7 @@ class PresenterPreviewMirrorTests(_PresenterBase):
         self.assertEqual(self.errors, [])
 
     def test_pen_mode_clicks_do_not_forward(self):
-        self.pv.keyboard.press("Alt+KeyO")
+        self.pv.keyboard.press("KeyO")
         self.assertTrue(self.page.evaluate("() => DeckPen.controller.active"))
         box = self.pv.evaluate(BOX, "#p-current .box:nth-child(2)")
         self.pv.mouse.click(box["x"] + box["w"] / 2, box["y"] + box["h"] / 2)
