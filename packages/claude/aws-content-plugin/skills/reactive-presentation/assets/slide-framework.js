@@ -83,6 +83,8 @@ class SlideFramework {
       this.createRefContainer();
       if (this.sidebarEnabled) {
         this.createSidebar();
+        // The stored theme was applied before the thumbnails existed.
+        this.applyTheme(this.isDarkTheme());
         this.bindSidebarFullscreen();
         if (!document.fullscreenElement) {
           this.showSidebar();
@@ -796,6 +798,8 @@ class SlideFramework {
     }
     const current = this.slides[this.currentSlide];
     if (current) this.updateFooterVisibility(current); // dark/light logo swap
+    // Re-resolve the canvas palette and let canvases repaint ('remarp:theme-colors').
+    if (typeof window.refreshThemeColors === 'function') window.refreshThemeColors();
   }
 
   toggleTheme() {

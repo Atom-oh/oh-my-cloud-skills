@@ -48,7 +48,7 @@ keys:
   Backspace: prev
 ```
 
-The runtime reads a key-to-action object. Supported actions are those implemented by the navigation switch. The current default map does not bind number keys, N for a notes panel, or B for blackout; older examples that list them are not the active runtime contract.
+The runtime reads a key-to-action object. Supported actions are those implemented by the navigation switch. Plain digits 1-9 and the pen letters P, O, I, U, Y and C are handled by the pen first, so mapping them has no effect. N already opens the presenter view and G the overview (the `n: next` example above replaces N's default); the default map has no blackout key B, and older examples that list one are not the active runtime contract.
 
 ## Pen mode {#pen-mode}
 

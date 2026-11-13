@@ -470,7 +470,7 @@ Export options:
 | Cmd+K / Ctrl+K | Search all slides |
 | / | Search when focus is not in a form control |
 | F | Fullscreen |
-| P | Presenter view (new window) |
+| N | Presenter view (new window) |
 | G | Slide overview (grid) |
 | Esc | Close search or detail, then exit fullscreen/overview |
 | P | Pen mode (laser first); see references/keyboard-shortcuts.md |

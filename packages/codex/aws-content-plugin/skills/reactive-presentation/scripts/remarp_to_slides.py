@@ -3177,6 +3177,7 @@ class RemarpHTMLGenerator:
 
   draw();
   new ResizeObserver(() => {{ resizeCanvas(); draw(); }}).observe(container);
+  document.addEventListener('remarp:theme-colors', () => draw());
 
   const slide = canvas.closest('.slide');
   if (slide) {{
@@ -3210,6 +3211,7 @@ class RemarpHTMLGenerator:
 
   draw();
   new ResizeObserver(() => {{ resizeCanvas(); draw(); }}).observe(container);
+  document.addEventListener('remarp:theme-colors', () => draw());
 }})();'''
 
         return js
@@ -3257,6 +3259,7 @@ class RemarpHTMLGenerator:
 
   draw();
   new ResizeObserver(() => {{ resizeCanvas(); draw(); }}).observe(container);
+  document.addEventListener('remarp:theme-colors', () => draw());
 
   // Register slide actions for up/down navigation
   const slideEl = canvas.closest('.slide');

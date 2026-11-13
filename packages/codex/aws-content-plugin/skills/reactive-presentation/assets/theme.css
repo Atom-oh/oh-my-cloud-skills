@@ -244,6 +244,12 @@ body {
   background: var(--surface-1);
   color: var(--on-surface);
 }
+/* A slide pinned light (@theme: light) inside a dark deck (frontmatter or the T toggle)
+   needs its own light surface; the deck background is dark there. */
+.slide-deck.theme-dark .slide.theme-light {
+  background: var(--surface-1);
+  color: var(--on-surface);
+}
 .slide.active {
   display: flex;
   opacity: 1;

@@ -42,6 +42,32 @@ class ThemeToggleTests(DeckOverlayFixture):
         page.keyboard.press("T")
         self.assertFalse(self.deck_dark(page))
 
+    def test_pinned_light_slide_keeps_a_light_surface_in_a_dark_deck(self):
+        page = self.open("t.html#2")
+        page.keyboard.press("t")
+        self.assertTrue(self.deck_dark(page))
+        bg = page.evaluate("() => getComputedStyle(document.querySelectorAll('.slide-deck .slide')[1]).backgroundColor")
+        deck = page.evaluate("() => getComputedStyle(document.querySelector('.slide-deck')).backgroundColor")
+        self.assertNotEqual(bg, "rgba(0, 0, 0, 0)", "pinned-light slide has its own surface")
+        self.assertNotEqual(bg, deck)
+
+    def test_stored_dark_theme_reaches_sidebar_thumbs_after_reload(self):
+        page = self.open("t.html")
+        page.keyboard.press("t")
+        page.reload(wait_until="networkidle")
+        page.wait_for_timeout(300)
+        self.assertTrue(page.evaluate(
+            "() => document.querySelector('.sidebar-thumb[data-index=\"0\"] .sidebar-thumb-content').classList.contains('theme-dark')"))
+
+    def test_t_refreshes_canvas_colors_and_notifies(self):
+        page = self.open("t.html")
+        page.evaluate("""() => {
+          window.__themeEvents = 0;
+          window.refreshThemeColors = function () { window.__themeEvents++; };
+        }""")
+        page.keyboard.press("t")
+        self.assertEqual(page.evaluate("() => window.__themeEvents"), 1)
+
     def test_t_ignored_while_typing_and_with_modifiers(self):
         page = self.open("t.html")
         page.keyboard.press("Control+t")

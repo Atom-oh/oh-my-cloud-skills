@@ -9,3 +9,6 @@ if RP_THEME_OUTPUT=$(python3 tests/structure/reactive_theme_test.py 2>&1); then
 else
   fail "theme toggle" "$RP_THEME_OUTPUT"
 fi
+RP_THEME_SRC="$(cat plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py)"
+RP_THEME_LISTENERS="$(grep -c "document.addEventListener('remarp:theme-colors'" <<< "$RP_THEME_SRC")"
+assert_eq "3" "$RP_THEME_LISTENERS" "compiled canvas code (DSL, DSL steps, presets) repaints on remarp:theme-colors"
