@@ -46,6 +46,7 @@ Directives begin with `@` and belong before the slide heading/content, immediate
 | `@transition` | Entry transition such as none, fade, slide, convex, concave, or zoom |
 | `@background` | Slide color, gradient, or image background |
 | `@timing` | Speaking time such as `3min` or `90s` |
+| `@hidden` | `true` hides the slide from arrow/Space navigation; it stays reachable from the sidebar, overview, search and `#N`. Speakers can also toggle it live with `H`; PPTX export skips it unless `--include-hidden` |
 | `@canvas-id` | Unique Canvas element identifier |
 | `@ref` | Quoted source URL and label; repeat for several references |
 | `@class` | Additional CSS classes |

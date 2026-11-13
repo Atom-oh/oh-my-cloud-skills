@@ -171,6 +171,12 @@ _PREPARE_JS = """
 }
 """
 
+_HIDDEN_JS = """
+() => Array.from(document.querySelectorAll('.slide-deck .slide'))
+  .map((el, i) => (el.dataset.hidden === 'true' ? i : -1))
+  .filter(i => i >= 0)
+"""
+
 _SHOW_SLIDE_JS = """
 (idx) => {
   const slides = document.querySelectorAll('.slide-deck .slide');
@@ -309,7 +315,7 @@ def _details_to_text(details: List[Dict[str, str]], lang: str) -> str:
 
 
 def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, scale: int,
-           base_url: str = ''):
+           base_url: str = '', include_hidden: bool = False):
     from playwright.sync_api import sync_playwright
     from pptx import Presentation
     from pptx.util import Inches
@@ -369,7 +375,13 @@ def export(project_dir: Path, out_path: Path, blocks, width: int, height: int, s
                         prs.slide_width = Inches(round(7.5 * width / height, 3))
                     slide_size_set = True
 
+                # Build-time `@hidden: true` slides are skipped by default.
+                hidden_idx = set(page.evaluate(_HIDDEN_JS) or [])
                 for i in range(slide_count):
+                    if i in hidden_idx and not include_hidden:
+                        print(f"  (skip) {block} slide {i + 1}/{slide_count} is hidden "
+                              f"(use --include-hidden to export it)")
+                        continue
                     title = page.evaluate(_SHOW_SLIDE_JS, i)
                     # Media inside the now-visible slide (images, formerly
                     # lazy iframes) must finish loading before capture.
@@ -457,6 +469,8 @@ def main():
                          'each slide\'s speaker notes (ADR-020 Decision 4). Should end '
                          'with a trailing "/" — urllib.parse.urljoin drops the last path '
                          'segment of a base that does not.')
+    ap.add_argument('--include-hidden', action='store_true',
+                    help='Also export slides marked `@hidden: true` (skipped by default).')
     args = ap.parse_args()
 
     _import_deps()
@@ -481,7 +495,8 @@ def main():
     out_path = Path(args.output) if args.output else project_dir / f"{project_dir.name}.pptx"
 
     print(f"Exporting {len(blocks)} file(s) from {project_dir} → {out_path}")
-    export(project_dir, out_path, blocks, args.width, args.height, args.scale, args.base_url)
+    export(project_dir, out_path, blocks, args.width, args.height, args.scale, args.base_url,
+           include_hidden=args.include_hidden)
 
 
 if __name__ == '__main__':

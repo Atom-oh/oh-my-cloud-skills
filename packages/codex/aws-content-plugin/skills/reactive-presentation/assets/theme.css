@@ -244,6 +244,12 @@ body {
   background: var(--surface-1);
   color: var(--on-surface);
 }
+/* A slide pinned light (@theme: light) inside a dark deck (frontmatter or the T toggle)
+   needs its own light surface; the deck background is dark there. */
+.slide-deck.theme-dark .slide.theme-light {
+  background: var(--surface-1);
+  color: var(--on-surface);
+}
 .slide.active {
   display: flex;
   opacity: 1;
@@ -1849,6 +1855,44 @@ body.sidebar-visible .slide-deck {
   border-color: var(--accent);
   box-shadow: 0 0 10px var(--accent-glow);
 }
+
+/* Hidden (skipped) slides: dimmed + dashed in the sidebar, badge in overview */
+.sidebar-thumb.is-skipped { border-style: dashed; }
+.overview-mode .slide.is-skipped { opacity: .45; border-style: dashed; }
+.overview-mode .slide.is-skipped::after {
+  content: 'HIDDEN';
+  position: absolute;
+  top: 12px; right: 12px;
+  padding: 4px 12px;
+  font: 600 22px/1 system-ui, sans-serif;
+  letter-spacing: .08em;
+  color: #fff;
+  background: rgba(0, 0, 0, .75);
+  border-radius: 4px;
+}
+
+/* Sidebar eye toggle: shown on hover/focus, always on for hidden slides */
+.sidebar-thumb-hide {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  color: #fff;
+  background: rgba(0, 0, 0, .75);
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  z-index: 3;
+}
+.sidebar-thumb:hover .sidebar-thumb-hide,
+.sidebar-thumb-hide:focus-visible,
+.sidebar-thumb.is-skipped .sidebar-thumb-hide { opacity: 1; }
+.sidebar-thumb-hide:hover { background: var(--accent, #3b82f6); }
+.sidebar-thumb.is-skipped { opacity: 1; }
+.sidebar-thumb.is-skipped .sidebar-thumb-content { opacity: .4; }
 
 .sidebar-thumb-number {
   position: absolute;

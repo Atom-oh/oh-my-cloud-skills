@@ -92,7 +92,7 @@ class DeckFullscreenLockTests(DeckOverlayFixture):
     def test_esc_in_fullscreen_leaves_pen_mode_before_fullscreen(self):
         page = self.open_stub(STUB_OK)
         self.toggle_fs(page, True)
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.assertTrue(page.evaluate("() => DeckPen.controller.active"))
         page.evaluate(ESC)
         self.assertFalse(page.evaluate("() => DeckPen.controller.active"))
@@ -104,7 +104,7 @@ class DeckFullscreenLockTests(DeckOverlayFixture):
     def test_held_esc_does_not_exit_fullscreen_after_leaving_pen_mode(self):
         page = self.open_stub(STUB_OK)
         self.toggle_fs(page, True)
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         self.assertTrue(page.evaluate("() => DeckPen.controller.active"))
         page.evaluate(ESC)
         for _ in range(4):
@@ -118,7 +118,7 @@ class DeckFullscreenLockTests(DeckOverlayFixture):
     def test_held_esc_repeats_are_consumed_while_pen_is_on(self):
         page = self.open_stub(STUB_OK)
         self.toggle_fs(page, True)
-        page.keyboard.press("Alt+KeyO")
+        page.keyboard.press("KeyO")
         # A repeat Escape with pen on must not turn pen off or exit fullscreen.
         prevented = page.evaluate("""() => {
           const e = new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true, repeat: true});
@@ -133,7 +133,7 @@ class DeckFullscreenLockTests(DeckOverlayFixture):
         page = self.open_stub(STUB_OK)
         self.toggle_fs(page, True)
         overview = "() => document.querySelector('.slide-deck').classList.contains('overview-mode')"
-        page.keyboard.press("o")
+        page.keyboard.press("g")
         self.assertTrue(page.evaluate(overview))
         page.evaluate(ESC)
         self.assertFalse(page.evaluate(overview))

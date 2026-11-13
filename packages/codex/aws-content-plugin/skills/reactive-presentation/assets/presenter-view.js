@@ -1,6 +1,6 @@
 /**
  * Presenter View - Dual window slide presentation with notes, timer, and sync
- * Press 'P' to open presenter view (handled by SlideFramework)
+ * Press 'N' to open presenter view (handled by SlideFramework)
  * Draggable splitters between slides/notes and current/next slide
  * Copies main document stylesheets for faithful slide preview rendering
  */
@@ -456,6 +456,7 @@ ${styleSheets}
 
 <div class="presenter-nav">
   <button id="p-prev">&larr; Previous</button>
+  <button id="p-hide-btn" aria-pressed="false">Hide slide</button>
   <button id="p-next-btn">Next &rarr;</button>
 </div>
 
@@ -559,6 +560,11 @@ ${styleSheets}
       this.updatePresenterView();
     };
 
+    doc.getElementById('p-hide-btn').onclick = () => {
+      this.framework.toggleHidden();
+      this.updatePresenterView();
+    };
+
     doc.getElementById('p-next-btn').onclick = () => {
       this.framework.next();
       this.broadcastSlideChange(this.framework.currentSlide);
@@ -587,6 +593,18 @@ ${styleSheets}
           }
           this.framework.handleNavigationAction(action);
           // Steps may change the current slide without triggering showSlide().
+          this.updatePresenterView();
+          break;
+        case 'theme':
+          if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) break;
+          e.preventDefault();
+          this.framework.toggleTheme();
+          this.updatePresenterView();
+          break;
+        case 'hide':
+          if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) break;
+          e.preventDefault();
+          this.framework.toggleHidden();
           this.updatePresenterView();
           break;
       }
@@ -786,10 +804,18 @@ ${styleSheets}
     this._renderSlidePreview(doc, currentEl, slides[idx], false);
     this._observeCurrentSlide(slides[idx]);
 
-    // Next slide
+    const hideBtn = doc.getElementById('p-hide-btn');
+    if (hideBtn) {
+      const hidden = this.framework.isHidden(idx);
+      hideBtn.textContent = hidden ? 'Show slide' : 'Hide slide';
+      hideBtn.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+    }
+
+    // Next slide: the one Next will actually land on (hidden slides are skipped).
     const nextEl = doc.getElementById('p-next');
-    if (idx + 1 < slides.length) {
-      this._renderSlidePreview(doc, nextEl, slides[idx + 1], true);
+    const nextIdx = this.framework.nextVisibleIndex(idx, 1);
+    if (nextIdx !== -1) {
+      this._renderSlidePreview(doc, nextEl, slides[nextIdx], true);
     } else {
       nextEl.innerHTML = '<div class="end-message">End of presentation</div>';
     }

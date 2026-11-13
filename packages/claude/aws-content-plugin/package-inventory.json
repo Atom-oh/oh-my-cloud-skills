@@ -452,11 +452,11 @@
       "executable": false
     },
     "skills/reactive-presentation/REMARP.md": {
-      "sha256": "1ce24bfe9f21a10c0a13d5d91c6bf76aee774119444559232b17c36d72859a2b",
+      "sha256": "0e88d4c4c2a6451c0d1313ce9560b978323ef8e26ed12686467ef66ee7c0775b",
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
-      "sha256": "d5d508e228739f533f3666eb5b8743faa379d414dfa90420d955e23764351fc7",
+      "sha256": "e272c4af307961329ace61922ace9f548cec27a197e61efab118f93362970bd9",
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
@@ -496,7 +496,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-pen.js": {
-      "sha256": "e3ba5955a3fb87b89dfcc7d68736f887701d26769d3b04bf7b6259a7e0e5ab3d",
+      "sha256": "e3268bd635d5c7e8cd40fa057cbee344bd3653c7e0f2d108fc14fe2f5fe7e891",
       "executable": false
     },
     "skills/reactive-presentation/assets/design-tokens.css": {
@@ -516,7 +516,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
-      "sha256": "c89401398d4e2e96be0dcf311be9f9ced9762887572d2ceccf3ca0c2d8d58875",
+      "sha256": "d46fd17afabf02d1c8c046550d40a67bc3783e68e540090b738028c52abee0d3",
       "executable": false
     },
     "skills/reactive-presentation/assets/quiz-component.js": {
@@ -524,7 +524,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-framework.js": {
-      "sha256": "b552cecb25ffe9739bb6fa935e91cf5921969fa8f4dded0e019459ab43091c38",
+      "sha256": "611f229979bdf6517d22dabdf2e6a3577334345dcc1a510318b2051d5f6f37e8",
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-renderer.js": {
@@ -536,7 +536,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/theme.css": {
-      "sha256": "0eda7871fe93b477dc55eb431fbf7d4bb59e8c84aa474434e6feec0bb9abb88b",
+      "sha256": "1063d9287e032f918d2e234d8349f25fd7ae5403830f0b1fcb3ed5b9b9661602",
       "executable": false
     },
     "skills/reactive-presentation/icons/AgentCore/dark-blue/AI-Agent.png": {
@@ -17328,11 +17328,11 @@
       "executable": false
     },
     "skills/reactive-presentation/references/framework-contract.md": {
-      "sha256": "ab1af2526f4d0d52263f7ca200705b1005d8b8c3b97a44f2965d6e814dba5160",
+      "sha256": "87c07f97bc0286dd18435fd429547ee3df9b0a84a1769d5c04aa07804d80d401",
       "executable": false
     },
     "skills/reactive-presentation/references/framework-guide.md": {
-      "sha256": "f79a635b996a985dfb1ef7fe6c81c0c0f9997df2a3631dcb0580a57ab8f06aa7",
+      "sha256": "141e84db340b752b1ce72baf3c120893090d6bcff90ae2d9c3ded507d391a7a7",
       "executable": false
     },
     "skills/reactive-presentation/references/interactive-patterns-guide.md": {
@@ -17340,7 +17340,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/keyboard-shortcuts.md": {
-      "sha256": "e3fa81dfe2f879b22ef6f3d017b10a7392e73b1c91bc411eb8dff2c1d1d8f95c",
+      "sha256": "f7248997a49098342a825077876747ecc2d1d9c561e2a2e57cf14f3c6149ca05",
       "executable": false
     },
     "skills/reactive-presentation/references/marp-format-guide.md": {
@@ -17352,7 +17352,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/remarp-format-guide.md": {
-      "sha256": "862403f281d8bbef55d1a4023164c39fc713454ae2da3d270d72c4e5d807f213",
+      "sha256": "a8e6f1b09bbc4834f880cc2af80a9a2a0e441d1ba2fbb994f7bcb98df550ccb7",
       "executable": false
     },
     "skills/reactive-presentation/references/slide-patterns.md": {
@@ -17372,7 +17372,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/export_pptx.py": {
-      "sha256": "f6cffe3f09961df00cc3d08e1817f1b00cd5d74ddf2f72fb24bf7870add4a9a7",
+      "sha256": "4f611aa7a3fd2027a7ec12fd1775216406a340ae70eda96ecb1eeb7116b7441a",
       "executable": false
     },
     "skills/reactive-presentation/scripts/extract_aws_icons.py": {
@@ -17396,7 +17396,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {
-      "sha256": "0822a4f5083abaab52db043c78cfe29c3a685870f7d7d38a00b62bc863c941e6",
+      "sha256": "febe7fec7271f1eca3c2354c4633eb515bb9bf9ff783c3f4538d06d46f34ef7f",
       "executable": false
     },
     "skills/slide-fix/SKILL.md": {

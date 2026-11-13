@@ -303,7 +303,7 @@ class DeckDetailTests(DeckOverlayFixture):
         page = self.open()
         page.click('.slide-deck > .slide .rp-detail[data-detail="vxlan"]')
         page.wait_for_timeout(200)
-        page.keyboard.press("o")
+        page.keyboard.press("g")
         page.wait_for_timeout(300)
         self.assertFalse(self.has_body_class(page, "rp-detail-open"))
 
@@ -346,7 +346,7 @@ class DeckDetailTests(DeckOverlayFixture):
 
     def test_overview_term_enter_does_not_open_panel(self):
         page = self.open()
-        page.keyboard.press("o")
+        page.keyboard.press("g")
         page.wait_for_timeout(300)
         page.evaluate("() => document.querySelector('.slide-deck > .slide .rp-detail[data-detail=vxlan]').focus()")
         page.keyboard.press("Enter")
