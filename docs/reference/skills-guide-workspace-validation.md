@@ -32,7 +32,7 @@ inline syntax, and packaging rejects source citations without a built page.
 | TypeScript | Passed after review fixes |
 | Site regression tests | 133 passed in the final package build |
 | Bilingual coverage | 100 page pairs and four catalogs passed |
-| Server regressions | 14 passed, including real HTTP listeners |
+| Server regressions | 15 passed, including real HTTP listeners |
 | Claude and Codex manifest validators | Both passed |
 | Generated package freshness | 9,289 files checked |
 | Skill evaluation | 21 PASS, zero REVIEW/FAIL |
@@ -87,9 +87,9 @@ claimed from local review or degraded CI coverage.
 ## Deployment preparation and publication
 
 ZIP SHA-256:
-`6a8bb704e980f14190a82729d0fb28b3f9fc5f19652b67a4a819dad4ab1452a8`.
-The uncompressed package is 82,541,398 bytes. It is staged as an immutable version
-in the existing private bucket, with a new CloudFormation update change set.
+`a7f2b4d84998ceca4ab2a0f34912c656c0bc59b65d956996b166463bc46ccfc3`.
+The uncompressed package is 82,541,520 bytes. The updated candidate is built; the prepared change set must be refreshed to this
+artifact before production activation.
 Superseded unexecuted change sets were removed; the previous deployed source
 version is retained.
 
@@ -106,3 +106,19 @@ was sent through an alternate service.
 
 Production activation awaits the final independent review of the fixes, followed
 by cache invalidation and a new public-site/authenticated-provider smoke test.
+
+## Follow-up review and correction
+
+The independent review of `524ea77d` passed content at **88.5/90**, with one
+typography warning. It found a separate HTTP draining defect: resuming inside the
+iterator was undone by iterator cleanup. The correction moves draining outside
+that cleanup boundary. A real TCP regression first reproduced the stalled delayed
+1 MiB remainder, then confirmed a 400 response followed by a successful 200 response
+on the same connection. All 15 server tests and the 133-test site build passed.
+
+The user explicitly approved the regression-test execution-surface exception.
+The fix was landed through the isolated, hashed `land_delta.sh` pipeline as
+`dc69e8d0` (pr-autofix iteration 1/5); the optional push gate was configured off.
+The existing public homepage and health endpoint both returned 200 at
+2026-11-14 11:49:24 UTC. This remains evidence for the initial deployment,
+not a claim that the new candidate is already live.
