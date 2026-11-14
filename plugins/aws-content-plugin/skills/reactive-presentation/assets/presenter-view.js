@@ -364,6 +364,15 @@ ${styleSheets}
     padding-left: 1.5em;
   }
   .presenter-notes .notes-content li { margin: 0.3em 0; }
+  .presenter-notes .notes-content .rp-step-mark {
+    display: inline-block;
+    background: var(--accent, #ec7211);
+    color: #fff;
+    font-weight: 700;
+    padding: 0 0.35em;
+    border-radius: 0.3em;
+    line-height: 1.3;
+  }
   .presenter-notes .notes-content strong { color: #fff; font-weight: 600; }
   .presenter-notes .notes-content code {
     background: var(--accent-subtle, rgba(236, 114, 17, 0.15));
@@ -1110,12 +1119,25 @@ ${styleSheets}
   renderRichNotes(text) {
     if (!text) return 'No notes for this slide.';
 
-    // Convert markdown-like formatting to HTML
-    let html = text
-      // Escape HTML first
+    // Convert markdown-like formatting to HTML. Escape first; the step-mark badge is
+    // added after the escape so note text can never inject markup.
+    const korean = /^ko/i.test((document.documentElement.lang || ''));
+    const badge = `<span class="rp-step-mark" title="${korean ? '여기서 ↓' : 'press ↓ here'}">↓</span>`;
+    const escaped = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
+      .split('\n')
+      .map((line) => {
+        // Summary / source / abbreviation lines are not script text.
+        if (/\[(요약|출처|약어)\]/.test(line)) return line;
+        // A {...} marker span keeps a plain arrow.
+        return line.split(/(\{[^}]*\})/).map((part) => (
+          part.startsWith('{') && part.endsWith('}') ? part : part.replace(/↓/g, badge)
+        )).join('');
+      })
+      .join('\n');
+    let html = escaped
       // Bold
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       // Inline code

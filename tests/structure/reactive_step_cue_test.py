@@ -215,6 +215,51 @@ class StepCueEnTests(_Base):
         self.wait_cue("↓ this slide has steps")
 
 
+class StepMarkBadgeTests(_Base):
+    def set_note(self, text):
+        self.page.evaluate("t => { deck.presenterNotes[1] = t; }", text)
+        self.page.evaluate("() => deck.presenterView.updatePresenterView()")
+        self.pv.wait_for_function("t => document.getElementById('p-notes').textContent.length > 0", arg=text)
+
+    def marks(self):
+        return self.pv.evaluate("() => document.querySelectorAll('#p-notes .rp-step-mark').length")
+
+    def test_marks_become_badges(self):
+        self.set_note("A↓ B↓")
+        self.assertEqual(self.marks(), 2)
+        self.assertEqual(self.pv.get_attribute("#p-notes .rp-step-mark", "title"), "여기서 ↓")
+
+    def test_marks_in_meta_lines_stay_plain(self):
+        self.set_note("[요약] 한 줄↓")
+        self.assertEqual(self.marks(), 0)
+        self.assertIn("↓", self.pv.inner_text("#p-notes"))
+        self.set_note("대본↓\n[출처] x↓\n[약어] y↓\n끝 {여기↓} 다시↓")
+        self.assertEqual(self.marks(), 2)
+
+    def test_html_still_escaped(self):
+        self.set_note("<b>↓</b>")
+        self.assertEqual(self.marks(), 1)
+        self.assertEqual(self.pv.evaluate("() => document.querySelectorAll('#p-notes b').length"), 0)
+        self.assertIn("<b>", self.pv.inner_text("#p-notes"))
+
+    def test_note_edit_still_works(self):
+        self.set_note("A↓ B")
+        self.pv.click("#p-note-edit")
+        self.assertEqual(self.pv.input_value("#p-notes textarea"), "A↓ B")
+        self.pv.fill("#p-notes textarea", "C↓ D↓")
+        self.pv.click("#p-note-edit")
+        self.assertEqual(self.marks(), 2)
+
+
+class StepMarkBadgeEnTests(_Base):
+    LANG = "en"
+
+    def test_english_title(self):
+        self.page.evaluate("() => { deck.presenterNotes[1] = 'A↓'; deck.presenterView.updatePresenterView(); }")
+        self.pv.wait_for_selector("#p-notes .rp-step-mark")
+        self.assertEqual(self.pv.get_attribute("#p-notes .rp-step-mark", "title"), "press ↓ here")
+
+
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result
     if result.skipped and result.testsRun <= len(result.skipped):
