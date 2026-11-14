@@ -119,7 +119,7 @@ python3 {skill-dir}/scripts/export_pptx.py {repo}/{slug}/ -o {slug}.pptx
 - Browser path (no tool installation needed): the **Export PPTX** button in `toc.html` (`ExportUtils.exportPPTX`, html2canvas+PptxGenJS CDN — the headless path gives better quality).
 - Each slide is captured with all fragments revealed and the Canvas in its final step state, and `:::notes` becomes the PPTX speaker notes.
 - Trust boundary: export only **decks you built yourself** (during capture, the deck's HTML/JS executes in a headless browser).
-- **If a native (editable) PPTX is needed**, route to the `aws-light-fcd` skill instead of this one (per the presentation-agent dispatcher rule).
+- **If a native (editable) PPTX is needed**, route to the `aws-light-fcd` skill instead of this one.
 
 ### Phase 9 — Deploy
 ```bash

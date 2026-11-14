@@ -17,21 +17,28 @@
   pointer-events: auto;
 }
 
+/* Mode badge: a small, dimmed dot in the corner instead of a text pill, so it never covers the
+   slide title. The mode and size stay in the DOM as a visually hidden label (a live region for
+   assistive technology); the shape of the dot tells the mode: laser = dot with a ring,
+   pen = dot, highlighter = wide bar, eraser = hollow ring, magnifier = neutral dot. */
 .rp-pen-badge {
   position: fixed;
   z-index: var(--z-overlay);
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-3);
-  padding: var(--space-1) var(--space-3);
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1.5em;
+  height: 1.5em;
+  margin: var(--space-2);
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   background: var(--surface-1);
-  box-shadow: var(--shadow-2);
   color: var(--on-surface);
   font-size: calc(var(--rp-ui-rem, 1rem) * .833);
-  line-height: var(--leading-normal);
+  line-height: 1;
+  opacity: .55;
   pointer-events: none;
   user-select: none;
 }
@@ -41,10 +48,38 @@
   display: none;
 }
 
+.rp-pen-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .rp-pen-swatch {
-  width: .9em;
-  height: .9em;
+  width: .7em;
+  height: .7em;
   border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+
+.rp-pen-badge[data-mode="laser"] .rp-pen-swatch {
+  box-shadow: 0 0 0 .2em var(--border);
+}
+
+.rp-pen-badge[data-mode="highlighter"] .rp-pen-swatch {
+  width: 1em;
+  height: .45em;
+  border-radius: .15em;
+}
+
+.rp-pen-badge[data-mode="eraser"]::before {
+  content: "";
+  width: .7em;
+  height: .7em;
+  box-sizing: border-box;
+  border: 2px solid var(--on-surface-muted);
   border-radius: var(--radius-pill);
 }
 

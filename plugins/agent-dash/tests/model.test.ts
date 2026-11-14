@@ -209,7 +209,7 @@ describe('resolveModel', () => {
   test('the default policy is off and maps only repository roles to aliases', () => {
     expect(DEFAULT_POLICY.enabled).toBe(false)
     for (const v of Object.values(DEFAULT_POLICY.map)) expect(['opus', 'sonnet', 'haiku']).toContain(v)
-    expect(DEFAULT_POLICY.map['aws-content-plugin:presentation-agent']).toBe('sonnet')
+    expect(DEFAULT_POLICY.map['aws-content-plugin:content-review-agent']).toBe('opus')
   })
 })
 

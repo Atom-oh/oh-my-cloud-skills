@@ -70,7 +70,7 @@ Generate with architecture-diagram-agent, exported as PNG at 2x scale.
      (root page: .gitbook/assets/…, chapter page: ../.gitbook/assets/…) -->
 <iframe src="../.gitbook/assets/traffic-flow.html" width="100%" height="500" frameborder="0"></iframe>
 ```
-Generate with animated-diagram-agent.
+Generate with the animated-diagram skill.
 
 ---
 

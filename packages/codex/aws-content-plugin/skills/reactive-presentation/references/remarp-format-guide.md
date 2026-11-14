@@ -1324,7 +1324,7 @@ animate();
 
 ### Canvas Prompt (LLM-Assisted)
 
-Use `:::canvas prompt` or the shorthand `:::prompt` to describe an animation in natural language. The presentation-agent reads the prompt, consults the `canvas-animation-prompt.md` reference, generates Canvas JS code, and replaces the block with `:::canvas js` before building HTML.
+Use `:::canvas prompt` or the shorthand `:::prompt` to describe an animation in natural language. The reactive-presentation-agent reads the prompt, consults the `canvas-animation-prompt.md` reference, generates Canvas JS code, and replaces the block with `:::canvas js` before building HTML.
 
 ```markdown
 :::prompt

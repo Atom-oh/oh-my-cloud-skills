@@ -59,6 +59,6 @@ Use `/plugin uninstall aws-content-plugin@oh-my-cloud-skills` in Claude Code or 
 
 ## Related links {#related-links}
 
-- [Presentation Agent](./agents/presentation-agent)
+- [Reactive Presentation Agent](./agents/reactive-presentation-agent)
 - [Architecture Diagram Agent](./agents/architecture-diagram-agent)
 - [Content Review Agent](./agents/content-review-agent)

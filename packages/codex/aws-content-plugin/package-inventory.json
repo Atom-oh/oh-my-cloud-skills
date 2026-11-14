@@ -8,11 +8,7 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "074683d6ed067d261fe125954d98d1c20c95c8a6067f5138d15b969fb22271ff",
-      "executable": false
-    },
-    "agents/animated-diagram-agent.md": {
-      "sha256": "ed61f43c4ec0456c5e6ae9cd43010bbca9014f1b452315b02ef3ef02941a682d",
+      "sha256": "b4bac03ec49cb33381979cb877fa5ed3e8e4a38291f1acf72838c3318a7b2dcd",
       "executable": false
     },
     "agents/architecture-diagram-agent.md": {
@@ -24,19 +20,11 @@
       "executable": false
     },
     "agents/content-review-agent.md": {
-      "sha256": "fe584e45a00cc72b89c1f3bc0a35b55e21f69af44dd2f2f0e3490651d741c7b6",
-      "executable": false
-    },
-    "agents/document-agent.md": {
-      "sha256": "0515321362ee38082dae41501c7cf25666710e7b047f6eebed4a2290574b3ebe",
+      "sha256": "4547d7c91e52993619423fd0f452f775ee81ee9743b11fc52597627d096501fe",
       "executable": false
     },
     "agents/gitbook-agent.md": {
-      "sha256": "6ea8ea2ba7977cf68980bd47ae0d721b6fc05b67b2a6649f8a89f2a0ab4c74e6",
-      "executable": false
-    },
-    "agents/presentation-agent.md": {
-      "sha256": "288cd103072c0a80e42f92b66cdcb93a71643e8d221393b6e8d0c025050445f0",
+      "sha256": "1c2348632b0d64a5e36ba6f068c868814220c491d74f729a230093c0f1325fde",
       "executable": false
     },
     "agents/reactive-presentation-agent.md": {
@@ -444,7 +432,7 @@
       "executable": false
     },
     "skills/gitbook/references/component-patterns.md": {
-      "sha256": "dd24b80e218701c94a9fec8d293e0972e1a33175b10360dfb0c3413577f0deda",
+      "sha256": "b1d70a6864a462db5b62fa3450530f0638fe9f35e7625298f29d86bd58a79fe1",
       "executable": false
     },
     "skills/gitbook/references/structure-guide.md": {
@@ -456,7 +444,7 @@
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
-      "sha256": "7b221d30559a92b4ec69d3a5fc5d30b64f40e7455d876655477982744a53f3ca",
+      "sha256": "2dc2b9bf038f3c927a55425c3868fdb14cefd81f14f999b19452a48785db4fdc",
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
@@ -492,11 +480,11 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-pen.css": {
-      "sha256": "ad8bd88ce6735a27c41d448c01b62b948065b4885ad5d5a4576fee9fed287693",
+      "sha256": "74e12c5ac548b15a108f8526eec2aa45af238f68d91bb1272ce0089a45beeea3",
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-pen.js": {
-      "sha256": "e3268bd635d5c7e8cd40fa057cbee344bd3653c7e0f2d108fc14fe2f5fe7e891",
+      "sha256": "64e45515082c219006724c5635317de5c8270a3bfe0609fa37a3a927ae8df0f0",
       "executable": false
     },
     "skills/reactive-presentation/assets/design-tokens.css": {
@@ -17340,7 +17328,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/keyboard-shortcuts.md": {
-      "sha256": "087da9f2f3388ed409417b2608b50597fbfb95b68f5785340c1549c66df7e086",
+      "sha256": "30ff3cd903f021e5d7210a40bd91d49518c9b7ffd8fbc2aa050213ae29468330",
       "executable": false
     },
     "skills/reactive-presentation/references/marp-format-guide.md": {
@@ -17352,7 +17340,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/remarp-format-guide.md": {
-      "sha256": "61e7fe64b580626456dfd0f7d1f4bd24715beb3513346ceeadc987208c222787",
+      "sha256": "342b86322bbd4d38452edce0abf3814544da8f78292c612532ad59337b25a870",
       "executable": false
     },
     "skills/reactive-presentation/references/slide-patterns.md": {
@@ -17400,7 +17388,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {
-      "sha256": "febe7fec7271f1eca3c2354c4633eb515bb9bf9ff783c3f4538d06d46f34ef7f",
+      "sha256": "3ab39f27ab7e07ef5eb42490b4e6054c9574a50cdf167e524857b76e6c522bac",
       "executable": false
     },
     "skills/slide-fix/SKILL.md": {
@@ -17491,14 +17479,6 @@
       "sha256": "d5dafc00ea291e3f047c798066bd8427671b111c12d2302e2973b09561ac4e4e",
       "executable": false
     },
-    ".codex-plugin/skills/animated-diagram-agent/SKILL.md": {
-      "sha256": "8383890bfd269a87c1cd975af3d1d2d3c8a6117d3b4e0e26fb39958971ce21a0",
-      "executable": false
-    },
-    ".codex-plugin/skills/animated-diagram-agent/agents/openai.yaml": {
-      "sha256": "d6efd013f1a0b6f651f5dd969ac6e22b842a2d63d2d8a80ddc799548b1ab27e9",
-      "executable": false
-    },
     ".codex-plugin/skills/architecture-diagram/SKILL.md": {
       "sha256": "5229103d6424c03bf11c9bc4be896716c563cf7c112acedcc54286a253c26316",
       "executable": false
@@ -17535,14 +17515,6 @@
       "sha256": "fac753719dea8962d5576cb251112a068475b33b24f2e85327f920f7f4b5d63e",
       "executable": false
     },
-    ".codex-plugin/skills/document-agent/SKILL.md": {
-      "sha256": "810446f5708ddca6a0db32270689420ebbc9f769376e6339670a76a1b9021c99",
-      "executable": false
-    },
-    ".codex-plugin/skills/document-agent/agents/openai.yaml": {
-      "sha256": "9680f34506d9122b9ed2a74bf4e847b57230b0479bb12d7c2543945436842f2c",
-      "executable": false
-    },
     ".codex-plugin/skills/gh-home/SKILL.md": {
       "sha256": "3f031d8be8b965cd2ce50bdb66bc161ad70f4217b19694b25a7a1c5b3e9b0e05",
       "executable": false
@@ -17557,14 +17529,6 @@
     },
     ".codex-plugin/skills/gitbook-agent/agents/openai.yaml": {
       "sha256": "64c6ed79e48e4077e47a42f25eacf9f59b22242832e73f7506ac8e0e03627ac8",
-      "executable": false
-    },
-    ".codex-plugin/skills/presentation-agent/SKILL.md": {
-      "sha256": "b8bc33b7391d622415cf07d7a33486b3c85592b30bff34750e88e6dd0f5b9db8",
-      "executable": false
-    },
-    ".codex-plugin/skills/presentation-agent/agents/openai.yaml": {
-      "sha256": "dda6f26b0b8ad347292bcd53185a084d351c9dfcc9a23a855316821a4a724aeb",
       "executable": false
     },
     ".codex-plugin/skills/reactive-presentation/SKILL.md": {
@@ -17596,7 +17560,7 @@
       "executable": false
     },
     ".codex-plugin/inventory.json": {
-      "sha256": "50e6184babcd32ade21f491696d4367cc5e5e230be10aef306ed149f23d60e7e",
+      "sha256": "af9d3122c91e22cecd7c9e2bf2e7d71cf0483ed22a23e20ffa583e16a8886140",
       "executable": false
     },
     ".codex-plugin/runtime.md": {
@@ -17608,7 +17572,7 @@
       "executable": false
     },
     ".codex-plugin/workflow.md": {
-      "sha256": "871bdf081cf4c91108e754f138ed2d34d71503d9de6091ffbb8420063d0e5bb4",
+      "sha256": "86fbb605ee5538aea1ea0327227c21313f56a6b2527e7187e6b325c28a90ec96",
       "executable": false
     },
     ".codex-plugin/mcp.json": {

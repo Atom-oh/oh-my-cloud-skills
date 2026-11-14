@@ -34,7 +34,6 @@ title: "AWS 콘텐츠 플러그인"
 | 기본 개체를 편집할 수 있는 AWS 라이트 PowerPoint | aws-light-fcd |
 | AWS Draw.io 아키텍처 | architecture-diagram |
 | 트래픽·시나리오 애니메이션 다이어그램 | animated-diagram |
-| 기술 보고서·비교 문서 | document-agent |
 | GitBook 문서 | gitbook |
 | Workshop Studio 실습 | workshop-creator |
 | 제품·솔루션 소개 페이지 | brochure |

@@ -59,6 +59,6 @@ Claude Code에서는 `/plugin uninstall aws-content-plugin@oh-my-cloud-skills`�
 
 ## 관련 링크 {#related-links}
 
-- [프레젠테이션 에이전트](./agents/presentation-agent)
+- [인터랙티브 프레젠테이션 에이전트](./agents/reactive-presentation-agent)
 - [아키텍처 다이어그램 에이전트](./agents/architecture-diagram-agent)
 - [콘텐츠 리뷰 에이전트](./agents/content-review-agent)
