@@ -15,13 +15,16 @@ function json(res, status, value) {
 
 async function body(req) {
   const chunks = []; let size = 0;
-  for await (const chunk of req.iterator({destroyOnReturn: false})) {
-    size += chunk.length;
-    if (size > MAX_CHAT_BODY_BYTES) {
-      req.resume();
-      throw new Error('Invalid request body');
+  try {
+    for await (const chunk of req.iterator({destroyOnReturn: false})) {
+      size += chunk.length;
+      if (size > MAX_CHAT_BODY_BYTES) throw new Error('Invalid request body');
+      chunks.push(chunk);
     }
-    chunks.push(chunk);
+  } catch (error) {
+    // Iterator cleanup can pause the request; drain only after that boundary.
+    req.resume();
+    throw error;
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }

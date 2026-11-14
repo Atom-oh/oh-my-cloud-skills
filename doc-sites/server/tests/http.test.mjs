@@ -4,8 +4,48 @@ import {mkdtemp, mkdir, writeFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import net from 'node:net';
 import {createApp} from '../http.mjs';
-import {validateQuestion} from '../chat.mjs';
+import {MAX_CHAT_BODY_BYTES, validateQuestion} from '../chat.mjs';
+
+test('oversized delayed bodies drain before the next request on the connection', async (t) => {
+  let calls = 0;
+  const app = createApp({
+    buildDir: tmpdir(), origin: 'https://skills.example.com', publicConfig: {},
+    authenticate: async () => 'subject', consumeQuota: async () => true,
+    answer: async () => { calls++; return {answer: 'unused'}; },
+  });
+  await new Promise((resolve) => app.listen(0, '127.0.0.1', resolve));
+  const socket = net.connect(app.address().port, '127.0.0.1');
+  t.after(async () => { socket.destroy(); await new Promise((resolve) => app.close(resolve)); });
+  const first = Buffer.alloc(MAX_CHAT_BODY_BYTES + 8192, 'x');
+  const remainder = Buffer.alloc(1024 * 1024, 'x');
+  const headers = [
+    'POST /api/chat HTTP/1.1', 'Host: localhost',
+    'Content-Type: application/json', 'Origin: https://skills.example.com',
+    'Authorization: Bearer valid', `Content-Length: ${first.length + remainder.length}`,
+    'Connection: keep-alive', '', '',
+  ].join('\r\n');
+  const next = 'GET /api/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n';
+  const response = await new Promise((resolve, reject) => {
+    let text = '', sentRemainder = false;
+    const timer = setTimeout(() => {
+      socket.destroy(); reject(new Error('Delayed body prevented connection reuse'));
+    }, 3000);
+    socket.once('error', (error) => { clearTimeout(timer); reject(error); });
+    socket.on('data', (chunk) => {
+      text += chunk.toString();
+      if (!sentRemainder && text.includes('HTTP/1.1 400')) {
+        sentRemainder = true;
+        setTimeout(() => socket.write(Buffer.concat([remainder, Buffer.from(next)])), 25);
+      }
+      if (text.includes('HTTP/1.1 200')) { clearTimeout(timer); resolve(text); }
+    });
+    socket.once('connect', () => socket.write(Buffer.concat([Buffer.from(headers), first])));
+  });
+  assert.deepEqual([...response.matchAll(/HTTP\/1\.1 (\d{3})/g)].map((m) => m[1]), ['400', '200']);
+  assert.equal(calls, 0);
+});
 
 test('HTTP accepts the full multilingual history contract and bounds oversized bodies', async (t) => {
   const received = [];
