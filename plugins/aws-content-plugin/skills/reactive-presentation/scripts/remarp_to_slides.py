@@ -3698,7 +3698,7 @@ class RemarpHTMLGenerator:
       <div style="text-align:left; color:#FF9900; padding:2rem; border:2px dashed #FF9900; border-radius:12px; max-width:700px; background:rgba(255,153,0,0.05);">
         <p style="font-size:1.1rem; font-weight:600; margin-bottom:0.8rem;">\U0001f4ac Diagram Prompt</p>
         <p style="font-size:0.95rem; line-height:1.6; opacity:0.85; white-space:pre-wrap;">{prompt_html}</p>
-        <p style="font-size:0.75rem; opacity:0.4; margin-top:1rem; font-style:italic;">Run presentation-agent to resolve this prompt into a diagram</p>
+        <p style="font-size:0.75rem; opacity:0.4; margin-top:1rem; font-style:italic;">Run reactive-presentation-agent to resolve this prompt into a diagram</p>
       </div>
     </div>
   </div>

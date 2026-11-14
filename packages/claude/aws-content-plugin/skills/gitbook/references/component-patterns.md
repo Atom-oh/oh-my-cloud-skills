@@ -203,7 +203,7 @@ AWS Lambda Documentation
 
 ### Embed Animated SVG (Interactive)
 
-For animated diagrams created by animated-diagram-agent, use an iframe. The `src` is
+For animated diagrams created with the animated-diagram skill, use an iframe. The `src` is
 relative to the page — adjust the number of `../` to the page's depth (root page:
 `.gitbook/assets/…`, chapter page: `../.gitbook/assets/…`):
 

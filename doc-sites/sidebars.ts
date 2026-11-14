@@ -23,11 +23,8 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Agents',
       items: [
-        'aws-content-plugin/agents/presentation-agent',
         'aws-content-plugin/agents/reactive-presentation-agent',
         'aws-content-plugin/agents/architecture-diagram-agent',
-        'aws-content-plugin/agents/animated-diagram-agent',
-        'aws-content-plugin/agents/document-agent',
         'aws-content-plugin/agents/gitbook-agent',
         'aws-content-plugin/agents/workshop-agent',
         'aws-content-plugin/agents/brochure-agent',

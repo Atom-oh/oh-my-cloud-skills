@@ -1,4 +1,4 @@
-<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 3f133208b370 · generated-at: 2026-10-13 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
+<!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: 2b051d0f1a85 · generated-at: 2026-11-14 · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 > You are an external reviewer for this repo — project context below, distilled from
 > CLAUDE.md. This file is shared verbatim by the external review panel (not a per-AI copy).
 
