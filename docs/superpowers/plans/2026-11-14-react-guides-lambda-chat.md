@@ -43,9 +43,9 @@ fronts a regional IAM-authenticated Web Function.
 - [x] Add CloudFormation and repeatable packaging/deployment instructions under
   `doc-sites/infra/`; replace Pages deployment workflow with AWS handoff.
   Validate resource schemas, restricted IAM, throttles and origin policy.
-- [ ] Run repository TAP, manifest validators, freshness, skill evaluation,
+- [x] Run repository TAP, manifest validators, freshness, skill evaluation,
   bilingual build, content review and desktop/mobile browser checks.
-- [ ] Deploy within user-authorized scope after the concrete artifact passes
+- [x] Deploy within user-authorized scope after the concrete artifact passes
   review; verify DNS, TLS, origin rejection, static routes and real chat.
 
 ## Baseline
@@ -67,5 +67,11 @@ model-provider decision. Network credentials work outside the local sandbox.
   reports zero Critical/Major code or security findings.
 - Content review passed at 90/100, then source re-review passed at 86.5/90
   (fresh visual testing excluded). Remaining source warnings were corrected.
-  Final package/browser verification and deployment smoke checks are pending.
-- The reviewed private source-bucket stack is created. Site deployment is pending.
+  Final content review with current screenshots passed at 98.5/100.
+- Both CloudFormation stacks completed. Production smoke checks passed at
+  09:35 UTC: public routes, origin rejection, unauthenticated chat rejection,
+  legacy query redirect, Cognito login, English locale restoration, and a real
+  Haiku/Luna answer with three guide sources. The temporary user was removed.
+- Public GitHub source publication is awaiting explicit user approval after
+  automatic approval review rejected the push. No alternate publication path
+  was used. See `docs/reference/skills-guide-release-validation.md`.
