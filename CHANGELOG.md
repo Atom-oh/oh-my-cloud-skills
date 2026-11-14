@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- reactive-presentation: step guidance for presenters. `deck.getStepInfo()` reports how many presses a
+  slide has left in Down's real order, a registered slide action may return `state()` as
+  `{cur, total}`, and the new `rp:slideshown` and `rp:stepchange` events join `rp:slidechange`
+  (`deck.notifyStepChange()` for scene-internal changes). The presenter window shows a step cue under
+  the arrow buttons and draws each `↓` of the script as a badge. The authoring rules (one `↓` per press,
+  no operating instructions, line-art step defaults) live in `references/step-guidance.md`.
+
 ### Fixed
 
 - reactive-presentation: a canvas animation step (↑/↓) pressed in the presenter window no longer

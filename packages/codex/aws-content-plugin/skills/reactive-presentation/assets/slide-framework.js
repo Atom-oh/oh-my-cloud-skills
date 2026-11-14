@@ -97,6 +97,7 @@ class SlideFramework {
       this.bindEscapeLock();
       this.bindKeys();
       this.bindTouch();
+      this.bindStepClicks();
       this.handleHash();
       // Without an explicit #hash, never open on a hidden slide.
       if (!window.location.hash && this.isHidden(this.currentSlide)) {
@@ -155,6 +156,7 @@ class SlideFramework {
           next.classList.add('visible');
         } else { break; }
       }
+      this._emitStepChange(this.currentSlide);
       return true; // Fragment revealed, don't advance slide
     }
     return false; // All fragments revealed, can advance slide
@@ -177,6 +179,7 @@ class SlideFramework {
         } else { break; }
       }
       state.currentIndex--;
+      this._emitStepChange(this.currentSlide);
       return true; // Fragment hidden, don't go back slide
     }
     return false; // No fragments to hide, can go back slide
@@ -627,6 +630,15 @@ class SlideFramework {
     if (typeof AnimationLoop !== 'undefined' && AnimationLoop.redrawAll) AnimationLoop.redrawAll();
   }
 
+  // rp:stepchange: a press (or a scene-internal click) changed the step shown on a slide.
+  // Scenes that advance themselves call notifyStepChange(); the framework emits it for
+  // fragments, tabs/compare, canvas steps and slide actions.
+  notifyStepChange(index = this.currentSlide) { this._emitStepChange(index); }
+
+  _emitStepChange(index) {
+    document.dispatchEvent(new CustomEvent('rp:stepchange', { detail: { index: index } }));
+  }
+
   handleNavigationAction(action) {
     switch (action) {
       case 'next':
@@ -641,7 +653,7 @@ class SlideFramework {
         if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].down) {
           const result = this.slideActions[this.currentSlide].down();
           if (result === false) this.next();
-          else this.redrawAnimations();
+          else { this.redrawAnimations(); this._emitStepChange(this.currentSlide); }
         } else if (!this.cycleInteractive(1)) {
           if (!this.revealNextFragment()) this.next();
         }
@@ -650,7 +662,7 @@ class SlideFramework {
         if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].up) {
           const result = this.slideActions[this.currentSlide].up();
           if (result === false) this.prev();
-          else this.redrawAnimations();
+          else { this.redrawAnimations(); this._emitStepChange(this.currentSlide); }
         } else if (!this.cycleInteractive(-1)) {
           if (!this.revealPrevFragment()) this.prev();
         }
@@ -666,6 +678,18 @@ class SlideFramework {
         break;
       }
     }
+  }
+
+  // Tab and compare buttons are framework-owned: any click on one in the current slide
+  // (user or the synthetic click from cycleInteractive) is a step change.
+  bindStepClicks() {
+    document.addEventListener('click', (e) => {
+      const t = e.target;
+      if (!t || !t.closest) return;
+      const btn = t.closest('.tab-btn, .compare-btn');
+      const slide = this.slides[this.currentSlide];
+      if (btn && slide && slide.contains(btn)) this._emitStepChange(this.currentSlide);
+    });
   }
 
   bindTouch() {
@@ -736,10 +760,12 @@ class SlideFramework {
         next.classList.remove('entering', `transition-${transition}-in`);
         next.classList.add('active');
         this.transitioning = false;
+        document.dispatchEvent(new CustomEvent('rp:slideshown', { detail: { index: index } }));
       }, 350);
     } else {
       this.slides.forEach(s => s.classList.remove('active'));
       next.classList.add('active');
+      document.dispatchEvent(new CustomEvent('rp:slideshown', { detail: { index: index } }));
     }
 
     if (window.ReactiveFit) window.ReactiveFit.fitSlide(next);
@@ -994,19 +1020,59 @@ class SlideFramework {
     }
   }
 
-  cycleInteractive(direction) {
-    const slide = this.slides[this.currentSlide];
-    if (!slide) return false;
+  // Single lookup for "how many presses are left on this slide". Follows the order
+  // handleNavigationAction('down') really uses: registered slide action, then tabs/compare/
+  // __canvasStep (cycleInteractive), then fragments. Reports the phase Down acts on now.
+  // Read-only: never changes currentSlide or reveals anything.
+  getStepInfo(index = this.currentSlide) {
+    const none = { kind: 'none', cur: null, total: null, more: false };
+    const slide = this.slides[index];
+    if (!slide) return none;
 
-    // Try canvas/timeline step navigation (registered via __canvasStep)
-    if (slide.__canvasStep) {
-      const dir = direction > 0 ? 'next' : 'prev';
-      const result = slide.__canvasStep(dir);
-      if (result !== false) return true;
-      return false;
+    const action = this.slideActions[index];
+    if (action && action.down) {
+      let st = null;
+      if (typeof action.state === 'function') {
+        try { st = action.state(); } catch (e) { st = null; }
+      }
+      if (st && Number.isFinite(st.cur) && Number.isFinite(st.total) && st.total >= 1) {
+        return { kind: 'action', cur: st.cur, total: st.total, more: st.cur < st.total };
+      }
+      return { kind: 'action', cur: null, total: null, more: true };
     }
 
-    // Try tabs — detect .tab-bar container first, then fall back to any .tab-btn group
+    if (slide.__canvasStep) return { kind: 'interactive', cur: null, total: null, more: true };
+
+    const inter = this._interactiveButtons(slide);
+    if (inter) {
+      // Presses left = btns.length - 1 - activeIdx; activeIdx -1 (compare, none active) takes one more.
+      const remaining = inter.btns.length - 1 - inter.activeIdx;
+      if (remaining > 0) {
+        const cur = Math.max(0, inter.activeIdx);
+        return { kind: 'interactive', cur, total: cur + remaining, more: true };
+      }
+    }
+
+    // Fragments: group like revealNextFragment (equal data-fragment-index reveal together).
+    if (!this.fragmentState[index]) this.initFragments(index);
+    const fs = this.fragmentState[index];
+    if (!fs || fs.fragments.length === 0) return none;
+    let total = 0;
+    let cur = 0;
+    fs.fragments.forEach((f, i) => {
+      const isStart = i === 0 || f.dataset.fragmentIndex !== fs.fragments[i - 1].dataset.fragmentIndex;
+      if (isStart) {
+        total++;
+        if (i <= fs.currentIndex) cur++;
+      }
+    });
+    return { kind: 'fragment', cur, total, more: cur < total };
+  }
+
+  // Tab or compare-toggle buttons of a slide and the active index, shared by cycleInteractive
+  // and getStepInfo. Tabs: no active -> 0. Compare: no active -> -1 (first Down clicks button 0).
+  _interactiveButtons(slide) {
+    // Tabs — detect .tab-bar container first, then fall back to any .tab-btn group
     const tabBar = slide.querySelector('.tab-bar');
     const tabBtns = tabBar
       ? Array.from(tabBar.querySelectorAll('.tab-btn'))
@@ -1022,22 +1088,39 @@ class SlideFramework {
         });
       }
       if (activeIdx < 0) activeIdx = 0;
-      const nextIdx = Math.max(0, Math.min(activeIdx + direction, tabBtns.length - 1));
-      if (nextIdx !== activeIdx) {
-        tabBtns[nextIdx].click();
+      return { btns: tabBtns, activeIdx };
+    }
+
+    const toggle = slide.querySelector('.compare-toggle');
+    if (toggle) {
+      const btns = Array.from(toggle.querySelectorAll('.compare-btn'));
+      return { btns, activeIdx: btns.findIndex(b => b.classList.contains('active')) };
+    }
+    return null;
+  }
+
+  cycleInteractive(direction) {
+    const slide = this.slides[this.currentSlide];
+    if (!slide) return false;
+
+    // Try canvas/timeline step navigation (registered via __canvasStep)
+    if (slide.__canvasStep) {
+      const dir = direction > 0 ? 'next' : 'prev';
+      const result = slide.__canvasStep(dir);
+      if (result !== false) {
+        this._emitStepChange(this.currentSlide);
         return true;
       }
       return false;
     }
 
-    // Try compare toggles
-    const toggle = slide.querySelector('.compare-toggle');
-    if (toggle) {
-      const btns = Array.from(toggle.querySelectorAll('.compare-btn'));
-      const activeIdx = btns.findIndex(b => b.classList.contains('active'));
+    // Tabs or compare toggles
+    const inter = this._interactiveButtons(slide);
+    if (inter) {
+      const { btns, activeIdx } = inter;
       const nextIdx = Math.max(0, Math.min(activeIdx + direction, btns.length - 1));
       if (nextIdx !== activeIdx) {
-        btns[nextIdx].click();
+        btns[nextIdx].click(); // the delegated click listener emits rp:stepchange
         return true;
       }
       return false;

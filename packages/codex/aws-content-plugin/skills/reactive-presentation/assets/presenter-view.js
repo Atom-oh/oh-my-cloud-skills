@@ -4,6 +4,34 @@
  * Draggable splitters between slides/notes and current/next slide
  * Copies main document stylesheets for faithful slide preview rendering
  */
+/**
+ * Presenter step cue text: what the next Down press will do on the current slide.
+ * Pure: info comes from SlideFramework.getStepInfo, lang from the deck's <html lang>.
+ */
+function stepCueText(info, lang) {
+  const ko = typeof lang === 'string' && lang.toLowerCase().startsWith('ko');
+  const T = ko ? {
+    more: (c, t) => `↓ 다음 단계 있음 (지금 ${c}/${t})`,
+    last: (t) => `✓ 마지막 단계 (${t}/${t}), 누르면 다음 슬라이드`,
+    none: '✓ 단계 없음, 누르면 다음 슬라이드',
+    items: (c, t) => `→ 다음 항목 있음 (${c}/${t})`,
+    has: '↓ 이 장에 단계가 있음'
+  } : {
+    more: (c, t) => `↓ more steps (now ${c}/${t})`,
+    last: (t) => `✓ last step (${t}/${t}), the next press moves on`,
+    none: '✓ no steps, the next press moves on',
+    items: (c, t) => `→ more items (${c}/${t})`,
+    has: '↓ this slide has steps'
+  };
+  if (!info || info.kind === 'none') return T.none;
+  const known = Number.isFinite(info.cur) && Number.isFinite(info.total);
+  if (info.kind === 'fragment') {
+    return info.more ? T.items(info.cur, info.total) : T.last(info.total);
+  }
+  if (!known) return T.has;
+  return info.more ? T.more(info.cur, info.total) : T.last(info.total);
+}
+
 class PresenterView {
   constructor(framework) {
     this.framework = framework;
@@ -16,6 +44,7 @@ class PresenterView {
     this.fragmentRenderTimer = null;
     this._pen = null;
     this._noteEdit = null;
+    this._cueHandler = null;
     this.setupSync();
   }
 
@@ -68,6 +97,7 @@ class PresenterView {
     window.__pvScaleUpdate = () => this._updateAllScales();
 
     this.setupPresenterControls();
+    this._attachStepCue();
     this._attachPen();
     this.startTimer();
 
@@ -334,6 +364,15 @@ ${styleSheets}
     padding-left: 1.5em;
   }
   .presenter-notes .notes-content li { margin: 0.3em 0; }
+  .presenter-notes .notes-content .rp-step-mark {
+    display: inline-block;
+    background: var(--accent, #ec7211);
+    color: #fff;
+    font-weight: 700;
+    padding: 0 0.35em;
+    border-radius: 0.3em;
+    line-height: 1.3;
+  }
   .presenter-notes .notes-content strong { color: #fff; font-weight: 600; }
   .presenter-notes .notes-content code {
     background: var(--accent-subtle, rgba(236, 114, 17, 0.15));
@@ -424,10 +463,22 @@ ${styleSheets}
     display: flex;
     justify-content: center;
     gap: 12px;
+    flex-wrap: wrap;
     padding: 8px;
     background: #0f0f1a;
     border-top: 1px solid #2d3250;
     flex-shrink: 0;
+  }
+  #p-step-cue {
+    flex: 0 0 100%;
+    text-align: center;
+    font-size: 13.6px;
+    color: var(--text-secondary, #9aa0b8);
+    min-height: 1.4em;
+  }
+  #p-step-cue[data-more="1"] {
+    color: var(--accent, #ec7211);
+    font-weight: 600;
   }
   .presenter-nav button {
     padding: 6px 20px;
@@ -502,6 +553,7 @@ ${styleSheets}
   <button id="p-prev">&larr; Previous</button>
   <button id="p-hide-btn" aria-pressed="false">Hide slide</button>
   <button id="p-next-btn">Next &rarr;</button>
+  <div id="p-step-cue" role="status" data-more="0"></div>
 </div>
 
 <div class="drag-overlay" id="drag-overlay"></div>
@@ -687,8 +739,52 @@ ${styleSheets}
       if (this.presenterWindow === win) {
         this._commitNoteEdit();
         this._destroyPen();
+        this._detachStepCue();
       }
     });
+  }
+
+  // The cue lives in the presenter window but its triggers are document events in
+  // this (deck) window, so the listeners are tracked and removed explicitly.
+  _attachStepCue() {
+    this._detachStepCue();
+    const handler = () => {
+      if (!this.presenterWindow || this.presenterWindow.closed) {
+        this._detachStepCue();
+        return;
+      }
+      this._renderStepCue(this.presenterWindow.document);
+    };
+    this._cueHandler = handler;
+    ['rp:slidechange', 'rp:slideshown', 'rp:stepchange'].forEach(
+      (name) => document.addEventListener(name, handler));
+  }
+
+  _detachStepCue() {
+    if (!this._cueHandler) return;
+    const handler = this._cueHandler;
+    this._cueHandler = null;
+    ['rp:slidechange', 'rp:slideshown', 'rp:stepchange'].forEach(
+      (name) => document.removeEventListener(name, handler));
+  }
+
+  _renderStepCue(doc) {
+    const box = doc && doc.getElementById('p-step-cue');
+    if (!box) return;
+    let info = null;
+    try {
+      info = this.framework.getStepInfo();
+    } catch (e) {
+      info = { kind: 'action', cur: null, total: null, more: true };
+    }
+    let text;
+    try {
+      text = stepCueText(info, document.documentElement.lang);
+    } catch (e) {
+      text = stepCueText({ kind: 'action', cur: null, total: null, more: true }, 'en');
+    }
+    box.textContent = text;
+    box.setAttribute('data-more', info && info.more && info.kind !== 'none' ? '1' : '0');
   }
 
   // Pen surface over the scaled current-slide preview. The canvas, the badge and
@@ -857,6 +953,7 @@ ${styleSheets}
     const slides = this.framework.slides;
 
     doc.getElementById('p-counter').textContent = `${idx + 1} / ${this.framework.totalSlides}`;
+    this._renderStepCue(doc);
 
     // Current slide
     const currentEl = doc.getElementById('p-current');
@@ -1022,12 +1119,25 @@ ${styleSheets}
   renderRichNotes(text) {
     if (!text) return 'No notes for this slide.';
 
-    // Convert markdown-like formatting to HTML
-    let html = text
-      // Escape HTML first
+    // Convert markdown-like formatting to HTML. Escape first; the step-mark badge is
+    // added after the escape so note text can never inject markup.
+    const korean = /^ko/i.test((document.documentElement.lang || ''));
+    const badge = `<span class="rp-step-mark" title="${korean ? '여기서 ↓' : 'press ↓ here'}">↓</span>`;
+    const escaped = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
+      .split('\n')
+      .map((line) => {
+        // Summary / source / abbreviation lines are not script text.
+        if (/\[(요약|출처|약어)\]/.test(line)) return line;
+        // A {...} marker span keeps a plain arrow.
+        return line.split(/(\{[^}]*\})/).map((part) => (
+          part.startsWith('{') && part.endsWith('}') ? part : part.replace(/↓/g, badge)
+        )).join('');
+      })
+      .join('\n');
+    let html = escaped
       // Bold
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       // Inline code
@@ -1218,6 +1328,7 @@ ${styleSheets}
         clearInterval(this.timerInterval);
         this.timerInterval = null;
         this._destroyPen();
+        this._detachStepCue();
         return;
       }
       const elapsed = Date.now() - this.startTime;
@@ -1246,6 +1357,7 @@ ${styleSheets}
       this.timerInterval = null;
     }
     this._destroyPen();
+    this._detachStepCue();
     if (this.presenterWindow && !this.presenterWindow.closed) {
       this.presenterWindow.close();
     }

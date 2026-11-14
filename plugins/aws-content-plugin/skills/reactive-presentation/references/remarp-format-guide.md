@@ -1456,6 +1456,10 @@ preamble; the content layers are `[요약]` → spoken → `[약어]` → `[출�
    slide's notes omit this `[요약]` layer.
 3. **Spoken script** — the actual talk track in 존댓말 (polite conversational Korean),
    with inline `{cue: ...}` markers where you want to pause, ask, or transition.
+   On a slide with steps, put exactly one `↓` per press the slide takes right after the sentence
+   that finishes a step (a quick check counts one); the presenter window draws it as a badge.
+   Never write what to press ("아래 화살표로", "눌러 볼게요"), and use no `↓` in `[요약]`,
+   `[출처]`, `[약어]` or `{...}` markers. See [step-guidance.md](step-guidance.md#3-down-marks-in-the-speaker-notes).
 4. **`[약어]`** — abbreviations the stated audience may not know (omit the block
    if there are none). Use `audience` and `level`, not a blanket exemption for
    API, JSON, EKS or S3. These presenter notes supplement the audience-facing

@@ -40,7 +40,7 @@
       "executable": false
     },
     "agents/reactive-presentation-agent.md": {
-      "sha256": "f62d81df13d0dfed0777145c291c8e1e9f79f8bead0b19c5051e0141a19ca42b",
+      "sha256": "9acbc7a5d7c30ea23d62cdd4c7c5292a2c1ad6c04d841656a65b35462f4612c4",
       "executable": false
     },
     "agents/workshop-agent.md": {
@@ -456,7 +456,7 @@
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
-      "sha256": "e272c4af307961329ace61922ace9f548cec27a197e61efab118f93362970bd9",
+      "sha256": "7b221d30559a92b4ec69d3a5fc5d30b64f40e7455d876655477982744a53f3ca",
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
@@ -516,7 +516,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
-      "sha256": "bfd60fb645ecf386f2e95128b1a9d7df9739483e3a53d85b89c7136784682131",
+      "sha256": "d0d9a60ec8229932fc1668083700bb75e1011658662656e55d2a32fe1c944a3d",
       "executable": false
     },
     "skills/reactive-presentation/assets/quiz-component.js": {
@@ -524,7 +524,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-framework.js": {
-      "sha256": "2162931693bd1c5d10cec97c84224579304d32c9d95cb9fc88c3e5afbf403384",
+      "sha256": "d59c2d1fe88d99bdb04ce7b081d8f3c5f7c84266cd70ea016b7ae699a086d2b9",
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-renderer.js": {
@@ -17328,7 +17328,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/framework-contract.md": {
-      "sha256": "87c07f97bc0286dd18435fd429547ee3df9b0a84a1769d5c04aa07804d80d401",
+      "sha256": "43859d1d8938840a7d5555805a5cf8eaba5a9e9f9d9accac90084cd5dde58e96",
       "executable": false
     },
     "skills/reactive-presentation/references/framework-guide.md": {
@@ -17340,7 +17340,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/keyboard-shortcuts.md": {
-      "sha256": "c87d92c5d74db1f44e8dbb33dd4e8b2920e989171305935f0a76603463946815",
+      "sha256": "4392ccc5fbf01d6d9bb49592e69bd50f0da0008408db9d299db3c124af2d32d8",
       "executable": false
     },
     "skills/reactive-presentation/references/marp-format-guide.md": {
@@ -17352,11 +17352,15 @@
       "executable": false
     },
     "skills/reactive-presentation/references/remarp-format-guide.md": {
-      "sha256": "a8e6f1b09bbc4834f880cc2af80a9a2a0e441d1ba2fbb994f7bcb98df550ccb7",
+      "sha256": "61e7fe64b580626456dfd0f7d1f4bd24715beb3513346ceeadc987208c222787",
       "executable": false
     },
     "skills/reactive-presentation/references/slide-patterns.md": {
       "sha256": "e0395cfc05bcdaa8f2f3e989a3be9f9998fb6fe0f9db1bcf7205caf41f05817a",
+      "executable": false
+    },
+    "skills/reactive-presentation/references/step-guidance.md": {
+      "sha256": "b8d13af00c19f98615288eaf3aab130e773cf6b710b65ed49aeb2f8c730c31e6",
       "executable": false
     },
     "skills/reactive-presentation/scripts/archify_icons.py": {
