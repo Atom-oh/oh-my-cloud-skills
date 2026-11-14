@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- reactive-presentation: a canvas animation step (↑/↓) pressed in the presenter window no longer
+  waits for the deck window to receive an animation frame. A browser can stop painting the window
+  behind the focused one, so the step changed state but nothing was drawn until the deck window
+  regained focus. `AnimationLoop` now has `drawNow()`, the framework redraws running loops right
+  after a slide action, and a 100 ms fallback timer draws while no frame arrives.
+
 ## [3.0.10] - 2026-11-14
 
 ### Added

@@ -265,37 +265,73 @@ function drawText(ctx, text, x, y, opts = {}) {
 }
 
 /* ── Animation Loop Manager ── */
+// Draws on requestAnimationFrame, with two guards for a window the browser has stopped
+// painting (for example the deck window while the presenter window has focus):
+//  - drawNow() draws once on demand; SlideFramework calls AnimationLoop.redrawAll() right
+//    after a slide action (the Up/Down step keys) so a step shows without waiting for a frame.
+//  - a 100 ms fallback timer keeps drawing while no frame has arrived for FALLBACK_AFTER_MS.
+// The elapsed time handed to drawFn is always measured from start(), never accumulated per frame.
 class AnimationLoop {
   constructor(drawFn) {
     this.drawFn = drawFn;
     this.running = false;
     this.rafId = null;
+    this.timerId = null;
     this.startTime = 0;
+    this.lastFrameAt = 0;
+    this.fallbackDraws = 0;   // draws made by the fallback timer (0 while frames keep arriving)
   }
 
   start() {
     if (this.running) return;
     this.running = true;
     this.startTime = performance.now();
+    this.lastFrameAt = this.startTime;
+    AnimationLoop.active.add(this);
     const loop = (now) => {
       if (!this.running) return;
+      this.lastFrameAt = performance.now();
       const elapsed = (now - this.startTime) / 1000;
       this.drawFn(elapsed);
       this.rafId = requestAnimationFrame(loop);
     };
     this.rafId = requestAnimationFrame(loop);
+    this.timerId = setInterval(() => {
+      if (this.running && performance.now() - this.lastFrameAt > AnimationLoop.FALLBACK_AFTER_MS) {
+        this.fallbackDraws++;
+        this.drawNow();
+      }
+    }, AnimationLoop.FALLBACK_TICK_MS);
+  }
+
+  // One immediate draw, independent of the frame callback. No-op when stopped.
+  drawNow() {
+    if (!this.running) return;
+    this.drawFn((performance.now() - this.startTime) / 1000);
   }
 
   stop() {
     this.running = false;
+    AnimationLoop.active.delete(this);
     if (this.rafId) cancelAnimationFrame(this.rafId);
+    if (this.timerId) clearInterval(this.timerId);
+    this.rafId = null;
+    this.timerId = null;
   }
 
   restart() {
     this.stop();
     this.start();
   }
+
+  // Draw every running loop once (a step key just changed state the next frame would show).
+  static redrawAll() {
+    Array.from(AnimationLoop.active).forEach(l => l.drawNow());
+  }
 }
+AnimationLoop.active = new Set();
+AnimationLoop.FALLBACK_AFTER_MS = 150;
+AnimationLoop.FALLBACK_TICK_MS = 100;
 
 /* ── Timeline Animation ── */
 class TimelineAnimation {
