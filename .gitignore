@@ -28,6 +28,8 @@ node_modules/
 # But keep demo screenshots (flat + per-demo subdirectories)
 !doc-sites/static/img/demos/*.png
 !doc-sites/static/img/demos/**/*.png
+# Keep the screenshots used by the presenter guide
+!doc-sites/static/img/reactive-presentation/*.png
 # ...and demo deck assets (logos, etc.) shipped under each deck's common/
 !doc-sites/static/demos/**/*.png
 # ...and shared skill AWS icon libraries (official set + product icons like AgentCore)

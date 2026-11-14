@@ -621,6 +621,12 @@ class SlideFramework {
   }
 
   // Shared by deck and presenter keyboards so steps and fragments stay in sync.
+  // A slide action changed animation state. If the browser is not delivering frames to this
+  // window (it is behind the presenter window), the next frame may not come, so draw now.
+  redrawAnimations() {
+    if (typeof AnimationLoop !== 'undefined' && AnimationLoop.redrawAll) AnimationLoop.redrawAll();
+  }
+
   handleNavigationAction(action) {
     switch (action) {
       case 'next':
@@ -635,6 +641,7 @@ class SlideFramework {
         if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].down) {
           const result = this.slideActions[this.currentSlide].down();
           if (result === false) this.next();
+          else this.redrawAnimations();
         } else if (!this.cycleInteractive(1)) {
           if (!this.revealNextFragment()) this.next();
         }
@@ -643,6 +650,7 @@ class SlideFramework {
         if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].up) {
           const result = this.slideActions[this.currentSlide].up();
           if (result === false) this.prev();
+          else this.redrawAnimations();
         } else if (!this.cycleInteractive(-1)) {
           if (!this.revealPrevFragment()) this.prev();
         }

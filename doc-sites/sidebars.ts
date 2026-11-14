@@ -18,6 +18,7 @@ const sidebars: SidebarsConfig = {
   awsContent: [
     'aws-content-plugin/overview',
     'aws-content-plugin/usage-guide',
+    'aws-content-plugin/presenter-guide',
     'aws-content-plugin/installation',
     {
       type: 'category',
