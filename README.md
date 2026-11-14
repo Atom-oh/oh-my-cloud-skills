@@ -5,7 +5,7 @@ Six plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) an
 peer review, verified implementation pipelines, project documentation,
 and PR and agent status views.
 
-[Documentation](https://www.atomai.click/oh-my-cloud-skills/) ·
+[Documentation](https://skills.atomai.click/) ·
 [Changelog](CHANGELOG.md) ·
 [Releases](https://github.com/Atom-oh/oh-my-cloud-skills/releases) ·
 [License](LICENSE)

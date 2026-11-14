@@ -379,5 +379,1094 @@
   },
   "home.plugin.agent-dash.description": {
     "message": "세션의 에이전트, 위임 관계, 대기 상태를 보여 주는 Claude Code 패널입니다."
+  },
+  "learn.content.purpose": {
+    "message": "아이디어를 보여줄 수 있는 결과물로 만드세요."
+  },
+  "learn.content.title": {
+    "message": "첫 프레젠테이션 만들기"
+  },
+  "learn.content.description": {
+    "message": "짧은 요청으로 시작해 열어 보고, 리허설하고, 공유할 수 있는 슬라이드를 만드세요. 작은 발표 자료부터 시작하고 다이어그램과 워크숍으로 넓혀 가세요."
+  },
+  "learn.content.prompt": {
+    "message": "개발자를 위한 Amazon Bedrock 소개 자료를 5장으로 만들어줘. 한국어로 작성하고 아키텍처 다이어그램 하나와 발표자 노트를 넣어줘. 게시 전에 로컬 미리보기를 보여줘."
+  },
+  "learn.content.result": {
+    "message": "발표자 노트가 있는 HTML 슬라이드와 로컬 미리보기가 만들어집니다. 게시 전에 검증 결과와 콘텐츠 리뷰 결과를 확인하세요."
+  },
+  "learn.content.check": {
+    "message": "미리보기를 열고 화살표 키로 이동해 보세요. N으로 발표자 노트를 열고 인터랙션을 하나씩 리허설하세요. 여기에 보이는 캡처는 공개 예제이므로 직접 만든 자료에서도 확인하세요."
+  },
+  "learn.content.imageAlt": {
+    "message": "현재 슬라이드, 다음 슬라이드, 발표자 노트가 표시된 실제 Remarp 발표자 화면"
+  },
+  "learn.coagent.purpose": {
+    "message": "어려운 변경에 다른 관점을 더하세요."
+  },
+  "learn.coagent.title": {
+    "message": "AI 동료와 함께 변경 검토하기"
+  },
+  "learn.coagent.description": {
+    "message": "참여 가능한 AI를 확인하고 검토 범위를 정하세요. 구체적인 발견 사항을 다음 작업으로 연결할 수 있습니다."
+  },
+  "learn.coagent.prompt": {
+    "message": "co-agent로 참여할 AI의 준비 상태를 확인한 다음, 현재 변경 사항의 정확성과 빠진 검증을 리뷰해줘. 파일별 발견 사항과 참여하지 못한 리뷰어를 알려줘."
+  },
+  "learn.coagent.result": {
+    "message": "영향받는 파일과 구체적인 발견 사항, 리뷰 참여 범위를 종합한 결과를 받습니다. 현재 호스트가 의장을 맡고 Kiro와 반대 호스트 CLI가 참여합니다."
+  },
+  "learn.coagent.check": {
+    "message": "어떤 AI가 실제로 참여했는지 확인하세요. 발견 사항을 수용하기 전에 인용된 코드를 읽어 보세요. 리뷰는 단독 진행을 명시할 수 있지만 consensus와 harness에는 준비된 동료가 필요합니다."
+  },
+  "learn.init.purpose": {
+    "message": "프로젝트의 출발점을 명확하게 만드세요."
+  },
+  "learn.init.title": {
+    "message": "함께 일하기 쉬운 저장소 만들기"
+  },
+  "learn.init.description": {
+    "message": "실제 코드를 바탕으로 프로젝트 지침과 문서를 만드세요. 결정 기록과 운영 절차를 작업 가까이에 유지할 수 있습니다."
+  },
+  "learn.init.prompt": {
+    "message": "project-init으로 이 저장소를 살펴보고 현재 호스트에 맞는 프로젝트 지침과 온보딩 문서를 준비해줘. 기존 지침을 보존하고 변경 제안을 보여줘."
+  },
+  "learn.init.result": {
+    "message": "감지한 기술 스택을 바탕으로 호스트에 맞는 프로젝트 지침과 문서가 만들어집니다. 변경 사항을 diff로 검토할 수 있습니다."
+  },
+  "learn.init.check": {
+    "message": "설정 명령이 실제 저장소와 맞는지 확인하세요. 훅은 설치와 신뢰 설정 전에 내용을 검토하세요. 생성된 템플릿만으로 훅이 활성화되지는 않습니다."
+  },
+  "learn.ops.purpose": {
+    "message": "변경하기 전에 증상의 원인을 이해하세요."
+  },
+  "learn.ops.title": {
+    "message": "AWS · EKS 문제 조사하기"
+  },
+  "learn.ops.description": {
+    "message": "구체적인 증상과 계정, 리전에서 시작하세요. 초기 조사부터 해결 제안까지 근거를 따라갈 수 있습니다."
+  },
+  "learn.ops.prompt": {
+    "message": "aws-ops-plugin으로 EKS 워크로드를 읽기 전용으로 조사해줘. 먼저 사용할 AWS 프로필, 리전, 클러스터를 나와 확인해줘. 변경하기 전에 근거와 해결 방안을 설명해줘."
+  },
+  "learn.ops.result": {
+    "message": "범위가 명확한 조사 결과와 근거, 추정 원인, 해결 제안을 받습니다. 대상 서비스에 따라 별도의 공식 스킬 설치가 필요할 수 있습니다."
+  },
+  "learn.ops.check": {
+    "message": "근거에 나온 계정과 리전을 확인하세요. 확인된 원인과 가설을 구분하고 인프라 변경 제안을 검토한 뒤 적용하세요."
+  },
+  "learn.pr.purpose": {
+    "message": "풀 리퀘스트가 무엇을 기다리는지 확인하세요."
+  },
+  "learn.pr.title": {
+    "message": "작업 중에 PR 상태 확인하기"
+  },
+  "learn.pr.description": {
+    "message": "작업을 이어가며 CI와 리뷰 결과를 확인하세요. Claude Code에서는 패널을, 다른 호스트에서는 텍스트 상태 조회를 사용할 수 있습니다."
+  },
+  "learn.pr.prompt": {
+    "message": "pr-dash로 현재 풀 리퀘스트 상태와 CI, 최신 AI 리뷰 결과를 보여줘. 무엇을 기다리고 있는지와 어떤 커밋을 검토했는지 설명해줘."
+  },
+  "learn.pr.result": {
+    "message": "현재 저장소와 PR의 상태를 확인합니다. Claude Code 패널은 해당 호스트 전용이며 Codex에서는 읽기 전용 상태 조회 절차를 제공합니다."
+  },
+  "learn.pr.check": {
+    "message": "PR 번호와 커밋을 확인하세요. 이전 커밋의 통과 표시가 최신 변경의 통과를 의미하지는 않습니다. PR 저장소 밖에서는 패널이 조용히 대기할 수 있습니다."
+  },
+  "learn.agent.purpose": {
+    "message": "누가 작업하고 누가 기다리는지 파악하세요."
+  },
+  "learn.agent.title": {
+    "message": "위임한 작업을 한눈에 따라가기"
+  },
+  "learn.agent.description": {
+    "message": "Claude Code 대시보드에서 에이전트, 작업, 위임 관계를 확인하세요. 여러 에이전트가 필요한 작업을 진행할 때 유용합니다."
+  },
+  "learn.agent.prompt": {
+    "message": "Claude Code에서 agent-dash를 활성화하고 패널을 확인하는 방법을 설명해줘. 설치된 플러그인 가이드를 바탕으로 작업 상태, 위임 관계, 대기 중인 에이전트를 읽는 방법을 알려줘."
+  },
+  "learn.agent.result": {
+    "message": "현재 세션의 에이전트와 작업 상태를 Claude Code에서 확인합니다. Codex용 절차를 설치해도 Codex 전용 대시보드 패널이 생기지는 않습니다."
+  },
+  "learn.agent.check": {
+    "message": "현재 작업과 위임한 상위 에이전트를 찾아보세요. 비어 있거나 대기 중이라는 표시만으로 실패를 판단하지 마세요. 실제 세션과 작업 결과로 완료를 확인하세요."
+  },
+  "learn.step.install": {
+    "message": "설치하기"
+  },
+  "learn.step.try": {
+    "message": "첫 작업 해보기"
+  },
+  "learn.step.verify": {
+    "message": "결과 확인하기"
+  },
+  "learn.copied": {
+    "message": "복사했어요"
+  },
+  "learn.copyFailed": {
+    "message": "텍스트를 선택해 직접 복사해 주세요."
+  },
+  "learn.heading": {
+    "message": "읽는 시간을 줄이고, 만드는 시간으로."
+  },
+  "learn.lead": {
+    "message": "하고 싶은 일을 골라보세요. 짧은 안내를 따라 내 작업 공간에서 직접 해보고, 막히는 순간에는 가이드에게 물어보세요."
+  },
+  "learn.sixPaths": {
+    "message": "개 플러그인, 시작은 한곳에서"
+  },
+  "learn.reference": {
+    "message": "레퍼런스 둘러보기"
+  },
+  "learn.choose": {
+    "message": "무엇을 해볼까요?"
+  },
+  "learn.pluginNav": {
+    "message": "플러그인 학습 경로"
+  },
+  "learn.sideNote": {
+    "message": "실제 작업은 내 작업 공간에서. 다음 한 걸음은 이 가이드와 함께하세요."
+  },
+  "learn.ask": {
+    "message": "가이드에게 질문하기"
+  },
+  "learn.yourHost": {
+    "message": "사용 중인 코딩 어시스턴트"
+  },
+  "learn.hostNotice": {
+    "message": "실시간 대시보드 패널은 Claude Code 전용입니다. Codex에서는 설치된 가이드나 상태 조회 절차를 사용하세요."
+  },
+  "learn.yourTurn": {
+    "message": "직접 해보세요"
+  },
+  "learn.claudeInstall": {
+    "message": "Claude Code 안에서 아래 명령을 실행하세요. 필요하면 플러그인을 다시 불러온 뒤 새 작업을 시작하세요."
+  },
+  "learn.codexInstall": {
+    "message": "터미널에서 마켓플레이스를 등록하세요. Codex에서 /plugins를 열어 선택한 플러그인을 설치하고 새 스레드를 시작하세요."
+  },
+  "learn.tryHint": {
+    "message": "이 시작 프롬프트를 코딩 어시스턴트에 붙여 넣으세요. 대상, 언어, 범위는 내 프로젝트에 맞게 바꿔도 좋습니다."
+  },
+  "learn.promptLabel": {
+    "message": "시작 프롬프트"
+  },
+  "learn.copy": {
+    "message": "복사"
+  },
+  "learn.fullGuide": {
+    "message": "상세 가이드 열기"
+  },
+  "learn.expected": {
+    "message": "이런 결과를 기대하세요"
+  },
+  "learn.installResult": {
+    "message": "설치 목록에 플러그인이 나타납니다. 설치는 패키지가 준비됐다는 의미이며, 필요한 도구의 동작은 첫 작업에서 확인합니다."
+  },
+  "learn.enlarge": {
+    "message": "공개 예제 · 원본 크기로 보기"
+  },
+  "learn.workflow": {
+    "message": "작업 흐름 미리보기"
+  },
+  "learn.setupHelp": {
+    "message": "설정 · 문제 해결"
+  },
+  "learn.askFollowup": {
+    "message": "이어서 질문하기"
+  },
+  "learn.goDeeper": {
+    "message": "더 알아보기"
+  },
+  "learn.exploreTitle": {
+    "message": "지금 필요한 순간에 맞는 가이드."
+  },
+  "learn.author": {
+    "message": "발표 자료 작성하기"
+  },
+  "learn.present": {
+    "message": "리허설하고 발표하기"
+  },
+  "learn.presenter": {
+    "message": "발표자 가이드"
+  },
+  "learn.allFeatures": {
+    "message": "특정 기능 찾아보기"
+  },
+  "learn.library": {
+    "message": "레퍼런스"
+  },
+  "learn.pageTitle": {
+    "message": "직접 해보며 배우기"
+  },
+  "learn.pageDescription": {
+    "message": "Claude Code와 Codex의 플러그인 6개를 직접 따라 해보세요. 설치부터 첫 작업, 가이드 챗봇의 도움까지 한곳에서 시작합니다."
+  },
+  "chat.limit": {
+    "message": "오늘의 질문 한도에 도달했습니다. 가이드는 계속 이용할 수 있으며 질문은 내일 다시 시도해 주세요."
+  },
+  "chat.expired": {
+    "message": "계속하려면 다시 로그인해 주세요."
+  },
+  "chat.error": {
+    "message": "지금은 가이드 어시스턴트에 연결할 수 없습니다. 다시 시도할 수 있도록 질문을 보관했습니다."
+  },
+  "chat.launch": {
+    "message": "가이드에게 질문"
+  },
+  "chat.title": {
+    "message": "가이드 어시스턴트"
+  },
+  "chat.close": {
+    "message": "어시스턴트 닫기"
+  },
+  "chat.scope": {
+    "message": "질문 주제"
+  },
+  "chat.all": {
+    "message": "맞는 플러그인 찾기"
+  },
+  "chat.welcome": {
+    "message": "어떤 일을 해보고 싶으세요?"
+  },
+  "chat.intro": {
+    "message": "설치 방법, 작업 흐름, 다음 단계에 대해 물어보세요. 공개 가이드를 바탕으로 답변하고 더 읽을 수 있는 링크를 함께 드립니다."
+  },
+  "chat.exampleQuestion": {
+    "message": "첫 프레젠테이션을 만들고 발표자 노트를 확인하려면 어떻게 하나요?"
+  },
+  "chat.exampleLabel": {
+    "message": "첫 프레젠테이션 만드는 걸 도와줘"
+  },
+  "chat.you": {
+    "message": "나"
+  },
+  "chat.guide": {
+    "message": "가이드"
+  },
+  "chat.partial": {
+    "message": "일부 플러그인 담당 에이전트에 연결하지 못했습니다. 확인 가능한 가이드 근거로 답변했습니다."
+  },
+  "chat.sources": {
+    "message": "답변에 사용한 가이드"
+  },
+  "chat.thinking": {
+    "message": "관련 가이드를 확인하고 답변을 준비하고 있어요…"
+  },
+  "chat.offline": {
+    "message": "이 미리보기에는 채팅이 연결되지 않았습니다. 학습 경로와 레퍼런스는 이용할 수 있습니다."
+  },
+  "chat.signInHint": {
+    "message": "질문하려면 로그인해 주세요. 가이드는 로그인 없이 읽을 수 있습니다."
+  },
+  "chat.signIn": {
+    "message": "로그인 / 계정 만들기"
+  },
+  "chat.question": {
+    "message": "질문"
+  },
+  "chat.placeholder": {
+    "message": "하고 싶은 일을 알려주세요…"
+  },
+  "chat.privacy": {
+    "message": "자격증명이나 프로젝트의 비공개 정보는 입력하지 마세요."
+  },
+  "chat.send": {
+    "message": "보내기"
+  },
+  "chat.signOut": {
+    "message": "로그아웃하고 대화 지우기"
+  },
+  "learn.flow.1": {
+    "message": "요청 정리"
+  },
+  "learn.flow.2": {
+    "message": "슬라이드 · 노트"
+  },
+  "learn.flow.3": {
+    "message": "미리보기"
+  },
+  "learn.flow.4": {
+    "message": "콘텐츠 리뷰"
+  },
+  "learn.flow.5": {
+    "message": "준비 상태 확인"
+  },
+  "learn.flow.6": {
+    "message": "동료 AI 검토"
+  },
+  "learn.flow.7": {
+    "message": "의장 검증"
+  },
+  "learn.flow.8": {
+    "message": "발견 사항"
+  },
+  "learn.flow.9": {
+    "message": "저장소 확인"
+  },
+  "learn.flow.10": {
+    "message": "기술 스택 파악"
+  },
+  "learn.flow.11": {
+    "message": "지침 작성"
+  },
+  "learn.flow.12": {
+    "message": "변경 검토"
+  },
+  "learn.flow.13": {
+    "message": "범위 확인"
+  },
+  "learn.flow.14": {
+    "message": "근거 수집"
+  },
+  "learn.flow.15": {
+    "message": "가설 검증"
+  },
+  "learn.flow.16": {
+    "message": "해결 방안 제안"
+  },
+  "learn.flow.17": {
+    "message": "현재 저장소"
+  },
+  "learn.flow.18": {
+    "message": "풀 리퀘스트"
+  },
+  "learn.flow.19": {
+    "message": "검사 · 리뷰"
+  },
+  "learn.flow.20": {
+    "message": "다음 작업"
+  },
+  "learn.flow.21": {
+    "message": "현재 세션"
+  },
+  "learn.flow.22": {
+    "message": "상위 에이전트"
+  },
+  "learn.flow.23": {
+    "message": "위임한 작업"
+  },
+  "learn.flow.24": {
+    "message": "대기 · 결과"
+  },
+  "learn.pr.codexPrompt": {
+    "message": "설치된 pr-dash:pr-status 스킬로 현재 풀 리퀘스트, 최신 커밋, CI 검사, AI 리뷰 결과를 텍스트로 알려줘. 대기 중이거나 실패한 검사가 있으면 설명해줘."
+  },
+  "learn.agent.codexPrompt": {
+    "message": "설치된 agent-dash:agent-status 스킬로 Claude Code 팀 목록과 작업 파일을 읽어줘. 구성원 이름과 유형, 작업 상태, 담당자, 선행 작업 필드를 보고해줘. 과거 작업을 구분하고 이 파일만으로 알 수 없는 실시간 정보를 설명해줘."
+  },
+  "learn.agent.codexResult": {
+    "message": "확인 가능한 에이전트 팀 목록과 작업 파일을 읽기 전용 텍스트로 보고합니다. 누락되거나 오래된 기록은 명시하며, Codex 안에 별도의 대시보드 패널을 열지는 않습니다."
+  },
+  "learn.name.content": {
+    "message": "콘텐츠"
+  },
+  "learn.name.init": {
+    "message": "프로젝트 시작"
+  },
+  "learn.name.ops": {
+    "message": "AWS 운영"
+  },
+  "learn.name.pr": {
+    "message": "PR 대시보드"
+  },
+  "learn.name.agent": {
+    "message": "에이전트 대시보드"
+  },
+  "learn.agent.codexCheck": {
+    "message": "팀 이름, 작업 상태, 담당자, 선행 작업 필드를 확인하세요. 실행 중인 팀이 없다면 그 사실을 알려줘야 합니다. 이 파일은 실시간 대기 관계나 위임 이력을 보여주지 않습니다."
+  },
+  "learn.agent.flow.roster": {
+    "message": "팀 구성원 목록"
+  },
+  "learn.agent.flow.tasks": {
+    "message": "작업 파일"
+  },
+  "learn.agent.flow.owner": {
+    "message": "상태 · 담당자"
+  },
+  "learn.agent.flow.blocks": {
+    "message": "선행 작업 필드"
+  },
+  "workflows.presentation.output": {
+    "message": "HTML 프레젠테이션"
+  },
+  "workflows.presentation.title": {
+    "message": "인터랙티브 슬라이드 만들기"
+  },
+  "workflows.presentation.summary": {
+    "message": "슬라이드·발표자 노트·퀴즈·단계별 설명을 함께 만듭니다."
+  },
+  "workflows.presentation.prompt": {
+    "message": "개발자를 위한 Amazon Bedrock 소개 자료를 5장으로 만들어줘. 발표자 노트, 비교표, 퀴즈를 넣고 게시 전에 로컬 미리보기와 검증 결과를 보여줘."
+  },
+  "workflows.presentation.result": {
+    "message": "편집 가능한 Remarp 원본, HTML 슬라이드, 리허설할 수 있는 발표자 노트를 받습니다."
+  },
+  "workflows.presentation.check": {
+    "message": "미리보기를 열어 화살표 이동·단계별 설명·퀴즈를 확인하세요. N으로 발표자 노트를 열고 공유 전에 리허설하세요."
+  },
+  "workflows.powerpoint.output": {
+    "message": "편집 가능한 PowerPoint"
+  },
+  "workflows.powerpoint.title": {
+    "message": "수정 가능한 AWS 장표 만들기"
+  },
+  "workflows.powerpoint.summary": {
+    "message": "AWS 스타일의 도형과 텍스트를 PowerPoint에서 직접 수정합니다."
+  },
+  "workflows.powerpoint.prompt": {
+    "message": "이벤트 기반 아키텍처를 설명하는 AWS light PowerPoint를 6장으로 만들어줘. 아키텍처 개요·비교·발표자 노트를 넣고 내보낸 PPTX를 검증해줘."
+  },
+  "workflows.powerpoint.result": {
+    "message": "장표 전체가 이미지인 파일이 아니라 텍스트와 도형을 수정할 수 있는 PPTX를 받습니다."
+  },
+  "workflows.powerpoint.check": {
+    "message": "PowerPoint에서 텍스트와 도형이 선택·수정되는지 확인하세요. 폰트·넘침·검증 보고서도 점검하세요."
+  },
+  "workflows.architecture.output": {
+    "message": "Draw.io + SVG / PNG"
+  },
+  "workflows.architecture.title": {
+    "message": "AWS 아키텍처 그리기"
+  },
+  "workflows.architecture.summary": {
+    "message": "AWS 아이콘을 사용한 편집 가능한 구성도와 검증된 내보내기."
+  },
+  "workflows.architecture.prompt": {
+    "message": "CloudFront, 보호된 애플리케이션 계층, 데이터베이스로 구성한 AWS 3계층 아키텍처를 그려줘. 가정을 먼저 설명하고 Draw.io 원본과 SVG, 검증 결과를 제공해줘."
+  },
+  "workflows.architecture.result": {
+    "message": "서비스 경계와 트래픽 경로가 명확한 .drawio 원본과 공유용 이미지를 받습니다."
+  },
+  "workflows.architecture.check": {
+    "message": "실제 서비스와 연결 관계를 확인하세요. XML 검증과 레이아웃 점수 80점 이상을 확인한 뒤 내보낸 파일을 사용하세요."
+  },
+  "workflows.animated-flow.output": {
+    "message": "SVG / HTML 시나리오"
+  },
+  "workflows.animated-flow.title": {
+    "message": "트래픽·확장 흐름 설명하기"
+  },
+  "workflows.animated-flow.summary": {
+    "message": "서비스 사이의 요청과 확장 과정을 조작 가능한 시나리오로 설명합니다."
+  },
+  "workflows.animated-flow.prompt": {
+    "message": "시작·일시정지·초기화가 있는 AWS 요청 흐름 다이어그램을 만들어줘. 정지 상태에서도 아키텍처를 읽을 수 있게 하고 확장 시나리오를 먼저 설명해줘."
+  },
+  "workflows.animated-flow.result": {
+    "message": "흐름과 시나리오가 설명되어 있고 동작을 제어할 수 있는 다이어그램을 받습니다."
+  },
+  "workflows.animated-flow.check": {
+    "message": "정지 상태에서 라벨을 읽어보세요. 시작·초기화와 트래픽 경로가 설명한 아키텍처에 맞는지 확인하세요."
+  },
+  "workflows.workshop.output": {
+    "message": "Workshop Studio"
+  },
+  "workflows.workshop.title": {
+    "message": "핸즈온 워크숍 만들기"
+  },
+  "workflows.workshop.summary": {
+    "message": "모듈·실습·사전 준비·결과 확인·정리 절차를 구성합니다."
+  },
+  "workflows.workshop.prompt": {
+    "message": "입문자를 위한 AWS 워크숍을 실습 3개로 만들어줘. 사전 준비와 확인할 비용을 명시하고 Workshop Studio 문법을 사용해 각 실습의 예상 결과와 정리 절차를 넣어줘."
+  },
+  "workflows.workshop.result": {
+    "message": "모듈 페이지와 재현 가능한 실습 절차가 있는 Workshop Studio 프로젝트를 받습니다."
+  },
+  "workflows.workshop.check": {
+    "message": "테스트 환경에서 실습 하나를 따라 해보세요. 참가자에게 공유하기 전에 사전 조건·예상 출력·언어 대응·정리 절차를 확인하세요."
+  },
+  "workflows.gitbook.output": {
+    "message": "문서 사이트"
+  },
+  "workflows.gitbook.title": {
+    "message": "문서 사이트 구성하기"
+  },
+  "workflows.gitbook.summary": {
+    "message": "탐색 구조와 풍부한 컴포넌트를 갖춘 문서 체계를 만듭니다."
+  },
+  "workflows.gitbook.prompt": {
+    "message": "이 프로젝트의 시작하기·주요 작업·문제 해결을 담은 GitBook 가이드를 만들어줘. 명령은 저장소에서 확인하고 탐색 구조와 링크를 검증해줘."
+  },
+  "workflows.gitbook.result": {
+    "message": "내용과 탐색 구조가 일치하고 유지보수할 수 있는 가이드 원본을 받습니다."
+  },
+  "workflows.gitbook.check": {
+    "message": "설치부터 첫 작업 완료까지 이동해 보세요. 링크와 명령이 현재 저장소에 맞는지 확인하세요."
+  },
+  "workflows.brochure.output": {
+    "message": "솔루션 소개 페이지"
+  },
+  "workflows.brochure.title": {
+    "message": "AWS 솔루션 소개하기"
+  },
+  "workflows.brochure.summary": {
+    "message": "가치·아키텍처·다음 행동이 분명한 소개 페이지를 만듭니다."
+  },
+  "workflows.brochure.prompt": {
+    "message": "이 AWS 솔루션의 반응형 브로셔를 만들어줘. 대상·문제·효과·아키텍처를 설명하고 공개 배포 전에 로컬 미리보기를 보여줘."
+  },
+  "workflows.brochure.result": {
+    "message": "설명 흐름과 다음 행동이 명확한 반응형 솔루션 소개 페이지를 받습니다."
+  },
+  "workflows.brochure.check": {
+    "message": "데스크톱·모바일 배치, 아키텍처의 정확성, 행동 버튼의 링크를 확인하세요. 게시할 위치도 별도로 확인하세요."
+  },
+  "workflows.portfolio.output": {
+    "message": "프로필 / 포트폴리오"
+  },
+  "workflows.portfolio.title": {
+    "message": "작업을 포트폴리오로 보여주기"
+  },
+  "workflows.portfolio.summary": {
+    "message": "경력·프로젝트·기술을 한 페이지에 정리합니다."
+  },
+  "workflows.portfolio.prompt": {
+    "message": "내가 제공한 경력과 프로젝트만 사용해 개인 포트폴리오를 만들어줘. 반응형으로 구성하고 프로젝트 링크와 게시 전 미리보기를 제공해줘."
+  },
+  "workflows.portfolio.result": {
+    "message": "확인한 개인 정보와 작업을 바탕으로 구성한 독립적인 프로필 페이지를 받습니다."
+  },
+  "workflows.portfolio.check": {
+    "message": "경력 표현과 연락처를 하나씩 검토하세요. 공개 전에 프로젝트 링크와 모바일 배치를 확인하세요."
+  },
+  "workflows.slide-fix.output": {
+    "message": "수정된 Remarp 자료"
+  },
+  "workflows.slide-fix.title": {
+    "message": "슬라이드 리뷰 반영하기"
+  },
+  "workflows.slide-fix.summary": {
+    "message": "이슈 주석을 실제 장표 수정과 검증으로 연결합니다."
+  },
+  "workflows.slide-fix.prompt": {
+    "message": "이 Remarp 원본의 이슈 주석을 반영해줘. 관련 없는 내용은 보존하고 수정 내용을 설명한 뒤 원본 검증과 재빌드를 진행해줘."
+  },
+  "workflows.slide-fix.result": {
+    "message": "이슈 주석과 연결해 검토할 수 있는 원본 변경과 다시 빌드한 슬라이드를 받습니다."
+  },
+  "workflows.slide-fix.check": {
+    "message": "수정한 슬라이드와 이슈 주석을 대조하세요. 문제가 해결됐는지와 주변 레이아웃이 유지되는지 확인하세요."
+  },
+  "workflows.peer-review.output": {
+    "message": "검증된 리뷰"
+  },
+  "workflows.peer-review.title": {
+    "message": "AI 동료와 변경 리뷰하기"
+  },
+  "workflows.peer-review.summary": {
+    "message": "동료 AI의 발견 사항을 코드와 대조해 종합합니다."
+  },
+  "workflows.peer-review.prompt": {
+    "message": "co-agent로 동료 AI 준비 상태를 확인하고 현재 변경의 정확성과 빠진 테스트를 리뷰해줘. 발견 사항을 코드와 대조하고 실제 참여한 리뷰어를 알려줘."
+  },
+  "workflows.peer-review.result": {
+    "message": "구체적인 발견 사항, 근거, 영향받는 파일, 리뷰 참여 범위를 받습니다."
+  },
+  "workflows.peer-review.check": {
+    "message": "인용한 파일을 열어 발견 사항을 확인하세요. 참여하지 못한 리뷰어는 검토 범위의 제한이며 병합에는 저장소 CI 규칙을 적용하세요."
+  },
+  "workflows.decision.output": {
+    "message": "의사결정 비교"
+  },
+  "workflows.decision.title": {
+    "message": "아키텍처 대안 비교하기"
+  },
+  "workflows.decision.summary": {
+    "message": "명확한 제약을 기준으로 대안을 비교합니다."
+  },
+  "workflows.decision.prompt": {
+    "message": "co-agent로 이 워크로드의 SQS와 EventBridge를 비교해줘. 전달·순서·운영 요구사항을 먼저 확인하고 장단점과 추천 근거를 설명해줘."
+  },
+  "workflows.decision.result": {
+    "message": "가정·장단점·근거가 드러나는 비교와 선택 제안을 받습니다."
+  },
+  "workflows.decision.check": {
+    "message": "선택이 실제 제약에 맞는지, 불확실한 부분을 밝혔는지 확인하세요. 여러 AI의 동의만을 근거로 삼지 마세요."
+  },
+  "workflows.consensus.output": {
+    "message": "문서 → 구현"
+  },
+  "workflows.consensus.title": {
+    "message": "설계 문서에서 구현까지 진행하기"
+  },
+  "workflows.consensus.summary": {
+    "message": "계획·구현·최종 검토를 명시적인 합의 단계로 진행합니다."
+  },
+  "workflows.consensus.prompt": {
+    "message": "docs/spec.md를 바탕으로 co-agent consensus를 진행해줘. 동료 AI 준비 상태를 확인하고 구체적인 계획과 최종 검토 단계를 거쳐 미해결 사항을 보고해줘."
+  },
+  "workflows.consensus.result": {
+    "message": "입력 설계와 연결되는 계획·구현·검증·최종 리뷰 기록을 받습니다."
+  },
+  "workflows.consensus.check": {
+    "message": "동료 AI 준비, 실제 검토 단계 실행, 필수 테스트 통과를 확인하세요. 계획 문서만 생성된 상태를 구현 완료로 보지 마세요."
+  },
+  "workflows.harness.output": {
+    "message": "역할을 분리한 구현"
+  },
+  "workflows.harness.title": {
+    "message": "설계와 구현 역할 분리하기"
+  },
+  "workflows.harness.summary": {
+    "message": "호스트가 설계·테스트를 맡고 조건을 갖춘 동료가 구현합니다."
+  },
+  "workflows.harness.prompt": {
+    "message": "이 설계의 구현에 co-agent harness를 사용해줘. 구현자·리뷰어 준비 상태를 확인하고 작업 경계를 정하되 테스트와 커밋은 호스트가 관리해줘."
+  },
+  "workflows.harness.result": {
+    "message": "역할·격리·검증·외부 리뷰가 명확한 구현 결과를 받습니다."
+  },
+  "workflows.harness.check": {
+    "message": "선택한 구현 모드와 리뷰어 준비 상태를 확인하세요. 문서의 호스트 대체 규칙을 따르고 모든 동료 AI가 구현할 수 있다고 가정하지 마세요."
+  },
+  "workflows.pr-autofix.output": {
+    "message": "리뷰 피드백 수정"
+  },
+  "workflows.pr-autofix.title": {
+    "message": "PR 리뷰 피드백 반영하기"
+  },
+  "workflows.pr-autofix.summary": {
+    "message": "리뷰 코멘트를 검증하고 실제 문제를 수정한 뒤 검사합니다."
+  },
+  "workflows.pr-autofix.prompt": {
+    "message": "이 PR에 co-agent pr-autofix를 사용해줘. 최신 커밋의 리뷰 코멘트를 검증하고 범위에 맞게 수정한 뒤 남은 검사와 발견 사항을 알려줘."
+  },
+  "workflows.pr-autofix.result": {
+    "message": "검토 가능한 수정과 현재 PR 커밋 기준의 검사·리뷰 상태를 받습니다."
+  },
+  "workflows.pr-autofix.check": {
+    "message": "리뷰 대상이 최신 커밋인지, 실제 문제를 수정했는지 확인하세요. 반복 횟수 설정과 병합 조건도 확인하세요."
+  },
+  "workflows.reconcile.output": {
+    "message": "일관된 의사결정 기록"
+  },
+  "workflows.reconcile.title": {
+    "message": "충돌하는 의사결정 정리하기"
+  },
+  "workflows.reconcile.summary": {
+    "message": "과거 ADR을 현재 코드·결정과 대조합니다."
+  },
+  "workflows.reconcile.prompt": {
+    "message": "누적된 ADR의 모순을 현재 구현과 대조해줘. decision-reconcile로 근거를 명시한 대체 결정 기록을 제안해줘."
+  },
+  "workflows.reconcile.result": {
+    "message": "이력을 보존하는 모순 분석과 대체 ADR 제안을 받습니다."
+  },
+  "workflows.reconcile.check": {
+    "message": "인용한 결정과 현재 코드를 확인하세요. 과거 결정을 조용히 덮어쓰지 않고 대체 관계를 명시했는지 확인하세요."
+  },
+  "workflows.project-setup.output": {
+    "message": "프로젝트 문서"
+  },
+  "workflows.project-setup.title": {
+    "message": "프로젝트 지침 초기화하기"
+  },
+  "workflows.project-setup.summary": {
+    "message": "실제 저장소를 바탕으로 유용한 작업 지침을 만듭니다."
+  },
+  "workflows.project-setup.prompt": {
+    "message": "project-init으로 저장소를 분석해 현재 호스트에 맞는 지침과 온보딩 문서를 준비해줘. 직접 작성한 내용은 보존하고 변경을 보여줘."
+  },
+  "workflows.project-setup.result": {
+    "message": "기술 스택에 맞는 프로젝트 지침·온보딩·필요한 구조를 받습니다."
+  },
+  "workflows.project-setup.check": {
+    "message": "기록한 설정 명령을 실행해보고 생성한 훅은 신뢰하기 전에 직접 검토하세요."
+  },
+  "workflows.sync-docs.output": {
+    "message": "프로젝트 문서"
+  },
+  "workflows.sync-docs.title": {
+    "message": "문서를 현재 코드에 맞추기"
+  },
+  "workflows.sync-docs.summary": {
+    "message": "오래된 명령·경로·아키텍처 설명을 찾아 정리합니다."
+  },
+  "workflows.sync-docs.prompt": {
+    "message": "project-init sync-docs로 유지보수 문서를 현재 코드·설정과 비교해줘. 오래된 사실을 수정하고 한곳에 일관되게 설명해줘."
+  },
+  "workflows.sync-docs.result": {
+    "message": "확인한 소스 동작과 연결되는 문서 변경을 받습니다."
+  },
+  "workflows.sync-docs.check": {
+    "message": "수정한 설명을 소스와 대조하세요. 과거 결정 기록과 현재 요구사항을 구분하세요."
+  },
+  "workflows.write-adr.output": {
+    "message": "프로젝트 문서"
+  },
+  "workflows.write-adr.title": {
+    "message": "아키텍처 결정 기록하기"
+  },
+  "workflows.write-adr.summary": {
+    "message": "맥락·대안·결과를 하나의 결정 기록으로 남깁니다."
+  },
+  "workflows.write-adr.prompt": {
+    "message": "project-init add-adr로 이 아키텍처 결정을 기록해줘. 맥락·검토한 대안·선택·결과를 담고 기존 번호 체계를 따라줘."
+  },
+  "workflows.write-adr.result": {
+    "message": "프로젝트 결정 구조와 연결된 번호가 있는 ADR을 받습니다."
+  },
+  "workflows.write-adr.check": {
+    "message": "대안이 실제 검토한 내용인지, 선택이 논의와 맞는지, 대체한 ADR을 연결했는지 확인하세요."
+  },
+  "workflows.add-module.output": {
+    "message": "프로젝트 문서"
+  },
+  "workflows.add-module.title": {
+    "message": "설명이 있는 모듈 추가하기"
+  },
+  "workflows.add-module.summary": {
+    "message": "역할·의존성·모듈별 지침을 함께 정의합니다."
+  },
+  "workflows.add-module.prompt": {
+    "message": "project-init add-module로 새 모듈을 추가해줘. 기존 배치를 따르고 역할·의존성과 현재 호스트용 모듈 지침을 작성해줘."
+  },
+  "workflows.add-module.result": {
+    "message": "모듈별 지침과 갱신된 아키텍처 설명이 있는 구조를 받습니다."
+  },
+  "workflows.add-module.check": {
+    "message": "참조 관계와 역할 경계를 확인하세요. 설정·검증 명령이 이 모듈에 맞는지 확인하세요."
+  },
+  "workflows.runbook.output": {
+    "message": "프로젝트 문서"
+  },
+  "workflows.runbook.title": {
+    "message": "운영 절차서 작성하기"
+  },
+  "workflows.runbook.summary": {
+    "message": "운영자에게 사전 조건·실행·복구 순서를 제공합니다."
+  },
+  "workflows.runbook.prompt": {
+    "message": "project-init add-runbook으로 이 운영 작업을 문서화해줘. 사전 조건·정확한 명령·예상 출력·검증·복구를 넣고 자격증명은 포함하지 마."
+  },
+  "workflows.runbook.result": {
+    "message": "검증과 복구 경로가 있는 재현 가능한 운영 절차를 받습니다."
+  },
+  "workflows.runbook.check": {
+    "message": "테스트 환경에서 순서대로 따라 하고 복구 절차도 실행 가능한지 확인하세요."
+  },
+  "workflows.health.output": {
+    "message": "근거가 있는 보고서"
+  },
+  "workflows.health.title": {
+    "message": "인프라 전체 상태 점검하기"
+  },
+  "workflows.health.summary": {
+    "message": "클러스터·노드·워크로드·네트워크·스토리지를 점검합니다."
+  },
+  "workflows.health.prompt": {
+    "message": "ops-health-check로 AWS/EKS 상태를 읽기 전용으로 점검해줘. 프로필·리전·클러스터를 먼저 확인하고 근거와 우선순위를 보고해줘."
+  },
+  "workflows.health.result": {
+    "message": "범위·발견 사항·다음 조치가 있는 상태 점검 결과를 받습니다."
+  },
+  "workflows.health.check": {
+    "message": "점검한 계정과 클러스터를 확인하세요. 근거의 시간과 현재 문제·과거 이벤트의 구분을 확인하세요."
+  },
+  "workflows.incident.output": {
+    "message": "근거가 있는 보고서"
+  },
+  "workflows.incident.title": {
+    "message": "장애 원인 조사하기"
+  },
+  "workflows.incident.summary": {
+    "message": "구체적인 증상에서 근거와 해결 제안으로 이어갑니다."
+  },
+  "workflows.incident.prompt": {
+    "message": "ops-troubleshoot로 이 AWS 장애를 조사해줘. 범위를 확인하고 읽기 전용 근거로 가설을 검증한 뒤 변경 전에 해결 방안과 롤백을 제안해줘."
+  },
+  "workflows.incident.result": {
+    "message": "시간 흐름·근거·추정 원인·검토 가능한 해결 계획을 받습니다."
+  },
+  "workflows.incident.check": {
+    "message": "원인이 증상을 설명하는지, 변경 제안에 검증과 롤백 경로가 있는지 확인하세요."
+  },
+  "workflows.network.output": {
+    "message": "근거가 있는 보고서"
+  },
+  "workflows.network.title": {
+    "message": "연결 문제 추적하기"
+  },
+  "workflows.network.summary": {
+    "message": "DNS·로드 밸런서·VPC CNI·IP 여유를 조사합니다."
+  },
+  "workflows.network.prompt": {
+    "message": "ops-network-diagnosis로 EKS 연결 실패를 조사해줘. 출발지·목적지·클러스터를 확인하고 경로를 읽기 전용으로 점검해 실패하는 경계를 설명해줘."
+  },
+  "workflows.network.result": {
+    "message": "문제가 발생한 구간의 근거가 있는 네트워크 경로 진단을 받습니다."
+  },
+  "workflows.network.check": {
+    "message": "출발지·목적지가 실제 워크로드와 맞는지 확인하세요. 변경 전에 DNS·라우팅·정책 근거를 대조하세요."
+  },
+  "workflows.observability.output": {
+    "message": "근거가 있는 보고서"
+  },
+  "workflows.observability.title": {
+    "message": "로그·지표·트레이스 연결하기"
+  },
+  "workflows.observability.summary": {
+    "message": "실제 문제의 맥락에서 모니터링 신호를 해석합니다."
+  },
+  "workflows.observability.prompt": {
+    "message": "ops-observability로 이 워크로드의 로그·지표·트레이스를 조사해줘. 환경과 시간 범위를 확인하고 근거가 부족한 부분과 다음 조회를 제안해줘."
+  },
+  "workflows.observability.result": {
+    "message": "연결된 관측 결과, 유용한 조회, 관측이 부족한 부분을 받습니다."
+  },
+  "workflows.observability.check": {
+    "message": "신호 사이의 시간 범위와 리소스가 같은지 확인하세요. 관측 데이터가 없다는 이유로 정상이라고 판단하지 마세요."
+  },
+  "workflows.security.output": {
+    "message": "근거가 있는 보고서"
+  },
+  "workflows.security.title": {
+    "message": "AWS 보안 상태 검토하기"
+  },
+  "workflows.security.summary": {
+    "message": "IAM·네트워크 경계·인프라 보안 규칙을 확인합니다."
+  },
+  "workflows.security.prompt": {
+    "message": "ops-security-audit로 이 AWS 범위 또는 IaC 변경을 읽기 전용 검토해줘. 저장소 보안 규칙을 확인하고 위반 리소스와 근거를 보고해줘."
+  },
+  "workflows.security.result": {
+    "message": "심각도·영향 리소스·구체적인 조치가 있는 발견 사항을 받습니다."
+  },
+  "workflows.security.check": {
+    "message": "발견 사항을 현재 리소스 또는 원본 템플릿과 대조하세요. 애플리케이션 보안 요청은 필요한 별도 스킬로 연결하세요."
+  },
+  "workflows.well-architected.output": {
+    "message": "근거가 있는 보고서"
+  },
+  "workflows.well-architected.title": {
+    "message": "아키텍처를 6개 관점으로 검토하기"
+  },
+  "workflows.well-architected.summary": {
+    "message": "위험을 찾고 개선 순서를 정합니다."
+  },
+  "workflows.well-architected.prompt": {
+    "message": "ops-wellarchitected-review로 이 AWS 아키텍처를 검토해줘. 범위와 근거를 밝히고 6개 필라 평가와 우선순위가 있는 개선 계획을 작성해줘."
+  },
+  "workflows.well-architected.result": {
+    "message": "근거·위험·점수·개선 로드맵을 포함한 6개 필라 평가를 받습니다."
+  },
+  "workflows.well-architected.check": {
+    "message": "점수의 근거를 확인하세요. 실제 배포에서 관측한 사실과 설계에 대한 가정을 구분하세요."
+  },
+  "workflows.pr-status.output": {
+    "message": "PR 검사·리뷰 상태"
+  },
+  "workflows.pr-status.title": {
+    "message": "현재 PR 상태 확인하기"
+  },
+  "workflows.pr-status.summary": {
+    "message": "최신 커밋·검사·리뷰 범위·대기 항목을 확인합니다."
+  },
+  "workflows.pr-status.prompt": {
+    "message": "pr-dash로 현재 PR·최신 커밋·CI 검사·AI 리뷰 결과를 보여줘. 대기 항목과 필요한 다음 행동을 설명해줘."
+  },
+  "workflows.pr-status.result": {
+    "message": "Claude Code 패널 또는 호스트에 맞는 PR 상태 텍스트 보고를 받습니다."
+  },
+  "workflows.pr-status.check": {
+    "message": "PR 번호와 검토한 커밋을 확인하세요. 과거 커밋의 통과가 최신 커밋의 통과를 의미하지는 않습니다."
+  },
+  "workflows.agent-status.output": {
+    "message": "에이전트·작업 상태"
+  },
+  "workflows.agent-status.title": {
+    "message": "에이전트와 작업 따라가기"
+  },
+  "workflows.agent-status.summary": {
+    "message": "Claude 패널과 범위가 다른 Codex 텍스트 조회를 구분합니다."
+  },
+  "workflows.agent-status.prompt": {
+    "message": "설치된 agent-dash 가이드로 Claude Code의 에이전트와 작업 상태를 읽는 방법을 알려줘. 표시된 대기 관계 중 추정인 부분을 설명해줘."
+  },
+  "workflows.agent-status.result": {
+    "message": "현재 호스트에서 확인할 수 있는 에이전트·작업 정보에 대한 설명을 받습니다."
+  },
+  "workflows.agent-status.check": {
+    "message": "선택한 호스트를 확인하세요. Codex는 팀·작업 파일을 읽으며 실시간 대기 관계나 위임 이력을 보고하지 않습니다."
+  },
+  "studio.copied": {
+    "message": "클립보드에 복사했어요"
+  },
+  "studio.copyError": {
+    "message": "텍스트를 선택해 직접 복사해 주세요."
+  },
+  "studio.askWorkflow": {
+    "message": "이 작업을 단계별로 설명해 주세요: {title}"
+  },
+  "studio.back": {
+    "message": "작업 목록"
+  },
+  "studio.reference": {
+    "message": "상세 문서"
+  },
+  "studio.verified": {
+    "message": "직접 확인 완료"
+  },
+  "studio.handsOn": {
+    "message": "따라 하는 실습"
+  },
+  "studio.hostNotice": {
+    "message": "시각적인 패널은 Claude Code 기능입니다. 이 Codex 실습에서는 설치된 텍스트 상태 조회 절차를 사용합니다."
+  },
+  "studio.setup": {
+    "message": "설치 · 사전 준비"
+  },
+  "studio.setupHint": {
+    "message": "이 플러그인이 처음인가요?"
+  },
+  "studio.setupClaude": {
+    "message": "Claude Code 안에서 아래 명령을 실행한 뒤 새 세션을 시작하세요."
+  },
+  "studio.setupCodex": {
+    "message": "터미널에서 실행하세요. Codex의 /plugins에서 해당 플러그인을 설치한 뒤 새 스레드를 시작하세요."
+  },
+  "studio.copyInstall": {
+    "message": "설치 명령 복사"
+  },
+  "studio.installDetails": {
+    "message": "사전 조건과 문제 해결"
+  },
+  "studio.request": {
+    "message": "이렇게 요청하세요"
+  },
+  "studio.adapt": {
+    "message": "내 프로젝트에 맞게 바꿔도 좋아요"
+  },
+  "studio.copyPrompt": {
+    "message": "프롬프트 복사"
+  },
+  "studio.promptHint": {
+    "message": "내 코딩 어시스턴트에서 요청을 실행하세요."
+  },
+  "studio.ask": {
+    "message": "이 작업 질문하기"
+  },
+  "studio.result": {
+    "message": "결과를 확인하세요"
+  },
+  "studio.expect": {
+    "message": "예상 결과"
+  },
+  "studio.previewAlt": {
+    "message": "{title}의 공개 예제"
+  },
+  "studio.preview": {
+    "message": "공개 예제 열어보기"
+  },
+  "studio.outputScope": {
+    "message": "명확한 범위와 가정"
+  },
+  "studio.outputEvidence": {
+    "message": "직접 확인할 수 있는 근거"
+  },
+  "studio.outputAction": {
+    "message": "구체적인 다음 행동"
+  },
+  "studio.outputHint": {
+    "message": "결과를 검토하는 기준으로 사용하세요."
+  },
+  "studio.checkoff": {
+    "message": "위 안내를 실제 결과와 대조해 확인했습니다."
+  },
+  "studio.deep": {
+    "message": "옵션·제약·상세 예제 더 알아보기"
+  },
+  "studio.exampleNotice": {
+    "message": "결과물 형식을 보여주는 이전 공개 예제입니다. 설치 방법과 지원 기능은 현재 상세 문서를 확인하세요."
+  },
+  "studio.closePreview": {
+    "message": "예제 닫기"
+  },
+  "studio.fullSize": {
+    "message": "새 탭에서 크게 보기"
+  },
+  "studio.eyebrow": {
+    "message": "플러그인 실습 라이브러리"
+  },
+  "studio.heading": {
+    "message": "기능을 고르고, 바로 실습하세요."
+  },
+  "studio.intro": {
+    "message": "{plugins}개 플러그인 · {workflows}개 작업. 실행 예시와 결과 확인을 한 화면에서."
+  },
+  "studio.host": {
+    "message": "사용할 어시스턴트"
+  },
+  "studio.browse": {
+    "message": "작업 둘러보기"
+  },
+  "studio.pluginNav": {
+    "message": "플러그인별 필터"
+  },
+  "studio.all": {
+    "message": "모든 작업"
+  },
+  "studio.resources": {
+    "message": "빠른 참고"
+  },
+  "studio.shortcuts": {
+    "message": "발표 조작 · 단축키"
+  },
+  "studio.presenter": {
+    "message": "발표자 핸드북"
+  },
+  "studio.library": {
+    "message": "전체 레퍼런스"
+  },
+  "studio.helperTitle": {
+    "message": "어디서 시작할지 막막하다면"
+  },
+  "studio.helperText": {
+    "message": "하고 싶은 일을 설명해 주세요. 가이드가 맞는 작업을 찾도록 도와드립니다."
+  },
+  "studio.helperAction": {
+    "message": "가이드에게 질문"
+  },
+  "studio.progress": {
+    "message": "이번 세션에서 {count}개 실습 확인"
+  },
+  "studio.search": {
+    "message": "작업 · 스킬 · 결과물 검색…"
+  },
+  "studio.searchLabel": {
+    "message": "실습 작업 검색"
+  },
+  "studio.clearSearch": {
+    "message": "검색 지우기"
+  },
+  "studio.allTasks": {
+    "message": "전체 작업"
+  },
+  "studio.workflowNav": {
+    "message": "실습 작업 목록"
+  },
+  "studio.noResults": {
+    "message": "일치하는 작업이 없습니다"
+  },
+  "studio.noResultsHint": {
+    "message": "스킬 이름이나 짧은 검색어, 다른 플러그인으로 찾아보세요."
+  },
+  "studio.reset": {
+    "message": "모든 작업 보기"
+  },
+  "studio.catalogNote": {
+    "message": "내 작업에 맞게 바꾸고 상세 문서로 확인하세요."
+  },
+  "studio.chooseTask": {
+    "message": "다음 작업을 찾아보세요"
+  },
+  "studio.chooseTaskHint": {
+    "message": "만들거나 해결할 일을 검색하세요. 각 작업에 실행 예시와 검증 절차가 있습니다."
+  },
+  "studio.openDemo": {
+    "message": "이전 인터랙티브 예제 열기"
   }
 }

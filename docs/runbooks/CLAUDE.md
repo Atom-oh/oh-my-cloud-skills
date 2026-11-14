@@ -5,8 +5,10 @@ verification. Use `kebab-task.md` filenames, concise English prose, and links to
 relevant ADR and helper. User-requested artifact language is independent of maintained
 documentation language ([ADR-021](../decisions/ADR-021-english-docs-current-review-authority.md)).
 
-This repository ships the registered plugins for Claude Code and Codex. It has no application
-server or database migration lifecycle. `plugin-release.md` covers releases; CI review
+This repository ships the registered plugins for Claude Code and Codex. Plugin
+releases have no application-server or database migration lifecycle. The public
+guide's Node Web Function, authentication and quota store are documented in
+`../../doc-sites/infra/README.md`. `plugin-release.md` covers releases; CI review
 operations live in `../ci-pr-review-runbook.md`. Kiro startup, no-tools-agent and
 quota diagnostics are in `pr-review-panel.md`.
 

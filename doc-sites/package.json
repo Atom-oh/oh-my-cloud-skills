@@ -7,7 +7,9 @@
     "start": "docusaurus start",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
-    "deploy": "docusaurus deploy",
+    "package:aws": "bash infra/package.sh",
+    "start:server": "node server/index.js",
+    "test:server": "node --test server/tests/*.test.mjs",
     "clear": "docusaurus clear",
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
@@ -16,7 +18,8 @@
     "test:i18n": "node --test tests/*.test.cjs",
     "check:locales": "node scripts/check-guide-locales.cjs",
     "record:locales": "node scripts/check-guide-locales.cjs --record",
-    "prebuild": "npm run test:i18n && npm run check:locales"
+    "prebuild": "npm run test:i18n && npm run check:locales",
+    "postbuild": "node server/build-corpus.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "3.9.2",

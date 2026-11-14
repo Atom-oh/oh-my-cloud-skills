@@ -1,0 +1,297 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: React guides and Bedrock Haiku/Luna chat on an IAM-protected Lambda Web Function.
+Parameters:
+  DomainName:
+    Type: String
+    Default: skills.atomai.click
+    AllowedPattern: '[a-z0-9][a-z0-9.-]+'
+  HostedZoneId: {Type: 'AWS::Route53::HostedZone::Id'}
+  CertificateArn:
+    Type: String
+    AllowedPattern: 'arn:aws:acm:us-east-1:[0-9]{12}:certificate/.+'
+  FunctionName:
+    Type: String
+    Default: skills-guide
+    AllowedPattern: '[a-zA-Z0-9][a-zA-Z0-9_-]{0,62}[a-zA-Z0-9]'
+  CodeBucket: {Type: String}
+  CodeKey: {Type: String, AllowedPattern: 'releases/.+\.zip'}
+  CodeVersion: {Type: String, MinLength: 1}
+  DailyChatLimit: {Type: Number, Default: 250, MinValue: 1, MaxValue: 10000}
+  UserDailyChatLimit: {Type: Number, Default: 30, MinValue: 1, MaxValue: 1000}
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: !Sub '${AWS::StackName}-readers'
+      UserPoolTier: ESSENTIALS
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      UsernameConfiguration: {CaseSensitive: false}
+      AccountRecoverySetting:
+        RecoveryMechanisms: [{Name: verified_email, Priority: 1}]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          TemporaryPasswordValidityDays: 1
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [openid]
+      SupportedIdentityProviders: [COGNITO]
+      CallbackURLs: [!Sub 'https://${DomainName}/']
+      LogoutURLs: [!Sub 'https://${DomainName}/']
+      AccessTokenValidity: 5
+      IdTokenValidity: 5
+      RefreshTokenValidity: 1
+      TokenValidityUnits: {AccessToken: minutes, IdToken: minutes, RefreshToken: days}
+      EnableTokenRevocation: true
+      PreventUserExistenceErrors: ENABLED
+  LoginDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Sub '${FunctionName}-${AWS::AccountId}'
+      ManagedLoginVersion: 2
+  LoginBrand:
+    Type: AWS::Cognito::ManagedLoginBranding
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientId: !Ref UserPoolClient
+      UseCognitoProvidedValues: true
+  Quotas:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: id, AttributeType: S}]
+      KeySchema: [{AttributeName: id, KeyType: HASH}]
+      SSESpecification: {SSEEnabled: true, SSEType: KMS}
+      TimeToLiveSpecification: {AttributeName: expires, Enabled: true}
+      PointInTimeRecoverySpecification: {PointInTimeRecoveryEnabled: true}
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/web/${FunctionName}'
+      RetentionInDays: 14
+  LocalLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/web/${FunctionName}.local'
+      RetentionInDays: 14
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: GuideRuntime
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: [!GetAtt LogGroup.Arn, !GetAtt LocalLogGroup.Arn]
+                Condition:
+                  StringEquals: {aws:RequestedRegion: !Ref 'AWS::Region'}
+              - Effect: Allow
+                Action: dynamodb:UpdateItem
+                Resource: !GetAtt Quotas.Arn
+              - Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-haiku-5-5'
+                  - !Sub 'arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.openai.gpt-6-luna'
+                  - !Sub 'arn:${AWS::Partition}:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-5-5'
+                  - !Sub 'arn:${AWS::Partition}:bedrock:us-east-2::foundation-model/anthropic.claude-haiku-5-5'
+                  - !Sub 'arn:${AWS::Partition}:bedrock:us-west-2::foundation-model/anthropic.claude-haiku-5-5'
+                  - !Sub 'arn:${AWS::Partition}:bedrock:us-east-1::foundation-model/openai.gpt-6-luna'
+                  - !Sub 'arn:${AWS::Partition}:bedrock:us-east-2::foundation-model/openai.gpt-6-luna'
+                  - !Sub 'arn:${AWS::Partition}:bedrock:us-west-2::foundation-model/openai.gpt-6-luna'
+  WebFunction:
+    Type: AWS::Lambda::WebFunction
+    Properties:
+      FunctionName: !Ref FunctionName
+  Revision:
+    Type: AWS::Lambda::WebFunctionRevision
+    Properties:
+      FunctionName: !Ref WebFunction
+      BuildConfig:
+        CodeConfig:
+          S3Object: {Bucket: !Ref CodeBucket, Key: !Ref CodeKey, VersionId: !Ref CodeVersion}
+        RuntimeConfig: {Runtime: nodejs24.x}
+      ServiceConfig:
+        ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+        TimeoutSeconds: 60
+        MaxConcurrencyPerEnvironment: 16
+        EnvironmentVariables:
+          SITE_ORIGIN: !Sub 'https://${DomainName}'
+          COGNITO_USER_POOL_ID: !Ref UserPool
+          COGNITO_CLIENT_ID: !Ref UserPoolClient
+          COGNITO_DOMAIN: !Sub 'https://${LoginDomain}.auth.${AWS::Region}.amazoncognito.com'
+          QUOTA_TABLE: !Ref Quotas
+          DAILY_CHAT_LIMIT: !Ref DailyChatLimit
+          USER_DAILY_CHAT_LIMIT: !Ref UserDailyChatLimit
+          SPECIALIST_MODEL_ID: us.anthropic.claude-haiku-5-5
+          FINAL_MODEL_ID: us.openai.gpt-6-luna
+  Endpoint:
+    Type: AWS::Lambda::WebFunctionEndpoint
+    Properties:
+      FunctionName: !Ref WebFunction
+      EndpointName: production
+      EndpointType: HomeRegion
+      AuthType: IamAuth
+      RevisionWeights: [{RevisionId: !GetAtt Revision.RevisionId, Weight: 100}]
+      ScalingConfig: {MaxEnvironments: 2}
+      ThrottleConfig: {RateLimit: 100}
+  OriginControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-web'
+        OriginAccessControlOriginType: lambda
+        SigningProtocol: sigv4
+        SigningBehavior: always-amz-auth
+  StaticCache:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub '${AWS::StackName}-static'
+        MinTTL: 0
+        DefaultTTL: 3600
+        MaxTTL: 86400
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: true
+          EnableAcceptEncodingBrotli: true
+          CookiesConfig: {CookieBehavior: none}
+          HeadersConfig: {HeaderBehavior: none}
+          QueryStringsConfig: {QueryStringBehavior: none}
+  NoCache:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub '${AWS::StackName}-api'
+        MinTTL: 0
+        DefaultTTL: 0
+        MaxTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          EnableAcceptEncodingGzip: false
+          CookiesConfig: {CookieBehavior: none}
+          HeadersConfig: {HeaderBehavior: none}
+          QueryStringsConfig: {QueryStringBehavior: none}
+  ViewerHeaders:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub '${AWS::StackName}-viewer-auth'
+        CookiesConfig: {CookieBehavior: none}
+        HeadersConfig: {HeaderBehavior: allExcept, Headers: [host]}
+        QueryStringsConfig: {QueryStringBehavior: none}
+  LegacyRequests:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub '${AWS::StackName}-legacy-query'
+        CookiesConfig: {CookieBehavior: none}
+        HeadersConfig: {HeaderBehavior: none}
+        QueryStringsConfig: {QueryStringBehavior: all}
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        IPV6Enabled: true
+        HttpVersion: http2and3
+        Aliases: [!Ref DomainName]
+        DefaultRootObject: index.html
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        Origins:
+          - Id: web
+            DomainName: !GetAtt Endpoint.DomainName
+            OriginAccessControlId: !GetAtt OriginControl.Id
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
+              OriginReadTimeout: 60
+        DefaultCacheBehavior:
+          TargetOriginId: web
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: !Ref StaticCache
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: web
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: false
+            CachePolicyId: !Ref NoCache
+            OriginRequestPolicyId: !Ref ViewerHeaders
+          - PathPattern: /oh-my-cloud-skills*
+            TargetOriginId: web
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            CachePolicyId: !Ref NoCache
+            OriginRequestPolicyId: !Ref LegacyRequests
+  OriginPolicy:
+    Type: AWS::Lambda::ResourcePolicy
+    Properties:
+      ResourceArn: !Ref WebFunction
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: OnlyThisCloudFrontDistribution
+            Effect: Allow
+            Principal: {Service: cloudfront.amazonaws.com}
+            Action: lambda:InvokeWebFunctionEndpoint
+            Resource: !Ref Endpoint
+            Condition:
+              StringEquals:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}'
+  DnsA:
+    Type: AWS::Route53::RecordSet
+    DependsOn: OriginPolicy
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget: {DNSName: !GetAtt Distribution.DomainName, HostedZoneId: Z2FDTNDATAQYW2}
+  DnsAAAA:
+    Type: AWS::Route53::RecordSet
+    DependsOn: OriginPolicy
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: AAAA
+      AliasTarget: {DNSName: !GetAtt Distribution.DomainName, HostedZoneId: Z2FDTNDATAQYW2}
+Outputs:
+  SiteUrl: {Value: !Sub 'https://${DomainName}'}
+  DistributionId: {Value: !Ref Distribution}
+  EndpointDomain: {Value: !GetAtt Endpoint.DomainName}
+  UserPoolId: {Value: !Ref UserPool}
+  UserPoolClientId: {Value: !Ref UserPoolClient}
+  WebFunctionArn: {Value: !Ref WebFunction}
