@@ -1,7 +1,7 @@
 import http from 'node:http';
 import {readFile, realpath, stat} from 'node:fs/promises';
 import path from 'node:path';
-import {validateQuestion} from './chat.mjs';
+import {MAX_CHAT_BODY_BYTES, validateQuestion} from './chat.mjs';
 
 const MIME = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml',
@@ -15,9 +15,12 @@ function json(res, status, value) {
 
 async function body(req) {
   const chunks = []; let size = 0;
-  for await (const chunk of req) {
+  for await (const chunk of req.iterator({destroyOnReturn: false})) {
     size += chunk.length;
-    if (size > 24000) throw new Error('Invalid request body');
+    if (size > MAX_CHAT_BODY_BYTES) {
+      req.resume();
+      throw new Error('Invalid request body');
+    }
     chunks.push(chunk);
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));

@@ -3,6 +3,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {PLUGINS} from './chat.mjs';
 import {guideUrl} from './guide-paths.mjs';
+import {guideText} from './guide-text.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 async function walk(dir) {
@@ -25,9 +26,7 @@ for (const [locale, directory] of [
     const raw = await readFile(file, 'utf8');
     const title = raw.match(/^title:\s*["']?(.+?)["']?\s*$/m)?.[1]
       || raw.match(/^#\s+(.+)$/m)?.[1] || relative;
-    const body = raw.replace(/^---\n[\s\S]*?\n---\n/, '')
-      .replace(/^import .+$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
-      .replace(/<[^>]+>/g, '');
+    const body = guideText(raw);
     const url = guideUrl(relative, locale);
     // Fail packaging if a citation would lead to an unpublished route.
     await access(path.join(root, 'build', url, 'index.html'));

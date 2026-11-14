@@ -26,17 +26,16 @@ export default function GuideWorkspace() {
   const [mobileDetail, setMobileDetail] = useState(false);
   const [checks, setChecks] = useState<Record<string, boolean>>({});
   const search = useRef<HTMLInputElement>(null);
-  const previousScope = useRef('all');
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const plugin = params.get('plugin');
     const scope = guides.some((g) => g.id === plugin) ? plugin! : 'all';
     const candidates = workflows.filter((w) => scope === 'all' || w.plugin === scope);
-    const task = candidates.find((w) => w.id === params.get('task')) || candidates[0];
+    const searchQuery = params.get('q') || '';
+    const matching = candidates.filter((w) => matchesQuery(w, searchQuery));
+    const task = matching.find((w) => w.id === params.get('task')) || matching[0] || candidates[0];
     setSelected(scope); setActiveId(task.id); setMobileDetail(Boolean(params.get('task')));
-    // Restore a historical task even when the current search would hide it.
-    if (scope !== previousScope.current || (params.has('task') && !matchesQuery(task, query))) setQuery('');
-    previousScope.current = scope;
+    setQuery(searchQuery);
   }, [location.search]);
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
@@ -56,13 +55,17 @@ export default function GuideWorkspace() {
     if (active) window.dispatchEvent(new CustomEvent('guide-context', {detail: active.plugin}));
   }, [active?.plugin]);
   const completed = Object.entries(checks).filter(([key, value]) => key.startsWith(host + ':') && value).length;
-  function navigate(plugin: string, task?: string) {
+  function navigate(plugin: string, task?: string, searchQuery = query, replace = false) {
     const params = new URLSearchParams();
     if (plugin !== 'all') params.set('plugin', plugin);
     if (task) params.set('task', task);
-    history.push({pathname: location.pathname, search: params.toString() ? `?${params}` : ''});
+    if (searchQuery) params.set('q', searchQuery);
+    history[replace ? 'replace' : 'push']({pathname: location.pathname, search: params.toString() ? `?${params}` : ''});
   }
-  function choosePlugin(id: string) {setQuery(''); navigate(id);}
+  function choosePlugin(id: string) {setQuery(''); navigate(id, undefined, '');}
+  function changeQuery(value: string) {
+    setQuery(value); setMobileDetail(false); navigate(selected, undefined, value, true);
+  }
   function chooseTask(id: string) {
     setActiveId(id); setMobileDetail(true); navigate(selected, id);
     if (window.matchMedia('(max-width: 760px)').matches) window.scrollTo(0, 0);
@@ -108,10 +111,10 @@ export default function GuideWorkspace() {
       <div className={`${styles.catalog} ${mobileDetail ? styles.mobileHidden : ''}`}>
         <div className={styles.catalogTop}>
           <label className={styles.search} htmlFor="workflow-search"><Icon name="search" size={18}/>
-            <input ref={search} id="workflow-search" value={query} onChange={(e) => {setQuery(e.target.value); setMobileDetail(false);}}
+            <input ref={search} id="workflow-search" value={query} onChange={(e) => changeQuery(e.target.value)}
               aria-label={translate({id: 'studio.searchLabel', message: 'Search workflow exercises'})}
               placeholder={translate({id: 'studio.search', message: 'Search tasks, skills, outputs…'})}/>
-            {query ? <button onClick={() => {setQuery(''); search.current?.focus();}} aria-label={translate({id: 'studio.clearSearch', message: 'Clear search'})}><Icon name="close" size={15}/></button> : <kbd>⌘ K</kbd>}
+            {query ? <button onClick={() => {changeQuery(''); search.current?.focus();}} aria-label={translate({id: 'studio.clearSearch', message: 'Clear search'})}><Icon name="close" size={15}/></button> : <kbd>⌘ K</kbd>}
           </label>
           <div className={styles.catalogHeading}><strong>{selected === 'all' ? translate({id: 'studio.allTasks', message: 'All tasks'}) : guides.find((g) => g.id === selected)?.name}</strong><span>{filtered.length}</span></div>
         </div>
@@ -120,7 +123,7 @@ export default function GuideWorkspace() {
             <div className={styles.workflowTitle}><span className={styles.workflowIcon}><Icon name={w.icon} size={18}/></span><strong>{w.title}</strong>{checks[`${host}:${w.id}`] ? <Icon name="check" size={15}/> : <span className={styles.workflowArrow}>›</span>}</div>
             <p>{w.summary}</p><span className={styles.workflowSkill}>{w.skill}</span>
           </button>)}
-          {!filtered.length && <div className={styles.empty}><Icon name="search" size={28}/><strong>{translate({id: 'studio.noResults', message: 'No matching workflow'})}</strong><p>{translate({id: 'studio.noResultsHint', message: 'Try a skill name, a shorter phrase, or another plugin.'})}</p><button onClick={() => {setQuery(''); navigate('all');}}>{translate({id: 'studio.reset', message: 'Show all workflows'})}</button></div>}
+          {!filtered.length && <div className={styles.empty}><Icon name="search" size={28}/><strong>{translate({id: 'studio.noResults', message: 'No matching workflow'})}</strong><p>{translate({id: 'studio.noResultsHint', message: 'Try a skill name, a shorter phrase, or another plugin.'})}</p><button onClick={() => choosePlugin('all')}>{translate({id: 'studio.reset', message: 'Show all workflows'})}</button></div>}
         </nav>
         <div className={styles.catalogBottom}><Icon name="book" size={15}/>{translate({id: 'studio.catalogNote', message: 'Examples you can adapt, with linked references.'})}</div>
       </div>

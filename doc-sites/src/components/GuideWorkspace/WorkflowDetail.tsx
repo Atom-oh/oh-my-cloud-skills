@@ -89,7 +89,7 @@ export default function WorkflowDetail({workflow, guide, host, checked, onCheck,
         </div>
         {workflow.image ? <button className={styles.previewCard} onClick={() => {setPreviewOpen(true); preview.current?.showModal();}}>
           <img src={image} alt={translate({id: 'studio.previewAlt', message: 'Published example for {title}'}, {title: workflow.title})}/>
-          <span><Icon name={workflow.demo ? 'play' : 'search'} size={15}/>{translate({id: 'studio.preview', message: 'Open published example'})} ↗</span>
+          <span><Icon name="search" size={15}/>{translate({id: 'studio.preview', message: 'Open published example'})} ↗</span>
         </button> : <div className={styles.outputCard}>
           <div><Icon name={workflow.icon} size={25}/><span>{workflow.output}</span></div>
           <ul>
@@ -109,10 +109,11 @@ export default function WorkflowDetail({workflow, guide, host, checked, onCheck,
     <dialog ref={preview} className={styles.previewDialog} aria-label={workflow.title} onClose={() => setPreviewOpen(false)}>
       <header><div><strong>{workflow.title}</strong><p>{translate({id: 'studio.exampleNotice', message: 'Archived example of the output format. Follow the current reference for setup and capabilities.'})}</p></div>
         <button onClick={() => preview.current?.close()} aria-label={translate({id: 'studio.closePreview', message: 'Close example'})}><Icon name="close"/></button></header>
-      {previewOpen && (workflow.demo
-        ? <iframe src={demo} title={workflow.title} sandbox="allow-scripts allow-same-origin"/>
-        : <img src={image} alt={workflow.title}/>)}
-      <footer><a href={workflow.demo ? demo : image} target="_blank" rel="noreferrer">{translate({id: 'studio.fullSize', message: 'Open full size in a new tab'})} ↗</a></footer>
+      {previewOpen && <img src={image} alt={workflow.title}/>}
+      <footer>
+        <a href={image} target="_blank" rel="noreferrer">{translate({id: 'studio.fullSize', message: 'Open full size in a new tab'})} ↗</a>
+        {workflow.demo && <a href={demo} target="_blank" rel="noreferrer">{translate({id: 'studio.openDemo', message: 'Open the archived interactive example'})} ↗</a>}
+      </footer>
     </dialog>
   </article>;
 }

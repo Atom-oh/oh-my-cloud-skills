@@ -14,6 +14,7 @@ export default function GuideChat() {
   const {i18n} = useDocusaurusContext();
   const [open, setOpen] = useState(false);
   const [plugin, setPlugin] = useState('');
+  const pluginRef = useRef('');
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [busy, setBusy] = useState(false);
@@ -49,7 +50,7 @@ export default function GuideChat() {
     const show = (event: Event) => {
       const detail = (event as CustomEvent).detail || {};
       if (guides.some((g) => g.id === detail.plugin)) {
-        controller.current?.abort(); controller.current = null; setBusy(false); setPlugin(detail.plugin); setMessages([]);
+        changePlugin(detail.plugin);
       }
       setQuestion(detail.question || ''); setOpen(true); setError('');
     };
@@ -73,6 +74,8 @@ export default function GuideChat() {
   useEffect(() => { if (open) input.current?.focus(); }, [open]);
   function close() { setOpen(false); launch.current?.focus(); }
   function changePlugin(id: string) {
+    if (pluginRef.current === id) return;
+    pluginRef.current = id;
     controller.current?.abort(); controller.current = null; setBusy(false); setPlugin(id); setMessages([]); setError('');
   }
   async function send(event: React.FormEvent) {

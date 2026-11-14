@@ -13,7 +13,7 @@ export const workflows: Workflow[] = [
     summary: translate({id: "workflows.presentation.summary", message: "Slides, speaker notes, quizzes and step-by-step reveals."}),
     prompt: translate({id: "workflows.presentation.prompt", message: "Create a 5-slide Amazon Bedrock introduction for developers. Include speaker notes, one comparison and a quiz. Show a local preview and validation results before publishing."}),
     result: translate({id: "workflows.presentation.result", message: "Editable Remarp source, an HTML deck and speaker notes you can rehearse."}),
-    check: translate({id: "workflows.presentation.check", message: "Open the preview. Test arrow-key navigation, each reveal and the quiz. Press S to inspect speaker notes, then rehearse before sharing."}),
+    check: translate({id: "workflows.presentation.check", message: "Open the preview. Test arrow-key navigation, each reveal and the quiz. Press N to inspect speaker notes, then rehearse before sharing."}),
     guide: "/docs/aws-content-plugin/skills/reactive-presentation",
     image: "/img/demos/bedrock-first-calldeck/bfc-cover.png",
     demo: "/demos/bedrock-first-calldeck/index.html",

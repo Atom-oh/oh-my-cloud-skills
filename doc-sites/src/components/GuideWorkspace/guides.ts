@@ -17,7 +17,7 @@ export const guides: Guide[] = [
     description: translate({id: 'learn.content.description', message: 'Go from a short brief to slides you can open, rehearse and share. Start with a small deck, then explore diagrams and workshops.'}),
     prompt: translate({id: 'learn.content.prompt', message: 'Create a 5-slide introduction to Amazon Bedrock for developers. Use English, include one architecture diagram and speaker notes, and show me a local preview before publishing.'}),
     result: translate({id: 'learn.content.result', message: 'An HTML deck with speaker notes and a local preview. The agent should report its validation and content review before publishing.'}),
-    check: translate({id: 'learn.content.check', message: 'Open the preview. Advance with the arrow keys, open presenter notes with S, and rehearse each interactive step. Check your actual deck; the screenshot here is a published example.'}),
+    check: translate({id: 'learn.content.check', message: 'Open the preview. Advance with the arrow keys, open presenter notes with N, and rehearse each interactive step. Check your actual deck; the screenshot here is a published example.'}),
     next: '/docs/aws-content-plugin/presenter-guide',
     setup: '/docs/aws-content-plugin/installation',
     image: '/img/reactive-presentation/presenter-window.png',

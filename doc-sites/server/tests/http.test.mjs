@@ -5,6 +5,32 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import {createApp} from '../http.mjs';
+import {validateQuestion} from '../chat.mjs';
+
+test('HTTP accepts the full multilingual history contract and bounds oversized bodies', async (t) => {
+  const received = [];
+  const app = createApp({
+    buildDir: tmpdir(), origin: 'https://skills.example.com', publicConfig: {},
+    authenticate: async () => 'subject', consumeQuota: async () => true,
+    answer: async (question) => { received.push(question); return {answer: 'ok', sources: []}; },
+  });
+  await new Promise((r) => app.listen(0, '127.0.0.1', r));
+  t.after(() => new Promise((r) => app.close(r)));
+  const payload = {message: '가'.repeat(2000), locale: 'ko',
+    history: Array.from({length: 8}, (_, i) => ({role: i % 2 ? 'assistant' : 'user', content: '한'.repeat(2000)}))};
+  const expected = validateQuestion(payload);
+  const post = (body) => fetch(`http://127.0.0.1:${app.address().port}/api/chat`, {
+    method: 'POST', headers: {'content-type': 'application/json', authorization: 'Bearer valid', origin: 'https://skills.example.com'},
+    body,
+  });
+  const encoded = JSON.stringify(payload);
+  assert.equal((await post(encoded)).status, 200);
+  const escaped = encoded.replace(/[^\x00-\x7f]/g, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`);
+  assert.equal((await post(escaped)).status, 200);
+  assert.deepEqual(received, [expected, expected]);
+  assert.equal((await post(JSON.stringify({message: 'x'.repeat(200_000)}))).status, 400);
+  assert.equal(received.length, 2);
+});
 
 test('HTTP boundary serves guides, preserves redirects and protects chat', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'skills-http-'));

@@ -1,16 +1,21 @@
 export const PLUGINS = Object.freeze([
   'aws-content-plugin', 'aws-ops-plugin', 'co-agent', 'project-init', 'pr-dash', 'agent-dash',
 ]);
+export const CHAT_LIMITS = Object.freeze({messageChars: 2000, historyEntries: 8, historyChars: 2000, plugins: 3});
+// JSON can encode each UTF-16 code unit as six ASCII bytes (\uXXXX).
+// Reserve additional space for the bounded request's keys, roles and plugin names.
+export const MAX_CHAT_BODY_BYTES =
+  6 * (CHAT_LIMITS.messageChars + CHAT_LIMITS.historyEntries * CHAT_LIMITS.historyChars) + 4096;
 
 export function validateQuestion(body) {
   const invalid = () => { throw new Error('Invalid chat request'); };
   if (!body || typeof body !== 'object' || Array.isArray(body)) invalid();
   const {message, plugins = [], locale = 'ko', history = []} = body;
-  if (typeof message !== 'string' || !message.trim() || message.length > 2000) invalid();
+  if (typeof message !== 'string' || !message.trim() || message.length > CHAT_LIMITS.messageChars) invalid();
   if (!['ko', 'en'].includes(locale)) invalid();
-  if (!Array.isArray(plugins) || plugins.length > 3 || plugins.some((p) => !PLUGINS.includes(p))) invalid();
-  if (!Array.isArray(history) || history.length > 8 || history.some((m) =>
-    !m || !['user', 'assistant'].includes(m.role) || typeof m.content !== 'string' || m.content.length > 2000)) invalid();
+  if (!Array.isArray(plugins) || plugins.length > CHAT_LIMITS.plugins || plugins.some((p) => !PLUGINS.includes(p))) invalid();
+  if (!Array.isArray(history) || history.length > CHAT_LIMITS.historyEntries || history.some((m) =>
+    !m || !['user', 'assistant'].includes(m.role) || typeof m.content !== 'string' || m.content.length > CHAT_LIMITS.historyChars)) invalid();
   return {message: message.trim(), plugins: [...new Set(plugins)], locale,
     history: history.map(({role, content}) => ({role, content}))};
 }
