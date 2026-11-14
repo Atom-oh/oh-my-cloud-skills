@@ -994,6 +994,73 @@ class SlideFramework {
     }
   }
 
+  // Single lookup for "how many presses are left on this slide". Follows the order
+  // handleNavigationAction('down') really uses: registered slide action, then tabs/compare/
+  // __canvasStep (cycleInteractive), then fragments. Reports the phase Down acts on now.
+  // Read-only: never changes currentSlide or reveals anything.
+  getStepInfo(index = this.currentSlide) {
+    const none = { kind: 'none', cur: null, total: null, more: false };
+    const slide = this.slides[index];
+    if (!slide) return none;
+
+    const action = this.slideActions[index];
+    if (action && action.down) {
+      let st = null;
+      if (typeof action.state === 'function') {
+        try { st = action.state(); } catch (e) { st = null; }
+      }
+      if (st && Number.isFinite(st.cur) && Number.isFinite(st.total) && st.total >= 1) {
+        return { kind: 'action', cur: st.cur, total: st.total, more: st.cur < st.total };
+      }
+      return { kind: 'action', cur: null, total: null, more: true };
+    }
+
+    if (slide.__canvasStep) return { kind: 'interactive', cur: null, total: null, more: true };
+
+    const tabBar = slide.querySelector('.tab-bar');
+    const tabBtns = tabBar
+      ? Array.from(tabBar.querySelectorAll('.tab-btn'))
+      : Array.from(slide.querySelectorAll('.tab-btn'));
+    let btns = null;
+    let activeIdx = 0;
+    if (tabBtns.length > 1) {
+      btns = tabBtns;
+      activeIdx = btns.findIndex(t => t.classList.contains('active'));
+      if (activeIdx < 0) {
+        activeIdx = btns.findIndex(t => {
+          const bg = (t.style.background || t.style.backgroundColor || '').toLowerCase();
+          return bg.includes('#00d4ff') || bg.includes('var(--accent');
+        });
+      }
+      if (activeIdx < 0) activeIdx = 0;
+    } else {
+      const toggle = slide.querySelector('.compare-toggle');
+      const cmp = toggle ? Array.from(toggle.querySelectorAll('.compare-btn')) : [];
+      if (cmp.length > 1) {
+        btns = cmp;
+        activeIdx = Math.max(0, cmp.findIndex(b => b.classList.contains('active')));
+      }
+    }
+    if (btns && activeIdx < btns.length - 1) {
+      return { kind: 'interactive', cur: activeIdx, total: btns.length - 1, more: true };
+    }
+
+    // Fragments: group like revealNextFragment (equal data-fragment-index reveal together).
+    if (!this.fragmentState[index]) this.initFragments(index);
+    const fs = this.fragmentState[index];
+    if (!fs || fs.fragments.length === 0) return none;
+    let total = 0;
+    let cur = 0;
+    fs.fragments.forEach((f, i) => {
+      const isStart = i === 0 || f.dataset.fragmentIndex !== fs.fragments[i - 1].dataset.fragmentIndex;
+      if (isStart) {
+        total++;
+        if (i <= fs.currentIndex) cur++;
+      }
+    });
+    return { kind: 'fragment', cur, total, more: cur < total };
+  }
+
   cycleInteractive(direction) {
     const slide = this.slides[this.currentSlide];
     if (!slide) return false;
