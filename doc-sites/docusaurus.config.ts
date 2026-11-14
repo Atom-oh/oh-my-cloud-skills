@@ -2,7 +2,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
-const baseUrl = '/oh-my-cloud-skills/';
+const baseUrl = '/';
 
 const config: Config = {
   title: 'oh-my-cloud-skills',
@@ -13,7 +13,7 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://www.atomai.click',
+  url: 'https://skills.atomai.click',
   baseUrl,
 
   organizationName: 'Atom-oh',
@@ -68,14 +68,6 @@ const config: Config = {
   ],
 
   themeConfig: {
-    announcementBar: {
-      id: 'release-v2.0.0',
-      // The content component renders translated text and locale-aware links.
-      content: 'v2.0.0',
-      backgroundColor: '#fff4df',
-      textColor: '#232f3e',
-      isCloseable: true,
-    },
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: true,
@@ -88,8 +80,7 @@ const config: Config = {
       },
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'intro',
+          to: '/',
           position: 'left',
           label: 'Home',
         },
@@ -98,12 +89,12 @@ const config: Config = {
           label: 'Plugins',
           position: 'left',
           items: [
-            {label: 'co-agent', to: '/docs/co-agent/overview'},
-            {label: 'project-init', to: '/docs/project-init/overview'},
-            {label: 'aws-content-plugin', to: '/docs/aws-content-plugin/overview'},
-            {label: 'aws-ops-plugin', to: '/docs/aws-ops-plugin/overview'},
-            {label: 'pr-dash', to: '/docs/pr-dash/overview'},
-            {label: 'agent-dash', to: '/docs/agent-dash/overview'},
+            {label: 'co-agent', to: '/?plugin=co-agent'},
+            {label: 'project-init', to: '/?plugin=project-init'},
+            {label: 'aws-content-plugin', to: '/?plugin=aws-content-plugin'},
+            {label: 'aws-ops-plugin', to: '/?plugin=aws-ops-plugin'},
+            {label: 'pr-dash', to: '/?plugin=pr-dash'},
+            {label: 'agent-dash', to: '/?plugin=agent-dash'},
           ],
         },
         {

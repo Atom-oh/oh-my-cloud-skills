@@ -97,3 +97,8 @@ plugins/*/skills/*-workspace/
 # local AI tool caches
 .serena/
 .headroom/
+# Guide server build artifacts and production dependencies
+doc-sites/server/node_modules/
+doc-sites/server/public/
+doc-sites/server/content.generated.json
+doc-sites/infra/artifacts/

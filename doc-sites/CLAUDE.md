@@ -1,6 +1,6 @@
 # doc-sites/ — Documentation site (Docusaurus)
 
-The project's public documentation & demo site, published to GitHub Pages. Source content
+The project's public documentation & demo site, served by Lambda Web Functions at `skills.atomai.click`. Source content
 lives in `doc-sites/docs/` (Markdown/MDX), built into a static site under `doc-sites/build/`.
 
 This is **only** the Docusaurus project. Internal, Claude-facing repo docs (ADRs, runbooks,
@@ -12,7 +12,9 @@ see `../docs/CLAUDE.md`. Don't mix the two: this directory is public-site conten
 doc-sites/
 ├── docs/            # Authored content (per-plugin overview/installation/agents/skills, intro, remarp-guide)
 ├── i18n/ko/         # Korean guide and UI translations
-├── src/             # Docusaurus React components, CSS
+├── src/             # Shared learning data, assistant, Docusaurus reference UI
+├── server/          # Node HTTP server, public corpus, Bedrock orchestration
+├── infra/           # CloudFormation, packaging and deployment instructions
 ├── scripts/, tests/ # Locale coverage, source parity and redirect regression checks
 ├── static/          # Static assets (demos, images)
 ├── plugins/         # Build-time compatibility redirects
@@ -39,7 +41,7 @@ doc-sites/
 
 ## Locale ownership and routing
 
-Korean is the default at `/oh-my-cloud-skills/`; English lives at `/oh-my-cloud-skills/en/`.
+Korean is the default at `/`; English lives at `/en/`. The HTTP server redirects the legacy `/oh-my-cloud-skills/` prefix.
 The explicit `/ko/` prefix is a compatibility alias for the Korean root. Redirects
 preserve path, query and fragment; they never overwrite English pages.
 
@@ -72,8 +74,15 @@ npm run build     # static build → build/
 `prebuild` runs the locale tests and coverage check. A production build contains both
 locales; use it for link and language-switching checks. The isolated GitHub-hosted
 `docs-validation.yml` validates the PR HEAD with read-only repository permissions and
-no persisted checkout credential. The existing Pages workflow builds the merged site.
+no persisted checkout credential. The release workflow builds a versioned AWS deployment artifact from the merged site.
 
 > This site documents the plugins; the plugins themselves live in `../plugins/`. Keep it
 > consistent with `../CLAUDE.md` and `marketplace.json`. CI: `.github/workflows/deploy-docs.yml`
-> (triggers on `doc-sites/**`, builds and deploys to GitHub Pages on push to `main`).
+> (triggers on `doc-sites/**`, validates and packages the AWS release on push to `main`).
+
+This foundation supplies the reference UI and authenticated assistant. The expanded
+React learning workspace follows in PR #307. Reference pages remain paired in
+English and Korean. The assistant corpus reads only the public guide trees.
+Server code must not log conversation text or tokens; authenticated chat uses
+Cognito and a persistent transactional quota. See `infra/README.md` for the
+Web Functions runtime contract and required deployment verification.

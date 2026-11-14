@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Private, versioned source packages for the skills guide Web Function.
+Parameters:
+  FunctionName:
+    Type: String
+    Default: skills-guide
+    AllowedPattern: '[a-zA-Z0-9][a-zA-Z0-9_-]{0,62}[a-zA-Z0-9]'
+Resources:
+  CodeBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      VersioningConfiguration: {Status: Enabled}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: {SSEAlgorithm: AES256}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules: [{ObjectOwnership: BucketOwnerEnforced}]
+  CodePolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CodeBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: LambdaReadsPinnedRevisions
+            Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: [s3:GetObject, s3:GetObjectVersion]
+            Resource: !Sub '${CodeBucket.Arn}/releases/*'
+            Condition:
+              StringEquals: {aws:SourceAccount: !Ref 'AWS::AccountId'}
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:web-function/${FunctionName}/revision/*'
+Outputs:
+  CodeBucketName: {Value: !Ref CodeBucket}

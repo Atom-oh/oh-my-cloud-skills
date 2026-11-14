@@ -1,0 +1,56 @@
+let endpoints = Resources.*[ Type == 'AWS::Lambda::WebFunctionEndpoint' ]
+let controls = Resources.*[ Type == 'AWS::CloudFront::OriginAccessControl' ]
+let buckets = Resources.*[ Type == 'AWS::S3::Bucket' ]
+let tables = Resources.*[ Type == 'AWS::DynamoDB::Table' ]
+let origin_policies = Resources.*[ Type == 'AWS::Lambda::ResourcePolicy' ]
+
+rule web_function_auth when %endpoints !empty {
+    %endpoints.Properties {
+        AuthType == 'IamAuth'
+        EndpointType == 'HomeRegion'
+        ScalingConfig.MaxEnvironments <= 2
+        ThrottleConfig.RateLimit <= 100
+    }
+}
+
+rule signed_cloudfront_origin when %controls !empty {
+    %controls.Properties.OriginAccessControlConfig {
+        OriginAccessControlOriginType == 'lambda'
+        SigningBehavior == 'always-amz-auth'
+        SigningProtocol == 'sigv4'
+    }
+}
+
+rule private_versioned_source when %buckets !empty {
+    %buckets {
+        DeletionPolicy == 'Retain'
+        UpdateReplacePolicy == 'Retain'
+        Properties {
+            VersioningConfiguration.Status == 'Enabled'
+            BucketEncryption exists
+            PublicAccessBlockConfiguration {
+                BlockPublicAcls == true
+                BlockPublicPolicy == true
+                IgnorePublicAcls == true
+                RestrictPublicBuckets == true
+            }
+        }
+    }
+}
+
+rule encrypted_expiring_counters when %tables !empty {
+    %tables.Properties {
+        SSESpecification.SSEEnabled == true
+        SSESpecification.SSEType == 'KMS'
+        TimeToLiveSpecification.Enabled == true
+    }
+}
+
+rule scoped_origin_policy when %origin_policies !empty {
+    %origin_policies.Properties.PolicyDocument.Statement[*] {
+        Principal.Service == 'cloudfront.amazonaws.com'
+        Action == 'lambda:InvokeWebFunctionEndpoint'
+        Condition.StringEquals.'aws:SourceArn' exists
+        Resource.Ref == 'Endpoint'
+    }
+}
