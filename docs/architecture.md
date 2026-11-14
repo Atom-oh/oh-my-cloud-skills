@@ -1,12 +1,18 @@
 # Architecture
 
 oh-my-cloud-skills is a Claude Code and Codex plugin marketplace with six plugins.
-It ships Markdown procedures and Python/Bash/Node helpers, with no application server.
+Its plugin packages ship Markdown procedures and Python/Bash/Node helpers.
 Internal docs live in `docs/`; the public React learning workspace and Docusaurus
 reference library live in `doc-sites/`. A Node HTTP server on Lambda Web Functions
 serves the site and its authenticated Haiku/Luna guide assistant behind CloudFront
 at `skills.atomai.click`. Deployment and validation are documented in
 `doc-sites/infra/README.md` and `docs/reference/skills-guide-release-validation.md`.
+
+The React home provides 28 curated exercises across the six plugins. A searchable
+catalog keeps the selected task beside its prerequisites, copyable request,
+expected output and verification. Real archived examples open in a preview dialog.
+Host-specific dashboard exercises preserve the Claude Code/Codex distinction.
+Practice checkmarks are user-controlled session state, not inferred execution.
 
 ## Inventory
 

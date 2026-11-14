@@ -1,4 +1,7 @@
-# Skills guide release validation — 2026-11-14
+# Skills guide initial release validation — 2026-11-14
+
+This records the first deployment. The subsequent dense-workspace revision is
+tracked in [workspace validation](skills-guide-workspace-validation.md).
 
 The React learning workspace and authenticated guide assistant are deployed at
 `https://skills.atomai.click`. Application source is commit `7fc20f19` on
@@ -72,14 +75,14 @@ completed creation.
 
 ## Source publication
 
-Source and validation records remain on the local feature branch. Automatic
-approval review rejected `git push`, including after read-only verification that
-the destination is the user's public repository with ADMIN access. Its stated
-reason is that public source publication needs explicit authorization separate
-from the requested site deployment. A user approval request remains pending;
-no push or PR publication was attempted through another mechanism.
+At the time of this initial deployment, automatic approval review rejected
+`git push` because public source publication needed explicit authorization
+separate from site deployment. No alternate publication mechanism was used.
+
+Later on 2026-11-14 the user explicitly approved source/PR publication, then
+requested a denser interface with more functionality and practical exercises.
+The follow-up validation record tracks that revision and publication status.
 
 The new AWS site is live. The old external Pages origin is retained; the new
 server accepts legacy paths, but this is not a claim that the old origin redirects.
-The changed release workflow prepares AWS artifacts and is part of the local
-source pending publication.
+The changed release workflow prepares AWS artifacts.

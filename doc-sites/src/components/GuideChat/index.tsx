@@ -4,6 +4,7 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import {translate} from '@docusaurus/Translate';
 import {useLocation} from '@docusaurus/router';
 import {guides} from '../GuideWorkspace/guides';
+import Icon from '../GuideWorkspace/Icon';
 import {accessToken, completeSignIn, signIn, signOut, type AuthConfig} from './auth';
 import styles from './styles.module.css';
 
@@ -115,7 +116,7 @@ export default function GuideChat() {
   return (
     <>
       <button ref={launch} className={styles.launch} onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="guide-chat">
-        <span aria-hidden="true">✳</span>{translate({id: 'chat.launch', message: 'Ask the guide'})}
+        <Icon name="spark" size={22}/>{translate({id: 'chat.launch', message: 'Ask the guide'})}
       </button>
       {open && <section id="guide-chat" className={styles.panel}
         aria-label={translate({id: 'chat.title', message: 'Guide assistant'})}
@@ -131,7 +132,7 @@ export default function GuideChat() {
         </div>
         <div className={styles.conversation} role="log" aria-live="polite" aria-relevant="additions">
           {!messages.length && <div className={styles.welcome}>
-            <span aria-hidden="true">✳</span><h3>{translate({id: 'chat.welcome', message: 'What are you trying to do?'})}</h3>
+            <Icon name="spark" size={32}/><h3>{translate({id: 'chat.welcome', message: 'What are you trying to do?'})}</h3>
             <p>{translate({id: 'chat.intro', message: 'Ask about installation, a workflow or your next step. Answers use the published guides and include links to read more.'})}</p>
             <button onClick={() => setQuestion(translate({id: 'chat.exampleQuestion', message: 'How do I create my first presentation and check the speaker notes?'}))}>
               {translate({id: 'chat.exampleLabel', message: 'Help me make my first presentation'})} ↗

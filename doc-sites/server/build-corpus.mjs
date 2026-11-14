@@ -1,7 +1,8 @@
-import {readdir, readFile, writeFile} from 'node:fs/promises';
+import {access, readdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {PLUGINS} from './chat.mjs';
+import {guideUrl} from './guide-paths.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 async function walk(dir) {
@@ -27,7 +28,9 @@ for (const [locale, directory] of [
     const body = raw.replace(/^---\n[\s\S]*?\n---\n/, '')
       .replace(/^import .+$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
       .replace(/<[^>]+>/g, '');
-    const url = `${locale === 'en' ? '/en' : ''}/docs/${relative}`;
+    const url = guideUrl(relative, locale);
+    // Fail packaging if a citation would lead to an unpublished route.
+    await access(path.join(root, 'build', url, 'index.html'));
     for (let offset = 0; offset < body.length; offset += 3500) {
       const text = body.slice(offset, offset + 4500).trim();
       if (text) corpus.push({locale, plugin, title, url, text});
