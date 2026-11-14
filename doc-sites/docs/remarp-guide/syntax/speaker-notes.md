@@ -58,4 +58,6 @@ The source validator distinguishes missing, short, and unstructured notes, with 
 
 P opens a separate view with current/next slide, notes, timing, and navigation. Splitters resize the slide/notes regions and store their ratios locally. The presenter and main window synchronize through the framework's channel; test that behavior with the actual generated deck.
 
+On a slide with steps, write one `↓` in the spoken script for each Down press, right after the sentence that finishes a step. The presenter view draws each mark as a badge and shows a step cue under the arrow buttons. `check_deck.py` warns about operating instructions and misplaced marks, and `measure_deck.py` compares the marks with the presses the slide really takes. See [Step cue and Down marks](../keyboard-shortcuts.md#step-cue).
+
 [Notes validation rules](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py)
