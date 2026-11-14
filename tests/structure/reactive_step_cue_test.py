@@ -36,6 +36,8 @@ DECK = """<!DOCTYPE html>
     <div class="slide-body"><p class="fragment" data-fragment-index="1">a</p><p class="fragment" data-fragment-index="2">b</p><p class="fragment" data-fragment-index="3">c</p></div></div>
   <div class="slide" data-remarp-id="s4"><div class="slide-header"><h2>Stateless</h2></div>
     <div class="slide-body"><p>stateless</p></div></div>
+  <div class="slide" data-remarp-id="s5"><div class="slide-header"><h2>Tabs</h2></div>
+    <div class="slide-body"><div class="tab-bar"><button class="tab-btn active" onclick="this.parentNode.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active')">A</button><button class="tab-btn" onclick="this.parentNode.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active')">B</button></div></div></div>
 </div>
 <script src="./common/animation-utils.js"></script>
 <script src="./common/deck-pen.js"></script>
@@ -210,6 +212,12 @@ class StepCueKoTests(_Base):
         self.page.bring_to_front()
         self.page.keyboard.press("ArrowDown")
         self.wait_cue("↓ 다음 단계 있음 (지금 1/2)")
+
+    def test_cue_last_step_after_tabs(self):
+        self.goto(4)
+        self.wait_cue("↓ 다음 단계 있음 (지금 0/1)")
+        self.page.keyboard.press("ArrowDown")
+        self.wait_cue("✓ 마지막 단계 (1/1), 누르면 다음 슬라이드")
 
     def test_cue_survives_state_throwing(self):
         self.page.evaluate("() => deck.registerSlideAction(0, {down: () => true, up: () => true, state: () => { throw new Error('x'); }})")

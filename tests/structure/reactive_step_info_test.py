@@ -114,7 +114,9 @@ class StepInfoTests(DeckOverlayFixture):
         """Real Down presses while getStepInfo still reports the interactive phase."""
         return page.evaluate("""() => {
           let n = 0;
-          while (deck.getStepInfo().kind === 'interactive' && n < 20) { deck.handleNavigationAction('down'); n++; }
+          while (deck.getStepInfo().kind === 'interactive' && deck.getStepInfo().more && n < 20) {
+            deck.handleNavigationAction('down'); n++;
+          }
           return n;
         }""")
 
@@ -125,7 +127,10 @@ class StepInfoTests(DeckOverlayFixture):
         self.assertEqual(info, {"kind": "interactive", "cur": 0, "total": 3, "more": True})
         self.assertEqual(self.presses_until_exhausted(page), info["total"] - info["cur"])
         self.assertEqual(self.active(page), 11)
-        self.assertEqual(self.info(page), {"kind": "none", "cur": None, "total": None, "more": False})
+        # Exhausted with no fragments: the last interactive step, not "no steps".
+        self.assertEqual(self.info(page), {"kind": "interactive", "cur": 2, "total": 2, "more": False})
+        page.evaluate("() => deck.handleNavigationAction('down')")
+        self.assertEqual(page.evaluate("() => deck.currentSlide"), 12)
 
     def test_compare_middle_active_matches_real_presses(self):
         page = self.open("s.html")
@@ -150,7 +155,7 @@ class StepInfoTests(DeckOverlayFixture):
         page = self.open("s.html")
         self.goto(page, 10)
         page.evaluate("() => { deck.handleNavigationAction('down'); deck.handleNavigationAction('down'); }")
-        self.assertEqual(self.info(page), {"kind": "none", "cur": None, "total": None, "more": False})
+        self.assertEqual(self.info(page), {"kind": "interactive", "cur": 2, "total": 2, "more": False})
 
     def test_action_hides_fragments(self):
         page = self.open("s.html")
@@ -184,9 +189,11 @@ class StepEventTests(DeckOverlayFixture):
           window.__ev = [];
           const t0 = () => performance.now();
           document.addEventListener('rp:slidechange', e => window.__ev.push(
-            {n: 'change', i: e.detail.index, t: t0(), active: deck.slides[e.detail.index].classList.contains('active')}));
+            {n: 'change', i: e.detail.index, t: t0(), cur: deck.currentSlide,
+             active: deck.slides[e.detail.index].classList.contains('active')}));
           document.addEventListener('rp:slideshown', e => window.__ev.push(
-            {n: 'shown', i: e.detail.index, t: t0(), active: deck.slides[e.detail.index].classList.contains('active')}));
+            {n: 'shown', i: e.detail.index, t: t0(), cur: deck.currentSlide,
+             active: deck.slides[e.detail.index].classList.contains('active')}));
           document.addEventListener('rp:stepchange', e => window.__ev.push(
             {n: 'step', i: e.detail.index, t: t0()}));
         }""")
@@ -213,6 +220,8 @@ class StepEventTests(DeckOverlayFixture):
         self.assertGreaterEqual(shown[0]["t"] - change["t"], 300)
 
     def test_slideshown_without_transition(self):
+        # Contract: rp:slidechange always precedes rp:slideshown, and currentSlide is
+        # already updated when either fires (here both fire synchronously).
         page = self.open("s.html")
         self.listen(page)
         page.evaluate("() => deck.showSlide(2, false)")
@@ -220,6 +229,16 @@ class StepEventTests(DeckOverlayFixture):
         self.assertEqual(len(shown), 1)
         self.assertEqual(shown[0]["i"], 2)
         self.assertTrue(shown[0]["active"])
+        order = page.evaluate("() => window.__ev.filter(e => e.n !== 'step').map(e => [e.n, e.cur])")
+        self.assertEqual(order, [["change", 2], ["shown", 2]])
+
+    def test_slideshown_after_slidechange_with_transition(self):
+        page = self.open("s.html")
+        self.listen(page)
+        page.evaluate("() => deck.goTo(3)")
+        page.wait_for_timeout(500)
+        order = page.evaluate("() => window.__ev.filter(e => e.n !== 'step').map(e => [e.n, e.cur])")
+        self.assertEqual(order, [["change", 3], ["shown", 3]])
 
     def test_slidechange_timing_unchanged(self):
         page = self.open("s.html")

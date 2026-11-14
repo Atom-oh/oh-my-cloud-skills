@@ -765,8 +765,10 @@ class SlideFramework {
     } else {
       this.slides.forEach(s => s.classList.remove('active'));
       next.classList.add('active');
-      document.dispatchEvent(new CustomEvent('rp:slideshown', { detail: { index: index } }));
     }
+    // Contract: rp:slidechange always precedes rp:slideshown, and currentSlide is already
+    // updated when either fires. Without a transition rp:slideshown is dispatched at the end.
+    const shownNow = !(animate && prev !== next);
 
     if (window.ReactiveFit) window.ReactiveFit.fitSlide(next);
 
@@ -787,6 +789,8 @@ class SlideFramework {
       this.presenterView.broadcastSlideChange(index);
       this.presenterView.updatePresenterView();
     }
+
+    if (shownNow) document.dispatchEvent(new CustomEvent('rp:slideshown', { detail: { index: index } }));
   }
 
   // Sequential navigation skips hidden slides; goTo() (sidebar, overview,
@@ -1052,11 +1056,16 @@ class SlideFramework {
         return { kind: 'interactive', cur, total: cur + remaining, more: true };
       }
     }
+    // Tabs/compare exhausted with no fragments left to reveal: report their last step
+    // (the next Down leaves), not "no steps".
+    const lastInteractive = inter && inter.btns.length > 1
+      ? { kind: 'interactive', cur: inter.btns.length - 1, total: inter.btns.length - 1, more: false }
+      : none;
 
     // Fragments: group like revealNextFragment (equal data-fragment-index reveal together).
     if (!this.fragmentState[index]) this.initFragments(index);
     const fs = this.fragmentState[index];
-    if (!fs || fs.fragments.length === 0) return none;
+    if (!fs || fs.fragments.length === 0) return lastInteractive;
     let total = 0;
     let cur = 0;
     fs.fragments.forEach((f, i) => {
