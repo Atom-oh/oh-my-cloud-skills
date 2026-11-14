@@ -1,5 +1,7 @@
 """check_deck.py note lint: NOTE_OPERATING_INSTRUCTION and NOTE_MARK_IN_META (no browser)."""
 import importlib.util
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -7,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "plugins/aws-content-plugin/skills/reactive-presentation/scripts/check_deck.py"
+COMPILER = ROOT / "plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py"
 sys.dont_write_bytecode = True
 SPEC = importlib.util.spec_from_file_location("check_deck_notes", SCRIPT)
 check_deck = importlib.util.module_from_spec(SPEC)
@@ -115,6 +118,48 @@ class NoteLintTest(unittest.TestCase):
     def test_brace_marker_in_plain_string_note(self):
         self.assertEqual(self._deck_findings(
             '  1: "{timing: 2}↓\\n대본입니다.",'), {META})
+
+    def test_compiled_deck_is_linted(self):
+        # remarp_to_slides.py writes notes with json.dumps (ensure_ascii): the built HTML
+        # holds \u2193 and \uXXXX Korean, which the lint must decode before matching.
+        src = ("---\nremarp: true\nlang: ko\n---\n"
+               "## 하나\n\n본문입니다.\n\n:::notes\n{timing: 1min}\n[요약] 요점입니다↓\n"
+               "대본입니다. 아래 화살표로 넘기겠습니다.\n:::\n\n---\n\n"
+               "## 둘\n\n본문입니다.\n\n:::notes\n{timing: 1min}\n대본입니다.\n:::\n")
+        with tempfile.TemporaryDirectory(prefix="rp-lint-built-") as d:
+            source = Path(d) / "talk.md"
+            source.write_text(src, encoding="utf-8")
+            result = subprocess.run([sys.executable, str(COMPILER), "build", str(source)],
+                                    capture_output=True, text=True, cwd=d,
+                                    env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+            self.assertEqual(0, result.returncode, result.stderr + result.stdout)
+            built = list(Path(d).rglob("*.html"))
+            self.assertEqual(1, len(built), built)
+            html = built[0].read_text(encoding="utf-8")
+            self.assertIn("\\u2193", html)  # the escaped form this test is about
+            findings = []
+            check_deck.check_file(built[0].parent, built[0].name, set(), findings)
+        got = {(f["rule"], f["slide"]) for f in findings if f["rule"] in (OP, META)}
+        self.assertEqual(got, {(OP, 1), (META, 1)})
+
+    def test_js_string_decoding(self):
+        dec = check_deck._decode_js_string
+        self.assertEqual(dec('"\\uc694\\uc57d\\u2193\\n\\"q\\" \\\\ x"'), '요약↓\n"q" \\ x')
+        self.assertEqual(dec('"\\ud83d\\ude00"'), '\U0001F600')  # surrogate pair
+        self.assertEqual(dec("'it\\'s \\u2193'"), "it's ↓")
+        self.assertEqual(dec("`a\\nb`"), "a\nb")
+        self.assertEqual(dec('"\\x41\\t"'), "A\t")
+
+    def test_escaped_length_counts_unchanged(self):
+        # SHORT_NOTES keeps measuring the escaped source text (pre-existing behavior).
+        note = "\\uac00" * 30  # 30 Korean chars, 180 escaped chars
+        deck = ('<html><body><div class="slide"><h1>One</h1></div>'
+                '<script>const presenterNotes = {\n  1: "' + note + '",\n};</script></body></html>')
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "index.html").write_text(deck, encoding="utf-8")
+            findings = []
+            check_deck.check_file(Path(d), "index.html", set(), findings)
+        self.assertNotIn("SHORT_NOTES", {f["rule"] for f in findings})
 
     def test_rule_ids_registered(self):
         self.assertIn(OP, check_deck.RULE_IDS)

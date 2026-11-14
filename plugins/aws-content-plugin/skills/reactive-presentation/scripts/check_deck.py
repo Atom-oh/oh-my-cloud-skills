@@ -50,6 +50,60 @@ BRACE_SPAN_RE = re.compile(r'\{[^{}\n]*\}')
 MARK = '\u2193'
 
 
+_JS_SIMPLE_ESCAPES = {'n': '\n', 't': '\t', 'r': '\r', 'b': '\b', 'f': '\f', 'v': '\v'}
+_JS_UNICODE_ESCAPE_RE = re.compile(r'\{([0-9a-fA-F]{1,6})\}|([0-9a-fA-F]{4})')
+
+
+def _decode_js_escapes(body):
+    """Decode the escapes of a JS/JSON string body (the text between the quotes).
+
+    remarp_to_slides.py writes notes with json.dumps (ensure_ascii), so a built deck
+    carries `\\u2193` and `\\uXXXX` Korean; the note lint must see the real characters.
+    Handles \\uXXXX (surrogate pairs joined), \\u{...}, \\xHH, the one-letter escapes,
+    line continuations and any other escaped character as itself.
+    """
+    out, i, n = [], 0, len(body)
+    while i < n:
+        c = body[i]
+        if c != '\\' or i + 1 == n:
+            out.append(c)
+            i += 1
+            continue
+        e = body[i + 1]
+        i += 2
+        if e == 'u':
+            m = _JS_UNICODE_ESCAPE_RE.match(body, i)
+            code = int(m.group(1) or m.group(2), 16) if m else None
+            if code is not None and code <= 0x10FFFF:
+                out.append(chr(code))
+                i = m.end()
+            else:
+                out.append(e)
+        elif e == 'x' and re.match(r'[0-9a-fA-F]{2}', body[i:i + 2]):
+            out.append(chr(int(body[i:i + 2], 16)))
+            i += 2
+        elif e in _JS_SIMPLE_ESCAPES:
+            out.append(_JS_SIMPLE_ESCAPES[e])
+        elif e == '0' and not body[i:i + 1].isdigit():
+            out.append('\0')
+        elif e in '\r\n\u2028\u2029':  # line continuation
+            if e == '\r' and body[i:i + 1] == '\n':
+                i += 1
+        else:
+            out.append(e)
+    text = ''.join(out)
+    # \uD83D\uDE00 decoded one unit at a time: join surrogate pairs into one character.
+    return text.encode('utf-16-le', 'surrogatepass').decode('utf-16-le', 'surrogatepass')
+
+
+def _decode_js_string(literal):
+    """Decode one quoted JS string literal ("...", '...' or `...`); unquoted text is
+    decoded as a bare body."""
+    if len(literal) >= 2 and literal[0] in '\'"`' and literal[-1] == literal[0]:
+        literal = literal[1:-1]
+    return _decode_js_escapes(literal)
+
+
 def lint_note_text(text):
     """Lint one slide's RAW note text (line structure kept); return (rule, message) pairs.
 
@@ -295,16 +349,17 @@ def check_file(deck_dir, name, skill_selectors, findings):
                 is_obj = v.startswith('{')
                 if len(v) >= 2 and v[0] in '\'"`' and v[-1] == v[0]:
                     v = v[1:-1]
+                # Length checks keep measuring the escaped source text (as before).
                 texts.append(_collapse(v))
-                # presenterNotes values are one physical line with \n escapes
+                # The lint reads the decoded string: values are one physical line whose
+                # escapes (\\n, \\uXXXX from json.dumps) carry the real text.
                 if is_obj:
                     # object form {text|notes: "...", timing: n}: lint the string only
                     om = re.search(r'\b(?:text|notes)\s*:\s*(["\'`])((?:\\.|(?!\1).)*)\1', v)
                     if om:
-                        raws.append(html_mod.unescape(
-                            om.group(2).replace('\\n', '\n')))
+                        raws.append(html_mod.unescape(_decode_js_escapes(om.group(2))))
                 else:
-                    raws.append(html_mod.unescape(v.replace('\\n', '\n')))
+                    raws.append(html_mod.unescape(_decode_js_escapes(v)))
         seen_rules = set()  # one finding per slide per rule
         for raw in raws:
             for rule, msg in lint_note_text(raw):
