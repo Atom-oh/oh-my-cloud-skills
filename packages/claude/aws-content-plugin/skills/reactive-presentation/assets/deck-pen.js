@@ -856,6 +856,7 @@
       update: function (show) {
         var model = api.controller.model;
         el.hidden = !show;
+        el.setAttribute('data-mode', model.mode);
         var magnifier = model.mode === 'magnifier';
         label.textContent = magnifier
           ? MODE_LABELS.magnifier + ' ' + model.zoom + 'x'

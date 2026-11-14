@@ -431,6 +431,27 @@ class DeckPenTests(DeckOverlayFixture):
         page.wait_for_timeout(200)
         self.assertEqual(page.evaluate("() => window.__raf"), 0, "no frames requested when idle")
 
+    def test_badge_is_a_small_dimmed_dot(self):
+        # A text pill in the corner covered the first letters of slide titles. The badge is a
+        # small, translucent dot; the mode and size stay as a visually hidden live-region label.
+        page = self.open_pen()
+        info = "() => { const b = document.getElementById('rp-pen-badge'); const r = b.getBoundingClientRect(); " \
+               "return { w: r.width, h: r.height, opacity: parseFloat(getComputedStyle(b).opacity), " \
+               "mode: b.dataset.mode, label: b.querySelector('.rp-pen-label').textContent, " \
+               "labelBox: (() => { const l = b.querySelector('.rp-pen-label').getBoundingClientRect(); return [l.width, l.height]; })() }; }"
+        page.keyboard.press("KeyO")
+        got = page.evaluate(info)
+        self.assertLessEqual(got["w"], 40)
+        self.assertLessEqual(got["h"], 40)
+        self.assertLess(got["opacity"], 1)
+        self.assertGreaterEqual(got["opacity"], 0.4)
+        self.assertEqual(got["mode"], "pen")
+        self.assertEqual(got["label"], "Pen, medium")
+        self.assertLessEqual(max(got["labelBox"]), 1)
+        for key, mode in (("KeyI", "highlighter"), ("KeyU", "eraser"), ("KeyP", "laser"), ("KeyY", "magnifier")):
+            page.keyboard.press(key)
+            self.assertEqual(page.evaluate(info)["mode"], mode)
+
     def test_badge_shows_mode_and_hides_for_audience_when_disabled(self):
         page = self.open_pen()
         badge = page.locator("#rp-pen-badge")
