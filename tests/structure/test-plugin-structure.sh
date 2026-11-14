@@ -4,25 +4,25 @@
 # Plugin manifests exist
 assert_file_exists "plugins/aws-content-plugin/.claude-plugin/plugin.json" "content plugin manifest exists"
 assert_file_exists "plugins/aws-ops-plugin/.claude-plugin/plugin.json" "ops plugin manifest exists"
-assert_file_exists "plugins/kiro-power-converter/.claude-plugin/plugin.json" "converter plugin manifest exists"
+assert_file_exists "plugins/co-agent/.claude-plugin/plugin.json" "co-agent plugin manifest exists"
 assert_file_exists ".claude-plugin/marketplace.json" "marketplace.json exists"
 assert_file_exists ".agents/plugins/marketplace.json" "codex marketplace.json exists"
 
 # Manifests are valid JSON
 assert_json_valid "plugins/aws-content-plugin/.claude-plugin/plugin.json" "content plugin.json valid"
 assert_json_valid "plugins/aws-ops-plugin/.claude-plugin/plugin.json" "ops plugin.json valid"
-assert_json_valid "plugins/kiro-power-converter/.claude-plugin/plugin.json" "converter plugin.json valid"
+assert_json_valid "plugins/co-agent/.claude-plugin/plugin.json" "co-agent plugin.json valid"
 assert_json_valid ".claude-plugin/marketplace.json" "marketplace.json valid"
 assert_json_valid ".agents/plugins/marketplace.json" "codex marketplace.json valid"
 
 # Version consistency
 V1=$(python3 -c "import json; print(json.load(open('plugins/aws-content-plugin/.claude-plugin/plugin.json'))['version'])")
 V2=$(python3 -c "import json; print(json.load(open('plugins/aws-ops-plugin/.claude-plugin/plugin.json'))['version'])")
-V3=$(python3 -c "import json; print(json.load(open('plugins/kiro-power-converter/.claude-plugin/plugin.json'))['version'])")
+V3=$(python3 -c "import json; print(json.load(open('plugins/co-agent/.claude-plugin/plugin.json'))['version'])")
 MV=$(python3 -c "import json; vs=set(p['version'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']); print(vs.pop() if len(vs)==1 else 'MISMATCH')")
 
 assert_eq "$V1" "$V2" "content and ops versions match"
-assert_eq "$V1" "$V3" "content and converter versions match"
+assert_eq "$V1" "$V3" "content and co-agent versions match"
 assert_eq "$V1" "$MV" "plugin and marketplace versions match"
 
 # CLAUDE.md files exist
@@ -46,12 +46,12 @@ fi
 # The agents/skills fallback must stay scoped to the upstream mirror, and a Bash scope
 # suffix must be parsed and judged rather than stripped unchecked. Behavioral, against
 # synthetic trees — the plugin name list is hardcoded in the validator, so the fixtures
-# reuse real names (kiro = ordinary plugin, project-init = the mirror). ---
+# reuse real names (co-agent = ordinary plugin, project-init = the mirror). ---
 VAL_TMP="$(mktemp -d)"
 [ -n "$VAL_TMP" ] && [ -d "$VAL_TMP" ] || { echo "not ok - mktemp -d failed"; exit 1; }
 trap 'rm -rf "$VAL_TMP"' EXIT
-mkdir -p "$VAL_TMP/plugins/kiro/.claude-plugin" "$VAL_TMP/.claude-plugin"
-printf '{"name":"kiro","version":"1.0.0"}' > "$VAL_TMP/plugins/kiro/.claude-plugin/plugin.json"
+mkdir -p "$VAL_TMP/plugins/co-agent/.claude-plugin" "$VAL_TMP/.claude-plugin"
+printf '{"name":"co-agent","version":"1.0.0"}' > "$VAL_TMP/plugins/co-agent/.claude-plugin/plugin.json"
 printf '{"plugins":[]}' > "$VAL_TMP/.claude-plugin/marketplace.json"
 NONMIRROR_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)"
 assert_contains "$NONMIRROR_OUT" "Missing required field 'agents'" "an ordinary plugin without an agents field is still an ERROR (the fallback is allowlist-scoped, not blanket)"
@@ -59,11 +59,11 @@ assert_contains "$NONMIRROR_OUT" "Missing required field 'skills'" "an ordinary 
 
 # Present-but-empty is not "missing": a skills-only plugin may declare `agents: []`, and
 # that was accepted before the required-field check moved into the discovery loop.
-printf '{"name":"kiro","version":"1.0.0","agents":[],"skills":[]}' > "$VAL_TMP/plugins/kiro/.claude-plugin/plugin.json"
+printf '{"name":"co-agent","version":"1.0.0","agents":[],"skills":[]}' > "$VAL_TMP/plugins/co-agent/.claude-plugin/plugin.json"
 EMPTY_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)"
 assert_grep_no_match "Missing required field" "$EMPTY_OUT" "an explicit empty agents/skills array on an ordinary plugin is not reported as a MISSING field"
 
-mv "$VAL_TMP/plugins/kiro" "$VAL_TMP/plugins/project-init"
+mv "$VAL_TMP/plugins/co-agent" "$VAL_TMP/plugins/project-init"
 printf '{"name":"project-init","version":"1.0.0"}' > "$VAL_TMP/plugins/project-init/.claude-plugin/plugin.json"
 MIRROR_OUT="$(python3 scripts/test-plugins.py --root "$VAL_TMP" 2>&1 || true)"
 assert_contains "$MIRROR_OUT" "not declared in plugin.json and no agents/\*.md found on disk" "a mirror with neither a declared field nor any file on disk errors instead of passing silently"

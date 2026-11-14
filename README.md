@@ -1,9 +1,9 @@
 # oh-my-cloud-skills
 
-Ten plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and
+Six plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and
 [Codex](https://developers.openai.com/codex/plugins): cloud content, AWS operations,
-agent and plugin conversion, peer review, implementation delegation, project documentation,
-concise response delivery, and PR and agent status views.
+peer review, verified implementation pipelines, project documentation,
+and PR and agent status views.
 
 [Documentation](https://www.atomai.click/oh-my-cloud-skills/) ·
 [Changelog](CHANGELOG.md) ·
@@ -18,12 +18,8 @@ concise response delivery, and PR and agent status views.
 |---|---|
 | [aws-content-plugin](plugins/aws-content-plugin/) | Interactive web decks, editable PowerPoint, architecture and animated diagrams, technical documents, GitBook sites, workshops, brochures, and personal profiles |
 | [aws-ops-plugin](plugins/aws-ops-plugin/) | AWS/EKS troubleshooting, health checks, networking, identity, observability, storage, databases, analytics, cost, and Well-Architected reviews |
-| [kiro-power-converter](plugins/kiro-power-converter/) | Convert plugin sources or individual skills into Kiro Powers, including steering, hooks, assets, and MCP configuration |
-| [agentcore-creator](plugins/agentcore-creator/) | Discover requirements, design and test locally, then prepare AgentCore harness configuration or a Runtime application |
 | [co-agent](plugins/co-agent/) | Peer review, decisions, ADRs, context synchronization, consensus/harness implementation, PR feedback fixes, and ADR reconciliation |
 | [project-init](plugins/project-init/) | Initialize and maintain the current host's project instructions, skills, architecture docs, ADRs, runbooks, and reference guides |
-| [kiro](plugins/kiro/) | Delegate implementation to Kiro CLI, with host verification and optional commit/push review and web search |
-| [token-saver](plugins/token-saver/) | Concise response guidance with full reasoning, verification, complete artifacts, and required report formats |
 | [pr-dash](plugins/pr-dash/) | A Claude Code pane and status line for a pull request's CI checks and AI review, plus a read-only status skill for Codex |
 | [agent-dash](plugins/agent-dash/) | A Claude Code pane and status line for the session's agents, who delegated to whom and who is waiting, with an opt-in subagent model policy, plus a read-only roster skill for Codex |
 
@@ -112,9 +108,7 @@ does not activate those project hooks. See
 | “Diagnose why these pods cannot reach the service.” | ops-network-diagnosis |
 | “Assess this cluster's health.” | ops-health-check |
 | “Get a second opinion on this diff.” | co-agent (review mode) |
-| “Delegate this approved implementation plan to Kiro.” | kiro-delegate |
 | “Initialize this existing project for Codex.” | init-project |
-| “Use concise replies while completing the full task.” | concise-responses |
 
 Commands shown below name the Claude workflows; select their corresponding
 installed skill entries in Codex. Review a concrete deployment or publication
@@ -203,30 +197,6 @@ verification. A scored assessment must identify its rubric and evidence gaps.
 Bundled MCP servers are defined in the host manifests; additional integrations
 require their own setup. See the [operations guide](doc-sites/docs/aws-ops-plugin/overview.md).
 
-## Kiro Power Converter
-
-[kiro-convert](plugins/kiro-power-converter/skills/kiro-convert/SKILL.md) accepts a
-local plugin, GitHub source, marketplace candidate, or individual skill. It maps
-metadata, steering, hooks, MCP settings, and assets into Kiro Power format.
-
-```bash
-python3 plugins/kiro-power-converter/skills/kiro-convert/scripts/convert_plugin_to_power.py \
-  --source ./plugins/aws-ops-plugin --output /var/tmp/aws-ops-power --target export
-```
-
-Targets include export, project, and global installation. `--preserve-skills`
-retains supported skill structure. Resolve ambiguous marketplace candidates to an
-explicit source; inspect generated metadata and required environment variables
-before loading the Power in [Kiro](https://kiro.dev).
-
-## AgentCore Creator
-
-[agentcore-create](plugins/agentcore-creator/skills/agentcore-create/SKILL.md) follows
-Discovery → Design → Skill-First Build → Convert → Deploy and Verify. Existing
-plugin input can enter at conversion. Choose harness configuration for a supported
-managed loop or generated Strands/Runtime code for custom orchestration. Model
-mapping, compatibility, tool/Gateway integration, and Memory options live in the
-converter and its references. Generated files are not proof of cloud deployment.
 
 ## Co-agent
 
@@ -267,19 +237,6 @@ plans confirmed fixes, applies them in an isolated worktree, validates, and push
 within configured bounds. [decision-reconcile](plugins/co-agent/skills/decision-reconcile/SKILL.md)
 checks ADR contradictions and drift, then drafts a superseding decision.
 
-## Kiro Delegation
-
-`/kiro:setup` probes the CLI and prepares its agents. `/kiro:delegate` follows a
-host-authored plan through task worktrees, Kiro implementation, diff capture, scope
-validation, and host tests/commits. `/kiro:review` requests a review;
-`/kiro:configure` shows effective settings.
-
-The scope guard controls which captured changes reach the main tree. It does not
-sandbox the Kiro process. Enabling the implementer's shell tool is a separate trust
-decision. Default delegation, automatic review, and delegated search have separate
-opt-in settings. Review settings are independent of implementation settings; see
-[kiro.defaults.json](plugins/kiro/skills/kiro-delegate/kiro.defaults.json).
-
 ## Project Init
 
 Project-init adapts the existing repository to the selected host. Its workflows
@@ -300,11 +257,10 @@ before publishing: score at least 85 on the standard scale, with the rubric's
 Critical/Warning limits and format-specific scoring. Source validation and a build
 are necessary evidence, not a substitute for the content review.
 
-Local co-agent PR/push hooks and Kiro commit/push reviews are optional controls
+Local co-agent PR/push hooks are optional controls
 with their own consent and failure policies. Their disabled or fail-open state
 does not waive this repository's required GitHub checks. Read the data-sharing
 disclosures before enabling
-[Kiro review/search delegation](plugins/kiro/commands/configure.md) or
 [co-agent hooks](plugins/co-agent/commands/configure.md).
 
 Repository PRs require **latest-HEAD AI Code Review and Codex package validation**.

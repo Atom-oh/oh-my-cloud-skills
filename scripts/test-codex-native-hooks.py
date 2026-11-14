@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Prove native Kiro/patch hook execution using a loopback Responses fixture.
+"""Prove native AWS Ops/patch hook execution using a loopback Responses fixture.
 
-Requires Codex plugin/app-server APIs and freshly generated Kiro adapters.
+Requires Codex plugin/app-server APIs and freshly generated AWS Ops adapters.
 Only --report survives cleanup. No external inference or user-config writes.
 The fixture model selects client tool capabilities; it never invokes that model.
 The default gpt-5.5 advertises direct shell/freeform patch tools in CLI 0.162.1.
@@ -67,7 +67,7 @@ class ResponsesFixture(http.server.BaseHTTPRequestHandler):
                 raw = gzip.decompress(raw)
             request = json.loads(raw)
             require(self.path == "/v1/responses", "Unexpected fixture endpoint")
-            server.routing_seen |= "kiro loaded." in json.dumps(request.get("input", []))
+            server.routing_seen |= "AWS Ops Plugin loaded." in json.dumps(request.get("input", []))
             server.requests += 1
             tools = RPC["response_tools"](
                 request, server.tool_catalogs.get(request.get("previous_response_id")))
@@ -79,7 +79,7 @@ class ResponsesFixture(http.server.BaseHTTPRequestHandler):
                 item = {"id": "tool_" + str(server.requests), "call_id": "call_" + server.phase, "name": name}
                 if server.phase == "bash":
                     item.update(type="function_call", arguments=json.dumps({
-                        "cmd": "printf 'NATIVE_KIRO_BRIDGE_EXECUTED\\n'",
+                        "cmd": "printf 'NATIVE_PLUGIN_BRIDGE_EXECUTED\\n'",
                         "workdir": str(server.workspace), "login": False}))
                 else:
                     require(offered["type"] == "custom", "apply_patch is not an offered custom tool")
@@ -122,9 +122,9 @@ def stop(process):
 
 
 def probe(root, temp_dir, report, project_init=False, model="gpt-5.5"):
-    source = root / "packages/codex/kiro"
+    source = root / "packages/codex/aws-ops-plugin"
     require((source / ".codex-plugin/hook.py").read_bytes() ==
-            (root / "scripts/codex/hook.py").read_bytes(), "Regenerate Kiro adapters before this test")
+            (root / "scripts/codex/hook.py").read_bytes(), "Regenerate AWS Ops adapters before this test")
     with tempfile.TemporaryDirectory(prefix="codex native hooks ", dir=temp_dir) as tmp, ExitStack() as stack:
         tmp = Path(tmp)
         state, workspace, market = tmp / "state", tmp / "consumer", tmp / "market"
@@ -133,7 +133,7 @@ def probe(root, temp_dir, report, project_init=False, model="gpt-5.5"):
         if project_init:
             shutil.copytree(root / "packages/codex/project-init/.codex-plugin/project-template/.codex",
                             workspace / ".codex")
-        package = market / "plugins/kiro"
+        package = market / "plugins/aws-ops-plugin"
         shutil.copytree(source, package, ignore=shutil.ignore_patterns("__pycache__"))
         capture = market / "plugins/patch-capture"
         (capture / ".codex-plugin").mkdir(parents=True)
@@ -167,7 +167,7 @@ def probe(root, temp_dir, report, project_init=False, model="gpt-5.5"):
             "name": "native-proof", "plugins": [{"name": name,
                 "source": {"source": "local", "path": "./plugins/" + name},
                 "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"}}
-                for name in ("kiro", "patch-capture")]}))
+                for name in ("aws-ops-plugin", "patch-capture")]}))
         fake = tmp / "bin"
         fake.mkdir()
         (fake / "kiro-cli").write_text(
@@ -202,11 +202,11 @@ def probe(root, temp_dir, report, project_init=False, model="gpt-5.5"):
         report["model"] = model
         cli("plugin", "marketplace", "add", str(market))
         installed = {name: Path(json.loads(cli("plugin", "add", name + "@native-proof", "--json"))["installedPath"])
-                     for name in ("kiro", "patch-capture")}
+                     for name in ("aws-ops-plugin", "patch-capture")}
         files = [".codex-plugin/hook.py", ".codex-plugin/hooks.json", ".codex-plugin/hook-handlers.json",
-                 "hooks/session-routing.sh", "hooks/pre-commit-review.sh", "hooks/pre-push-review.sh"]
-        require(all((source / name).read_bytes() == (installed["kiro"] / name).read_bytes() for name in files),
-                "Installed Kiro hook sources differ")
+                 ]
+        require(all((source / name).read_bytes() == (installed["aws-ops-plugin"] / name).read_bytes() for name in files),
+                "Installed AWS Ops hook sources differ")
         report["source_files_verified"] = files
         log = stack.enter_context((tmp / "server.log").open("w"))
         process = subprocess.Popen(["codex", "app-server", "--stdio"], cwd=workspace, env=env,
@@ -249,7 +249,7 @@ def probe(root, temp_dir, report, project_init=False, model="gpt-5.5"):
         if project_init:
             untrusted_project = call("hooks/list", {"cwds": [str(workspace)]})["data"][0]["hooks"]
             report["project_trust_before"] = untrusted_project
-            require(len(untrusted_project) == 7 and all(h.get("pluginId") for h in untrusted_project),
+            require(len(untrusted_project) == 4 and all(h.get("pluginId") for h in untrusted_project),
                     "Untrusted consumer unexpectedly exposed project hooks")
             # Only this disposable consumer is trusted. Hook definitions remain untrusted.
             call("config/value/write", {"filePath": str(state / "config.toml"),
@@ -257,12 +257,12 @@ def probe(root, temp_dir, report, project_init=False, model="gpt-5.5"):
                  "mergeStrategy": "upsert", "value": "trusted"})
         before = call("hooks/list", {"cwds": [str(workspace)]})["data"][0]["hooks"]
         report["trust_before"] = before
-        require(len(before) == (10 if project_init else 7) and all(h["trustStatus"] == "untrusted" for h in before), "Unexpected initial trust")
+        require(len(before) == (7 if project_init else 4) and all(h["trustStatus"] == "untrusted" for h in before), "Unexpected initial trust")
         turn(thread())
         require(not server.routing_seen and not payload_file.exists(), "Untrusted hook executed")
         require(not any(e.get("method") == "hook/started" for e in events), "Untrusted hook started")
         for hook in before:
-            plugin_source = hook.get("pluginId") in {"kiro@native-proof", "patch-capture@native-proof"} and any(
+            plugin_source = hook.get("pluginId") in {"aws-ops-plugin@native-proof", "patch-capture@native-proof"} and any(
                 Path(hook["sourcePath"]).is_relative_to(p) for p in installed.values())
             project_source = project_init and not hook.get("pluginId") and (
                 Path(hook["sourcePath"]) == workspace / ".codex/hooks.json")
@@ -291,11 +291,12 @@ def probe(root, temp_dir, report, project_init=False, model="gpt-5.5"):
                 "Native denial failed: " + json.dumps(report["denials"]))
         completed = [e for e in events if e.get("method") == "hook/completed"]
         runs = [e["params"]["run"] for e in completed if
-                str(installed["kiro"]) in e["params"]["run"]["sourcePath"]]
-        require(all(r["status"] == "completed" for r in runs), "Kiro bridge failed")
-        require(sum(r["eventName"] == "sessionStart" for r in runs) == 2 and
-                sum(r["eventName"] == "preToolUse" for r in runs) == 2 and
-                sum(r["eventName"] == "stop" for r in runs) == 2 + len(DENIALS), "Missing native Kiro dispatch")
+                str(installed["aws-ops-plugin"]) in e["params"]["run"]["sourcePath"]]
+        report["native_source_runs"] = runs
+        require(all(r["status"] == "completed" for r in runs), "AWS Ops bridge failed")
+        require(sum(r["eventName"] == "sessionStart" for r in runs) == 1 and
+                sum(r["eventName"] == "postToolUse" for r in runs) == 1,
+                "Missing native AWS Ops dispatch")
         require(server.routing_seen and not provider_called.exists(), "Routing absent or provider invoked")
         payloads = [json.loads(line) for line in payload_file.read_text().splitlines()]
         require(len(payloads) == 1 and payloads[0]["tool_name"] == "apply_patch" and
@@ -333,7 +334,7 @@ def main():
         report["error"] = str(exc)
     if args.report:
         args.report.write_text(json.dumps(report, indent=2) + "\n")
-    print("PASS: native Kiro hooks, apply_patch payload and nine translated denials" if report["passed"]
+    print("PASS: native AWS Ops hooks, apply_patch payload and nine translated denials" if report["passed"]
           else "FAIL: " + report["error"])
     return 0 if report["passed"] else 1
 

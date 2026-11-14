@@ -19,7 +19,7 @@ title: "Getting started"
 
 # Getting started
 
-This marketplace contains ten plugins for Claude Code and Codex. Plugin definitions and helper scripts are the product; this site documents their workflows.
+This marketplace contains six plugins for Claude Code and Codex. Plugin definitions and helper scripts are the product; this site documents their workflows.
 
 The current release is **v2.0.0**. Read the [release notes and migration guide](/docs/releases/v2.0.0)
 before updating an existing co-agent setup that selected Antigravity.
@@ -31,13 +31,9 @@ before updating an existing co-agent setup that selected Antigravity.
 | Plugin | Purpose |
 | --- | --- |
 | [co-agent](/docs/co-agent/overview) | Second opinions, decisions, ADRs, and implementation pipelines with peer review. The current host chairs the work. |
-| [kiro](/docs/kiro/overview) | Delegate implementation and optional reviews to Kiro CLI while the current host owns the plan, verification, and commits. |
 | [project-init](/docs/project-init/overview) | Initialize project instructions and structure, synchronize documentation, and create ADRs, runbooks, and reference guides for either host. |
 | [aws-content-plugin](/docs/aws-content-plugin/overview) | Create web presentations, editable PowerPoint decks, diagrams, documents, workshops, brochures, and portfolio pages. |
 | [aws-ops-plugin](/docs/aws-ops-plugin/overview) | Diagnose AWS and EKS incidents across compute, networking, identity, observability, storage, databases, analytics, and cost. |
-| [kiro-power-converter](/docs/kiro-power-converter/overview) | Convert Claude plugin sources and individual skills into Kiro Powers, including steering, hooks, assets, and MCP configuration. |
-| [agentcore-creator](/docs/agentcore-creator/overview) | Design and test an agent locally, then prepare an AgentCore harness configuration or a generated Runtime application. |
-| [token-saver](/docs/token-saver/overview) | Add concise response guidance while preserving reasoning, verification, complete artifacts, and required report formats. |
 | [pr-dash](/docs/pr-dash/overview) | Watch a pull request's CI checks and AI review in a Claude Code pane, or as text in Codex. |
 | [agent-dash](/docs/agent-dash/overview) | See which agents are working, who delegated to whom and who is waiting, in a Claude Code pane, or as a roster in Codex. |
 

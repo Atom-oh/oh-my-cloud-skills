@@ -15,10 +15,6 @@
     "message": "co-agent",
     "description": "The label of footer link with label=co-agent linking to /docs/co-agent/overview"
   },
-  "link.item.label.kiro": {
-    "message": "kiro",
-    "description": "The label of footer link with label=kiro linking to /docs/kiro/overview"
-  },
   "link.item.label.project-init": {
     "message": "project-init",
     "description": "The label of footer link with label=project-init linking to /docs/project-init/overview"
@@ -30,14 +26,6 @@
   "link.item.label.aws-ops-plugin": {
     "message": "aws-ops-plugin",
     "description": "The label of footer link with label=aws-ops-plugin linking to /docs/aws-ops-plugin/overview"
-  },
-  "link.item.label.kiro-power-converter": {
-    "message": "kiro-power-converter",
-    "description": "The label of footer link with label=kiro-power-converter linking to /docs/kiro-power-converter/overview"
-  },
-  "link.item.label.agentcore-creator": {
-    "message": "agentcore-creator",
-    "description": "The label of footer link with label=agentcore-creator linking to /docs/agentcore-creator/overview"
   },
   "link.item.label.Remarp Guide": {
     "message": "Remarp 가이드",
@@ -62,10 +50,6 @@
   "copyright": {
     "message": "Copyright © 2026 Atom-oh. Docusaurus로 제작했습니다.",
     "description": "The footer copyright"
-  },
-  "link.item.label.token-saver": {
-    "message": "token-saver",
-    "description": "The label of footer link with label=token-saver linking to /docs/token-saver/overview"
   },
   "link.item.label.pr-dash": {
     "message": "pr-dash",

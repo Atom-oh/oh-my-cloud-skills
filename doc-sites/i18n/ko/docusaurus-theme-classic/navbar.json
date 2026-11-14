@@ -31,10 +31,6 @@
     "message": "co-agent",
     "description": "Navbar item with label co-agent"
   },
-  "item.label.kiro": {
-    "message": "kiro",
-    "description": "Navbar item with label kiro"
-  },
   "item.label.project-init": {
     "message": "project-init",
     "description": "Navbar item with label project-init"
@@ -46,18 +42,6 @@
   "item.label.aws-ops-plugin": {
     "message": "aws-ops-plugin",
     "description": "Navbar item with label aws-ops-plugin"
-  },
-  "item.label.kiro-power-converter": {
-    "message": "kiro-power-converter",
-    "description": "Navbar item with label kiro-power-converter"
-  },
-  "item.label.agentcore-creator": {
-    "message": "agentcore-creator",
-    "description": "Navbar item with label agentcore-creator"
-  },
-  "item.label.token-saver": {
-    "message": "token-saver",
-    "description": "Navbar item with label token-saver"
   },
   "item.label.pr-dash": {
     "message": "pr-dash",

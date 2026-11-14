@@ -14,50 +14,6 @@ def read(path):
 
 
 class HandoffTests(unittest.TestCase):
-    def test_python_runtime_does_not_delegate_to_node_deploy(self):
-        skill = read(ROOT / "plugins/agentcore-creator/skills/agentcore-create/SKILL.md")
-        runtime = skill.split("**Path B — Runtime.**", 1)[1].split("## Phase 5", 1)[0]
-        self.assertNotIn("aws-agents:agents-deploy", runtime)
-        for command in ("aws sts get-caller-identity", "python3 -m venv",
-                        "bedrock-agentcore-starter-toolkit",
-                        "-r agents/requirements.txt",
-                        ".venv-agentcore/bin/agentcore configure",
-                        ".venv-agentcore/bin/agentcore deploy"):
-            self.assertIn(command, runtime)
-        self.assertIn("npx @aws/agentcore", skill)
-
-    def test_runtime_requires_supported_python_and_audited_roles(self):
-        skill = read(ROOT / "plugins/agentcore-creator/skills/agentcore-create/SKILL.md")
-        runtime = skill.split("**Path B — Runtime.**", 1)[1].split("## Phase 5", 1)[0]
-        for requirement in ("set -euo pipefail", "sys.version_info >= (3, 10)",
-                            '--execution-role "$EXECUTION_ROLE_ARN"',
-                            '--code-build-execution-role "$CODEBUILD_ROLE_ARN"',
-                            '${EXECUTION_ROLE_ARN:?', '${CODEBUILD_ROLE_ARN:?',
-                            "Do not run the generated `deploy.sh` unchanged"):
-            self.assertIn(requirement, runtime)
-        self.assertNotIn("Node CLI `dev`", skill)
-        mapping = read(ROOT / "plugins/agentcore-creator/skills/agentcore-create/references/agentcore-mapping-rules.md")
-        self.assertNotIn("Node projects only; not the Python", mapping)
-
-    def test_runtime_examples_follow_canonical_cli(self):
-        skill = read(ROOT / "plugins/agentcore-creator/skills/agentcore-create/SKILL.md")
-        summary = skill.split("### Deployment Summary", 1)[1]
-        self.assertNotIn('agentcore invoke --prompt', summary)
-        self.assertIn('.venv-agentcore/bin/agentcore destroy', summary)
-        mapping = read(ROOT / "plugins/agentcore-creator/skills/agentcore-create/references/agentcore-mapping-rules.md")
-        deployment = mapping.split("## Deployment", 1)[1].split("### AgentCore MCP", 1)[0]
-        self.assertNotIn('agentcore configure', deployment)
-        self.assertIn('../SKILL.md#45-deployment', deployment)
-        agent = read(ROOT / "plugins/agentcore-creator/agents/agentcore-creator-agent.md")
-        self.assertNotIn('agentcore invoke --prompt', agent)
-        self.assertIn('.venv-agentcore/bin/agentcore invoke', agent)
-        deployment = agent.split('## Deployment CLI', 1)[1].split('## Reference Files', 1)[0]
-        self.assertNotIn('agentcore configure', deployment)
-        self.assertIn('SKILL.md#45-deployment', deployment)
-        summary = agent.split('Commands:', 1)[1].split('════════', 1)[0]
-        cleanup = summary.split('Cleanup:', 1)[1].strip()
-        subprocess.run(['bash', '-n'], input=cleanup, text=True, check=True)
-
     def test_companion_preflight_is_shared_and_host_aware(self):
         guard = OPS / "references/companion-skills.md"
         self.assertTrue(guard.is_file(), "canonical companion preflight missing")

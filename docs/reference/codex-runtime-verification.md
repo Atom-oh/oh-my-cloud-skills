@@ -1,15 +1,15 @@
 # Codex runtime verification
 
-## Current fixture profile — 2026-10-12
+## Current fixture profile — 2026-11-14
 
-The nine-plugin marketplace currently exposes 70 entry skills from 71 shared
-procedures and 24 plugin hook handlers. Project-init has three additional
+The six-plugin marketplace currently exposes 59 entry skills from 59 shared
+procedures and 16 plugin hook handlers. Project-init has three additional
 consumer-project hook events. Verify current counts with the manifest/inventory
 validators and actual disposable installation rather than extrapolating from
 the historical snapshots below.
 
 The native fixture's default capability profile is `gpt-5.5`: local Codex CLI
-0.162.1's bundled catalog advertises direct shell and freeform patch tools for
+0.167.0's bundled catalog advertises direct shell and freeform patch tools for
 that model. The old fixed `gpt-5.4` profile no longer offered the needed patch tool
 in that CLI. A model with `tool_mode: code_mode_only` may expose a different
 request contract; changing only the model name does not prove direct-tool support.
@@ -26,8 +26,6 @@ disposable and only the selected loopback provider supplies responses.
 codex debug models --bundled
 python3 scripts/test-codex-native-hooks.py --model gpt-5.5 --project-init \
   --report /var/tmp/codex-native-hooks.json
-python3 scripts/test-token-saver-native.py --host codex --model gpt-5.5 \
-  --report /var/tmp/token-saver-native.json
 ```
 
 The project-inclusive fixture first verifies that an untrusted consumer exposes
@@ -35,11 +33,15 @@ no project hooks. After trusting only that disposable project, its three hook
 definitions appear and remain untrusted. Only after trusting their exact hashes
 does native execution proceed. Nine translated patch denials must block all 18
 attempted files; the accepted patch's PostToolUse payload is checked separately.
-Token-saver must skip the untrusted policy and emit the trusted policy once across
-two turns. Passing fixtures certify those tested contracts, not external provider
+The retained AWS Ops package supplies the native session/shell hook proof.
+Passing fixtures certify those tested contracts, not external provider
 authentication, inference quality, AWS deployment or a broader CLI/OS matrix.
 
 ## Historical verification
+
+The retired plugins and their dedicated probes below are historical evidence,
+not current installation or verification instructions. Their scripts are no
+longer shipped.
 
 Verified with Codex CLI 0.154.0 on 2026-09-11. Runtime behavior, not a generic
 regex assumption, determines tool aliases and skill namespaces.

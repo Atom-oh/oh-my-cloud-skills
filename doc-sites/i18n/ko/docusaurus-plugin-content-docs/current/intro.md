@@ -19,7 +19,7 @@ title: "시작하기"
 
 # 시작하기
 
-이 마켓플레이스는 Claude Code와 Codex용 플러그인 10개를 제공합니다. 플러그인 정의와 도우미 스크립트가 제품이며, 이 사이트는 해당 워크플로를 안내합니다.
+이 마켓플레이스는 Claude Code와 Codex용 플러그인 6개를 제공합니다. 플러그인 정의와 도우미 스크립트가 제품이며, 이 사이트는 해당 워크플로를 안내합니다.
 
 현재 릴리스는 **v2.0.0**입니다. Antigravity를 선택했던 기존 co-agent 설정을
 업데이트하기 전에 [릴리스 노트 및 마이그레이션 가이드](/docs/releases/v2.0.0)를 읽습니다.
@@ -31,13 +31,9 @@ title: "시작하기"
 | 플러그인 | 용도 |
 | --- | --- |
 | [co-agent](/docs/co-agent/overview) | 외부 AI 검토를 통해 추가 의견, 의사결정, ADR, 구현 파이프라인을 지원합니다. 현재 호스트가 작업을 주도합니다. |
-| [kiro](/docs/kiro/overview) | 구현과 선택적 검토를 Kiro CLI에 위임하고 현재 호스트가 계획, 검증, 커밋을 책임집니다. |
 | [project-init](/docs/project-init/overview) | 두 호스트용 프로젝트 지침과 구조를 초기화하고 문서를 동기화하며 ADR, 운영 절차서, 참조 가이드를 작성합니다. |
 | [aws-content-plugin](/docs/aws-content-plugin/overview) | 웹 프레젠테이션, 편집 가능한 PowerPoint 슬라이드, 다이어그램, 문서, 워크숍, 브로슈어, 포트폴리오 페이지를 만듭니다. |
 | [aws-ops-plugin](/docs/aws-ops-plugin/overview) | 컴퓨팅, 네트워크, 자격 증명, 관측성, 스토리지, 데이터베이스, 분석, 비용 영역의 AWS 및 EKS 인시던트를 진단합니다. |
-| [kiro-power-converter](/docs/kiro-power-converter/overview) | Claude 플러그인 소스와 개별 스킬을 steering, 훅, 에셋, MCP 설정을 포함한 Kiro Powers로 변환합니다. |
-| [agentcore-creator](/docs/agentcore-creator/overview) | 에이전트를 로컬에서 설계·테스트한 뒤 AgentCore harness 설정 또는 생성된 Runtime 애플리케이션을 준비합니다. |
-| [token-saver](/docs/token-saver/overview) | 짧은 답변을 위한 지침을 적용하면서 추론, 검증, 완성된 산출물과 필수 보고 형식을 유지합니다. |
 | [pr-dash](/docs/pr-dash/overview) | 풀 리퀘스트의 CI 검사와 AI 리뷰를 Claude Code 패널에서, Codex에서는 텍스트로 확인합니다. |
 | [agent-dash](/docs/agent-dash/overview) | 어떤 에이전트가 일하고 있는지, 누가 누구에게 일을 맡겼는지, 누가 기다리는지를 Claude Code 패널에서, Codex에서는 명단으로 확인합니다. |
 

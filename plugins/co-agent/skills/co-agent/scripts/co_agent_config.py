@@ -15,7 +15,7 @@ CLIs) — no dead settings:
   - context_limit : per-AI model context window (tokens) — the fan-out skips an AI
               whose window can't hold the context instead of hard-failing
   - response_limit : per-AI advisory response-line budget (see
-              references/agent-output-budget.md, token-saver plugin) — bound_output.py
+              ai-cli-adapters.md) — bound_output.py
               inlines a response within this many lines and excerpts a longer one; 0/unset
               means no check (advisory only, never a hard truncation the fan-out applies)
 
@@ -597,10 +597,8 @@ def _warn_if_kiro_push_review_on(root):
     installed; this is a best-effort cross-plugin nicety, not a hard dependency)."""
     try:
         lp = os.path.join(root, ".claude", "kiro.local.json")
-        defaults_path = os.path.join(root, "plugins", "kiro", "skills", "kiro-delegate",
-                                      "kiro.defaults.json")
         on = None
-        for p in (defaults_path, lp):   # local override, read second, wins if present
+        for p in (lp,):   # Compatibility with an existing, separately installed Kiro gate.
             if os.path.isfile(p):
                 with open(p, encoding="utf-8") as f:
                     data = json.load(f)
@@ -608,8 +606,7 @@ def _warn_if_kiro_push_review_on(root):
                     if "on_push" in data["review"]:
                         on = data["review"]["on_push"]
         if on:
-            print("⚠️  kiro's review.on_push is ALSO enabled (.claude/kiro.local.json or "
-                  "its defaults) — turning both push gates on means every `git push` runs "
+            print("⚠️  kiro's review.on_push is ALSO enabled (.claude/kiro.local.json) — turning both push gates on means every `git push` runs "
                   "TWO independent review fan-outs (double the external calls, double the "
                   "wait) for the same push. Not recommended; consider leaving only one on.",
                   file=sys.stderr)

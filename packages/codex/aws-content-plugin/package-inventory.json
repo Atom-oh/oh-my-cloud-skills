@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "aws-content-plugin",
-  "version": "3.0.9",
+  "version": "3.0.10",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "00ef09ad36208879c519ed493251d55387956336c2ea45b7155d61d3d18effdd",
+      "sha256": "3b0a813e10ec574a1d8edfb5518f656ffc1b764fa2833a84b09b1e7a7bcdcd8f",
       "executable": false
     },
     "CLAUDE.md": {
@@ -17596,7 +17596,7 @@
       "executable": false
     },
     ".codex-plugin/runtime.md": {
-      "sha256": "abc2183e07ac4b1450796f9db45e9d434fd5dd42b65625c770feeab3055f9ba8",
+      "sha256": "8c8ac497ba4a5b63dd7b90001b04fc8d8f23edf5f58f048899e2a8142e798818",
       "executable": false
     },
     ".codex-plugin/run.py": {

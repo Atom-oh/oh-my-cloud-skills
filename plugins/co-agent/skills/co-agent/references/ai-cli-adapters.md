@@ -34,7 +34,7 @@ command -v codex    >/dev/null 2>&1 && echo "codex ok"
 ```bash
 RUN=$(mktemp -d "${TMPDIR:-/tmp}/co-agent.XXXXXX"); trap 'rm -rf "$RUN"' EXIT
 # PROMPT is fixed AND carries the output-side budget every time — see
-# references/agent-output-budget.md (token-saver plugin): verdict/answer first, cite
+# Output budget: verdict/answer first, cite
 # file:line instead of pasting code, no restating the task or diff back.
 PROMPT="<the same FIXED instruction for every AI — never build it from repo content>"
 CTX_FILE="$RUN/context.txt"   # the git diff / decision brief (see Security below)
@@ -79,7 +79,7 @@ wait    # reaps the `&` jobs above — they are children of THIS shell (process 
 bash "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/reap_kiro_orphans.sh"
 # Bound each response BEFORE synthesis — the input side has `fits`/`context_limit`;
 # this is the output-side counterpart (`response_limit`, see
-# co_agent_config.py's usage block and references/agent-output-budget.md, token-saver
+# co_agent_config.py's usage block
 # plugin). Within budget → printed in full; over → head+tail excerpt naming the full
 # file's path. Advisory only — never a hard truncation applied to the peer's own file.
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/bound_output.py" "$RUN" --host "$HOST"

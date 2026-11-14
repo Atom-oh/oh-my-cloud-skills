@@ -12,21 +12,13 @@ a passing result.
 | aws-content-plugin | Dependencies of the selected format: Node/PptxGenJS and python-pptx for native PPTX; Python Playwright plus its browser for local web checks; PyMuPDF for PDF image extraction | Browser MCP startup when used; content-review PASS before completion/publication | Produce and validate the requested artifact; distinguish an optional preview from its mandatory quality gate |
 | aws-ops-plugin | AWS CLI or the configured API tools; kubectl for cluster diagnostics | Required tools, credentials and explicitly authorized target/scope; bundled awsdocs/awsapi do not supply credentials | Actual diagnostic evidence; separately supplied knowledge/pricing/IaC tools are not assumed installed |
 | co-agent | Host CLI and configured supported peer CLIs | READY raw-CLI peers for consensus/harness; advisory modes may disclose solo operation; the optional `decision-reconcile-panel` workflow needs Claude Code dynamic workflows (not disabled) and a Workflow approval, and uses no external peer | Record participants, scope and verified findings; when no eligible external implementer exists, Codex-host harness uses explicitly selected host implementation with READY external review |
-| agentcore-creator | Standard-library Python for local conversion; generated framework dependencies for execution | Deployment additionally requires the appropriate toolkit/MCP, AWS credentials and authorization | Test generated code with its documented context/region contract; unconverted hooks remain gaps, not protections |
 | project-init | Python, project templates and valid skill metadata; Git for the default hook launcher | Consumer hook installation, project trust, then definition-specific hook trust | Native project discovery and execution; Claude-only migrate-hooks is not a Codex migration |
-| kiro | Usable kiro-cli; verified consumer agents and POSIX no-follow/locking operations for delegation preparation | Authentication and separate process/tool trust; opt-in commit/push hooks require their own settings/trust | Structured manual-review evidence or guarded task results; an applied-diff scope guard is not process isolation |
-| kiro-power-converter | Standard-library Python; POSIX no-follow directory descriptors and /proc/self/fd or /dev/fd; Git for GitHub inputs | Target write permissions; Kiro activation is separate | Valid metadata/MCP output and an explicit per-hook report; conversion does not prove activation |
-| token-saver | Python | SessionStart hook trust for automatic loading | Exact shared policy supplied once per session; manual skill use does not prove a hook ran |
 | pr-dash | Claude Code 2.1.287+ for the mod; authenticated `gh` for both mod and skill | Mod hooks load with the plugin (no settings-hook trust prompt); `--safe-mode` or `disableAllHooks` stop them | A pane or status line in the terminal/Desktop app, or command text where nothing draws; Codex gets only the text skill |
 | agent-dash | Claude Code 2.1.300+ for the mod; `python3` and a POSIX shell with `ls` for the skill, which reads agent-team roster files under `~/.claude/` | Mod hooks load with the plugin (no settings-hook trust prompt); `--safe-mode` or `disableAllHooks` stop them; a managed `allowManagedModsOnly` blocks mods from non-managed marketplaces | Agent rows from `$.agent.list()` in a pane, band or status line, or command text where nothing draws; a wait is an estimate, and a teammate in its own terminal pane may show a stale status; the opt-in model policy is off unless enabled and never overrides a model the call or session names |
 
 The marketplace's source agents become specialist procedures in Codex. Source
 model/effort, tool restrictions and persistent memory are not automatically supplied
 by entry skills. Use supported agent tools with actual boundaries or execute inline.
-Power conversion's [safe-publication prerequisites](../../plugins/kiro-power-converter/skills/kiro-convert/references/conversion-rules.md)
-are required before output mutation. Unsupported platforms refuse the operation;
-this does not claim a verified OS matrix.
-
 ## Check the installed dependency location
 
 Resolve `<plugin-root>` from the loaded skill path. Do not test a different checkout
