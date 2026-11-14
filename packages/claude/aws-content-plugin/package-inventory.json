@@ -460,7 +460,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
-      "sha256": "29bed842d2353f676d0eda9374cad213566e1dbffd16e75276be2aa6b81fcf68",
+      "sha256": "2e4e1ce9b9c1519b692e77676307c1856a5ddf47e385aa33425df6747c64f14b",
       "executable": false
     },
     "skills/reactive-presentation/assets/aws-icons.zip": {
@@ -524,7 +524,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-framework.js": {
-      "sha256": "0a9dd2a0e7a35b4da8ef2239f5a397c07fd3b5d062775837042fcc60a40b8041",
+      "sha256": "2162931693bd1c5d10cec97c84224579304d32c9d95cb9fc88c3e5afbf403384",
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-renderer.js": {
@@ -17332,7 +17332,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/framework-guide.md": {
-      "sha256": "141e84db340b752b1ce72baf3c120893090d6bcff90ae2d9c3ded507d391a7a7",
+      "sha256": "819f2beba7cc14718bdf7d7eb22b0a5ca494b4b0258299450d792b622c5cdb86",
       "executable": false
     },
     "skills/reactive-presentation/references/interactive-patterns-guide.md": {
