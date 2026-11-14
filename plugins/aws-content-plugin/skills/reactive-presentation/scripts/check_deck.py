@@ -35,7 +35,53 @@ RULE_IDS = ('NO_THEME_CSS', 'MISSING_SCRIPT', 'FRAMEWORK_COUNT', 'MISSING_NOTES'
             'SHORT_NOTES', 'PRESENTER_KEYS', 'QUIZ_NO_ANSWER', 'CANVAS_WIRING',
             'FRAGMENT_GAPS', 'RAW_HEX', 'RAW_RGBA', 'INLINE_STYLE', 'OFF_SCALE',
             'PX_FONT', 'TITLE_LENGTH', 'BROKEN_REF', 'THEME_DUP', 'STALE_COMMON',
-            'MISSING_OVERLAY')
+            'MISSING_OVERLAY', 'NOTE_OPERATING_INSTRUCTION', 'NOTE_MARK_IN_META')
+
+# Speaker notes narrate; the step cue (↓) tells the presenter when to advance, so a
+# note must not tell the presenter to operate the deck. See references/step-guidance.md.
+# Add a phrase only with a false-positive test in tests/structure/check_deck_notes_test.py.
+OPERATING_PHRASES = tuple(re.compile(p, re.I) for p in (
+    r'아래\s*화살표', r'화살표를\s*눌', r'눌러\s*볼게요', r'버튼을\s*누르',
+    r'장면을\s*누를\s*때마다',
+    r'press\s+the\s+down\s+arrow', r'click\s+the\s+next\s+button',
+    r'press\s+down\b'))
+META_TAG_RE = re.compile(r'\[(?:요약|출처|약어)\]')
+BRACE_SPAN_RE = re.compile(r'\{[^{}\n]*\}')
+MARK = '\u2193'
+
+
+def lint_note_text(text):
+    """Lint one slide's RAW note text (line structure kept); return (rule, message) pairs.
+
+    NOTE_OPERATING_INSTRUCTION: the script tells the presenter how to operate the deck.
+    NOTE_MARK_IN_META: a ↓ cue inside a [요약]/[출처]/[약어] line or a {...} marker;
+    a ↓ after a sentence in plain script text is the intended use and is not flagged.
+    One pair per rule.
+    """
+    out = []
+    hits = [m.group(0) for pat in OPERATING_PHRASES for m in [pat.search(text)] if m]
+    if hits:
+        out.append(('NOTE_OPERATING_INSTRUCTION',
+                    'note tells the presenter how to operate the deck ('
+                    + ', '.join(f'"{h}"' for h in hits)
+                    + '); narrate the content and let the step cue carry the advance'))
+    kinds = []
+    for line in text.splitlines():
+        if MARK not in line:
+            continue
+        tag = META_TAG_RE.search(line)
+        if tag and tag.group(0) not in kinds:
+            kinds.append(tag.group(0))
+        in_span = any(MARK in m.group(0) for m in BRACE_SPAN_RE.finditer(line))
+        after_marker = (re.match(r'\s*\{[^{}]*\}', line) is not None
+                        and not tag)
+        if (in_span or after_marker) and '{...}' not in kinds:
+            kinds.append('{...}')
+    if kinds:
+        out.append(('NOTE_MARK_IN_META',
+                    '\u2193 sits in a meta line (' + ', '.join(kinds)
+                    + '); put the cue after a script sentence instead'))
+    return out
 
 
 def discover(target: Path):
@@ -238,7 +284,9 @@ def check_file(deck_dir, name, skill_selectors, findings):
     missing = []
     for i in range(1, n_slides + 1):
         texts = []
+        raws = []  # un-collapsed note text: the note lint needs the line structure
         if i in tmpl_notes:
+            raws.append(html_mod.unescape(re.sub(r'<[^>]+>', '', tmpl_notes[i])))
             texts.append(_collapse(re.sub(r'<[^>]+>', '', tmpl_notes[i])))
         if i in note_keys and notes_block:
             lm = re.search(r'^[ \t]*' + str(i) + r'\s*:\s*(.*)$', notes_block, re.M)
@@ -247,6 +295,14 @@ def check_file(deck_dir, name, skill_selectors, findings):
                 if len(v) >= 2 and v[0] in '\'"`' and v[-1] == v[0]:
                     v = v[1:-1]
                 texts.append(_collapse(v))
+                # presenterNotes values are one physical line with \n escapes
+                raws.append(html_mod.unescape(v.replace('\\n', '\n')))
+        seen_rules = set()  # one finding per slide per rule
+        for raw in raws:
+            for rule, msg in lint_note_text(raw):
+                if rule not in seen_rules:
+                    seen_rules.add(rule)
+                    add('WARN', rule, msg, slide=i)
         if not texts:
             missing.append(i)
             add('WARN', 'MISSING_NOTES',
