@@ -138,6 +138,15 @@ class PresenterView {
 <title>Presenter View - ${document.title}</title>
 ${styleSheets}
 <style>
+  /* === Presenter chrome tokens ===
+     The presenter chrome is a fixed dark surface whatever the deck theme, so its text
+     colors are scoped here instead of reading the copied deck tokens (the light theme's
+     --text-secondary is a dark grey meant for white slides). */
+  :root {
+    --pv-text-muted: #9ba1b8;  /* 7.4:1 on the #0f0f1a nav */
+    --pv-on-accent: #1a1a2e;   /* dark text on the orange step-mark badge, 5.7:1 */
+  }
+
   /* === Override theme.css globals for presenter window === */
   body {
     background: #1a1a2e !important;
@@ -367,7 +376,7 @@ ${styleSheets}
   .presenter-notes .notes-content .rp-step-mark {
     display: inline-block;
     background: var(--accent, #ec7211);
-    color: #fff;
+    color: var(--pv-on-accent);
     font-weight: 700;
     padding: 0 0.35em;
     border-radius: 0.3em;
@@ -473,7 +482,7 @@ ${styleSheets}
     flex: 0 0 100%;
     text-align: center;
     font-size: 13.6px;
-    color: var(--text-secondary, #9aa0b8);
+    color: var(--pv-text-muted);
     min-height: 1.4em;
   }
   #p-step-cue[data-more="1"] {
@@ -1123,15 +1132,20 @@ ${styleSheets}
     // added after the escape so note text can never inject markup.
     const korean = /^ko/i.test((document.documentElement.lang || ''));
     const badge = `<span class="rp-step-mark" title="${korean ? '여기서 ↓' : 'press ↓ here'}">↓</span>`;
+    // Meta layer: a [요약]/[출처]/[약어] line plus the bullet lines (-, * or • after
+    // optional whitespace) right under it, up to a blank or non-bullet line, is not
+    // script text. Same rule as check_deck.py NOTE_MARK_IN_META (step-guidance.md §3).
+    let metaLayer = false;
     const escaped = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .split('\n')
       .map((line) => {
-        // Summary / source / abbreviation lines are not script text.
-        if (/\[(요약|출처|약어)\]/.test(line)) return line;
-        // A {...} marker span keeps a plain arrow.
+        if (/\[(요약|출처|약어)\]/.test(line)) { metaLayer = true; return line; }
+        if (metaLayer && /^\s*[-*•]/.test(line)) return line;
+        metaLayer = false;
+        // A {...} marker span keeps a plain arrow; a ↓ after its closing } is script.
         return line.split(/(\{[^}]*\})/).map((part) => (
           part.startsWith('{') && part.endsWith('}') ? part : part.replace(/↓/g, badge)
         )).join('');
