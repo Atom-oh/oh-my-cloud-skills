@@ -17392,7 +17392,7 @@
       "executable": true
     },
     "skills/reactive-presentation/scripts/measure_deck.py": {
-      "sha256": "d71c2745a9f67f8bfe350e1bcf6fd947d40224e64bec11972b4ec882846e29e5",
+      "sha256": "3ba7b6dc7d0c82739b555b7576302c5d68b938ca44bf8c58665b9b967f3878b8",
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_studio.py": {
