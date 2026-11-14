@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- reactive-presentation: speaker notes are editable in the presenter window. **Edit notes**
+  (or a double-click) opens a text box; Ctrl+Enter, Save notes or leaving the box saves, Esc
+  cancels, and an edited slide shows an Edited badge with Reset to original. Edits are stored
+  per slide in the browser's `localStorage` only and never change the Remarp source, the
+  audience window, or a slide's cues and timing.
+
 ## [3.0.9] - 2026-10-29
 
 ### Added
