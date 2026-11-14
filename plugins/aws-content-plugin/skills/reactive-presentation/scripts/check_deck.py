@@ -292,11 +292,19 @@ def check_file(deck_dir, name, skill_selectors, findings):
             lm = re.search(r'^[ \t]*' + str(i) + r'\s*:\s*(.*)$', notes_block, re.M)
             if lm:
                 v = lm.group(1).strip().rstrip(',').strip()
+                is_obj = v.startswith('{')
                 if len(v) >= 2 and v[0] in '\'"`' and v[-1] == v[0]:
                     v = v[1:-1]
                 texts.append(_collapse(v))
                 # presenterNotes values are one physical line with \n escapes
-                raws.append(html_mod.unescape(v.replace('\\n', '\n')))
+                if is_obj:
+                    # object form {text|notes: "...", timing: n}: lint the string only
+                    om = re.search(r'\b(?:text|notes)\s*:\s*(["\'`])((?:\\.|(?!\1).)*)\1', v)
+                    if om:
+                        raws.append(html_mod.unescape(
+                            om.group(2).replace('\\n', '\n')))
+                else:
+                    raws.append(html_mod.unescape(v.replace('\\n', '\n')))
         seen_rules = set()  # one finding per slide per rule
         for raw in raws:
             for rule, msg in lint_note_text(raw):

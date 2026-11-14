@@ -70,7 +70,7 @@ class NoteLintTest(unittest.TestCase):
             '<div class="slide"><h1>Two</h1>'
             '<template class="notes">\n[요약] 요점↓\n아래 화살표로 넘깁니다.\n</template></div>'
             '</body></html>')
-        with tempfile.TemporaryDirectory(dir=str(Path.home() / ".tmp")) as d:
+        with tempfile.TemporaryDirectory() as d:
             (Path(d) / "index.html").write_text(deck, encoding="utf-8")
             findings = []
             check_deck.check_file(Path(d), "index.html", set(), findings)
@@ -83,11 +83,38 @@ class NoteLintTest(unittest.TestCase):
             '<html><body><div class="slide"><h1>One</h1></div>'
             '<script>const presenterNotes = {\n'
             '  1: "[요약] 요점↓\\n대본입니다.",\n};</script></body></html>')
-        with tempfile.TemporaryDirectory(dir=str(Path.home() / ".tmp")) as d:
+        with tempfile.TemporaryDirectory() as d:
             (Path(d) / "index.html").write_text(deck, encoding="utf-8")
             findings = []
             check_deck.check_file(Path(d), "index.html", set(), findings)
         self.assertIn((META, 1), {(f["rule"], f["slide"]) for f in findings})
+
+    def _deck_findings(self, note_line):
+        deck = ('<html><body><div class="slide"><h1>One</h1></div>'
+                '<script>const presenterNotes = {\n' + note_line + '\n};</script></body></html>')
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "index.html").write_text(deck, encoding="utf-8")
+            findings = []
+            check_deck.check_file(Path(d), "index.html", set(), findings)
+        return {f["rule"] for f in findings if f["rule"] in (OP, META)}
+
+    def test_object_form_clean_arrow(self):
+        self.assertEqual(self._deck_findings(
+            '  1: {text: "구조를 봅니다. ↓ 다음입니다.", timing: 2},'), set())
+
+    def test_object_form_meta_via_escape(self):
+        self.assertEqual(self._deck_findings(
+            '  1: {text: "[요약] 요점↓\\n대본입니다.", timing: 2},'), {META})
+        self.assertEqual(self._deck_findings(
+            "  1: {notes: '[요약] 요점↓\\n대본입니다.'},"), {META})
+
+    def test_object_form_operating_phrase(self):
+        self.assertEqual(self._deck_findings(
+            '  1: {text: "아래 화살표로 넘깁니다.", timing: 2},'), {OP})
+
+    def test_brace_marker_in_plain_string_note(self):
+        self.assertEqual(self._deck_findings(
+            '  1: "{timing: 2}↓\\n대본입니다.",'), {META})
 
     def test_rule_ids_registered(self):
         self.assertIn(OP, check_deck.RULE_IDS)
