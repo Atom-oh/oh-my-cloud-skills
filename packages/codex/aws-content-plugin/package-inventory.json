@@ -17368,7 +17368,7 @@
       "executable": true
     },
     "skills/reactive-presentation/scripts/check_deck.py": {
-      "sha256": "58f03c7c9a2d595f0f51c6e1143361d0f6b7b6eb3881a35c3cf285173e1907e2",
+      "sha256": "2808ed1e763cb547dcd034ff679189d3f29c49ae03cb4216fea35d3334d65fb6",
       "executable": false
     },
     "skills/reactive-presentation/scripts/convert_to_remarp.py": {
@@ -17392,7 +17392,7 @@
       "executable": true
     },
     "skills/reactive-presentation/scripts/measure_deck.py": {
-      "sha256": "f5559b00d253d62ed42f833882838a382cbaed9fd12368ac467f5829923b8c0b",
+      "sha256": "d71c2745a9f67f8bfe350e1bcf6fd947d40224e64bec11972b4ec882846e29e5",
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_studio.py": {
