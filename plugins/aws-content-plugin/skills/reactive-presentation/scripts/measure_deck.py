@@ -19,6 +19,11 @@ Checks per slide (per viewport, per theme, per canvas step):
   MIN_FONT      effective text size (font-size x CSS zoom) < 22px WARN, < 18px FAIL
   FIT_OVERFLOW  slide carries data-fit-overflow — content does not fit even at the minimum fit scale
   SENTENCE_RUNON multiple sentences in one text block wrap across 3 or more lines (WARN)
+  STEP_MARKS    a slide's notes carry a different number of "↓" than the Down presses the slide
+                really takes (WARN; counted once per deck on a fresh page, by pressing;
+                a slide that cannot be opened for counting, or that only hidden slides
+                follow, is skipped silently; a press that throws is a WARN
+                "counting stopped at slide N: <error>" and counting goes on)
   DECK_OFFSCREEN the scaled .slide-deck box is not fully inside the viewport (checked with the
                 sidebar as the deck loads it, and hidden) — part of every slide is cut off
 
@@ -454,6 +459,111 @@ _STEP_JS = """
 """
 
 
+# --- STEP_MARKS: real Down presses versus the "↓" marks in the notes -----------
+
+STEP_PRESS_CAP = 40
+
+# Presses Down on slide `i` while it stays current (the press that leaves is not
+# counted). goTo and the leaving press start a transition that ignores navigation,
+# so wait for it to finish before and after. One press beyond the cap is tried, so
+# only a slide that still has not left after cap+1 presses is reported as capped
+# (it then counts `cap`); a slide taking exactly `cap` presses is not. A slide that
+# goTo could not open (stuck transition, overview mode) is `unmeasurable`; a slide
+# with only hidden slides after it is the real end of the deck (`end`). A press that
+# throws is returned as `error` so the pass can report it and go on.
+_COUNT_PRESSES_JS = """
+async ([i, cap]) => {
+  const idle = async () => {
+    for (let t = 0; t < 100 && deck.transitioning; t++) await new Promise(r => setTimeout(r, 50));
+  };
+  if (typeof deck.nextVisibleIndex === 'function' && deck.nextVisibleIndex(i, 1) === -1) return { end: true };
+  await idle();
+  deck.goTo(i);
+  await idle();
+  if (deck.currentSlide !== i || deck.overviewMode || deck.transitioning) return { unmeasurable: true };
+  let n = 0;
+  try {
+    while (n <= cap) {
+      deck.handleNavigationAction('down');
+      if (deck.currentSlide !== i) break;
+      n++;
+    }
+  } catch (e) {
+    await idle();
+    return { error: String(e && e.message !== undefined ? (e.name || 'Error') + ': ' + e.message : e) };
+  }
+  const capped = n > cap;
+  await idle();
+  const note = (deck.presenterNotes || {})[i + 1];
+  const text = typeof note === 'string' ? note
+    : (note && typeof note === 'object' ? (note.text || note.notes || '') : '');
+  return { presses: capped ? cap : n, capped, marks: (text.match(/↓/g) || []).length };
+}
+"""
+
+
+class StepCountError(RuntimeError):
+    """Counting one slide failed (a scene's down() threw, or the evaluate failed)."""
+
+
+def count_slide_presses(page, index, cap=STEP_PRESS_CAP):
+    """Count slide `index`: (presses that kept it current, whether the cap was hit,
+    "↓" marks in its note), or None when the slide could not be opened or is the
+    last visible slide. Raises StepCountError when a press throws."""
+    r = page.evaluate(_COUNT_PRESSES_JS, [index, cap])
+    if r.get('unmeasurable') or r.get('end'):
+        return None
+    if 'error' in r:
+        raise StepCountError(r['error'])
+    return r['presses'], r['capped'], r['marks']
+
+
+def _has_deck(page):
+    try:
+        return page.evaluate("() => typeof deck === 'object' && deck !== null") is True
+    except Exception:
+        return False
+
+
+def check_step_marks(page, block):
+    """STEP_MARKS findings for every slide but the last (the page must be freshly loaded).
+
+    A slide that could not be opened for counting, or that only hidden slides follow
+    (the real end of the deck), produces no finding (the finding severities are
+    WARN/FAIL only, so there is no INFO to report it with). A slide whose counting
+    fails is a WARN ("counting stopped at slide N: <error>") and the pass goes on.
+    Only a page without a global `deck` (from the start, or after navigating away)
+    ends the pass silently.
+    """
+    findings = []
+    try:
+        total = page.evaluate("() => deck.totalSlides")
+    except Exception:  # no `deck`: nothing to count
+        return []
+    if not isinstance(total, int):
+        return []
+    for i in range(total - 1):
+        try:
+            r = count_slide_presses(page, i)
+        except Exception as exc:
+            reason = (str(exc).strip().splitlines() or [type(exc).__name__])[0][:200]
+            findings.append(dict(rule='STEP_MARKS', severity='WARN', file=block, slide=i + 1,
+                                 message=f'counting stopped at slide {i + 1}: {reason}'))
+            if not isinstance(exc, StepCountError) and not _has_deck(page):
+                break
+            continue
+        if r is None:
+            continue
+        presses, capped, marks = r
+        if marks != presses or capped:
+            msg = f'notes carry {marks} "↓" but the slide takes {presses} presses'
+            if capped:
+                msg += f' (stopped at the {STEP_PRESS_CAP}-press cap)'
+            findings.append(dict(rule='STEP_MARKS', severity='WARN', file=block,
+                                 slide=i + 1, message=msg))
+    return findings
+
+
 def discover(target: Path):
     if target.is_file():
         return target.parent, [target.name]
@@ -505,6 +615,20 @@ def measure(deck_dir: Path, blocks, viewports, themes, max_steps, shots_dir,
                         lambda r: failed_reqs.append(r.url) if not r.url.startswith('data:') else None)
 
                 for block in blocks:
+                    if (vw, vh) == viewports[0]:
+                        # Pressing mutates the page, and _PREPARE_JS reveals every
+                        # fragment: count on its own fresh load, once per block.
+                        # Snapshot BEFORE the load: the theme pass below reloads the
+                        # page and records its load-time errors itself.
+                        keep = (len(console_errs), len(failed_reqs))
+                        page.goto(f"{base_url}/{urllib.parse.quote(block)}",
+                                  wait_until='networkidle')
+                        page.evaluate("() => document.fonts.ready.then(() => true)")
+                        page.wait_for_timeout(400)
+                        findings.extend(f for f in check_step_marks(page, block)
+                                        if not only_slides or f['slide'] in only_slides)
+                        # The counting load is not part of the measured page.
+                        del console_errs[keep[0]:], failed_reqs[keep[1]:]
                     for theme in themes:
                         page.goto(f"{base_url}/{urllib.parse.quote(block)}",
                                   wait_until='networkidle')

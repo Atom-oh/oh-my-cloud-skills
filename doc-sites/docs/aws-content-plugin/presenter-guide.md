@@ -108,6 +108,8 @@ The presenter window supports navigation and reveal keys too. Its bottom **Previ
 
 Read the notes before rehearsing. A good sequence is **say the point → ask the question → operate the slide → explain the result → move on**. Do not reveal a quiz answer while you are still asking the audience to choose.
 
+On slides with steps, an orange ↓ badge in the notes marks where to press Down, and the status line under the arrow buttons tells you whether the slide still has steps, for example ↓ more steps (now 1/3), or whether the next press moves to the next slide. See [Step cue and Down marks](../remarp-guide/keyboard-shortcuts.md#step-cue).
+
 If only the summary is visible, scroll inside the notes area to read the explanation below it. You can also drag the horizontal divider upward to give the notes more space.
 
 To adapt wording for yourself:

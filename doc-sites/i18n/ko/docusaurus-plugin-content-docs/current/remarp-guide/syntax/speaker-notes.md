@@ -58,4 +58,6 @@ Move to the example that exercises that assumption.
 
 P를 누르면 현재·다음 슬라이드, 노트, 시간과 탐색 기능을 갖춘 별도 보기가 열립니다. 분할선을 조절해 슬라이드·노트 영역의 크기를 바꾸면 비율이 로컬에 저장됩니다. 발표자 창과 기본 창은 프레임워크의 채널로 동기화되므로 실제 생성된 덱에서 동작을 테스트합니다.
 
+단계가 있는 슬라이드에서는 Down 키를 한 번 누를 때마다 발표 대본에 `↓`를 하나씩, 단계를 끝맺는 문장 바로 뒤에 적습니다. 발표자 보기는 각 표시를 배지로 그리고 화살표 버튼 아래에 단계 안내를 보여 줍니다. `check_deck.py`는 조작 지시 문구와 잘못 놓인 표시를 경고하고, `measure_deck.py`는 표시 수를 슬라이드가 실제로 소비하는 키 입력 수와 비교합니다. 자세한 내용은 [단계 안내와 아래 화살표 표시](../keyboard-shortcuts.md#step-cue)를 참고하세요.
+
 [노트 검증 규칙](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py)

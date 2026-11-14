@@ -106,6 +106,8 @@ handoff; `DETAIL_REF` checks wiring only.
 
 **Speaker notes**: every slide gets `:::notes`. The goal is enough content for the presenter to speak to that slide for 1-3 minutes from the notes alone — not a repeat of the slide text, but conversational elaboration on why it matters, practical application, and common mistakes, opening with `{timing:}` and closing with `{cue: transition}` plus a bridge into the next slide.
 
+**Step guidance** (full rules: `references/step-guidance.md`): put exactly one `↓` in the script per press the slide takes (a quick check counts one), right after the sentence that finishes that step; never write what to press ("아래 화살표로", "눌러 볼게요", "press the down arrow"); no `↓` in `[요약]`, `[출처]`, `[약어]` or `{...}` markers. A scene's registered action returns `state()` as `{cur, total}` = presses taken / presses in total, and calls `deck.notifyStepChange()` after its own next/prev buttons. Step animations: one step per click or Down, first frame is the complete picture, camera still while something travels, reduced motion follows the steps (end state per step, camera jumps), and cutting motion removes only looping animation, after asking the presenter.
+
 **Parallel block authoring** (3+ blocks): write `_presentation.remarp.md` → delegate each block to a reactive-presentation-agent (input: outline, assigned block number, global settings / output: `NN-slug.remarp.md`) → integrated build. Details: the Team Workflow in the plugin's CLAUDE.md + `references/team-workflows.md`.
 
 ### Phase 4: Remarp Content Review (user approval)

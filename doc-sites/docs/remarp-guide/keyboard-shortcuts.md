@@ -95,6 +95,12 @@ The lens has these limits:
 
 Use N before presenting with a second display and verify window synchronization. Use G and select a slide to navigate the overview. Test custom key mappings in the actual generated deck, particularly when they replace a default.
 
+## Step cue and Down marks {#step-cue}
+
+The presenter window shows a status box under the arrow buttons that says what the next Down press does on the current slide: ↓ more steps (now n/N), ✓ last step (N/N), the next press moves on, ✓ no steps, the next press moves on, → more items (n/N) while fragments remain, or ↓ this slide has steps when a scene does not report its count. The text is Korean when the deck's `lang` starts with `ko`, English otherwise. The box follows slide changes, key presses in either window and a scene's own next/previous buttons.
+
+In the notes pane, every `↓` in the spoken script is drawn as an orange badge. Write exactly one `↓` per press the slide takes, right after the sentence that finishes a step (a quick check counts one). Do not write what to press, such as "press the down arrow", and do not put `↓` in the `[요약]`, `[출처]` or `[약어]` lines, in the bullets right under them, or inside `{...}` markers. The Remarp source and the exported PDF keep the plain character.
+
 ## Editing speaker notes {#edit-speaker-notes}
 
 The Speaker Notes pane of the presenter window is editable. Click **Edit notes** or double-click the notes, change the text, then press Ctrl+Enter (Cmd+Enter) or click **Save notes**; leaving the box also saves, and Esc cancels. Saved text uses the same formatting as authored notes. A slide with an edit shows an **Edited** badge and a **Reset to original** button.

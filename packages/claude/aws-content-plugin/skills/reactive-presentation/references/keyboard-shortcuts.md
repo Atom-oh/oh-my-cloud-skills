@@ -121,6 +121,16 @@ example added without asking Claude again or rebuilding the deck.
 - While the box has focus, plain-key shortcuts (N, G, H, C, T, pen keys) and arrows type text instead of acting.
 - Changing slide or closing the presenter window while editing saves the edit first.
 
+## Step cue and `↓` marks (presenter window)
+
+- A status box under the arrow buttons shows what the next Down does on the current slide (`deck.getStepInfo`):
+  `↓ more steps (now n/N)`, `✓ last step (N/N), the next press moves on`, `✓ no steps, the next press moves on`,
+  `→ more items (n/N)` for fragments, `↓ this slide has steps` for an action without `state()` or a legacy
+  `__canvasStep` (count unknown). Korean text when
+  `<html lang>` starts with `ko`. It updates on slide change, after any step press and on `rp:stepchange`.
+- Each `↓` in the script is drawn as an orange badge in the notes pane (tooltip: press ↓ here). The source and PDF
+  keep the plain character. Authoring rule: [step-guidance.md](step-guidance.md#3-down-marks-in-the-speaker-notes).
+
 ## Deck Overlay Navigation
 
 - Hover the top-right viewport corner to open the agenda.

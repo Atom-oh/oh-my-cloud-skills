@@ -157,11 +157,11 @@
 - 프로비저닝, 패치, 애드온, 경화 네 축이 AWS 관리로 이동 (2x2 카드)
 - 각 카드 구분선 아래: 운영자가 더 이상 안 하는 일 / 대체 수단
 - 노드 SSH가 안 되는 건 버그가 아니라 설계
-카드 네 장을 하나씩 열면서 설명합니다. 첫 줄은 Auto Mode가 가져간 기능, 구분선 아래는 그 결과
-운영자가 더 이상 하지 않는 일입니다. OS 패치는 최대 수명 21일(기본 336시간=14일)에 더해 새 AMI가
-나오면 최대 주 1회 drift 교체가 일어난다는 점을 강조하세요. 애드온은 노드에 내장된 기능과
+카드 네 장을 하나씩 열면서 설명합니다.↓ 첫 줄은 Auto Mode가 가져간 기능, 구분선 아래는 그 결과
+운영자가 더 이상 하지 않는 일입니다.↓ OS 패치는 최대 수명 21일(기본 336시간=14일)에 더해 새 AMI가
+나오면 최대 주 1회 drift 교체가 일어난다는 점을 강조하세요.↓ 애드온은 노드에 내장된 기능과
 클러스터 밖에서 AWS가 운영하는 컨트롤러로 나뉩니다. 용어: CRD는 CustomResourceDefinition,
-CSI는 Container Storage Interface, SSM은 AWS Systems Manager입니다. SSH가 막혀 있는 것에 당황하는 분들이 많은데,
+CSI는 Container Storage Interface, SSM은 AWS Systems Manager입니다.↓ SSH가 막혀 있는 것에 당황하는 분들이 많은데,
 진단은 NodeDiagnostic, kubectl debug node, get-console-output으로 하고 문제 노드는 교체하는 게
 설계 의도입니다.
 {cue: pause} 카드 전부 공개 후 잠깐 멈추고 질문 받기.
@@ -262,14 +262,14 @@ NodePool이라는 개념은 동일하므로 학습 곡선은 낮지만, NodeClas
 [요약]
 - 탭 3개: 웹 → general-purpose, 배치 → Spot 커스텀 풀, 시스템 → system 풀
 - 각 탭 하단 callout이 그 유형의 핵심 규칙 한 줄
-- ↑↓ 키로도 탭 전환 가능
-워크로드 유형별로 탭을 넘기며 설명합니다. 웹 서비스는 기본 풀로 충분하지만 PDB가 없으면 노드
+- 노드 교체는 상시: PDB와 tolerations 검사가 공통 과제
+워크로드 유형별로 차례로 설명합니다. 웹 서비스는 기본 풀로 충분하지만 PDB가 없으면 노드
 교체마다 순단이 생깁니다. 최대 수명 21일(기본 336시간=14일)에 더해 새 AMI가 나오면 최대 주 1회
 drift 교체가 일어나므로, 교체가 매주 있을 수 있다고 가정하세요
-(새 AMI는 최대 주 1회 배포: https://docs.aws.amazon.com/whitepapers/latest/security-overview-amazon-eks-auto-mode/eks-auto-mode-data-plane.html). 배치는 Spot 전용 풀을 따로 파는 게
+(새 AMI는 최대 주 1회 배포: https://docs.aws.amazon.com/whitepapers/latest/security-overview-amazon-eks-auto-mode/eks-auto-mode-data-plane.html).↓ 배치는 Spot 전용 풀을 따로 파는 게
 정석이고, Job은 backoffLimit과 podFailurePolicy로 중단 재시도를 처리하며, 체크포인트 없는 긴 작업은
 On-Demand에 남겨 둡니다. 카드의 "최대 90% 절감"은 AWS가 Amazon EC2 Spot Instances 페이지에 게시한
-EC2 Spot 수치로 인용하세요. 시스템 풀의 CriticalAddonsOnly taint는 CoreDNS 같은 EKS 애드온이
+EC2 Spot 수치로 인용하세요.↓ 시스템 풀의 CriticalAddonsOnly taint는 CoreDNS 같은 EKS 애드온이
 tolerate합니다(AWS 문서 표현). 순수 Auto Mode 클러스터에서는 CoreDNS가 노드의 시스템 프로세스로 돌기
 때문에 애드온으로 설치할 필요가 없습니다.
 toleration은 배치를 허용할 뿐 강제하지 않으니, system 풀에 고정하려면 nodeSelector
@@ -289,11 +289,11 @@ karpenter.sh/nodepool: system을 함께 걸고, 일반 워크로드의 toleratio
     <template class="notes" data-timing="5min">
 [요약]
 - Pending Pod → 스케줄러 실패 → Auto Mode 컨트롤러 감지 → EC2 기동 → 바인딩
-- 단계별 캔버스: ↓ 키로 한 단계씩
-이 슬라이드가 오늘의 핵심입니다. ↓ 키를 눌러가며 네 단계를 보여주세요.
-1단계: Pod가 Pending으로 쌓입니다. 2단계: Auto Mode 컨트롤러가 unschedulable
-이벤트를 감지하고 최적 인스턴스 타입을 계산합니다. 3단계: EC2 인스턴스가 기동되고
-노드로 조인합니다. 4단계: 스케줄러가 Pod를 새 노드에 바인딩하고, Pending 그룹은 비워집니다.
+- 캔버스 4단계: 감지 → 타입 계산 → 노드 조인 → 바인딩
+이 슬라이드가 오늘의 핵심입니다. 왼쪽에 Pending Pod 두 개가 쌓여 있습니다.↓
+1단계: 스케줄러가 자리를 찾지 못해 Pod가 unschedulable로 남습니다.↓ 2단계: Auto Mode 컨트롤러가
+이 이벤트를 감지하고 최적 인스턴스 타입을 계산합니다.↓ 3단계: EC2 인스턴스가 기동되고
+노드로 조인합니다.↓ 4단계: 스케줄러가 Pod를 새 노드에 바인딩하고, Pending 그룹은 비워집니다.
 소요 시간은 환경마다 다르므로 숫자를 약속하지 말고, 데모 클러스터에서 직접 재 보세요.
 {cue: pause} 마지막 단계에서 소요 시간 질문 받기.
     </template>
@@ -338,9 +338,9 @@ karpenter.sh/nodepool: system을 함께 걸고, 일반 워크로드의 toleratio
 - 노드 내장: 네트워킹, DNS, kube-proxy, EBS CSI 노드 기능 / 클러스터 밖(AWS 운영): Karpenter, LB Controller, EBS CSI 컨트롤러
 - NetworkPolicy는 kube-system 네임스페이스의 ConfigMap amazon-vpc-cni에 enable-network-policy-controller: "true"를 넣어야 동작
   (출처: https://docs.aws.amazon.com/eks/latest/userguide/auto-net-pol.html)
-플로우 그룹을 하나씩 열면서, 기존에 helm으로 설치하던 컴포넌트가 어디로 갔는지 짚습니다.
-LB Controller와 EBS CSI 컨트롤러는 클러스터 밖 AWS 운영 영역에서 돌고, 네트워킹, DNS, kube-proxy와
-EBS CSI 노드 기능은 노드에 내장됩니다. 각 그룹 세 번째 상자는 우리가 여전히 선언하는 Kubernetes
+플로우 그룹을 하나씩 열면서, 기존에 helm으로 설치하던 컴포넌트가 어디로 갔는지 짚습니다.↓
+LB Controller는 클러스터 밖 AWS 운영 영역에서 돕니다.↓ 네트워킹, DNS, kube-proxy와
+EBS CSI 노드 기능은 노드에 내장됩니다.↓ EBS CSI 컨트롤러도 클러스터 밖 AWS 운영 영역에서 돕니다. 각 그룹 세 번째 상자는 우리가 여전히 선언하는 Kubernetes
 리소스(Ingress, NetworkPolicy, StorageClass)입니다. NetworkPolicy는 ConfigMap 설정으로 켜야 동작하니
 먼저 확인하세요. 하단 요약 행: 내장 컴포넌트의 설치와 업그레이드는 사라지지만, 앱과 자체 관리 애드온,
 EKS 애드온 업그레이드는 여전히 우리 몫입니다.
