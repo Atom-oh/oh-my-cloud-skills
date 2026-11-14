@@ -155,6 +155,7 @@ class SlideFramework {
           next.classList.add('visible');
         } else { break; }
       }
+      this._emitStepChange(this.currentSlide);
       return true; // Fragment revealed, don't advance slide
     }
     return false; // All fragments revealed, can advance slide
@@ -177,6 +178,7 @@ class SlideFramework {
         } else { break; }
       }
       state.currentIndex--;
+      this._emitStepChange(this.currentSlide);
       return true; // Fragment hidden, don't go back slide
     }
     return false; // No fragments to hide, can go back slide
@@ -627,6 +629,15 @@ class SlideFramework {
     if (typeof AnimationLoop !== 'undefined' && AnimationLoop.redrawAll) AnimationLoop.redrawAll();
   }
 
+  // rp:stepchange: a press (or a scene-internal click) changed the step shown on a slide.
+  // Scenes that advance themselves call notifyStepChange(); the framework emits it for
+  // fragments, tabs/compare, canvas steps and slide actions.
+  notifyStepChange(index = this.currentSlide) { this._emitStepChange(index); }
+
+  _emitStepChange(index) {
+    document.dispatchEvent(new CustomEvent('rp:stepchange', { detail: { index: index } }));
+  }
+
   handleNavigationAction(action) {
     switch (action) {
       case 'next':
@@ -641,7 +652,7 @@ class SlideFramework {
         if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].down) {
           const result = this.slideActions[this.currentSlide].down();
           if (result === false) this.next();
-          else this.redrawAnimations();
+          else { this.redrawAnimations(); this._emitStepChange(this.currentSlide); }
         } else if (!this.cycleInteractive(1)) {
           if (!this.revealNextFragment()) this.next();
         }
@@ -650,7 +661,7 @@ class SlideFramework {
         if (this.slideActions[this.currentSlide] && this.slideActions[this.currentSlide].up) {
           const result = this.slideActions[this.currentSlide].up();
           if (result === false) this.prev();
-          else this.redrawAnimations();
+          else { this.redrawAnimations(); this._emitStepChange(this.currentSlide); }
         } else if (!this.cycleInteractive(-1)) {
           if (!this.revealPrevFragment()) this.prev();
         }
@@ -736,10 +747,12 @@ class SlideFramework {
         next.classList.remove('entering', `transition-${transition}-in`);
         next.classList.add('active');
         this.transitioning = false;
+        document.dispatchEvent(new CustomEvent('rp:slideshown', { detail: { index: index } }));
       }, 350);
     } else {
       this.slides.forEach(s => s.classList.remove('active'));
       next.classList.add('active');
+      document.dispatchEvent(new CustomEvent('rp:slideshown', { detail: { index: index } }));
     }
 
     if (window.ReactiveFit) window.ReactiveFit.fitSlide(next);
@@ -1081,7 +1094,10 @@ class SlideFramework {
     if (slide.__canvasStep) {
       const dir = direction > 0 ? 'next' : 'prev';
       const result = slide.__canvasStep(dir);
-      if (result !== false) return true;
+      if (result !== false) {
+        this._emitStepChange(this.currentSlide);
+        return true;
+      }
       return false;
     }
 
@@ -1092,6 +1108,7 @@ class SlideFramework {
       const nextIdx = Math.max(0, Math.min(activeIdx + direction, btns.length - 1));
       if (nextIdx !== activeIdx) {
         btns[nextIdx].click();
+        this._emitStepChange(this.currentSlide);
         return true;
       }
       return false;

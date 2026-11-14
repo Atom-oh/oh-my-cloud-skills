@@ -170,6 +170,142 @@ class StepInfoTests(DeckOverlayFixture):
         self.assertEqual(self.info(page), {"kind": "interactive", "cur": None, "total": None, "more": True})
 
 
+class StepEventTests(DeckOverlayFixture):
+    overlay_modules = ()
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        (cls.root / "s.html").write_text(
+            cls.page_head + HTML + cls.page_scripts % "sidebar: false", encoding="utf-8")
+
+    def listen(self, page):
+        page.evaluate("""() => {
+          window.__ev = [];
+          const t0 = () => performance.now();
+          document.addEventListener('rp:slidechange', e => window.__ev.push(
+            {n: 'change', i: e.detail.index, t: t0(), active: deck.slides[e.detail.index].classList.contains('active')}));
+          document.addEventListener('rp:slideshown', e => window.__ev.push(
+            {n: 'shown', i: e.detail.index, t: t0(), active: deck.slides[e.detail.index].classList.contains('active')}));
+          document.addEventListener('rp:stepchange', e => window.__ev.push(
+            {n: 'step', i: e.detail.index, t: t0()}));
+        }""")
+
+    def events(self, page, name):
+        return page.evaluate(f"() => window.__ev.filter(e => e.n === '{name}')")
+
+    def goto(self, page, i):
+        page.evaluate(f"() => deck.goTo({i})")
+        page.wait_for_timeout(450)
+
+    def steps(self, page):
+        return len(self.events(page, "step"))
+
+    def test_slideshown_fires_after_active(self):
+        page = self.open("s.html")
+        self.listen(page)
+        page.evaluate("() => deck.goTo(1)")
+        page.wait_for_timeout(500)
+        change, shown = self.events(page, "change")[0], self.events(page, "shown")
+        self.assertEqual(len(shown), 1)
+        self.assertEqual(shown[0]["i"], 1)
+        self.assertTrue(shown[0]["active"])
+        self.assertGreaterEqual(shown[0]["t"] - change["t"], 300)
+
+    def test_slideshown_without_transition(self):
+        page = self.open("s.html")
+        self.listen(page)
+        page.evaluate("() => deck.showSlide(2, false)")
+        shown = self.events(page, "shown")
+        self.assertEqual(len(shown), 1)
+        self.assertEqual(shown[0]["i"], 2)
+        self.assertTrue(shown[0]["active"])
+
+    def test_slidechange_timing_unchanged(self):
+        page = self.open("s.html")
+        self.listen(page)
+        page.evaluate("() => deck.goTo(1)")
+        page.wait_for_timeout(500)
+        change = self.events(page, "change")
+        self.assertEqual(len(change), 1)
+        self.assertFalse(change[0]["active"])
+
+    def test_notify_step_change_public(self):
+        page = self.open("s.html")
+        self.listen(page)
+        page.evaluate("() => deck.notifyStepChange(4)")
+        self.assertEqual([e["i"] for e in self.events(page, "step")], [4])
+        page.evaluate("() => deck.notifyStepChange()")
+        self.assertEqual([e["i"] for e in self.events(page, "step")], [4, 0])
+
+    def test_stepchange_fragments_down_up(self):
+        page = self.open("s.html")
+        self.goto(page, 5)
+        self.listen(page)
+        for expected in (1, 2):
+            page.keyboard.press("ArrowDown")
+            self.assertEqual(self.steps(page), expected)
+        page.keyboard.press("ArrowUp")
+        page.keyboard.press("ArrowUp")
+        self.assertEqual(self.steps(page), 4)
+        self.assertEqual({e["i"] for e in self.events(page, "step")}, {5})
+        page.keyboard.press("ArrowUp")  # leaves the slide: no step event
+        self.assertEqual(self.steps(page), 4)
+
+    def test_stepchange_fragments_right_left_space(self):
+        page = self.open("s.html")
+        self.goto(page, 5)  # fragment groups: index 1 (two) and index 2
+        self.listen(page)
+        page.keyboard.press("ArrowRight")
+        page.keyboard.press(" ")
+        self.assertEqual(self.steps(page), 2)
+        page.keyboard.press("ArrowLeft")
+        self.assertEqual(self.steps(page), 3)
+        page.keyboard.press("ArrowRight")
+        self.assertEqual(self.steps(page), 4)
+        page.keyboard.press("ArrowRight")  # all revealed: this press leaves the slide
+        self.assertEqual(self.steps(page), 4)
+
+    def test_stepchange_tabs_then_leave(self):
+        page = self.open("s.html")
+        self.goto(page, 10)
+        self.listen(page)
+        page.keyboard.press("ArrowDown")
+        page.keyboard.press("ArrowDown")
+        self.assertEqual(self.steps(page), 2)
+        page.keyboard.press("ArrowDown")  # last tab: leaves
+        self.assertEqual(self.steps(page), 2)
+
+    def test_stepchange_slide_action(self):
+        page = self.open("s.html")
+        self.goto(page, 1)
+        page.evaluate("() => { let n = 0; deck.registerSlideAction(1, {down: () => n++ < 2, up: () => true}); }")
+        self.listen(page)
+        page.keyboard.press("ArrowDown")
+        page.keyboard.press("ArrowDown")
+        self.assertEqual(self.steps(page), 2)
+        page.keyboard.press("ArrowDown")  # down() returns false: leaves
+        self.assertEqual(self.steps(page), 2)
+
+    def test_stepchange_touch_fragment(self):
+        page = self.open("s.html")
+        self.goto(page, 6)
+        self.listen(page)
+        page.evaluate("""() => {
+          const d = document.querySelector('.slide-deck');
+          const mk = (x) => new Touch({identifier: 1, target: d, clientX: x, clientY: 0});
+          d.dispatchEvent(new TouchEvent('touchstart', {touches: [mk(300)], bubbles: true}));
+          d.dispatchEvent(new TouchEvent('touchend', {changedTouches: [mk(100)], bubbles: true}));
+        }""")
+        self.assertEqual(self.steps(page), 1)
+
+    def test_no_event_without_steps(self):
+        page = self.open("s.html")
+        self.listen(page)
+        page.keyboard.press("ArrowUp")  # first slide, nothing to do
+        self.assertEqual(self.steps(page), 0)
+
+
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result
     if result.skipped and result.testsRun <= len(result.skipped):
