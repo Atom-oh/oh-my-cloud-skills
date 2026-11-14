@@ -1,10 +1,10 @@
 {
   "host": "codex",
   "plugin": "pr-dash",
-  "version": "3.0.9",
+  "version": "3.0.10",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "a3149ee732020066215239a5cd2f3e78331e5dd992d1860ddb90d70bf1b5255b",
+      "sha256": "dabb9e8780a25f6777a8d5985e2261eb475ce3cdc3c1fb047013e26e71c5d7db",
       "executable": false
     },
     ".gitignore": {
@@ -36,7 +36,7 @@
       "executable": false
     },
     ".codex-plugin/runtime.md": {
-      "sha256": "abc2183e07ac4b1450796f9db45e9d434fd5dd42b65625c770feeab3055f9ba8",
+      "sha256": "8c8ac497ba4a5b63dd7b90001b04fc8d8f23edf5f58f048899e2a8142e798818",
       "executable": false
     },
     ".codex-plugin/run.py": {

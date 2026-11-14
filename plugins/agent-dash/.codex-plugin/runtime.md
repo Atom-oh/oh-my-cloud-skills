@@ -78,11 +78,10 @@ search a different installation, or assume the consumer has `plugins/` in its re
 - Any procedure this host delegates onward — a subagent, a peer AI, a worktree
   implementer — should have its RETURNED output bounded the same way the source
   skill's own output-budget guidance intends (see the linked procedure's own
-  references, e.g. token-saver's `agent-output-budget.md` where installed): verdict
+  references where present): verdict
   first, `file:line` over pasted code, no restating the task back to the caller.
 - Internal worker entries require explicit selection; canonical workflow skills
-  retain automatic routing. The `delegate` command remains an explicit alias for
-  Kiro's canonical `kiro-delegate` workflow.
+  retain automatic routing.
 - Discover MCP tools from the current session. A missing optional tool may use
   a documented CLI equivalent; missing credentials or required capabilities must
   be reported, not silently counted as a successful check.

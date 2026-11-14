@@ -17,11 +17,6 @@ const plugins = [
     link: "/docs/co-agent/overview",
   },
   {
-    title: "kiro",
-    description: translate({id: "home.plugin.kiro.description", message: "Kiro implementation and optional review, with host-owned plans and verification."}),
-    link: "/docs/kiro/overview",
-  },
-  {
     title: "project-init",
     description: translate({id: "home.plugin.project-init.description", message: "Project setup, instructions, ADRs, runbooks, and documentation maintenance for both hosts."}),
     link: "/docs/project-init/overview",
@@ -35,21 +30,6 @@ const plugins = [
     title: "aws-ops-plugin",
     description: translate({id: "home.plugin.aws-ops-plugin.description", message: "AWS and EKS diagnostics across infrastructure, security, observability, and cost."}),
     link: "/docs/aws-ops-plugin/overview",
-  },
-  {
-    title: "kiro-power-converter",
-    description: translate({id: "home.plugin.kiro-power-converter.description", message: "Convert plugin sources and skills into Kiro Powers with steering, hooks, and MCP settings."}),
-    link: "/docs/kiro-power-converter/overview",
-  },
-  {
-    title: "agentcore-creator",
-    description: translate({id: "home.plugin.agentcore-creator.description", message: "Design and test agents, then prepare AgentCore harness or Runtime deployments."}),
-    link: "/docs/agentcore-creator/overview",
-  },
-  {
-    title: "token-saver",
-    description: translate({id: "home.plugin.token-saver.description", message: "Guidance for concise replies, full reasoning, verification, and complete deliverables."}),
-    link: "/docs/token-saver/overview",
   },
   {
     title: "pr-dash",

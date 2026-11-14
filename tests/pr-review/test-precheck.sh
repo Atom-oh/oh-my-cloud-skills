@@ -255,7 +255,7 @@ ORIGIN=$(mktemp -d); BASE=$(mktemp -d); WORK=$(mktemp -d); LOG=$(mktemp)
 MARKER="$WORK/pr-generator-executed"
 git init -q --bare "$ORIGIN"
 git -C "$REPO_ROOT" archive HEAD | tar -x -C "$BASE"
-printf '\nUnreviewed generated drift\n' >> "$BASE/plugins/kiro/.codex-plugin/run.py"
+printf '\nUnreviewed generated drift\n' >> "$BASE/plugins/co-agent/.codex-plugin/run.py"
 python3 - "$BASE/scripts/sync-codex-plugins.py" "$MARKER" <<'PY'
 from pathlib import Path
 import sys

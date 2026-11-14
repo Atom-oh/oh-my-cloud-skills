@@ -6,10 +6,6 @@ const sidebars: SidebarsConfig = {
     'releases/v2.0.0',
   ],
 
-  tokenSaver: [
-    'token-saver/overview',
-    'token-saver/installation',
-  ],
 
   prDash: [
     'pr-dash/overview',
@@ -122,20 +118,7 @@ const sidebars: SidebarsConfig = {
     },
   ],
 
-  kiroConverter: [
-    'kiro-power-converter/overview',
-    'kiro-power-converter/installation',
-    'kiro-power-converter/agents/kiro-converter-agent',
-    'kiro-power-converter/skills/kiro-convert',
-    'kiro-power-converter/demos/conversion-example',
-  ],
 
-  agentcoreCreator: [
-    'agentcore-creator/overview',
-    'agentcore-creator/installation',
-    'agentcore-creator/agents/agentcore-creator-agent',
-    'agentcore-creator/skills/agentcore-create',
-  ],
 
   coAgent: [
     'co-agent/overview',
@@ -148,14 +131,6 @@ const sidebars: SidebarsConfig = {
     'co-agent/commands/commands',
   ],
 
-  kiro: [
-    'kiro/overview',
-    'kiro/installation',
-    'kiro/usage-guide',
-    'kiro/agents/kiro-delegate-agent',
-    'kiro/skills/kiro-delegate',
-    'kiro/commands/commands',
-  ],
 
   projectInit: [
     'project-init/overview',

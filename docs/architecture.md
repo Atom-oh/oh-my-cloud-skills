@@ -1,6 +1,6 @@
 # Architecture
 
-oh-my-cloud-skills is a Claude Code and Codex plugin marketplace with ten plugins.
+oh-my-cloud-skills is a Claude Code and Codex plugin marketplace with six plugins.
 It ships Markdown procedures and Python/Bash/Node helpers, with no application server.
 Internal docs live in `docs/`; the public Docusaurus site lives in `doc-sites/`.
 
@@ -8,26 +8,22 @@ Internal docs live in `docs/`; the public Docusaurus site lives in `doc-sites/`.
 
 Counts below are derived from shared `skills/*/SKILL.md`, `commands/*.md`,
 `agents/*.md`, generated `.codex-plugin/inventory.json`, and command hooks in each
-Claude manifest (2026-10-22). Project-init uses convention-based source discovery.
+Claude manifest (2026-11-14). Project-init uses convention-based source discovery.
 
 | Plugin | Purpose | Source skills | Commands | Agents | Codex entries | Plugin hooks |
 |---|---|---:|---:|---:|---:|---:|
 | aws-content-plugin | Presentations, diagrams, documents, workshops | 9 | 0 | 9 | 18 | 6 |
 | aws-ops-plugin | AWS infrastructure diagnosis and review | 6 | 0 | 10 | 16 | 2 |
-| kiro-power-converter | Plugin to Kiro Power conversion | 1 | 0 | 1 | 2 | 1 |
-| agentcore-creator | Agent design and AgentCore conversion/deployment | 1 | 0 | 1 | 2 | 1 |
 | co-agent | Multi-AI review, decisions, ADRs and implementation workflows | 3 | 5 | 3 | 11 | 8 |
 | project-init | Project scaffolding and documentation management | 1 | 10 | 1 | 12 | 0 |
-| kiro | Host-planned implementation delegated to Kiro CLI | 1 | 4 | 1 | 6 | 5 |
-| token-saver | Concise response guidance with complete work and required formats | 1 | 0 | 0 | 1 | 1 |
 | pr-dash | PR checks and AI review status: Claude Code mod pane plus a text skill | 1 | 0 | 0 | 1 | 0 |
 | agent-dash | Agent tree, estimated waits and an opt-in model policy: Claude Code mod plus a roster text skill | 1 | 0 | 0 | 1 | 0 |
-| **Total** | | **25** | **19** | **26** | **70** | **24** |
+| **Total** | | **21** | **15** | **23** | **59** | **16** |
 
-The **70 source procedures** currently map to **70 Codex entry skills**. These are
+The **59 source procedures** currently map to **59 Codex entry skills**. These are
 separate inventories: same-name source aliases can share an entry. Specialist
 entries are procedures, not native Codex agent roles.
-The **24 plugin hook commands** exclude repository hooks and project-init's
+The **16 plugin hook commands** exclude repository hooks and project-init's
 separately installed project templates and the Claude Code mods of pr-dash and
 agent-dash (`hooks/hooks.json` `modules`), which run in-process and are not command hooks. These counts do not measure CI review cells:
 the default CI panel has one full-scope prompt and three enabled cells.
@@ -68,9 +64,6 @@ flowchart LR
   `harness-analyst` with host-run, advisory analysis; it never applies settings.
   [ADR-029](decisions/ADR-029-co-agent-role-consolidation.md) records the role
   consolidation and compatibility boundaries.
-- Kiro delegation confines the diff landing in the main tree through worktree and
-  scope checks. It does not sandbox arbitrary `execute_bash` inside that worktree;
-  see the trust decision in `plugins/kiro/CLAUDE.md`.
 - pr-dash and agent-dash are the plugins with a Claude Code mod: in-process
   JavaScript/TypeScript that draws a pane and status line. A mod is unsandboxed and
   Claude-only; the Codex package carries just a read-only skill (`pr-status`,

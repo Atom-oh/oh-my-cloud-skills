@@ -1,10 +1,10 @@
 {
   "host": "claude",
   "plugin": "co-agent",
-  "version": "3.0.9",
+  "version": "3.0.10",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "d4592393a3285f7febc288519f09b34f5abaf280d77e71864fecad1e1a610d04",
+      "sha256": "77eb8af970a7062c524af14883488b3b68a59285bd082a16b60a7a0b9211cd45",
       "executable": false
     },
     "CLAUDE.md": {
@@ -36,7 +36,7 @@
       "executable": false
     },
     "commands/setup.md": {
-      "sha256": "d6c021070086780f4e8bea9aa9f808ce20dfb0c371c3fdd9336c2f3be79cf890",
+      "sha256": "464d793e77bb69291eeb5a8a7b7a0b3d081a61f8ec0b7838650bcffc4606653e",
       "executable": false
     },
     "commands/sync-context.md": {
@@ -44,7 +44,7 @@
       "executable": false
     },
     "skills/co-agent/SKILL.md": {
-      "sha256": "2a1228e2a3222d9ed95bcc0d1ff617c1f4f60243af43d1b2dc16aa7e277989cb",
+      "sha256": "0847f53f0d6e805d1cc9c0896f5874b96703943bb9ee156e1ff8fd9941bbfedf",
       "executable": false
     },
     "skills/co-agent/co-agent.defaults.json": {
@@ -52,7 +52,7 @@
       "executable": false
     },
     "skills/co-agent/references/ai-cli-adapters.md": {
-      "sha256": "b798c9488f1ced40620ab6d3b3349b745ee7c51dfe160f3199ccc58e5020b61f",
+      "sha256": "c809877a577b54513f88c01aa696d10451e373bdd6ca1d205c3f0a9e12157657",
       "executable": false
     },
     "skills/co-agent/references/architecture-review-framework.md": {
@@ -104,7 +104,7 @@
       "executable": true
     },
     "skills/co-agent/scripts/co_agent_config.py": {
-      "sha256": "a557fc6b7c3b947a69e36f691fd20b6dae142cec2f5860bd4e1e42b52d79d0db",
+      "sha256": "10e0e10bbdac6c65394a9940bc88f325f561c0bc30f77fa5ec1bab23090b4b02",
       "executable": true
     },
     "skills/co-agent/scripts/co_agent_env.py": {

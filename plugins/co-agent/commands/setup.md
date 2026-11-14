@@ -51,14 +51,7 @@ Let `SK="${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts"`.
    against the actual change and may bypass); **0 → PASS**. Also state the honest limit:
    a push the gate genuinely cannot review (no peer reachable, no parseable verdict, or
    the command doesn't match a plain same-repo `git push`) fails **open** — the push
-   proceeds — by design, so an offline peer can never permanently block pushing. First
-   check whether kiro's `review.on_push` is already on for this repo
-   (`python3 "${CLAUDE_PLUGIN_ROOT}/../kiro/skills/kiro-delegate/scripts/kiro_config.py"
-   review-on-push --root .` — best-effort, kiro may not be installed; ignore a failure
-   silently) — if it is, put that fact in the option description ("kiro's own pre-push
-   gate is already on for this repo; turning this on too means every push runs both — not
-   recommended") rather than refusing the option.
-   Options: `Enable it (Recommended)` →
+   proceeds — by design, so an offline peer can never permanently block pushing. Options: `Enable it (Recommended)` →
    `python3 "$SK/co_agent_config.py" set push_gate enabled on`; `Skip for now` → leave it
    off (this plugin's default). Never enable it without this explicit ask — enabling is
    consent to external diff fan-out on every push.

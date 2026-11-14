@@ -17,9 +17,6 @@
   "home.plugin.co-agent.description": {
     "message": "다른 AI의 검토, 의사결정 지원, ADR 작성과 검증된 구현 워크플로를 제공합니다."
   },
-  "home.plugin.kiro.description": {
-    "message": "호스트가 계획과 검증을 맡고, Kiro가 구현과 선택적 리뷰를 수행합니다."
-  },
   "home.plugin.project-init.description": {
     "message": "두 호스트에서 프로젝트 구조, 지침, ADR, 런북과 문서를 관리합니다."
   },
@@ -28,12 +25,6 @@
   },
   "home.plugin.aws-ops-plugin.description": {
     "message": "인프라, 보안, 관측성과 비용에 걸쳐 AWS·EKS 상태를 진단합니다."
-  },
-  "home.plugin.kiro-power-converter.description": {
-    "message": "플러그인과 스킬을 스티어링, 훅, MCP 설정을 포함한 Kiro Power로 변환합니다."
-  },
-  "home.plugin.agentcore-creator.description": {
-    "message": "에이전트를 설계·테스트하고 AgentCore 하네스 또는 Runtime 배포를 준비합니다."
   },
   "home.getStarted": {
     "message": "시작하기"
@@ -382,9 +373,6 @@
   "theme.tags.tagsPageTitle": {
     "message": "태그",
     "description": "The title of the tag list page"
-  },
-  "home.plugin.token-saver.description": {
-    "message": "짧은 답변과 충분한 추론·검증·완성된 산출물을 위한 지침을 적용합니다."
   },
   "home.plugin.pr-dash.description": {
     "message": "풀 리퀘스트 검사와 AI 리뷰 상태를 보여 주는 Claude Code 패널입니다."

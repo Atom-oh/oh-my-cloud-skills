@@ -1,9 +1,0 @@
-{
-  "reasoning": {
-    "kiro-delegate-agent": "xhigh"
-  },
-  "explicit_skills": [
-    "delegate",
-    "kiro-delegate-agent"
-  ]
-}

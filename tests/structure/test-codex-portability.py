@@ -166,13 +166,13 @@ class PortabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "source"
             shutil.copytree(self.generated, root)
-            other = root / "plugins/token-saver/.codex-plugin/runtime.md"
+            other = root / "plugins/pr-dash/.codex-plugin/runtime.md"
             changed = other.read_text() + "\nUnrelated pending change.\n"
             other.write_text(changed)
             for flags in ([], ["--check"]):
                 result = subprocess.run(
                     [sys.executable, str(GENERATOR), "--root", str(root),
-                     "--plugin", "kiro", *flags], capture_output=True, text=True,
+                     "--plugin", "co-agent", *flags], capture_output=True, text=True,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual(changed, other.read_text())
@@ -188,21 +188,21 @@ class PortabilityTests(unittest.TestCase):
             shutil.copytree(self.generated, root)
             source = root / "hosts/catalog.json"
             manifest = json.loads(source.read_text())
-            manifest["plugins"]["kiro"]["version"] = "9.8.7"
+            manifest["plugins"]["co-agent"]["version"] = "9.8.7"
             source.write_text(json.dumps(manifest))
             market = root / ".agents/plugins/marketplace.json"
             before = json.loads(market.read_text())
-            selected = next(p for p in before["plugins"] if p["name"] == "kiro")
+            selected = next(p for p in before["plugins"] if p["name"] == "co-agent")
             selected["policy"]["installation"] = "NOT_AVAILABLE"
             market.write_text(json.dumps(before))
             subprocess.run([sys.executable, str(GENERATOR), "--root", str(root),
-                            "--plugin", "kiro"], check=True, capture_output=True)
+                            "--plugin", "co-agent"], check=True, capture_output=True)
             after = json.loads(market.read_text())
-            actual = next(p for p in after["plugins"] if p["name"] == "kiro")
+            actual = next(p for p in after["plugins"] if p["name"] == "co-agent")
             self.assertEqual("9.8.7", actual["version"])
             self.assertEqual(selected["policy"], actual["policy"])
-            self.assertEqual([p for p in before["plugins"] if p["name"] != "kiro"],
-                             [p for p in after["plugins"] if p["name"] != "kiro"])
+            self.assertEqual([p for p in before["plugins"] if p["name"] != "co-agent"],
+                             [p for p in after["plugins"] if p["name"] != "co-agent"])
 
     def test_removed_optional_artifacts_fail_check_and_are_pruned(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -271,20 +271,13 @@ class PortabilityTests(unittest.TestCase):
             self.assertIn("Inspect Claude Code-only project settings.", entry.read_text())
             self.assertNotIn("Codex or Claude Code", entry.read_text())
 
-    def test_internal_workers_and_duplicate_delegate_alias_require_explicit_selection(self):
-        kiro = self.generated / "plugins/kiro/.codex-plugin/skills"
-        for name in ("kiro-delegate-agent", "delegate"):
-            policy = kiro / name / "agents/openai.yaml"
-            text = policy.read_text()
-            # `interface` is mandatory whenever agents/openai.yaml exists at all (see
-            # test_openai_yaml_carries_no_key_outside_codex_plugin_validation) — assert
-            # the policy line rather than the whole file, so that check owns the shape.
-            self.assertIn("policy:\n  allow_implicit_invocation: false\n", text)
-        for name in ("kiro-delegate", "configure"):
-            self.assertFalse((kiro / name / "agents/openai.yaml").exists())
-        # A combined canonical skill + specialist stays an automatic workflow entry.
-        co = self.generated / "plugins/co-agent/.codex-plugin/skills/co-agent"
-        self.assertFalse((co / "agents/openai.yaml").exists())
+    def test_internal_workers_require_explicit_selection(self):
+        entries = self.generated / "plugins/co-agent/.codex-plugin/skills"
+        for name in ("gate-chair", "pr-autofix-implementer", "pr-autofix-planner"):
+            policy = entries / name / "agents/openai.yaml"
+            self.assertIn("policy:\n  allow_implicit_invocation: false\n", policy.read_text())
+        for name in ("co-agent", "configure"):
+            self.assertFalse((entries / name / "agents/openai.yaml").exists())
 
     def test_generated_file_hooks_explicitly_match_apply_patch(self):
         checked = 0
@@ -398,7 +391,7 @@ class PortabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="separate hosts ") as tmp:
             root = Path(tmp) / "source"
             shutil.copytree(self.generated, root)
-            source = root / "plugins/token-saver"
+            source = root / "plugins/pr-dash"
             (source / "shared-probe.py").write_text("from pathlib import Path\nprint(Path(__file__).with_name('asset.bin').read_bytes().hex())\n")
             (source / "asset.bin").write_bytes(b"\x00\xfffixture")
             (source / "shared-probe.py").chmod(0o755)
@@ -407,7 +400,7 @@ class PortabilityTests(unittest.TestCase):
             shutil.copytree(root / "packages", installed)
             shutil.rmtree(root)
             for host, other in (("claude", "codex"), ("codex", "claude")):
-                package = installed / host / "token-saver"
+                package = installed / host / "pr-dash"
                 self.assertTrue((package / f".{host}-plugin/plugin.json").is_file())
                 self.assertFalse((package / f".{other}-plugin").exists())
                 self.assertTrue((package / "shared-probe.py").stat().st_mode & 0o111)
@@ -419,7 +412,7 @@ class PortabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             shutil.copytree(self.generated, root, dirs_exist_ok=True)
-            foreign = root / "packages/codex/kiro/.claude-plugin/plugin.json"
+            foreign = root / "packages/codex/co-agent/.claude-plugin/plugin.json"
             foreign.parent.mkdir()
             foreign.write_text("{}")
             args = [sys.executable, str(GENERATOR), "--root", str(root)]
@@ -432,21 +425,21 @@ class PortabilityTests(unittest.TestCase):
             root = Path(tmp) / "source"
             state = Path(tmp) / "state"
             shutil.copytree(self.generated, root)
-            name = "token-saver"
+            name = "pr-dash"
             version = json.loads((root / "hosts/catalog.json").read_text())["plugins"][name]["version"]
             for host, directory in (("claude", version), ("codex", "local")):
                 package = state / ("." + host) / "plugins/cache/oh-my-cloud-skills" / name / directory
                 shutil.copytree(root / "packages" / host / name, package)
             args = ["bash", str(root / "scripts/sync-plugin-cache.sh"), "--state-root", str(state)]
             self.assertEqual(0, subprocess.run(args, capture_output=True).returncode)
-            cached = state / ".codex/plugins/cache/oh-my-cloud-skills/token-saver/local"
-            target = cached / "skills/concise-responses/SKILL.md"
+            cached = state / ".codex/plugins/cache/oh-my-cloud-skills/pr-dash/local"
+            target = cached / "skills/pr-status/SKILL.md"
             target.write_text("stale")
             self.assertNotEqual(0, subprocess.run(args, capture_output=True).returncode)
             self.assertEqual("stale", target.read_text(), "inspection must be read-only")
             result = subprocess.run(args + ["--host", "codex", "--fix"], capture_output=True, text=True)
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-            self.assertEqual((root / "packages/codex/token-saver/skills/concise-responses/SKILL.md").read_bytes(), target.read_bytes())
+            self.assertEqual((root / "packages/codex/pr-dash/skills/pr-status/SKILL.md").read_bytes(), target.read_bytes())
             foreign = cached / ".claude-plugin/plugin.json"
             foreign.parent.mkdir()
             foreign.write_text("{}")
@@ -457,9 +450,9 @@ class PortabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             shutil.copytree(self.generated, root, dirs_exist_ok=True)
-            shutil.copytree(root / "plugins/token-saver", root / "plugins/extra")
+            shutil.copytree(root / "plugins/aws-ops-plugin", root / "plugins/extra")
             for host in ("claude", "codex"):
-                shutil.copytree(root / "hosts" / host / "token-saver", root / "hosts" / host / "extra")
+                shutil.copytree(root / "hosts" / host / "aws-ops-plugin", root / "hosts" / host / "extra")
             source = root / "plugins/extra/.claude-plugin/plugin.json"
             value = json.loads(source.read_text())
             value["name"] = "extra"
@@ -470,7 +463,7 @@ class PortabilityTests(unittest.TestCase):
             handlers.write_text(json.dumps(value))
             catalog = root / "hosts/catalog.json"
             value = json.loads(catalog.read_text())
-            value["plugins"]["extra"] = {**value["plugins"]["token-saver"], "name": "extra"}
+            value["plugins"]["extra"] = {**value["plugins"]["aws-ops-plugin"], "name": "extra"}
             catalog.write_text(json.dumps(value))
             args = [sys.executable, str(GENERATOR), "--root", str(root)]
             subprocess.run(args, check=True, capture_output=True)

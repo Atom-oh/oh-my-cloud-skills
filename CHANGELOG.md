@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.10] - 2026-11-14
+
 ### Added
 
 - reactive-presentation: speaker notes are editable in the presenter window. **Edit notes**
@@ -20,6 +22,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cancels, and an edited slide shows an Edited badge with Reset to original. Edits are stored
   per slide in the browser's `localStorage` only and never change the Remarp source, the
   audience window, or a slide's cues and timing.
+- Add hidden-slide controls, plain-key pen shortcuts, and a presentation theme
+  toggle to reactive-presentation.
+
+### Changed
+
+- Make co-agent PR autofix planning and implementation host-aware for Claude Code
+  and Codex.
+- Refocus AWS Ops on its operational workflows and make Runtime/companion handoffs
+  host-safe; defer official AWS plugin coverage to the owning plugins.
+
+### Fixed
+
+- Review Git pushes that explicitly name the current branch.
+- Reject structural Markdown lines in Remarp Studio text and body edits.
+
+### Removed
+
+- Retire `agentcore-creator`, `token-saver`, `kiro-power-converter`, and `kiro`
+  from shared sources, both host registries and generated packages. `atlas` remains
+  retired (ADR-025). Remove their public English/Korean guides and dedicated tests.
+- Keep Kiro CLI peer support in co-agent and agent-dash; remove references to the
+  retired plugins. Native hook verification now uses the retained AWS Ops package.
 
 ## [3.0.9] - 2026-10-29
 
