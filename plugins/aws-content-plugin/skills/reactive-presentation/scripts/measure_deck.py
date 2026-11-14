@@ -20,7 +20,8 @@ Checks per slide (per viewport, per theme, per canvas step):
   FIT_OVERFLOW  slide carries data-fit-overflow — content does not fit even at the minimum fit scale
   SENTENCE_RUNON multiple sentences in one text block wrap across 3 or more lines (WARN)
   STEP_MARKS    a slide's notes carry a different number of "↓" than the Down presses the slide
-                really takes (WARN; counted once per deck on a fresh page, by pressing)
+                really takes (WARN; counted once per deck on a fresh page, by pressing;
+                a slide that cannot be opened for counting is skipped silently)
   DECK_OFFSCREEN the scaled .slide-deck box is not fully inside the viewport (checked with the
                 sidebar as the deck loads it, and hidden) — part of every slide is cut off
 
@@ -462,7 +463,10 @@ STEP_PRESS_CAP = 40
 
 # Presses Down on slide `i` while it stays current (the press that leaves is not
 # counted). goTo and the leaving press start a transition that ignores navigation,
-# so wait for it to finish before and after.
+# so wait for it to finish before and after. One press beyond the cap is tried, so
+# only a slide that still has not left after cap+1 presses is reported as capped
+# (it then counts `cap`); a slide taking exactly `cap` presses is not. A slide that
+# goTo could not open (stuck transition, overview mode) is `unmeasurable`.
 _COUNT_PRESSES_JS = """
 async ([i, cap]) => {
   const idle = async () => {
@@ -471,43 +475,57 @@ async ([i, cap]) => {
   await idle();
   deck.goTo(i);
   await idle();
+  if (deck.currentSlide !== i || deck.overviewMode || deck.transitioning) return { unmeasurable: true };
   let n = 0;
-  while (n < cap && deck.currentSlide === i) {
+  while (n <= cap) {
     deck.handleNavigationAction('down');
     if (deck.currentSlide !== i) break;
     n++;
   }
-  const capped = deck.currentSlide === i;
+  const capped = n > cap;
   await idle();
   const note = (deck.presenterNotes || {})[i + 1];
   const text = typeof note === 'string' ? note
     : (note && typeof note === 'object' ? (note.text || note.notes || '') : '');
-  return { presses: n, capped, marks: (text.match(/↓/g) || []).length };
+  return { presses: capped ? cap : n, capped, marks: (text.match(/↓/g) || []).length };
 }
 """
 
 
 def count_slide_presses(page, index, cap=STEP_PRESS_CAP):
-    """Presses of Down that keep slide `index` current, and whether the cap was hit."""
+    """Count slide `index`: (presses that kept it current, whether the cap was hit,
+    "↓" marks in its note), or None when the slide could not be opened."""
     r = page.evaluate(_COUNT_PRESSES_JS, [index, cap])
-    return r['presses'], r['capped']
+    if r.get('unmeasurable'):
+        return None
+    return r['presses'], r['capped'], r['marks']
 
 
 def check_step_marks(page, block):
-    """STEP_MARKS findings for every slide but the last (the page must be freshly loaded)."""
+    """STEP_MARKS findings for every slide but the last (the page must be freshly loaded).
+
+    A slide that could not be opened for counting produces no finding (the finding
+    severities are WARN/FAIL only, so there is no INFO to report it with). A page
+    without a global `deck`, or one that navigates away mid-pass, ends the pass.
+    """
+    findings = []
     try:
         total = page.evaluate("() => deck.totalSlides")
-    except Exception:  # no global `deck` (custom bootstrap): nothing to count
-        return []
-    findings = []
-    for i in range(total - 1):
-        r = page.evaluate(_COUNT_PRESSES_JS, [i, STEP_PRESS_CAP])
-        if r['marks'] != r['presses'] or r['capped']:
-            msg = f'notes carry {r["marks"]} "↓" but the slide takes {r["presses"]} presses'
-            if r['capped']:
-                msg += f' (stopped at the {STEP_PRESS_CAP}-press cap)'
-            findings.append(dict(rule='STEP_MARKS', severity='WARN', file=block,
-                                 slide=i + 1, message=msg))
+        if not isinstance(total, int):
+            return []
+        for i in range(total - 1):
+            r = count_slide_presses(page, i)
+            if r is None:
+                continue
+            presses, capped, marks = r
+            if marks != presses or capped:
+                msg = f'notes carry {marks} "↓" but the slide takes {presses} presses'
+                if capped:
+                    msg += f' (stopped at the {STEP_PRESS_CAP}-press cap)'
+                findings.append(dict(rule='STEP_MARKS', severity='WARN', file=block,
+                                     slide=i + 1, message=msg))
+    except Exception:  # no `deck`, or the page went away: keep what was measured
+        pass
     return findings
 
 
@@ -569,8 +587,11 @@ def measure(deck_dir: Path, blocks, viewports, themes, max_steps, shots_dir,
                                   wait_until='networkidle')
                         page.evaluate("() => document.fonts.ready.then(() => true)")
                         page.wait_for_timeout(400)
+                        keep = (len(console_errs), len(failed_reqs))
                         findings.extend(f for f in check_step_marks(page, block)
                                         if not only_slides or f['slide'] in only_slides)
+                        # The counting load is not part of the measured page.
+                        del console_errs[keep[0]:], failed_reqs[keep[1]:]
                     for theme in themes:
                         page.goto(f"{base_url}/{urllib.parse.quote(block)}",
                                   wait_until='networkidle')

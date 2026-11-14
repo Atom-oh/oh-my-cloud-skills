@@ -108,6 +108,33 @@ class StepMarksTests(unittest.TestCase):
         self.assertIn("(stopped at the 40-press cap)", hits[0]["message"])
         self.assertIn("takes 40 presses", hits[0]["message"])
 
+    def test_exactly_cap_presses_has_no_cap_message(self):
+        script = "let n = 0; deck.registerSlideAction(0, { down: () => (++n <= 40) });"
+        hits = self.run_deck([slide("A"), slide("B")], {1: "↓" * 40}, script)
+        self.assertEqual([], hits)
+        hits = self.run_deck([slide("A"), slide("B")], {}, script)
+        self.assertEqual(['notes carry 0 "↓" but the slide takes 40 presses'], [h["message"] for h in hits])
+
+    def test_more_than_cap_presses_reports_cap(self):
+        script = "let n = 0; deck.registerSlideAction(0, { down: () => (++n <= 41) });"
+        hits = self.run_deck([slide("A"), slide("B")], {1: "↓" * 40}, script)
+        self.assertEqual(['notes carry 40 "↓" but the slide takes 40 presses (stopped at the 40-press cap)'],
+                         [h["message"] for h in hits])
+
+    def test_unopenable_slide_gives_no_warning(self):
+        script = "deck.overviewMode = true;"
+        hits = self.run_deck([slide("A", 2), slide("B"), slide("C")], {1: "↓ ↓"}, script)
+        self.assertEqual([], hits)
+        script = "deck.transitioning = true;"  # a transition that never ends
+        hits = self.run_deck([slide("A", 2), slide("B")], {1: "↓ ↓"}, script)
+        self.assertEqual([], hits)
+
+    def test_hidden_slide_is_counted(self):
+        hidden = slide("H", 2).replace('<div class="slide">', '<div class="slide" data-hidden="true">', 1)
+        hits = self.run_deck([slide("A"), hidden, slide("C")], {2: "↓"})
+        self.assertEqual(['notes carry 1 "↓" but the slide takes 2 presses'], [h["message"] for h in hits])
+        self.assertEqual(2, hits[0]["slide"])
+
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result
