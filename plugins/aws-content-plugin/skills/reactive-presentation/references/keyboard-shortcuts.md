@@ -105,6 +105,21 @@ Configure with `new SlideFramework({ pen: { fadeMs: 3000, audienceBadge: true } 
 `audienceBadge: false` hides the mode badge in the deck window only; the presenter
 window always shows it.
 
+## Editing Speaker Notes (presenter window)
+
+The presenter window's Speaker Notes pane is editable, so a stiff sentence can be softened or an
+example added without asking Claude again or rebuilding the deck.
+
+- Click **Edit notes** or double-click the notes to open a text box with the current note.
+- **Ctrl+Enter** (Cmd+Enter), clicking **Save notes**, or leaving the box saves. **Esc** cancels.
+- A saved note renders with the same formatting as authored notes (`**bold**`, `` `code` ``, `-` lists).
+- An edited slide shows an **Edited** badge and a **Reset to original** button that restores the authored note.
+- Edits are stored in this browser only (`localStorage`, key `rp-notes:<page path>`), per slide. Only a
+  difference from the authored note is stored. The Remarp source and the audience window are not changed;
+  cues and timing keep their authored values. Exporting edits back to the source is not supported.
+- While the box has focus, plain-key shortcuts (N, G, H, C, T, pen keys) and arrows type text instead of acting.
+- Changing slide or closing the presenter window while editing saves the edit first.
+
 ## Deck Overlay Navigation
 
 - Hover the top-right viewport corner to open the agenda.

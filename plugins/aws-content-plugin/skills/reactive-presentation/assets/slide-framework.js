@@ -39,6 +39,8 @@ class SlideFramework {
     this.keyMappings = {};
     // Runtime hide overrides keyed by slide id: { [id]: true|false }. Beats data-hidden.
     this.hiddenOverrides = {};
+    // Presenter-edited speaker notes keyed by slide id: { [id]: string }. Beats the authored note.
+    this.noteOverrides = {};
     this.init();
   }
 
@@ -75,6 +77,7 @@ class SlideFramework {
       }
 
       this.loadHiddenOverrides();
+      this.loadNoteOverrides();
       this.loadTheme();
       this.createProgressBar();
       if (!this.pagination) this.createSlideCounter();
@@ -853,6 +856,59 @@ class SlideFramework {
       if (Object.keys(this.hiddenOverrides).length === 0) window.localStorage.removeItem(key);
       else window.localStorage.setItem(key, JSON.stringify(this.hiddenOverrides));
     } catch (e) { /* ignore */ }
+  }
+
+  // --- Editable speaker notes ----------------------------------------------
+  // The presenter can rewrite a slide's note in the presenter window. Edits are a
+  // per-viewer override kept in localStorage per deck page; the authored note is
+  // never modified, and only deviations from it are stored.
+  noteStorageKey() { return 'rp-notes:' + window.location.pathname; }
+
+  originalNoteText(index) {
+    const data = (this.presenterNotes || {})[index + 1];
+    if (typeof data === 'string') return data;
+    if (data && typeof data === 'object') return data.text || data.notes || '';
+    return '';
+  }
+
+  getNoteOverride(index) {
+    const id = this.slideId(index);
+    return Object.prototype.hasOwnProperty.call(this.noteOverrides, id) ? this.noteOverrides[id] : undefined;
+  }
+
+  effectiveNoteText(index) {
+    const override = this.getNoteOverride(index);
+    return override !== undefined ? override : this.originalNoteText(index);
+  }
+
+  loadNoteOverrides() {
+    try {
+      const raw = window.localStorage.getItem(this.noteStorageKey());
+      const parsed = raw ? JSON.parse(raw) : {};
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        Object.keys(parsed).forEach(k => {
+          if (typeof parsed[k] === 'string') this.noteOverrides[k] = parsed[k];
+        });
+      }
+    } catch (e) { /* storage unavailable: authored notes only */ }
+  }
+
+  saveNoteOverrides() {
+    try {
+      const key = this.noteStorageKey();
+      if (Object.keys(this.noteOverrides).length === 0) window.localStorage.removeItem(key);
+      else window.localStorage.setItem(key, JSON.stringify(this.noteOverrides));
+    } catch (e) { /* ignore */ }
+  }
+
+  // text === null (or text equal to the authored note) clears the override.
+  setNoteOverride(index, text) {
+    if (!this.slides[index]) return;
+    const id = this.slideId(index);
+    if (text === null || text === this.originalNoteText(index)) delete this.noteOverrides[id];
+    else this.noteOverrides[id] = String(text);
+    this.saveNoteOverrides();
+    document.dispatchEvent(new CustomEvent('rp:notechange', { detail: { index } }));
   }
 
   setHidden(index, hidden) {

@@ -95,4 +95,10 @@ Y를 누르면 돋보기가 켜집니다. 슬라이드 높이의 28% 크기인 �
 
 보조 화면으로 발표하기 전에 N을 눌러 창 동기화를 확인합니다. G를 눌러 전체 보기를 열고 이동할 슬라이드를 선택합니다. 특히 기본 키를 바꾸는 경우에는 실제 생성된 덱에서 사용자 지정 키 매핑을 테스트합니다.
 
+## 발표자 노트 편집 {#edit-speaker-notes}
+
+발표자 창의 Speaker Notes 영역을 직접 편집할 수 있습니다. **Edit notes** 버튼을 누르거나 노트를 더블클릭해 내용을 고친 뒤 Ctrl+Enter(Cmd+Enter)를 누르거나 **Save notes**를 누릅니다. 입력 상자를 벗어나도 저장되고, Esc는 취소합니다. 저장한 내용은 원래 노트와 같은 서식으로 표시됩니다. 수정한 슬라이드에는 **Edited** 배지와 **Reset to original** 버튼이 나타납니다.
+
+수정 내용은 이 브라우저에만 슬라이드별로, 원본 노트와 다를 때만 저장됩니다. Remarp 원본과 청중 창은 바뀌지 않으며, 큐와 타이밍은 원본 값을 유지합니다. 입력 상자에 포커스가 있는 동안 단축키와 방향키는 동작하지 않고 글자로 입력됩니다. 편집 중에 슬라이드를 넘기거나 발표자 창을 닫으면 먼저 저장됩니다.
+
 [런타임 키 매핑](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/reactive-presentation/assets/slide-framework.js)

@@ -95,4 +95,10 @@ The lens has these limits:
 
 Use N before presenting with a second display and verify window synchronization. Use G and select a slide to navigate the overview. Test custom key mappings in the actual generated deck, particularly when they replace a default.
 
+## Editing speaker notes {#edit-speaker-notes}
+
+The Speaker Notes pane of the presenter window is editable. Click **Edit notes** or double-click the notes, change the text, then press Ctrl+Enter (Cmd+Enter) or click **Save notes**; leaving the box also saves, and Esc cancels. Saved text uses the same formatting as authored notes. A slide with an edit shows an **Edited** badge and a **Reset to original** button.
+
+Edits are stored in this browser only, per slide, and only when they differ from the authored note. The Remarp source and the audience window do not change, and cues and timing keep their authored values. While the text box has focus, shortcut keys and arrows type text instead of acting. Changing slide or closing the presenter window while editing saves the edit first.
+
 [Runtime key map](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/plugins/aws-content-plugin/skills/reactive-presentation/assets/slide-framework.js)
