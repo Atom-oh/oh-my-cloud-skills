@@ -71,7 +71,7 @@ are ignored while focus is in a text field.
 ### Magnifier
 
 - The lens is a circle 28% of the slide height. The zoom defaults to 2x and stays as
-  chosen for the session; the badge shows it (for example `Magnifier 3x`). Near an edge
+  chosen for the session; the badge announces it (for example `Magnifier 3x`, as a visually hidden label). Near an edge
   the lens stays inside the slide and its centre still shows the point under the mouse.
 - The lens position is shared: pointing at the presenter's current-slide preview shows
   the lens in the deck window at the same slide position, and pointing at the deck
@@ -102,6 +102,7 @@ Magnifier limits:
   presenter window's lens.
 
 Configure with `new SlideFramework({ pen: { fadeMs: 3000, audienceBadge: true } })`.
+The mode badge is a small, dimmed dot in the corner so it never covers a slide title; its shape shows the mode (laser: dot with a ring, pen: dot, highlighter: bar, eraser: hollow ring, magnifier: grey dot) and a visually hidden label carries the mode and size for screen readers.
 `audienceBadge: false` hides the mode badge in the deck window only; the presenter
 window always shows it.
 

@@ -73,11 +73,11 @@ While pen mode is on, the canvas takes all pointer input over the slide, so tabs
 Laser strokes fade after 3 seconds. Pen and highlighter ink stays on its slide for the session and is never saved. Ink is mirrored between the deck window and the presenter window popup (opened with N): ink drawn in the presenter's current-slide preview appears on the deck window at the same slide position. Two separate deck windows or tabs sync only the slide position.
 
 
-Set `pen: { fadeMs, audienceBadge }` in the `SlideFramework` options to change the laser fade time (default 3000 ms) or to hide the mode badge in the deck window with `audienceBadge: false`. The presenter window always shows the badge.
+Set `pen: { fadeMs, audienceBadge }` in the `SlideFramework` options to change the laser fade time (default 3000 ms) or to hide the mode badge in the deck window with `audienceBadge: false`. The presenter window always shows the badge. The badge is a small, dimmed dot in the corner so it never covers a slide title: its shape shows the mode (laser: dot with a ring, pen: dot, highlighter: bar, eraser: hollow ring, magnifier: grey dot), and a visually hidden label carries the mode and size for screen readers.
 
 ### Magnifier {#magnifier}
 
-Y turns on the Magnifier: a round lens, 28% of the slide height, follows the mouse and shows the slide under it enlarged. The zoom starts at 2x; 1, 2 and 3 switch it to 2x, 3x and 4x, and the badge shows the current zoom. Near an edge the lens stays inside the slide while its centre still shows the point under the mouse.
+Y turns on the Magnifier: a round lens, 28% of the slide height, follows the mouse and shows the slide under it enlarged. The zoom starts at 2x; 1, 2 and 3 switch it to 2x, 3x and 4x, and the badge announces the current zoom to screen readers. Near an edge the lens stays inside the slide while its centre still shows the point under the mouse.
 
 The lens is mirrored between the deck window and the presenter window: pointing at the presenter's current-slide preview shows the lens in the deck window at the same slide position, and pointing at the deck window shows it in the preview. Closing the presenter window leaves the deck lens working. The lens hides when the mouse leaves the slide, on a mode change, on a slide change (until the mouse moves again) and in overview mode.
 
