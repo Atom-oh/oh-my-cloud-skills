@@ -66,6 +66,7 @@ class StepMarksTests(unittest.TestCase):
         (tmp / "index.html").write_text(
             DECK % ("".join(slides), json.dumps(notes, ensure_ascii=False), script), encoding="utf-8")
         findings = measure_deck.measure(tmp, ["index.html"], [(1920, 1080)], ["light"], 5, None)
+        self.all_findings = findings
         return [f for f in findings if f["rule"] == "STEP_MARKS"]
 
     def test_matching_marks_pass(self):
@@ -128,6 +129,33 @@ class StepMarksTests(unittest.TestCase):
         script = "deck.transitioning = true;"  # a transition that never ends
         hits = self.run_deck([slide("A", 2), slide("B")], {1: "↓ ↓"}, script)
         self.assertEqual([], hits)
+
+    def test_throwing_handler_warns_and_counting_continues(self):
+        script = ("deck.registerSlideAction(1, { down: () => { throw new Error('scene boom'); } });")
+        hits = self.run_deck([slide("A", 2), slide("B"), slide("C", 1), slide("D")],
+                             {1: "↓ ↓", 3: ""}, script)
+        self.assertEqual([(2, "counting stopped at slide 2: Error: scene boom"),
+                          (3, 'notes carry 0 "↓" but the slide takes 1 presses')],
+                         [(h["slide"], h["message"]) for h in hits])
+        self.assertEqual(["WARN", "WARN"], [h["severity"] for h in hits])
+
+    def test_no_deck_global_is_silent(self):
+        class NoDeckPage:  # page.evaluate on a page without a global `deck`
+            def evaluate(self, *args, **kwargs):
+                raise RuntimeError("ReferenceError: deck is not defined")
+        self.assertEqual([], measure_deck.check_step_marks(NoDeckPage(), "index.html"))
+
+    def test_trailing_hidden_slides_end_the_deck(self):
+        hidden = slide("H", 1).replace('<div class="slide">', '<div class="slide" data-hidden="true">', 1)
+        hits = self.run_deck([slide("A", 1), slide("B", 2), hidden, hidden], {1: "↓", 2: ""})
+        self.assertEqual([], hits)
+
+    def test_counting_load_errors_not_duplicated(self):
+        hits = self.run_deck([slide("A"), slide("B")], {}, "console.error('load-time boom');")
+        self.assertEqual([], hits)
+        console = [f for f in self.all_findings
+                   if f["rule"] == "CONSOLE" and "load-time boom" in f["message"]]
+        self.assertEqual(1, len(console), console)
 
     def test_hidden_slide_is_counted(self):
         hidden = slide("H", 2).replace('<div class="slide">', '<div class="slide" data-hidden="true">', 1)
