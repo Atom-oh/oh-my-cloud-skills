@@ -305,6 +305,48 @@ class StepEventTests(DeckOverlayFixture):
         page.keyboard.press("ArrowUp")  # first slide, nothing to do
         self.assertEqual(self.steps(page), 0)
 
+    def test_click_tab_emits_once(self):
+        page = self.open("s.html")
+        self.goto(page, 10)
+        self.listen(page)
+        page.locator(".slide.active .tab-btn").nth(2).click()
+        self.assertEqual(self.steps(page), 1)
+
+    def test_click_compare_emits_once(self):
+        page = self.open("s.html")
+        self.goto(page, 12)
+        self.listen(page)
+        page.locator(".slide.active .compare-btn").nth(2).click()
+        self.assertEqual(self.steps(page), 1)
+
+    def test_down_switching_tab_emits_once(self):
+        page = self.open("s.html")
+        self.goto(page, 10)
+        self.listen(page)
+        page.keyboard.press("ArrowDown")
+        self.assertEqual(self.steps(page), 1)
+
+    def test_click_tab_on_other_slide_emits_nothing(self):
+        page = self.open("s.html")
+        self.listen(page)
+        page.evaluate("() => deck.slides[10].querySelectorAll('.tab-btn')[1].click()")
+        self.assertEqual(self.steps(page), 0)
+
+    def test_up_action_false_emits_none(self):
+        page = self.open("s.html")
+        self.goto(page, 1)
+        page.evaluate("() => deck.registerSlideAction(1, {down: () => true, up: () => false})")
+        self.listen(page)
+        page.keyboard.press("ArrowUp")
+        self.assertEqual(self.steps(page), 0)
+
+    def test_canvas_step_press_emits_once(self):
+        page = self.open("s.html")
+        self.listen(page)
+        page.evaluate("() => { deck.slides[0].__canvasStep = () => true; }")
+        page.keyboard.press("ArrowDown")
+        self.assertEqual(self.steps(page), 1)
+
 
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result

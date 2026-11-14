@@ -97,6 +97,7 @@ class SlideFramework {
       this.bindEscapeLock();
       this.bindKeys();
       this.bindTouch();
+      this.bindStepClicks();
       this.handleHash();
       // Without an explicit #hash, never open on a hidden slide.
       if (!window.location.hash && this.isHidden(this.currentSlide)) {
@@ -679,6 +680,18 @@ class SlideFramework {
     }
   }
 
+  // Tab and compare buttons are framework-owned: any click on one in the current slide
+  // (user or the synthetic click from cycleInteractive) is a step change.
+  bindStepClicks() {
+    document.addEventListener('click', (e) => {
+      const t = e.target;
+      if (!t || !t.closest) return;
+      const btn = t.closest('.tab-btn, .compare-btn');
+      const slide = this.slides[this.currentSlide];
+      if (btn && slide && slide.contains(btn)) this._emitStepChange(this.currentSlide);
+    });
+  }
+
   bindTouch() {
     let startX = 0;
     const deck = document.querySelector('.slide-deck');
@@ -1107,8 +1120,7 @@ class SlideFramework {
       const { btns, activeIdx } = inter;
       const nextIdx = Math.max(0, Math.min(activeIdx + direction, btns.length - 1));
       if (nextIdx !== activeIdx) {
-        btns[nextIdx].click();
-        this._emitStepChange(this.currentSlide);
+        btns[nextIdx].click(); // the delegated click listener emits rp:stepchange
         return true;
       }
       return false;
