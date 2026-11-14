@@ -157,6 +157,20 @@ class StepMarksTests(unittest.TestCase):
                    if f["rule"] == "CONSOLE" and "load-time boom" in f["message"]]
         self.assertEqual(1, len(console), console)
 
+    def test_example_deck_marks_match_presses(self):
+        if not _have_playwright():
+            self.skipTest("playwright/chromium unavailable")
+        tmp = Path(tempfile.mkdtemp(prefix="rp-marks-example-"))
+        self.addCleanup(lambda: shutil.rmtree(tmp, ignore_errors=True))
+        common = tmp / "common"
+        common.mkdir()
+        for f in (RP / "assets").iterdir():
+            if f.suffix in (".js", ".css"):
+                shutil.copy(f, common / f.name)
+        shutil.copy(RP / "assets/example-deck/index.html", tmp / "index.html")
+        findings = measure_deck.measure(tmp, ["index.html"], [(1920, 1080)], ["light"], 0, None)
+        self.assertEqual([], [(f["slide"], f["message"]) for f in findings if f["rule"] == "STEP_MARKS"])
+
     def test_hidden_slide_is_counted(self):
         hidden = slide("H", 2).replace('<div class="slide">', '<div class="slide" data-hidden="true">', 1)
         hits = self.run_deck([slide("A"), hidden, slide("C")], {2: "↓"})
