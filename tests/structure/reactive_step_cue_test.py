@@ -143,7 +143,41 @@ class _Base(unittest.TestCase):
             arg=text, timeout=5000)
 
 
+# WCAG contrast of an element's computed text color against the first opaque
+# background up its ancestor chain (its own background for a filled badge).
+CONTRAST_JS = """sel => {
+  const el = document.querySelector(sel);
+  const rgb = c => (c.match(/[\\d.]+/g) || []).map(Number);
+  const lum = ([r, g, b]) => {
+    const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  };
+  let bgEl = el, bg = null;
+  while (bgEl) {
+    const c = rgb(getComputedStyle(bgEl).backgroundColor);
+    if (c.length >= 3 && (c.length < 4 || c[3] === 1)) { bg = c; break; }
+    bgEl = bgEl.parentElement;
+  }
+  const fg = rgb(getComputedStyle(el).color);
+  const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x);
+  return { ratio: (a + 0.05) / (b + 0.05), fg: getComputedStyle(el).color, bg: String(bg) };
+}"""
+
+
 class StepCueKoTests(_Base):
+    def contrast(self, sel):
+        return self.pv.evaluate(CONTRAST_JS, sel)
+
+    def test_cue_contrast_default_theme(self):
+        self.wait_cue("↓ 다음 단계 있음 (지금 0/2)")
+        more = self.contrast("#p-step-cue")
+        self.assertGreaterEqual(more["ratio"], 4.5, more)
+        self.goto(1)
+        self.wait_cue("✓ 단계 없음, 누르면 다음 슬라이드")
+        plain = self.contrast("#p-step-cue")
+        self.assertGreaterEqual(plain["ratio"], 4.5, plain)
+
+
     def test_cue_for_action_slide_updates_on_down(self):
         self.wait_cue("↓ 다음 단계 있음 (지금 0/2)")
         self.assertEqual(self.pv.get_attribute("#p-step-cue", "data-more"), "1")
@@ -247,6 +281,11 @@ class StepMarkBadgeTests(_Base):
     def test_mark_after_closing_brace_is_badge(self):
         self.set_note("{timing: 2}↓\n앞 {cue: 여기↓} 뒤")
         self.assertEqual(self.marks(), 1)
+
+    def test_badge_contrast(self):
+        self.set_note("A↓")
+        got = self.pv.evaluate(CONTRAST_JS, "#p-notes .rp-step-mark")
+        self.assertGreaterEqual(got["ratio"], 4.5, got)
 
     def test_html_still_escaped(self):
         self.set_note("<b>↓</b>")
