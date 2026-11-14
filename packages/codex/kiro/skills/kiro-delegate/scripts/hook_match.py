@@ -53,6 +53,7 @@ Usage:
 import sys
 import re
 import json
+import subprocess
 
 # Blank out quoted spans (length-preserving) before matching, so a `git commit` literally
 # inside a string (`echo "git commit"`) doesn't trigger. Mirrors co-agent's PR-gate
@@ -334,10 +335,23 @@ _PUSH_DRY_RUN_RE = re.compile(
 # the range these gates compute. `--all`/`--tags`/`--mirror` send many refs; an explicit
 # positional refspec (`origin other-branch`, `origin src:dst`) sends a ref that may have
 # no relation to HEAD. A lone remote (`git push origin`) is fine — that pushes the current
-# branch per push.default — and so is naming HEAD or the current branch explicitly, but
-# the hook cannot know the branch name from the payload text alone, so any second
-# positional is treated as out of scope. SKIP + advisory, never a guess.
+# branch per push.default — and so is naming HEAD or the current branch explicitly (the
+# branch is read with `git symbolic-ref` in the hook's cwd; any other second positional,
+# or a branch that cannot be resolved, is treated as out of scope). SKIP + advisory,
+# never a guess.
 _PUSH_MULTIREF_RE = re.compile(r"(?:^|\s)--(?:all|tags|mirror)\b")
+
+def _current_branch():
+    """The checked-out branch name in this process's cwd, or "" when it cannot be
+    resolved (detached HEAD, not a repo, git missing/slow). "" never equals a refspec,
+    so a failure falls back to skipping the review rather than guessing."""
+    try:
+        r = subprocess.run(["git", "symbolic-ref", "--short", "-q", "HEAD"],
+                           capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return r.stdout.strip() if r.returncode == 0 else ""
+
 
 def _push_has_explicit_refspec(rest):
     """True iff `rest` (the argv text after `push`, this invocation only) names a SECOND
@@ -364,7 +378,17 @@ def _push_has_explicit_refspec(rest):
                 skip_next = True
             continue
         positionals.append(t)
-    return len(positionals) >= 2 and positionals[1] not in ("HEAD",)
+    if len(positionals) < 2:
+        return False
+    if len(positionals) > 2:
+        return True   # `origin HEAD other`: a second refspec the range cannot describe
+    ref = positionals[1]
+    if ref == "HEAD":
+        return False
+    # Naming the current branch explicitly (`git push -u origin feat`) is the commonest
+    # push form and sends exactly what the range describes. Anything else, or a branch
+    # that cannot be resolved (detached HEAD, git failure), stays out of scope.
+    return not (ref and ref == _current_branch())
 
 
 def _mismatch_for_one_push(detect, gm):
