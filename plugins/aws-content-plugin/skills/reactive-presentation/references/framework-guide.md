@@ -150,7 +150,7 @@ Canvas drawing primitives and animation helpers.
 - `drawText(ctx, text, x, y, {color, weight, size, font, align, baseline})`
 
 **Classes**:
-- `AnimationLoop(drawFn)` — `.start()`, `.stop()`, `.restart()`, passes elapsed seconds to drawFn
+- `AnimationLoop(drawFn)` — `.start()`, `.stop()`, `.restart()`, passes elapsed seconds to drawFn. Draws on `requestAnimationFrame`; `.drawNow()` draws once on demand, and a 100 ms fallback timer keeps drawing while the browser delivers no frames (the deck window behind the presenter window). Pressing ↑/↓ on a slide with a registered slide action redraws every running loop immediately, so keep animation state changes inside the action handler and draw from state in `drawFn`.
 - `TimelineAnimation(steps, duration)` — `steps=[{at: 0.1, action: fn}]`, `.play()`, `.pause()`, `.reset()`, `.setSpeed(s)`, `.update(dt)`. **Step control**: `nextStep()`, `prevStep()`, `goToStep(n)` — for keyboard-driven step-through. Register with `deck.registerSlideAction(slideIndex, { down: () => tl.nextStep(), up: () => tl.prevStep() })`.
 - `ParticleSystem(count, bounds)` — decorative floating particles
 
