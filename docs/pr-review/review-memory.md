@@ -29,9 +29,9 @@ review runs. Older detail is in
 - A capped diff that orders CHANGELOG, `doc-sites/`, `docs/` and `packages/claude` before
   `plugins/` can hide every maintained source; generated copies are not a substitute, so
   request the `plugins/` hunks before judging (PR #265).
-- In this review mode the chair checkout is trusted base: head-only helpers cannot be read
-  locally, so panel "reproduced" claims about them stay unverified unless the hunk is in
-  the supplied diff (PR #265).
+- A trusted-base checkout differs from the PR head. If the harness supplies a verified
+  `pr-tree`, read hidden head files there as data; otherwise do not trust unverified
+  panel reproductions. Never execute head code in the privileged review (PR #265, #307).
 - Class-level unittest skips leave testsRun at zero with one skipped entry; check TAP skip sentinels against setUpClass skips, not only per-test skips (PR #270, PR #271).
 - A reporting closure over a filename is corrupted when a later loop reuses that variable; preserve the filename when grouping findings (PR #270).
 
