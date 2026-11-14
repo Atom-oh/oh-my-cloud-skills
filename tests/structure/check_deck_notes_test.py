@@ -53,7 +53,7 @@ class NoteLintTest(unittest.TestCase):
 
     def test_mark_in_summary_line(self):
         for line, kind in (("[요약] 요점↓", "[요약]"), ("[출처] a↓", "[출처]"),
-                           ("[약어] b↓", "[약어]"), ("{timing: 2}↓", "{")):
+                           ("[약어] b↓", "[약어]"), ("{timing: 2 ↓}", "{")):
             with self.subTest(line=line):
                 got = check_deck.lint_note_text("{timing: 1}\n" + line + "\n대본입니다.")
                 meta = [m for r, m in got if r == META]
@@ -116,8 +116,54 @@ class NoteLintTest(unittest.TestCase):
             '  1: {text: "아래 화살표로 넘깁니다.", timing: 2},'), {OP})
 
     def test_brace_marker_in_plain_string_note(self):
+        # A ↓ after the closing } is script text (the renderer draws a badge there).
         self.assertEqual(self._deck_findings(
-            '  1: "{timing: 2}↓\\n대본입니다.",'), {META})
+            '  1: "{timing: 2}↓\\n대본입니다.",'), set())
+        self.assertEqual(self._deck_findings(
+            '  1: "{timing: 2 ↓}\\n대본입니다.",'), {META})
+
+    def test_mark_after_closing_brace_is_script(self):
+        self.assertEqual(rules("{timing: 2}↓\n대본"), [])
+        self.assertEqual(rules("{cue: pause} 잠시 멈춥니다.↓"), [])
+        self.assertIn(META, rules("앞 {cue: 여기↓} 뒤"))
+
+    def test_block_form_meta_layer(self):
+        for text, kind in (
+                ("[요약]\n• 요점↓\n• 둘째\n\n대본입니다.", "[요약]"),
+                ("[요약]\n- 하나\n- 둘↓\n대본입니다.", "[요약]"),
+                ("대본입니다.\n[출처]\n  * 문서 a↓", "[출처]"),
+                ("[약어]\n\t• EKS: 쿠버네티스↓", "[약어]")):
+            with self.subTest(text=text):
+                meta = [m for r, m in check_deck.lint_note_text(text) if r == META]
+                self.assertEqual(len(meta), 1)
+                self.assertIn(kind, meta[0])
+
+    def test_meta_layer_ends_at_blank_or_non_bullet_line(self):
+        self.assertEqual(rules("[요약]\n• 요점\n\n• 대본 같은 줄↓"), [])
+        self.assertEqual(rules("[요약]\n• 요점\n대본입니다.↓ 다음입니다."), [])
+        self.assertEqual(rules("[요약]\n- 요점\n\n대본입니다.↓"), [])
+
+    def test_flags_key_press_instructions(self):
+        for phrase in ("↓ 키를 눌러가며 네 단계를 보여주세요.", "↓키로 넘기면 됩니다.",
+                       "↑ 키를 누르면 돌아갑니다.", "↑↓ 키로도 탭 전환 가능",
+                       "방향 키를 눌러 진행합니다.", "스페이스 키를 눌러 넘깁니다."):
+            with self.subTest(phrase=phrase):
+                self.assertIn(OP, rules("요점입니다. " + phrase))
+
+    def test_key_phrases_false_positives(self):
+        for s in ("Enter 키를 눌러 배포를 시작합니다.",
+                  "API 키를 발급하고 Secrets Manager에 저장합니다.",
+                  "요점입니다.↓ 키 페어를 만들고 접속합니다.",
+                  "요점입니다.↓ 키워드를 정리합니다.",
+                  "암호화 키를 주기적으로 회전합니다.↓"):
+            with self.subTest(s=s):
+                self.assertEqual(rules(s), [])
+
+    def test_example_deck_notes_are_clean(self):
+        deck = ROOT / "plugins/aws-content-plugin/skills/reactive-presentation/assets/example-deck"
+        findings = []
+        check_deck.check_file(deck, "index.html", set(), findings)
+        self.assertEqual([], [(f["rule"], f["slide"]) for f in findings if f["rule"] in (OP, META)])
 
     def test_compiled_deck_is_linted(self):
         # remarp_to_slides.py writes notes with json.dumps (ensure_ascii): the built HTML

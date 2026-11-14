@@ -236,6 +236,18 @@ class StepMarkBadgeTests(_Base):
         self.set_note("대본↓\n[출처] x↓\n[약어] y↓\n끝 {여기↓} 다시↓")
         self.assertEqual(self.marks(), 2)
 
+    def test_block_form_meta_layer_stays_plain(self):
+        self.set_note("[요약]\n• 요점↓\n- 둘째↓\n\n대본↓")
+        self.assertEqual(self.marks(), 1)
+        self.set_note("[출처]\n  * 문서↓\n대본입니다.↓ 다음↓")
+        self.assertEqual(self.marks(), 2)
+        self.set_note("[요약]\n• 요점\n\n• 대본 줄↓")
+        self.assertEqual(self.marks(), 1)
+
+    def test_mark_after_closing_brace_is_badge(self):
+        self.set_note("{timing: 2}↓\n앞 {cue: 여기↓} 뒤")
+        self.assertEqual(self.marks(), 1)
+
     def test_html_still_escaped(self):
         self.set_note("<b>↓</b>")
         self.assertEqual(self.marks(), 1)

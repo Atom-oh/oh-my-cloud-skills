@@ -43,9 +43,17 @@ RULE_IDS = ('NO_THEME_CSS', 'MISSING_SCRIPT', 'FRAMEWORK_COUNT', 'MISSING_NOTES'
 OPERATING_PHRASES = tuple(re.compile(p, re.I) for p in (
     r'아래\s*화살표', r'화살표를\s*눌', r'눌러\s*볼게요', r'버튼을\s*누르',
     r'장면을\s*누를\s*때마다',
+    # Key-press instructions: "↓ 키를 눌러가며", "↑↓ 키로", "방향 키를 눌러". Only
+    # navigation keys: "Enter 키를 눌러 배포합니다" narrates a demo and stays clean.
+    r'[↑↓←→]\s*키\s*(?:를|로)',
+    r'(?:방향|화살표|스페이스|space|page\s*down)\s*키를\s*눌',
     r'press\s+the\s+down\s+arrow', r'click\s+the\s+next\s+button',
     r'press\s+down\b'))
 META_TAG_RE = re.compile(r'\[(?:요약|출처|약어)\]')
+# A tag line opens a meta layer; the bullet lines right under it (-, * or • after
+# optional whitespace) belong to it until a blank or non-bullet line. Same rule as
+# PresenterView.renderRichNotes in assets/presenter-view.js.
+META_BULLET_RE = re.compile(r'\s*[-*\u2022]')
 BRACE_SPAN_RE = re.compile(r'\{[^{}\n]*\}')
 MARK = '\u2193'
 
@@ -108,9 +116,10 @@ def lint_note_text(text):
     """Lint one slide's RAW note text (line structure kept); return (rule, message) pairs.
 
     NOTE_OPERATING_INSTRUCTION: the script tells the presenter how to operate the deck.
-    NOTE_MARK_IN_META: a ↓ cue inside a [요약]/[출처]/[약어] line or a {...} marker;
-    a ↓ after a sentence in plain script text is the intended use and is not flagged.
-    One pair per rule.
+    NOTE_MARK_IN_META: a ↓ cue in a [요약]/[출처]/[약어] meta layer (the tag line plus
+    the bullet lines under it) or inside a {...} marker span; a ↓ after a sentence in
+    script text, including right after a closing }, is the intended use and is not
+    flagged. One pair per rule.
     """
     out = []
     hits = [m.group(0) for pat in OPERATING_PHRASES for m in [pat.search(text)] if m]
@@ -120,16 +129,19 @@ def lint_note_text(text):
                     + ', '.join(f'"{h}"' for h in hits)
                     + '); narrate the content and let the step cue carry the advance'))
     kinds = []
+    layer = None  # the tag of the open meta layer, or None in script text
     for line in text.splitlines():
+        tag = META_TAG_RE.search(line)
+        if tag:
+            layer = tag.group(0)
+        elif layer and not META_BULLET_RE.match(line):
+            layer = None
         if MARK not in line:
             continue
-        tag = META_TAG_RE.search(line)
-        if tag and tag.group(0) not in kinds:
-            kinds.append(tag.group(0))
+        if layer and layer not in kinds:
+            kinds.append(layer)
         in_span = any(MARK in m.group(0) for m in BRACE_SPAN_RE.finditer(line))
-        after_marker = (re.match(r'\s*\{[^{}]*\}', line) is not None
-                        and not tag)
-        if (in_span or after_marker) and '{...}' not in kinds:
+        if in_span and '{...}' not in kinds:
             kinds.append('{...}')
     if kinds:
         out.append(('NOTE_MARK_IN_META',
