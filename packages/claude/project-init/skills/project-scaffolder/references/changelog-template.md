@@ -1,49 +1,48 @@
 # CHANGELOG Template
 
-Template for generating bilingual (English/Korean) `CHANGELOG.md` files following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Format for bilingual (English/Korean) `CHANGELOG.md` files following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Bilingual layout, tone, and formatting come from `writing-style-guide.md` in this directory; this file adds only what is specific to a changelog.
 
 ---
 
-## Generation Rules
-
-When generating or updating `CHANGELOG.md`, Claude should:
-
-1. **Read** existing `CHANGELOG.md` if present to preserve previous entries
-2. **Analyze** git log to extract version tags and commit history
-3. **Categorize** changes into the 6 standard change types
-4. **Write** user-facing changes only (skip internal refactoring with no user impact)
-5. **Generate** bilingual entries with English and Korean descriptions
-6. **Build** version comparison URLs from the GitHub repository URL
-
-### Auto-Detection Sources
+## Auto-Detection Sources
 
 | Field | Detection Source |
 |-------|-----------------|
 | Project name | Directory name, manifest `name` field, existing CHANGELOG h1 |
 | GitHub URL | Git remote origin URL, existing CHANGELOG links |
-| Version tags | `git tag --sort=-v:refname` |
-| Changes | `git log --oneline <prev_tag>...<current_tag>` |
-| Release dates | `git log -1 --format=%ai <tag>` |
+| Version tags | `git tag --list --sort=-v:refname` |
+| Changes | `git log --oneline <previous_tag>..<tag>` |
+| Release dates | `git for-each-ref --format='%(creatordate:short)' refs/tags/<tag>` |
 
 ### Git Log Analysis
 
 ```bash
-# List all version tags (newest first)
-git tag --sort=-v:refname
+# Version tags, newest first
+git tag --list --sort=-v:refname
 
-# Get commits between two tags
-git log --oneline v1.0.0...v1.1.0
+# Commits in one release: after the previous tag, up to and including this one
+git log --oneline v1.0.0..v1.1.0
 
-# Get unreleased commits (since last tag)
-git log --oneline $(git describe --tags --abbrev=0)...HEAD
+# Commits in the first release (everything up to the first tag)
+git log --oneline v1.0.0
 
-# Get tag date
-git log -1 --format=%aI v1.0.0
+# Unreleased commits (after the latest tag)
+git log --oneline "$(git describe --tags --abbrev=0)"..HEAD
+
+# No tags yet: every commit is unreleased
+git log --oneline
+
+# Release date of a tag as YYYY-MM-DD (tag date for annotated tags, commit date for lightweight ones)
+git for-each-ref --format='%(creatordate:short)' refs/tags/v1.0.0
 ```
+
+Use two dots in `git log` ranges: `a..b` lists the commits reachable from `b` but not from `a`, while three dots would also pull in commits from the other side when release lines have diverged. GitHub compare URLs in the link block keep their own `a...b` form.
 
 ---
 
 ## Top Layout
+
+The title is always `# Changelog`.
 
 ```markdown
 # Changelog
@@ -68,29 +67,25 @@ git log -1 --format=%aI v1.0.0
 <Korean changelog content>
 ```
 
-Rules:
-- Title is always `# Changelog` (h1)
-- Language toggle uses HTML `<a><img></a>` with `#english` and `#korean` anchors
-- Explicit `<a id="...">` tags placed before each language heading
-- Horizontal rule separates badges, English section, and Korean section
-
 ---
 
 ## Each Language Section Internal Structure
 
-Within each language section, include these elements in order:
+Within each language section, include these elements in order.
 
 ### 1. Introductory Statement
 
-**English:**
-```
+English:
+
+```markdown
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ```
 
-**Korean:**
-```
+Korean:
+
+```markdown
 이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
 이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
@@ -102,9 +97,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ```
 
-- Always present at the top of the version list
-- Accumulates changes not yet released
-- On release, move items to the new version heading and clear Unreleased
+Always present at the top of the version list, even when empty; it collects changes not yet released.
 
 ### 3. Version Sections (Newest First)
 
@@ -130,43 +123,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [1.0.0]: https://github.com/<user>/<repo>/releases/tag/v1.0.0
 ```
 
+`[Unreleased]` compares the latest version with `HEAD`, each version compares with the one before it, and the oldest version links to its release tag.
+
 ---
 
 ## Version Heading Format
 
-- Each version is h2: `## [<version>] - YYYY-MM-DD`
-- Version text links to GitHub release comparison URL
-- Unreleased section: `## [Unreleased]`
-- Dates use ISO 8601 format (YYYY-MM-DD)
+- Each version is h2: `## [<version>] - YYYY-MM-DD`, where the date is the release date of the version's tag (see Git Log Analysis)
+- The version text links to its entry in the reference link block
+- The unreleased section is `## [Unreleased]`, with no date
 
 ---
 
 ## Change Type Categories
 
-Categorize changes under these h3 headings. Omit a category if it has no items.
-Category names are always in English (Keep a Changelog convention), even in the Korean section.
+Categorize changes under these h3 headings, in this order, and omit a category that has no items. Category names stay in English in both halves (Keep a Changelog convention). When commit messages do not follow these prefixes, categorize by what the diff does for users.
 
-| Category | Usage |
-|----------|-------|
-| ### Added | New features |
-| ### Changed | Changes to existing functionality |
-| ### Deprecated | Features to be removed in future |
-| ### Removed | Features that have been removed |
-| ### Fixed | Bug fixes |
-| ### Security | Security vulnerability patches |
+| Category | Usage | Commit prefixes |
+|----------|-------|-----------------|
+| ### Added | New features | `feat:`, `feature:`, `add:` |
+| ### Changed | Changes to existing functionality | `change:`, `update:`, user-facing `refactor:` |
+| ### Deprecated | Features to be removed in future | `deprecate:` |
+| ### Removed | Features that have been removed | `remove:`, `delete:` |
+| ### Fixed | Bug fixes | `fix:`, `bugfix:`, `hotfix:` |
+| ### Security | Security vulnerability patches | `security:`, `vuln:` |
 
 ---
 
 ## Entry Writing Guidelines
 
-- Each item is a bullet (`-`) list entry
-- One sentence per item describing what changed clearly
-- Write from the user/consumer perspective
+- Each item is one bullet (`-`) and one sentence describing what changed, from the user's point of view
 - Link related issues or PRs at the end: `([#42](https://github.com/user/repo/pull/42))`
-- Breaking changes get `**BREAKING:**` prefix
+- Breaking changes get the `**BREAKING:**` prefix
 
 ### English Style
-- Start with imperative verb: "Add plugin system", "Fix symlink error"
+- Start with an imperative verb: "Add plugin system", "Fix symlink error"
 - Example: `- Add plugin system ([#42](https://github.com/user/repo/pull/42))`
 - Breaking: `- **BREAKING:** Change config file format from YAML to TOML`
 
@@ -177,13 +168,12 @@ Category names are always in English (Keep a Changelog convention), even in the 
 
 ---
 
-## What NOT to Include
+## What to Leave Out
 
 - Raw commit log copy-paste
 - Vague descriptions like "various bug fixes" or "miscellaneous improvements"
 - Duplicate entries across multiple categories
-- Internal refactoring or test additions with no user-facing impact
-- Translated category names (Added, Fixed, etc. stay in English)
+- Internal changes with no user-facing impact: tests, CI, docs, refactoring
 
 ---
 
@@ -191,24 +181,11 @@ Category names are always in English (Keep a Changelog convention), even in the 
 
 When updating an existing CHANGELOG.md:
 
-1. **Preserve** all existing version entries unchanged
-2. **Add** new entries to the `[Unreleased]` section or create a new version section
-3. **Maintain** reverse chronological order (newest first)
-4. **Update** reference links at the bottom of each language section
-5. **Sync** both language sections to contain identical version entries
-6. **Never** modify the content of previously released version entries
-7. **Merge** if the user provides new items for an existing unreleased section
-
-### Version Release Workflow
-
-When releasing a new version from Unreleased:
-
-1. Move all `[Unreleased]` items to a new version heading `## [X.Y.Z] - YYYY-MM-DD`
-2. Clear the `[Unreleased]` section (keep the heading)
-3. Update reference links:
-   - `[Unreleased]` now compares from the new version tag to HEAD
-   - Add the new version comparison link
-4. Apply to both language sections identically
+- Released version sections never change, because readers and the compare links depend on them. Only `[Unreleased]` and the reference link blocks change.
+- New entries go under `[Unreleased]`; merge with items already there instead of duplicating them.
+- Versions stay in reverse chronological order (newest first).
+- Every change is made in both language halves, so they list the same versions and the same entries.
+- When `check-bilingual.py` reports an issue inside a released section, such as a release heading in another format (`## v1.2.0 (2024-01-01)`), leave it and report it as pre-existing: the rule that released sections never change outranks the checker.
 
 ---
 
@@ -241,11 +218,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **BREAKING:** Change config file format from YAML to TOML
 
-### Fixed
-- Fix symlink creation failure on Windows
-
 ### Deprecated
 - Deprecate --legacy flag (to be removed in v2.0.0)
+
+### Fixed
+- Fix symlink creation failure on Windows
 
 ## [1.1.0] - 2026-03-15
 
@@ -283,11 +260,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **BREAKING:** 설정 파일 포맷을 YAML에서 TOML로 변경
 
-### Fixed
-- Windows 환경에서 심링크 생성 실패 수정
-
 ### Deprecated
 - --legacy 플래그 지원 중단 예고 (v2.0.0에서 제거 예정)
+
+### Fixed
+- Windows 환경에서 심링크 생성 실패 수정
 
 ## [1.1.0] - 2026-03-15
 

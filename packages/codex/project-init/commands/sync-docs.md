@@ -1,280 +1,139 @@
 ---
 description: Synchronize all project documentation with current code state
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash(find:*), Bash(git log:*), Bash(git tag:*), Bash(git describe:*), Bash(git remote:*), Bash(ls:*), Agent
+allowed-tools: Read, Write, Edit, Glob, Grep, Agent, Bash(find *), Bash(ls *), Bash(git log *), Bash(git diff *), Bash(git tag *), Bash(git describe *), Bash(git remote *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py *)
 ---
 
 # Sync Docs
 
-Synchronize project documentation with the current code state.
+Bring the project's documentation in line with the code as it is now: one audit finds what is missing or stale, you fix it per document type, run the bilingual check on what you wrote, and report quality before and after. The audit report is the single record of what is wrong in the documents it covers, which is all but README.md and CHANGELOG.md. Do not re-scan, re-score, or re-check what it covered, because a second pass doubles the cost and can score one file twice; reading a file to edit it is part of applying.
 
 ## Context
 
 - Project structure: !`find . -not -path './.git/*' -not -path './node_modules/*' -not -path './__pycache__/*' -not -path './.venv/*' -type f | head -100`
 - Recent commits: !`git log --oneline -20 2>/dev/null || echo "Not a git repository"`
-- Existing CLAUDE.md files: !`find . -name "CLAUDE.md" -not -path './.git/*' 2>/dev/null`
+- Latest tag: !`git describe --tags --abbrev=0 2>/dev/null || echo "no tags"`
+- Existing CLAUDE.md files: !`find . -name "CLAUDE.md" -not -path './.git/*' -not -path '*/node_modules/*' 2>/dev/null`
+- Documentation files: !`find . -maxdepth 4 -name '*.md' \( -path './docs/*' -o -path './README.md' -o -path './CHANGELOG.md' \) 2>/dev/null | head -100`
+- Source roots: !`grep -h '^SOURCE_ROOTS=' .claude/hooks/check-doc-sync.sh 2>/dev/null || find . -maxdepth 1 -type d \( -name src -o -name app -o -name lib -o -name cmd -o -name pkg -o -name internal -o -name packages \) 2>/dev/null`
 
-## Phase 0: Read Shared Style Guide
+## Inputs
 
-Read the shared writing style guide that applies to all generated documents:
+Read these before writing anything. If a file cannot be read, stop and say so instead of writing from memory.
 
-```
-Read file: skills/project-scaffolder/references/writing-style-guide.md
-```
+- `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/writing-style-guide.md`: every document you create or update follows it (ADR-003).
+- `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/SKILL.md`, sections `## CLAUDE.md Quality Criteria`, `## CLAUDE.md Anti-Patterns`, and `## Module CLAUDE.md Coverage`: the rules for CLAUDE.md content and for re-scoring the files you change.
+- The template for each document type you touch, named in its Apply section below.
 
-All documents created or updated in this sync process must follow the bilingual structure, formatting, and style rules defined in the writing style guide.
+Ask the user at most once, before applying, and only for what the repo cannot answer (for a new README: maintainer name and GitHub username). Use the AskUserQuestion tool when it is available, because its answers arrive in this turn, where the `allowed-tools` above still apply; a chat reply starts a new turn without them. Give each field its own question (up to 4 per call), answered in the free-text "Other" field; without the tool, ask in one chat message. For a skipped field, write `<!-- TODO: ... -->` and list it under Remaining Gaps.
 
-## Phase 1: Gap Analysis (Subagent)
+## Audit
 
-Launch the `doc-sync-checker` agent to analyze documentation gaps in parallel. This provides a structured report of:
-- Missing module CLAUDE.md files
-- Stale documents
-- Suggested ADRs
-- Quality scores for each CLAUDE.md
+Count the CLAUDE.md files and documentation files in Context. With roughly ten or fewer in total, audit inline: run the checks in `${CLAUDE_PLUGIN_ROOT}/agents/doc-sync-checker.md` yourself and produce its report format (its read-only rule covers the audit, not Apply). The Read tool shows that file's plugin-root placeholder unsubstituted; it stands for the plugin directory, the path above without `/agents/doc-sync-checker.md`. With more, launch the `project-init:doc-sync-checker` agent once.
 
-Use this report to prioritize updates in the following steps.
+The agent sees none of this conversation, so brief it in one message: the source roots, the documentation file list, the CLAUDE.md list, and the latest tag from Context, plus any focus the user asked for. Its `## Documentation Sync Report` is the audit. If the agent fails or a section of its report is missing, audit only that section inline and say so in the final report.
 
-### Phase 1.5: Implementation References
+Show the user the report's Summary section, then apply.
 
-Re-run the layer detection from `/init-project` Step 4.5 (signal matrix).
-For each detected layer, check `docs/reference/{layer}.md`:
+## Apply
 
-- **Missing file** for a detected layer → output:
-  `❌ {layer}.md missing — run /add-reference-doc {layer}`
+Work from the report's findings. For every document type:
 
-- **Existing file with Code Pointers** → for each path-like string under the
-  `### 4. Code Pointers` section that matches the regex
-  `[A-Za-z0-9_./-]+\.[A-Za-z0-9]+` with at least one `/`, verify the path
-  exists on disk. Report:
-  `⚠ {layer}.md: Code Pointer "<path>" not found in repo`
+- Change what a finding names and keep user-written content, because a sync fixes drift, not style.
+- In a bilingual document, make every change in both language halves with the same structure.
+- Do not invent content. When the repo does not show a value, write `<!-- TODO: ... -->` and list it under Remaining Gaps.
+- CLAUDE.md content must pass `## CLAUDE.md Anti-Patterns`. Leave a finding marked `score only` unapplied and list it under Remaining Gaps, because a section added only for the score makes the file worse.
 
-- **TODO marker count** → report only (no grade):
-  `ℹ {layer}.md: 5 TODO markers remaining`
+### Root CLAUDE.md
 
-- **INDEX.md drift** → regenerate the table inside
-  `<!-- AUTO-MANAGED:index -->` markers from the current
-  `docs/reference/*.md` listing. If contents differed, report:
-  `✓ INDEX.md auto-corrected (was out of sync)`
+Fix each stale item in Overview, Tech Stack, Project Structure, Conventions, and Key Commands; every command must name a script, target, or file that exists. Keep the section structure of `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/claude-md-template.md`, including Auto-Sync Rules.
 
-This block reports and may rewrite **only** the AUTO-MANAGED region in
-INDEX.md. Layer files themselves are never modified by `/sync-docs`.
+### Module CLAUDE.md
 
-## Phase 2: CLAUDE.md Quality Assessment
+For each directory the report names, create a CLAUDE.md only where `## Module CLAUDE.md Coverage` gives it one, from the `## Module CLAUDE.md Template` section of `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/claude-md-template.md` with its headings as written, one screen at most. When a module has nothing to say beyond what its code shows, skip it and list it under Remaining Gaps with that reason. Update an existing module CLAUDE.md only for the findings that name it.
 
-For each CLAUDE.md file found, evaluate quality against these criteria:
+### docs/architecture.md
 
-| Criterion | Weight | Check |
-|-----------|--------|-------|
-| Commands/workflows documented | 20 | Are build/test/deploy commands present and correct? |
-| Architecture clarity | 20 | Can Claude understand the codebase structure? |
-| Non-obvious patterns | 15 | Are gotchas and quirks documented? |
-| Conciseness | 15 | No verbose explanations or obvious info? |
-| Currency | 15 | Does it reflect current codebase state? |
-| Actionability | 15 | Are instructions executable, not vague? |
+Follow `## Architecture Document` in `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/docs-templates.md` and the style guide's Diagram Rules. For each finding:
 
-**Quality Grades:**
-- **A (90-100)**: Comprehensive, current, actionable
-- **B (70-89)**: Good coverage, minor gaps
-- **C (50-69)**: Basic info, missing key sections
-- **D (30-49)**: Sparse or outdated
-- **F (0-29)**: Missing or severely outdated
+- Components: add or remove them under their architectural layer.
+- Diagrams: when components changed, regenerate the Mermaid `flowchart TB` (one `subgraph` per layer) and the Data Flow Summary `flowchart LR`. Replace any legacy ASCII box diagram with a Mermaid flowchart.
+- Infrastructure tables: match the IaC.
+- Key Design Decisions: add decisions from new ADRs and mark outdated ones.
+- Operations: update the runbook links.
 
-Output a quality report before making changes:
+### ADRs
 
-```
-## CLAUDE.md Quality Report
+Suggest ADRs; do not create them, because an ADR records trade-offs the code does not show. For each suggestion, give the next number from the report, the source commit, and `/add-adr <title>`. Relay the freshness flags without editing the Status field, because a status change is a decision.
 
-### Summary
-- Files found: X
-- Average score: XX/100
-- Files needing update: X
+### Runbooks
 
-### File-by-File Assessment
+Recommend each missing runbook with `/add-runbook <name>`, and list the runbooks whose referenced scripts or paths no longer exist. Do not rewrite runbook procedures: a guessed command in a runbook is worse than a flagged one.
 
-#### ./CLAUDE.md (Project Root)
-**Score: XX/100 (Grade: X)**
+### Implementation References
 
-| Criterion | Score | Notes |
-|-----------|-------|-------|
-| Commands/workflows | X/20 | ... |
-| Architecture clarity | X/20 | ... |
-| Non-obvious patterns | X/15 | ... |
-| Conciseness | X/15 | ... |
-| Currency | X/15 | ... |
-| Actionability | X/15 | ... |
-```
+Consume the report's `### Implementation References` section without re-running the layer detection or the Code Pointer checks.
 
-## Phase 3: Root CLAUDE.md Sync
+- `❌` missing layer file: do not create it; relay `run /add-reference-doc <layer>`, because `/add-reference-doc` owns the skeleton and asks before overwriting.
+- `⚠` Code Pointer not found and the `ℹ` lines (TODO markers, declined layers): report them only. Do not modify the layer files in `docs/reference/`; they are hand-written guides.
+- INDEX drift: regenerate only the table inside each `<!-- AUTO-MANAGED:index -->` ... `<!-- /AUTO-MANAGED -->` region of `docs/reference/INDEX.md` from the current `docs/reference/*.md` listing (excluding INDEX.md), as the `## INDEX.md` section of `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/reference-doc-template.md` specifies, including its rule for `declined` rows. When a table changed, report `✓ INDEX.md auto-corrected (was out of sync)`. If INDEX.md or its markers are missing, report that instead of creating them.
 
-Read the root `CLAUDE.md` and update:
-- **Overview** - Match current project purpose
-- **Tech Stack** - Match actual dependencies (package.json, pyproject.toml, go.mod, etc.)
-- **Project Structure** - Match actual directory tree
-- **Conventions** - Match observed code patterns
-- **Key Commands** - Match actual build/test/deploy commands
+### README.md
 
-Verify commands are copy-paste ready by checking they reference actual scripts/files.
+The audit does not cover this file; check it here against `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/readme-template.md` (section order and conditions, badge format, `## Update Rules`).
 
-## Phase 4: Architecture Doc Sync
+- If README.md exists, apply `## Update Rules` and sync with the code: the version badge (latest tag or manifest version), the license badge, Overview (from CLAUDE.md), Features, Prerequisites (manifest `engines` or `.tool-versions`), Installation and Testing commands that exist, and the Project Structure tree.
+- If it does not exist, generate it from the template with the detected information.
 
-Read `docs/architecture.md` and update all sections:
+### CHANGELOG.md
 
-- **System Overview** - Reflect current system design and tech stack
-- **Components (by Layer)** - Add new components, remove deleted ones. Organize by architectural layers (Ingestion, Storage, Processing, Query, Presentation, Observability, Security, AI/ML). Detect layers from source directories and IaC files.
-- **Full Architecture Diagram** - Regenerate the Mermaid flowchart (`flowchart TB`, one `subgraph` per layer) if components changed. Verify all components in the diagram still exist in code. If the document still uses a legacy ASCII box diagram, replace it with a Mermaid flowchart.
-- **Data Flow Summary** - Update the Mermaid `flowchart LR` critical-path chain if data path changed
-- **Infrastructure Tables** - If IaC files exist (terraform/, cdk/), update module/construct tables
-- **Key Design Decisions** - Add new decisions from recent ADRs, flag decisions that may be outdated
-- **Operations** - Update runbook cross-references
+The audit does not cover this file; check it here against `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/changelog-template.md` (`## Update Rules`, `## Change Type Categories`, `## Entry Writing Guidelines`).
 
-If `docs/architecture.md` uses bilingual format (Korean/English), update both sections consistently.
+- If CHANGELOG.md exists, add `[Unreleased]` entries for the commits after the newest documented version (`git log --oneline <that tag>..HEAD`) that are not listed yet.
+- If it does not exist, generate it from the full tag history (`git tag --sort=-v:refname`).
 
-## Phase 5: Module CLAUDE.md Audit
+## Check
 
-Detect the main source directory (src/, app/, lib/, cmd/, etc.):
+Run the bundled checker on every bilingual document you created or edited (README.md, CHANGELOG.md, docs/architecture.md, and any other document with `# English` and `# 한국어` halves) except `docs/reference/INDEX.md`, where you rewrote only the table:
 
 ```bash
-ls -d src/ app/ lib/ cmd/ pkg/ internal/ components/ pages/ 2>/dev/null
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py README.md CHANGELOG.md docs/architecture.md
 ```
 
-Scan all directories under the source root:
+It prints one `FILE:LINE: message` line per issue and exits 0 when clean, 1 when issues remain, and 2 on a usage or read error. Fix the issues and run it again. Leave an issue that predates this sync in user content (a released CHANGELOG section, the user's own README prose) and list it under Remaining Gaps as pre-existing. If python3 is unavailable, say in the report that the check did not run.
 
-```bash
-find <source_dir> -type d -not -path './.git/*' 2>/dev/null
-```
+## Report
 
-For each directory:
-- If `CLAUDE.md` is missing, create one with module name, role, and key files
-- If `CLAUDE.md` exists, verify it matches current files and update if needed
-- Score each module CLAUDE.md using the quality criteria
-
-## Phase 6: ADR Audit
-
-Review recent commits for architecture-relevant changes:
-
-```bash
-git log --oneline -20 2>/dev/null
-```
-
-Check if significant decisions are documented:
-- New dependencies added (check git diff for package.json/pyproject.toml changes)
-- API design changes
-- Database schema changes
-- Infrastructure changes
-
-If undocumented decisions found, suggest creating new ADRs. Determine the next ADR number:
-
-```bash
-find docs/decisions -name 'ADR-*.md' -not -name '.template.md' 2>/dev/null | sort -t'-' -k2 -n | tail -1
-```
-
-Review existing ADRs for freshness:
-- Flag ADRs in "Proposed" status older than 30 days -> suggest accepting or withdrawing
-- Flag ADRs referencing technologies no longer in use -> suggest deprecating
-- Score: count of current ADRs vs estimated decisions from git history
-
-## Phase 7: Runbook Audit
-
-Check runbook coverage against project characteristics:
-
-```bash
-ls docs/runbooks/*.md 2>/dev/null
-find docs/runbooks -name '*.md' -not -name '.template.md' 2>/dev/null
-```
-
-Assess operational coverage:
-- **Deployment**: Does the project have deployment config (Dockerfile, CDK, SAM, Terraform, CI/CD)? If yes, check for a deployment runbook.
-- **Database**: Does the project have migrations or database config? If yes, check for a database migration runbook.
-- **Incident Response**: Does the project have monitoring/alerting? If yes, check for an incident response runbook.
-- **Environment Setup**: Does the project have multiple environments? If yes, check for environment setup runbook.
-
-For each existing runbook:
-- Verify commands are still copy-paste ready (check referenced scripts/paths exist)
-- Check last modified date vs recent code changes
-- Flag runbooks referencing removed files or changed paths
-
-## Phase 8: README.md Sync
-
-Read [references/readme-template.md](../skills/project-scaffolder/references/readme-template.md) for structure and generation rules.
-
-If `README.md` exists, read it and update the following:
-
-1. **Badges** - Update version badge to match current manifest version, verify license badge
-2. **Overview** - Sync with current `CLAUDE.md` project description
-3. **Features** - Add newly detected features, remove references to removed functionality
-4. **Prerequisites** - Update runtime versions from manifest `engines` or `.tool-versions`
-5. **Installation** - Verify install commands are still correct
-6. **Project Structure** - Regenerate directory tree to match actual layout
-7. **Testing** - Update test commands if build system changed
-8. **Language sync** - Ensure English and Korean sections contain identical information
-
-```bash
-# Detect current version
-ls package.json pyproject.toml Cargo.toml go.mod 2>/dev/null
-git describe --tags --abbrev=0 2>/dev/null
-```
-
-If `README.md` does not exist, generate a new bilingual README following the template. Auto-detect project information and ask the user for missing required fields.
-
-**Validation checklist:**
-- [ ] Language toggle uses HTML `<a><img></a>` with `#english` and `#korean` anchors
-- [ ] Explicit `<a id="english">` and `<a id="korean">` tags before each language heading
-- [ ] Both language sections have identical structure
-- [ ] Code blocks specify the language
-- [ ] No emojis in the document
-- [ ] Version and license badges reflect current values
-
-## Phase 9: CHANGELOG.md Sync
-
-Read [references/changelog-template.md](../skills/project-scaffolder/references/changelog-template.md) for structure and generation rules.
-
-If `CHANGELOG.md` exists, read it and update:
-
-1. **Unreleased section** - Analyze commits since the last documented version and add new entries
-
-```bash
-# Find last documented version
-git tag --sort=-v:refname 2>/dev/null | head -5
-
-# Get commits since last tag
-git log --oneline $(git describe --tags --abbrev=0 2>/dev/null)...HEAD 2>/dev/null
-```
-
-2. **Categorize** new commits into standard types (Added, Changed, Fixed, etc.)
-3. **Write** bilingual entries (English imperative, Korean 명사형 종결)
-4. **Preserve** all existing released version entries unchanged
-5. **Language sync** - Ensure both language sections have identical version entries
-
-If `CHANGELOG.md` does not exist, generate a new bilingual CHANGELOG from full git tag history following the template.
-
-**Validation checklist:**
-- [ ] `[Unreleased]` section present in both language sections
-- [ ] Versions in reverse chronological order
-- [ ] Category headings in English in both sections
-- [ ] Reference links correctly formatted
-- [ ] Previously released versions unchanged
-
-## Phase 10: Report
-
-Present a comprehensive summary:
+Take the Before scores from the audit report. For After, re-score only the files you changed, with the same SKILL.md rubric; an unchanged file shows its Before score once. Keep the report to these sections, one line per item; the values are illustrative.
 
 ```
 ## Sync Report
 
 ### Quality Scores (Before -> After)
 - ./CLAUDE.md: D (35) -> B (78)
-- ./src/api/CLAUDE.md: F (0) -> C (55) [NEW]
-- ./src/auth/CLAUDE.md: C (52) -> B (72)
+- ./src/api/CLAUDE.md: -- -> C (55) [NEW]
+- ./src/auth/CLAUDE.md: C (52) (unchanged)
 
 ### Changes Made
-- Files created: X
-- Files updated: X
+- Created: src/api/CLAUDE.md
+- Updated: CLAUDE.md, docs/architecture.md, README.md, CHANGELOG.md
+
+### Implementation References
+- ❌ api: docs/reference/api.md missing — run /add-reference-doc api
+- ⚠ data: Code Pointer "src/db/schema.ts" not found
+- ℹ infrastructure: 5 TODO markers
+- ✓ INDEX.md auto-corrected (was out of sync)
 
 ### Suggested ADRs
-- ADR-003: Adopted Redis for session caching (from commit abc1234)
+- ADR-003: Adopt Redis for session caching (from commit abc1234) - run /add-adr "Adopt Redis for session caching"
+- ADR-002-rest-api-design.md: Proposed for 90 days - accept or withdraw
+
+### Runbooks
+- Missing: deploy-production.md (Dockerfile present) - run /add-runbook deploy-production
+- docs/runbooks/rollback.md: references scripts/rollback.sh, which no longer exists
 
 ### README.md
 - Status: Created / Updated / No changes
-- Sections synced: X
+- Sections synced: Overview, Project Structure
 - Version badge: vX.Y.Z
 
 ### CHANGELOG.md
@@ -282,6 +141,10 @@ Present a comprehensive summary:
 - New entries added: X (Added: X, Changed: X, Fixed: X)
 - Versions documented: X
 
+### Bilingual Check
+- README.md, CHANGELOG.md, docs/architecture.md: clean
+
 ### Remaining Gaps
-- src/utils/ has no CLAUDE.md (directory contains only helper functions)
+- src/utils/ has no CLAUDE.md (helper functions only; nothing the code does not show)
+- README.md: <!-- TODO: maintainer --> placeholder
 ```

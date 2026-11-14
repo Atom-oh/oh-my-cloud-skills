@@ -1,179 +1,46 @@
 ---
 description: Create a new operational runbook from template in docs/runbooks/
-allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(ls:*), Bash(find:*), Glob, Grep
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(git log *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py *)
 argument-hint: Runbook name (e.g. deploy-production, database-migration, incident-response)
 ---
 
 # Add Runbook
 
-Create a new operational runbook with structured steps and update project-level docs.
+Write a bilingual runbook at `docs/runbooks/<kebab-name>.md` that an operator can follow verbatim, often under pressure during an incident. Name: $ARGUMENTS (ask for one if it is empty). If that file already exists, offer to update it instead of creating a second runbook for the same task.
 
-## Step 1: Determine Runbook Name
+## Inputs
 
-Target: $ARGUMENTS
+- The current conversation, root `CLAUDE.md`, `docs/architecture.md`, and the existing runbooks in `docs/runbooks/`.
+- Where the real commands live: `scripts/`, `Makefile`, `package.json` scripts, CI workflows (for example `.github/workflows/`), IaC files (Dockerfile, `cdk.json`, `template.yaml`, `*.tf`), and `git log --oneline -20` for recent operational changes.
+- Structure: the project's `docs/runbooks/.template.md` if it exists, because the team may have customized it; otherwise the `## Runbook Template` section of `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/docs-templates.md`.
+- Layout, tone, and formatting: `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/writing-style-guide.md`. It applies even when the project's template is English-only; in that case mirror the template's sections in the Korean half.
 
-- If no name provided, ask the user for the runbook name
-- Convert to kebab-case for the filename (e.g. "Deploy Production" -> `deploy-production.md`)
-- Check if `docs/runbooks/` directory exists; create it if missing
-- Check if the runbook already exists; if so, offer to update it instead
+If a plugin file cannot be read (for example because `${CLAUDE_PLUGIN_ROOT}` was not substituted), stop and say so instead of writing from memory; a document written from memory is the drift ADR-003 exists to prevent.
 
-```bash
-ls docs/runbooks/ 2>/dev/null
-```
+## Rules
 
-## Step 2: Gather Runbook Details
+- Derive every command from the repo. Where you cannot, write `# TODO(verify): <what is needed>` in its place instead of a plausible guess, because an operator will run these commands verbatim.
+- Ask the user once, in one round (see Asking), only for what the repo cannot tell you, usually prerequisites such as permissions and access, and rollback details.
+- Include only the phases the task needs; the template's phase count is an example, not a quota.
 
-Ask the user:
+## Asking
 
-1. **Purpose**: What operational task does this runbook cover? (one sentence)
-2. **When to use**: Under what circumstances should someone follow this runbook?
-3. **Prerequisites**: What tools, permissions, or access are needed?
-4. **Procedure**: What are the high-level steps? (Claude will expand these)
-5. **Rollback**: Is there a recovery procedure if something goes wrong?
+Ask with the AskUserQuestion tool when it is available: its answers arrive in this turn, so the `allowed-tools` above still cover the writes and the check that follow, while a chat reply starts a new turn and the grant clears when the user sends it. Give each open item (the name when none was given, update or create when the file exists, each missing prerequisite or rollback detail) its own question, up to 4 questions per call; offer what the repo suggests as options, and let the user type anything else in the free-text "Other" answer. Without the tool, ask in one chat message.
 
-If the user provides minimal input, infer from the runbook name and project context:
-- Read `CLAUDE.md` for tech stack and deployment info
-- Read `docs/architecture.md` for system components
-- Infer appropriate steps based on the runbook topic
+## Output contract
 
-## Step 3: Read Templates and Style Guide
+- Every command is copy-paste ready, in a fenced block with a language tag. A placeholder is allowed only when it is named and explained next to the command (for example `<env>`: `staging` or `production`).
+- Each step that changes state is followed by a command or observable result that shows it worked. The Verification section checks the end state.
+- Rollback is executable at the command level. If a step cannot be undone, say so at that step, before the operator runs it.
+- Notes records `Last verified: not yet run (written <today, YYYY-MM-DD>)` in the English half and `최종 검증일: 아직 실행 안 함 (<today, YYYY-MM-DD> 작성)` in the Korean half. Write a verified date only when the user says they ran the procedure, because an operator reads that line as proof the commands work.
+- Also update, only when it applies:
+  - Root `CLAUDE.md`, when it lists runbooks: add one line for this runbook.
+  - `docs/architecture.md`, when it has an Operations section: link the runbook there in both halves.
 
-Read the shared writing style guide and runbook template:
+## Check
 
-```
-Read file: skills/project-scaffolder/references/writing-style-guide.md
-Read file: skills/project-scaffolder/references/docs-templates.md
-```
+Run `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py <new runbook file>` (add `docs/architecture.md` if you edited it) and fix what it reports until it exits 0. The script checks layout, not meaning, so also confirm that each Korean paragraph says what its English counterpart says and that both halves carry the same commands. If python3 or the script is unavailable, say "checker unavailable" in the report.
 
-Follow all bilingual structure, formatting, and style rules from the writing style guide.
-Use the Runbook Template section as the base structure.
+## Report
 
-## Step 4: Create Bilingual Runbook
-
-Create `docs/runbooks/<runbook-name>.md` with bilingual (English/Korean) structure:
-
-```markdown
-# Runbook: <Title>
-
-<a href="#english"><img src="https://img.shields.io/badge/lang-English-blue.svg" alt="English"></a>
-<a href="#korean"><img src="https://img.shields.io/badge/lang-한국어-red.svg" alt="Korean"></a>
-
----
-
-<a id="english"></a>
-
-# English
-
-## Overview
-<purpose from user input or inferred from context>
-
-## When to Use
-<circumstances that trigger this runbook>
-
-## Prerequisites
-- <required permissions>
-- <required tools>
-- <required access>
-
-## Procedure
-
-### 1. <First Phase>
-<detailed steps with copy-paste ready commands>
-
-### 2. <Second Phase>
-<detailed steps with copy-paste ready commands>
-
-### 3. <Third Phase>
-<detailed steps with copy-paste ready commands>
-
-## Verification
-- [ ] <check 1>
-- [ ] <check 2>
-
-## Rollback
-1. <rollback step 1>
-2. <rollback step 2>
-
-## Notes
-- Last verified: <today's date>
-- Author: <user or inferred>
-
----
-
-<a id="korean"></a>
-
-# 한국어
-
-## 개요
-<사용자 입력 또는 컨텍스트에서 유추한 목적>
-
-## 사용 시점
-<이 런북을 따라야 하는 상황>
-
-## 사전 요구 사항
-- <필요한 권한>
-- <필요한 도구>
-- <필요한 접근 권한>
-
-## 절차
-
-### 1. <첫 번째 단계>
-<복사-붙여넣기 가능한 명령어와 상세 단계>
-
-### 2. <두 번째 단계>
-<복사-붙여넣기 가능한 명령어와 상세 단계>
-
-### 3. <세 번째 단계>
-<복사-붙여넣기 가능한 명령어와 상세 단계>
-
-## 검증
-- [ ] <확인 1>
-- [ ] <확인 2>
-
-## 롤백
-1. <롤백 단계 1>
-2. <롤백 단계 2>
-
-## 참고
-- 최종 검증일: <오늘 날짜>
-- 작성자: <사용자 또는 유추>
-```
-
-Key principles:
-- Every command must be **copy-paste ready** (no placeholder paths without explanation)
-- Include **verification steps** after each major phase
-- Rollback section must be actionable, not vague
-- Use code blocks with language tags for all commands
-- Both language sections must contain identical information
-- English uses imperative mood; Korean uses 경어체 (~합니다)
-- No emojis; code blocks must specify the language
-- Code blocks and commands are identical in both sections; only descriptive text is translated
-
-## Step 5: Update Root CLAUDE.md
-
-Read the root `CLAUDE.md`. If a Runbooks section exists, add the new runbook. If not, suggest adding one.
-
-## Step 6: Update docs/architecture.md
-
-If the runbook relates to a specific component (e.g. deployment, database), check if `docs/architecture.md` references operational procedures. If an Infrastructure or Operations section exists, add a cross-reference.
-
-## Step 7: Validate Bilingual Output
-
-After writing the runbook, verify:
-
-- [ ] Language toggle uses HTML `<a><img></a>` with `#english` and `#korean` anchors
-- [ ] Explicit `<a id="english">` and `<a id="korean">` tags before each language heading
-- [ ] Both language sections have identical structure and information
-- [ ] All commands and code blocks are identical in both sections
-- [ ] No emojis in the document
-- [ ] Code blocks specify the language
-
-## Step 8: Summary
-
-Display:
-- Created runbook file path and name
-- Overview of sections included
-- Suggested follow-up actions:
-  - Create related runbooks (e.g. if deploy-production was created, suggest rollback-production)
-  - Link the runbook from relevant module CLAUDE.md files
-  - Schedule periodic review of the runbook
+The file path, the other files you changed, which commands came from the user rather than from the repo, and every `TODO(verify)` left for the user to resolve.

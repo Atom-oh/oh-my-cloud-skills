@@ -1,48 +1,37 @@
 ---
-description: Initialize a Claude Code project structure with CLAUDE.md, docs, hooks, skills, agents, and MCP config. Adapts to existing projects by detecting language/framework.
-allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(chmod:*), Bash(git init:*), Bash(git add:*), Bash(git commit:*), Bash(git remote:*), Bash(git log:*), Bash(git tag:*), Bash(git describe:*), Bash(git diff:*), Bash(ls:*), Bash(find:*), Bash(bash scripts/*), Glob, Grep
+description: Initialize a Claude Code project structure (CLAUDE.md, docs, settings and hooks, tests, plus optional commands, agents, and skills) in a new or existing project, adapted to the detected language and layout.
+disable-model-invocation: true
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls *), Bash(mkdir *), Bash(chmod +x .claude/hooks/*), Bash(git status *), Bash(git init *), Bash(git add *), Bash(git commit *), Bash(git remote get-url *), Bash(git log *), Bash(git tag --sort*), Bash(git tag --list *), Bash(git for-each-ref *), Bash(git describe *), Bash(bash scripts/install-hooks.sh *), Bash(bash tests/run-all.sh *), Bash(python3 -m json.tool *), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py *), Bash(bash ${CLAUDE_PLUGIN_ROOT}/scripts/harness-check.sh *)
 argument-hint: Optional project directory path (defaults to current directory)
 ---
 
 # Initialize Claude Code Project Structure
 
-Set up a complete Claude Code project structure in the target directory. Adapts to existing projects by detecting language, framework, and directory layout.
+## Goal
 
-## Step 1: Determine Target Directory
+Set up the Claude Code harness the project will actually use: the Core files, plus the Default and Optional components the user keeps (see Artifacts). In an existing project, adapt everything to the detected language, commands, and layout. The run is done when the Finish checks pass or their remaining failures are reported, and the Summary is written.
 
-Target: $ARGUMENTS
+Target: $ARGUMENTS, a project root path; empty means the current directory; create it if it does not exist. Run every command from the target directory, because the templates use project-relative paths.
 
-- If a path is provided, use it as the project root
-- If empty, use the current working directory
-- If the directory doesn't exist, create it
+## Templates
 
-```bash
-ls -la <target_dir> 2>/dev/null
-```
+Templates are in `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/`; the Artifacts table names the file and section for each output. Read a template before writing its files. If one cannot be read, stop and tell the user which one instead of writing from memory, because a reconstruction breaks the contracts it carries.
 
-## Step 2: Detect Existing Project
+## Rules
 
-Scan for existing project files to determine if this is a new or existing project:
+- **Existing files win**, because users customize them and a second run must be safe: do not overwrite a file that exists; log it as `(existing, kept)`. These are updated in place instead, and logged as adapted:
+  - `README.md` and `CHANGELOG.md`, per the Update Rules in their templates;
+  - `.claude/settings.json`: add missing deny rules and hook registrations and keep every other key. A hook registered in an older form (a relative `bash .claude/hooks/...` path, or a gate with `|| true`) counts as registered: leave it for `/project-init:migrate-hooks`, which migrates it with a backup, instead of adding a second registration;
+  - `.gitignore`: append `.env`, `.claude/settings.local.json`, and `.claude/worktrees/` when missing;
+  - the AUTO-MANAGED regions in `CLAUDE.md` and `docs/reference/INDEX.md`.
+- **Copy template code blocks as written**, changing only the adapt points in the Artifacts table and the `<...>` placeholders, because hooks, settings, and tests are contracts that a paraphrase breaks.
+- **Use what detection finds** (the real source directories, commands, and layout), or the answers for a new project. Do not create `src/api/` or `src/persistence/` in a project with its own layout.
+- **Ask once**, in the round below. A value still unknown after it becomes a `<!-- TODO: ... -->` listed in the summary; do not invent commands, options, or rollback steps.
+- **Keep CLAUDE.md files lean**, per `## CLAUDE.md Anti-Patterns` and `## Module CLAUDE.md Coverage` in `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/SKILL.md`.
 
-```bash
-# Detect language/framework
-ls package.json pyproject.toml go.mod Cargo.toml pom.xml build.gradle Gemfile composer.json 2>/dev/null
+## Detection
 
-# Detect existing source directories
-ls -d src/ app/ lib/ cmd/ pkg/ internal/ components/ pages/ routes/ 2>/dev/null
-
-# Check dependency files for framework detection
-cat package.json 2>/dev/null | head -30
-cat pyproject.toml 2>/dev/null | head -30
-```
-
-**If existing project detected:**
-- Do NOT create `src/api/` or `src/persistence/` if they don't match the project
-- Instead, identify the actual source directories and create module `CLAUDE.md` files for each
-- Adapt Tech Stack, Commands, and Conventions based on detected framework
-- Warn the user before overwriting any existing files
-
-**Project type detection rules:**
+Read the manifests and list the directories (Glob, Read, `ls`); detection needs no build or install.
 
 | File Found | Project Type | Source Dirs | Key Commands |
 |-----------|-------------|-------------|--------------|
@@ -53,61 +42,16 @@ cat pyproject.toml 2>/dev/null | head -30
 | `pom.xml` / `build.gradle` | Java/Kotlin | src/main/, src/test/ | mvn, gradle |
 | None detected | New project | src/api/, src/persistence/ | (ask user) |
 
-**If new project (no existing files):**
-- Ask the user for project name, description, tech stack
-- Create the default `src/api/` and `src/persistence/` structure
+Also record:
+- the test, lint, typecheck, and build commands (manifest scripts, Makefile targets, CI config). The quickest of lint, typecheck, and unit tests is the project's **fast check**.
+- git state: whether `.git/` exists, `git remote get-url origin`, and `git status --short`.
+- deploy signals: `Dockerfile`, `template.yaml`, `cdk.json`, `serverless.yml`, or a deploy script.
+- which artifacts already exist. For existing shell tests outside `TEST_DIRS`, follow `## Test Runner` in tests-templates.md; if `tests/run-all.sh` is kept, say in the summary that it does not run the generated harness tests.
+- when `.claude/` exists, the hook contract: `bash ${CLAUDE_PLUGIN_ROOT}/scripts/harness-check.sh --contract-only .`. Exit 1 triggers the Existing harness question.
 
-## Step 3: Create Directory Structure
+### Implementation Reference Detection
 
-Create directories based on detection results:
-
-**Always create:**
-```bash
-mkdir -p docs/decisions
-mkdir -p docs/runbooks
-mkdir -p .claude/hooks
-mkdir -p .claude/skills/code-review
-mkdir -p .claude/skills/refactor
-mkdir -p .claude/skills/release
-mkdir -p .claude/skills/sync-docs
-mkdir -p .claude/commands
-mkdir -p .claude/agents
-mkdir -p scripts
-mkdir -p tools/prompts
-```
-
-**For new projects only** (no existing source detected):
-```bash
-mkdir -p src/api
-mkdir -p src/persistence
-mkdir -p tests/unit
-mkdir -p tests/integration
-```
-
-## Step 4: Generate CLAUDE.md
-
-Read the template from [references/claude-md-template.md](../skills/project-scaffolder/references/claude-md-template.md).
-
-**For existing projects:**
-- Auto-fill Tech Stack from detected dependency files
-- Auto-fill Project Structure from actual directory layout
-- Auto-fill Key Commands from detected build system (package.json scripts, Makefile targets, etc.)
-- Auto-fill Conventions from observed code patterns (linter configs, .editorconfig, etc.)
-
-**For new projects:**
-- Ask the user for project name, description, tech stack
-- Fill in the template with user responses
-
-Always include Auto-Sync Rules section.
-
-## Step 4.5: Implementation Reference Detection
-
-Before generating files, detect which implementation layers apply to this
-project and produce skeletons under `docs/reference/`. This runs the same
-logic as `/add-reference-doc`, applied to a detected layer set the user
-confirms.
-
-### 4.5.a Detection signal matrix
+Each selected layer gets a skeleton under `docs/reference/` (see Implementation reference docs). Match the signals at any depth (Glob `**/routes/`, `**/*.tf`), skipping `node_modules/`, `vendor/`, `.git/`, and build output.
 
 | Layer | Detect when ANY present |
 |---|---|
@@ -120,11 +64,9 @@ confirms.
 | security | `.env.example`, `auth/`, `middleware/`, `permissions/`, `iam/`, `policies/` — **always pre-checked** |
 | agent-llm | `prompts/`, package deps with anthropic/openai/langchain/bedrock |
 
-### 4.5.b Confirmation prompt
+The question round shows the result in this form:
 
-Print detection results and ask the user to confirm or edit:
-
-```
+```text
 Detected implementation layers:
   ✓ Infrastructure (Dockerfile)
   ✓ API (routes/)
@@ -135,308 +77,145 @@ Detected implementation layers:
 Proceed with detected set, or adjust? (a)ccept / (e)dit
 ```
 
-On `(e)dit`, present a multi-select prompt with each layer pre-checked per
-detection, allowing toggle. Empty projects (zero detections) show all layers
-unchecked except Security, plus the note: *"More layers can be added later
-with /add-reference-doc <layer>."*
+On `(e)dit`, the user toggles each layer, pre-checked per detection. With zero detections, show every layer unchecked except Security, plus the note: *"More layers can be added later with /add-reference-doc <layer>."*
 
-### 4.5.c Generation
+## Questions (one round)
 
-For each selected layer:
-- Extract its skeleton from
-  `plugins/project-init/skills/project-scaffolder/references/reference-doc-template.md`
-  (fenced block under `## Layer: {layer}`)
-- Substitute variables: `{{COMPONENTS_TABLE}}` rows from detected paths;
-  `{{CODE_POINTERS_AUTO}}` from top 1-3 detected files
-- Write to `docs/reference/{layer}.md`
-- **If file exists**: skip silently and log `(existing, kept)`
+Collect every answer before writing any file, with detected values as defaults.
 
-After all layer files: regenerate `docs/reference/INDEX.md` (AUTO-MANAGED
-region) and upsert `## Implementation References` block in root
-`CLAUDE.md` between `<!-- AUTO-MANAGED:references -->` markers.
+Ask with the AskUserQuestion tool when it is available, because its answers arrive in this turn, where `allowed-tools` still cover the writes and commands that follow. Make as many calls as the items need (up to 4 questions of up to 4 options each), in this order:
 
-## Step 5: Generate .claude/settings.json and All Hooks
+- The Existing harness question alone, when it applies, because a migrate answer ends the run.
+- One call with the confirmations: layers and components, each as `Accept` / `Edit` with the detected set named in the question text, plus git.
+- Project facts and README fields: one question each, with the detected value or `Leave a TODO` as options and the value typed in "Other".
+- After an `Edit`: that checklist as `multiSelect` questions of up to four items (the eight layers in two, the components in groups of four). Mark each detected or pre-checked item in its option description, because the selection replaces the defaults.
 
-Read [references/settings-json-template.md](../skills/project-scaffolder/references/settings-json-template.md) and create `.claude/settings.json` with all hook registrations (SessionStart, PreToolUse, PostToolUse, Notification).
+Without the tool, ask everything in one chat message using the blocks below, and wait for the reply. In it, say that the next turn will ask before each write and command, because the pre-approval ends with this turn, and that approving the plugin-script commands once beats "don't ask again", which saves a rule pinned to the versioned plugin path.
 
-Read [references/hook-scripts.md](../skills/project-scaffolder/references/hook-scripts.md) and create:
-- `.claude/hooks/check-doc-sync.sh` - PostToolUse documentation sync
-- `.claude/hooks/secret-scan.sh` - PreToolUse secret scanning
-- `.claude/hooks/session-context.sh` - SessionStart context loading
-- `.claude/hooks/notify.sh` - Notification webhook
+0. **Existing harness**, only when the contract check in Detection exited 1: "Existing hooks or registrations predate the current contract. Run /project-init:migrate-hooks first (recommended: it backs them up and regenerates them), or continue, and the generated tests will fail on the kept hooks until you migrate." On migrate, stop without writing anything and tell the user to run `/project-init:migrate-hooks`, then `/init-project` again.
+1. **Project facts** detection could not answer. For a new project: name, a one-line description in English and in Korean, tech stack, and source layout (default `src/api/` and `src/persistence/`).
+2. **Implementation reference layers**: the detection block above.
+3. **Components**, with the same accept/edit pattern. Fill in the detected commands, and pre-check `/deploy` when a deploy signal was found, naming it:
 
-Make all hooks executable:
+   ```text
+   Components (Core files are always generated):
+     [x] /test-all: runs `<test command>` and the harness tests (Default)
+     [x] /review + code-reviewer agent: reviews the diff before a commit; the one review path (Default)
+     [ ] /deploy: follows docs/runbooks/deploy-*.md, user-invoked only, refuses to deploy without a runbook (Optional)
+     [ ] security-auditor agent: on-demand audit of secrets, dependencies, and configuration (Optional)
+     [ ] code-review skill: project review checklist loaded whenever Claude reviews code; replaces /review + code-reviewer as the review path, so selecting it unchecks them, and shadows the bundled /code-review (Optional)
+     [ ] refactor skill: behavior-preserving refactors checked with the test command; generic scaffolding, most useful with smaller models (Optional)
+     [ ] release skill: version, changelog, and tag facts, user-invoked only; generic scaffolding, most useful with smaller models (Optional)
+     [ ] session-context.sh: reports a local-environment fact at session start, such as a pinned runtime that differs from the active one or a service the tests need that is not running; useful when those cause failures. Detected: <.nvmrc, .python-version, services> (Optional)
+     [ ] notify.sh: webhook alert when Claude needs attention; needs CLAUDE_NOTIFY_WEBHOOK (Optional)
+     [ ] verify-on-stop.sh: Stop gate that runs `<fast check>` when a turn ends on a changed tree and hands failures back to Claude; most useful with Sonnet or Haiku at low or medium effort, which sometimes report a change done without running a check (Optional)
 
-```bash
-chmod +x .claude/hooks/*.sh
-```
-
-**For existing projects**: Adapt `check-doc-sync.sh` to use the actual source directory path instead of hardcoded `src/`.
-
-## Step 6: Generate Skills
-
-Read [references/skills-templates.md](../skills/project-scaffolder/references/skills-templates.md) and create:
-- `.claude/skills/code-review/SKILL.md`
-- `.claude/skills/refactor/SKILL.md`
-- `.claude/skills/release/SKILL.md`
-- `.claude/skills/sync-docs/SKILL.md`
-
-## Step 7: Generate Slash Commands
-
-Read [references/skills-templates.md](../skills/project-scaffolder/references/skills-templates.md) (Common Slash Command Templates section) and create:
-- `.claude/commands/review.md` - Code review on diff
-- `.claude/commands/test-all.md` - Execute full test suite
-- `.claude/commands/deploy.md` - Build and deploy
-
-**For existing projects**: Adapt test and deploy commands to match the detected framework.
-
-## Step 8: Generate Agents
-
-Read [references/agents-templates.md](../skills/project-scaffolder/references/agents-templates.md) and create:
-- `.claude/agents/code-reviewer.md` - Parallel code review agent
-- `.claude/agents/security-auditor.md` - Security audit agent
-
-## Step 9: Generate Docs
-
-Read [references/docs-templates.md](../skills/project-scaffolder/references/docs-templates.md) and create:
-
-### architecture.md (Production-Grade)
-
-Generate `docs/architecture.md` following the Architecture Document template with:
-
-1. **Language Switcher**: shields.io badge line with `[![English](...)]` and `[![Korean](...)]` linking to `#english` and `#한국어`. English section first, Korean section second.
-2. **System Overview**: 2-3 sentence summary of the project architecture
-3. **Components by Layer**: Group into Ingestion/Storage/Processing/Query/Presentation/Observability/Security layers. Only include layers that apply.
-   - **For existing projects**: Read source directories, IaC files (terraform/, cdk/), Dockerfiles, and dependency files to auto-detect components
-   - **For new projects**: Use user input from Plan mode or interactive questions
-4. **Full Architecture Diagram**: Mermaid flowchart (`flowchart TB`) with one `subgraph` per layer, showing all components and data flow
-5. **Data Flow Summary**: Mermaid `flowchart LR` chain showing the critical path
-6. **Infrastructure Tables**: If IaC files (terraform/, cdk/, cloudformation/) are detected, list modules/constructs in a table
-7. **Key Design Decisions**: List architectural choices with WHY explanations (from Plan mode context if available)
-8. **Operations**: Cross-reference to runbooks in `docs/runbooks/`
-
-Both Korean and English sections must have identical structure and content.
-
-### Other Docs
-
-- `docs/decisions/.template.md` - ADR template
-- `docs/runbooks/.template.md` - Runbook template
-- `docs/onboarding.md` - For existing projects, pre-fill prerequisites and setup steps from detected build system
-- `docs/api-reference.md` - Only if project has API endpoints (detected from routes, handlers, controllers)
-
-## Step 10: Generate Module CLAUDE.md Files
-
-**For new projects:**
-- `src/api/CLAUDE.md`
-- `src/persistence/CLAUDE.md`
-- `tests/unit/CLAUDE.md`
-- `tests/integration/CLAUDE.md`
-
-**For existing projects:**
-- Scan all top-level source directories
-- Create `CLAUDE.md` for each directory that doesn't have one
-- Auto-fill module role based on directory name and contained files
-- If `tests/` directory exists, create `tests/CLAUDE.md`
-
-## Step 11: Generate MCP Configuration
-
-Read [references/mcp-json-template.md](../skills/project-scaffolder/references/mcp-json-template.md).
-
-Create `.mcp.json` with an empty configuration:
-
-```json
-{
-  "mcpServers": {}
-}
-```
-
-If project context suggests MCP integrations (e.g., GitHub remote exists, database config found), add commented example configurations.
-
-## Step 12: Generate README.md (Bilingual)
-
-Read [references/writing-style-guide.md](../skills/project-scaffolder/references/writing-style-guide.md) for shared bilingual and style rules.
-Read [references/readme-template.md](../skills/project-scaffolder/references/readme-template.md) for structure and generation rules.
-
-If `README.md` already exists, read it to preserve user-specific content.
-
-**Auto-detect** from information gathered in Step 2:
-- Project name, description, version, license from manifest files
-- GitHub URL from `git remote get-url origin`
-- Tech stack from detected language/framework
-- Test commands from detected build system
-- Prerequisites from runtime version requirements
-
-**Ask the user** only for fields that cannot be auto-detected:
-- One-line description in Korean (if not available)
-- Maintainer name and GitHub username
-- Demo image/GIF path (optional)
-
-Generate `README.md` with bilingual (English/Korean) structure:
-1. Top layout: project name (h1), shields.io badges (license, build status, version, language toggle), bilingual one-line description
-2. `# English` section with applicable sections in this exact order:
-   1. `## Overview` (required)
-   2. `## Features` (required) -- format: `- **Feature name** — Description`
-   3. `## Prerequisites` (required)
-   4. `## Installation` (required)
-   5. `## Usage` (required)
-   6. `## Configuration` (only when env vars exist; table: Variable | Description | Default)
-   7. `## Project Structure` (recommended; tree code block with English comments)
-   8. `## Testing` (only when tests exist)
-   9. `## API Documentation` (only when an API exists)
-   10. `## Contributing` (required; 5-step Fork->Branch->Commit->Push->PR with Conventional Commits example)
-   11. `## License` (required; link to LICENSE file)
-   12. `## Contact` (required; maintainer GitHub profile, Issues page, email)
-3. `# 한국어` section with identical structure in Korean (Korean section uses Korean tree comments in Project Structure)
-4. No emojis anywhere, code blocks with language tags, 경어체 for Korean, imperative for English
-5. Language toggle uses HTML `<a><img></a>` linking to ASCII anchors `#english` and `#korean` (per ADR-002), with explicit `<a id="english">` / `<a id="korean">` sentinel tags before each language heading
-
-### Step 12 Validation Checklist
-
-Before completing, verify the generated README satisfies:
-- [ ] All required sections present in both language sections (12-section table above)
-- [ ] Both language sections contain identical structure, code blocks, tables, and directory trees
-- [ ] Language toggle uses ASCII anchors (`#english`, `#korean`) with explicit sentinel tags
-- [ ] Features use em-dash `—` separator
-- [ ] Configuration table format matches `Variable | Description | Default`
-- [ ] Contributing section includes Fork->Branch->Commit->Push->PR five steps and Conventional Commits example (`feat:`, `fix:`)
-- [ ] No emojis in headings or body
-- [ ] Code blocks specify the language (```bash, ```typescript, etc.)
-- [ ] Shields.io badges reflect actual license and version values
-
-## Step 13: Generate CHANGELOG.md (Bilingual)
-
-Read [references/writing-style-guide.md](../skills/project-scaffolder/references/writing-style-guide.md) for shared bilingual and style rules.
-Read [references/changelog-template.md](../skills/project-scaffolder/references/changelog-template.md) for structure and generation rules.
-
-If `CHANGELOG.md` already exists, preserve all existing entries.
-
-**Analyze git history:**
-```bash
-git tag --sort=-v:refname 2>/dev/null
-git log --oneline -30 2>/dev/null
-```
-
-Generate `CHANGELOG.md` with bilingual (English/Korean) structure:
-1. Title: `# Changelog` (h1) with language toggle badges (shields.io, link to `#english` and `#korean` anchors)
-2. Horizontal rule, then `<a id="english"></a>` sentinel, then `# English` heading
-3. `# English` section in this order:
-   1. Introductory statement (exact text):
-      ```
-      All notable changes to this project will be documented in this file.
-      The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-      and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-      ```
-   2. `## [Unreleased]` heading (always present, even if empty)
-   3. Version sections in reverse chronological order: `## [X.Y.Z] - YYYY-MM-DD`
-   4. Within each version, h3 category headings (only those with items): `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security`
-   5. Reference links at the bottom: `[Unreleased]`, `[X.Y.Z]`, ... pointing to GitHub `compare/...` URLs
-4. Horizontal rule, then `<a id="korean"></a>` sentinel, then `# 한국어` heading
-5. `# 한국어` section with identical version list and identical reference links; introductory statement (exact Korean text):
+   Proceed with this set, or adjust? (a)ccept / (e)dit
    ```
-   이 프로젝트의 모든 주요 변경 사항은 이 파일에 기록됩니다.
-   이 문서는 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)를 기반으로 하며,
-   [Semantic Versioning](https://semver.org/spec/v2.0.0.html)을 따릅니다.
+
+   With no pinned runtime or needed service detected, write `(nothing detected to report)` as the session-context `Detected:` list. With no git repository yet, append `needs a git repository to detect changes` to the verify-on-stop line.
+
+4. **README fields** detection could not fill: maintainer name, GitHub username, and an optional demo image or GIF path.
+5. **Git**. Without `.git/`: initialize a repository and commit the generated files (files that existed before this run stay untracked for the user to review and add)? With an existing repository: install the commit-msg hook that removes Co-Authored-By lines (it leaves a different existing hook or a hook manager alone and prints the line to add)?
+
+## Artifacts
+
+Create only the directories the selected artifacts need (`mkdir -p`).
+
+| Artifact | Template (file + section) | Tier | Adapt |
+|---|---|---|---|
+| `CLAUDE.md` | claude-md-template.md, Root CLAUDE.md Template | Core | The real commands in Key Commands, and the fast check in its "Verify a change" line |
+| `<module>/CLAUDE.md` | claude-md-template.md, Module CLAUDE.md Template | Core | Only for a module with rules, invariants, or gotchas the code does not show; for a new project, only where the answers gave such rules |
+| Source directories | none | Core, new project only | The layout from the answers |
+| `.claude/settings.json` | settings-json-template.md | Core | `permissions.allow` gets the detected test command and fast check as `Bash(<command> *)` (empty when none); register the Core hooks and each selected Optional hook |
+| `.claude/hooks/secret-scan.sh` | hook-scripts.md, secret-scan.sh | Core | None |
+| `.claude/hooks/check-doc-sync.sh` | hook-scripts.md, check-doc-sync.sh | Core | `SOURCE_ROOTS` set to the detected source roots |
+| `scripts/setup.sh` | scripts-templates.md, setup.sh | Core | Detected prerequisites and install commands |
+| `scripts/install-hooks.sh` | scripts-templates.md, install-hooks.sh | Core | None |
+| `docs/architecture.md` | docs-templates.md, Architecture Document; writing-style-guide.md | Core | Components from the source, IaC, Dockerfiles, and dependency files, or for a new project from the answers and Plan-mode context; only the layers that apply |
+| `docs/onboarding.md` | docs-templates.md, Onboarding Document | Core | Prerequisites and setup from the detected build system |
+| `docs/decisions/.template.md` | docs-templates.md, ADR Template | Core | None |
+| `docs/runbooks/.template.md` | docs-templates.md, Runbook Template | Core | None |
+| `docs/api-reference.md` | docs-templates.md, API Reference Document | Core, only when routes, handlers, or controllers are detected | Endpoints from the code |
+| `docs/reference/<layer>.md`, `docs/reference/INDEX.md` | reference-doc-template.md, `## Layer: <layer>` | Core, selected layers | See Implementation reference docs |
+| `tests/run-all.sh`, `tests/hooks/test-hooks.sh`, `tests/hooks/test-secret-patterns.sh`, `tests/structure/test-plugin-structure.sh`, `tests/fixtures/secret-samples.txt`, `tests/fixtures/false-positives.txt` | tests-templates.md | Core | Uncomment the structure tests' version-consistency block only when the project has a version file, pointed at that file |
+| `README.md` | readme-template.md; writing-style-guide.md | Core | Detected facts and the README answers |
+| `CHANGELOG.md` | changelog-template.md; writing-style-guide.md | Core | Entries from tags and history (`git tag --sort=-v:refname`, `git log`), or an empty `[Unreleased]` in both languages for a new project |
+| `.env.example` | docs-templates.md, Environment Template | Core | Variables the code reads, with no real values |
+| `.gitignore` | none | Core | Patterns for the detected language, plus `.env`, `.claude/settings.local.json`, and `.claude/worktrees/` (Claude Code's linked worktrees, which `git add` must not pick up) |
+| `.editorconfig` | none | Core | The indentation the code already uses; LF line endings and a final newline |
+| `.mcp.json` | mcp-json-template.md, Base Template | Core | `{"mcpServers": {}}` unless the user asked for servers; detected integrations (GitHub remote, database config) go on the summary's MCP line |
+| `.claude/commands/test-all.md` | skills-templates.md, Test All Command | Default | Detected test command |
+| `.claude/commands/review.md` | skills-templates.md, Review Command | Default | None |
+| `.claude/agents/code-reviewer.md` | agents-templates.md, Code Reviewer Agent | Default, with /review | None |
+| `.claude/commands/deploy.md` | skills-templates.md, Deploy Command | Optional, pre-checked on a deploy signal | Detected deploy method |
+| `.claude/agents/security-auditor.md` | agents-templates.md, Security Auditor Agent | Optional | None |
+| `.claude/skills/code-review/SKILL.md` | skills-templates.md, Code Review Skill | Optional, instead of `/review` and code-reviewer | Risk areas from the answers, otherwise a TODO |
+| `.claude/skills/refactor/SKILL.md` | skills-templates.md, Refactor Skill | Optional | Test command |
+| `.claude/skills/release/SKILL.md` | skills-templates.md, Release Skill | Optional | Version files and test command |
+| `.claude/hooks/session-context.sh` | hook-scripts.md, session-context.sh | Optional, only with a detected fact to report | Per the template's Customize note |
+| `.claude/hooks/notify.sh` | hook-scripts.md, notify.sh | Optional | None |
+| `.claude/hooks/verify-on-stop.sh` | hook-scripts.md, verify-on-stop.sh (Stop Hook, opt-in) | Optional, only in a git repository (existing, or created per question 5) | Replace only the default `npm run lint` inside `${VERIFY_CMD:-...}` with the fast check, never a slow suite; keep the `${VERIFY_CMD:-...}` form, which the generated tests override |
+
+A selected component the Tier column rules out goes under Skipped with the reason.
+
+### Implementation reference docs
+
+For each selected layer, write `docs/reference/<layer>.md` from the fenced block under `## Layer: <layer>`, filling `{{COMPONENTS_TABLE}}` with rows for the detected paths and `{{CODE_POINTERS_AUTO}}` with the top 1-3 detected files.
+
+Then write `docs/reference/INDEX.md` and upsert the `## Implementation References` block between the `<!-- AUTO-MANAGED:references -->` markers in the root `CLAUDE.md`, in the formats of the `## INDEX.md` and `## Root CLAUDE.md Block` sections of `${CLAUDE_PLUGIN_ROOT}/skills/project-scaffolder/references/reference-doc-template.md`. In INDEX.md, a layer that detection found but the user deselected gets the status `declined` (`제외`), so `/sync-docs` stops recommending it.
+
+## Finish
+
+Run these in order.
+
+1. Make the scripts executable:
+
+   ```bash
+   chmod +x .claude/hooks/*.sh scripts/*.sh tests/run-all.sh tests/*/*.sh
    ```
-6. Category headings stay in English in both sections (Keep a Changelog convention; do not translate `Added`, `Fixed`, etc.)
-7. English entries use imperative verbs ("Add plugin system", "Fix symlink error")
-8. Korean entries use 명사형 종결 ("플러그인 시스템 추가", "심링크 오류 수정")
-9. Breaking changes get `**BREAKING:**` prefix in both sections
-10. Issue/PR references appended in parentheses: `([#42](https://github.com/<user>/<repo>/pull/42))`
 
-If this is a new project with no tags or history, create the template with an empty `[Unreleased]` section in both language blocks.
+2. Run the checks:
 
-### Step 13 Validation Checklist
+   ```bash
+   bash tests/run-all.sh
+   python3 -m json.tool .mcp.json > /dev/null
+   bash ${CLAUDE_PLUGIN_ROOT}/scripts/harness-check.sh --contract-only .
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-bilingual.py <each bilingual file this run created or updated>
+   ```
 
-Before completing, verify the generated CHANGELOG satisfies:
-- [ ] Title is exactly `# Changelog`
-- [ ] Both language sections contain the introductory statement (English text in `# English`, Korean text in `# 한국어`)
-- [ ] Both language sections contain `## [Unreleased]` heading
-- [ ] Versions appear in reverse chronological order in both sections
-- [ ] Category headings (`### Added`, `### Fixed`, etc.) are in English in both sections (no translation)
-- [ ] Dates use ISO 8601 (`YYYY-MM-DD`)
-- [ ] Reference links at the bottom of each section point to GitHub `compare/...` URLs (or `releases/tag/...` for the first version)
-- [ ] Language toggle uses ASCII anchors (`#english`, `#korean`) with explicit sentinel tags
-- [ ] No emojis, no commit-log copy-paste, no vague phrases ("various fixes")
-- [ ] Internal-only changes (test additions, CI changes) are excluded
+   The bilingual files are `README.md`, `CHANGELOG.md`, `docs/architecture.md`, `docs/decisions/.template.md`, `docs/runbooks/.template.md`, `docs/reference/INDEX.md`, and each `docs/reference/<layer>.md`. Name each one this run created or updated, leaving out any `(existing, kept)`; do not pass a glob, because one that matches nothing reaches the checker as a literal path and it exits 2. Without python3, skip the JSON and bilingual checks and report them `unavailable`.
 
-## Step 14: Generate Other Supporting Files
+   If a check fails on a file this run created or updated, fix that file and run the check again. Report these failures instead of fixing them:
+   - A bilingual-check issue in content that existed before this run (a released CHANGELOG section, the user's own README prose): report it as pre-existing, because the templates' Update Rules keep that content unchanged.
+   - A test or contract failure caused by a kept pre-v2.3 hook or an older settings.json registration: leave the generated tests and those registrations as they are, because `/project-init:migrate-hooks` migrates them with a backup. Put it first in Next.
+   - A failure in any other file of the user's: do not edit it to make a check pass.
 
-Create (only if they don't already exist):
-- `.gitignore` with patterns appropriate for the detected language (include `.env`, `settings.local.json`)
-- `.env.example` from [references/docs-templates.md](../skills/project-scaffolder/references/docs-templates.md) - adapted to project type
-- `.editorconfig` with sensible defaults
+   If verify-on-stop.sh was generated, run its `VERIFY_CMD` once; if it already fails on the current code, say so in the summary, because the gate hands that failure back after every turn that changes the tree.
 
-Read [references/scripts-templates.md](../skills/project-scaffolder/references/scripts-templates.md) and create:
-- `scripts/setup.sh` - Project setup for new developers
-- `scripts/install-hooks.sh` - Git hooks installer
+3. Git, only as the user answered:
+   - **New repository** (no `.git/` before this run): `git init`, then `bash scripts/install-hooks.sh`, then `git add` with the paths this run created, then `git commit -m "chore: initialize Claude Code project structure"`. Name the paths instead of `git add -A`, which would also stage anything else in the directory, such as a `.env`.
+   - **Existing repository**: run `bash scripts/install-hooks.sh` if the user agreed. Do not commit, because the working tree may hold the user's uncommitted work; show `git status --short` for the generated paths instead.
 
-Make scripts executable:
+   If `install-hooks.sh` exits 1 (a hook manager such as husky, or a different commit-msg hook), continue and report the line it printed on the summary's Git line.
 
-```bash
-chmod +x scripts/*.sh
+4. Report the summary.
+
+## Summary
+
+End with this report and nothing longer; list each path once, under the first heading that applies:
+
+```text
+Created:  <path>, ...
+Adapted:  <path> (<what was adapted>), ...          e.g. .claude/hooks/check-doc-sync.sh (SOURCE_ROOTS="app lib")
+Kept:     <path> (existing, kept), ...
+Skipped:  <component or path> (<reason>), ...       e.g. security-auditor (not selected), docs/api-reference.md (no API detected)
+TODO:     <path>: <what to fill in>, ...
+Checks:   tests <passed>/<total>; contract check <clean | findings>; JSON <valid | unavailable>; bilingual check <clean | findings | pre-existing: <file>:<line>, ... | unavailable>
+Git:      <initialized and committed <short sha> (generated files only; left untracked: <pre-existing top-level paths>, review and `git add` them yourself) | existing repository: review `git status` and commit when ready | skipped>; commit-msg hook <installed | not installed: add `<line install-hooks.sh printed>` to <hook manager or existing hook>>
+MCP:      <`claude mcp add --scope project ...` suggestions for detected integrations | none>
+
+Next: <run /project-init:migrate-hooks, then> restart the Claude Code session so the new agents, skills, and MCP configuration load, then run /project-init:health-check.
 ```
 
-## Step 15: Initialize Git (Optional)
-
-If `.git/` doesn't already exist, ask the user if they want to initialize:
-
-```bash
-git init
-```
-
-Install Git hooks via the installer script:
-
-```bash
-bash scripts/install-hooks.sh
-```
-
-This installs the `commit-msg` hook that removes all Co-Authored-By lines from commit messages, preventing Claude and other AI assistants from appearing as contributors.
-
-Then stage and create initial commit:
-
-```bash
-git add -A
-git commit -m "Initial project structure for Claude Code"
-```
-
-## Step 16: Generate Test Framework
-
-Read [references/tests-templates.md](../skills/project-scaffolder/references/tests-templates.md) and create:
-
-```bash
-mkdir -p tests/hooks tests/structure tests/fixtures
-```
-
-- `tests/run-all.sh` - Test runner with TAP-style output and assertion functions
-- `tests/hooks/test-hooks.sh` - Hook existence, permissions, registration, behavior
-- `tests/hooks/test-secret-patterns.sh` - Secret pattern true positive / false positive tests
-- `tests/structure/test-plugin-structure.sh` - Manifest validation, version sync, file existence
-- `tests/fixtures/secret-samples.txt` - True positive samples
-- `tests/fixtures/false-positives.txt` - False positive samples
-
-**For existing projects**: Adapt structure tests to validate the actual project's files, manifests, and CLAUDE.md sections.
-
-Make test runner executable:
-
-```bash
-chmod +x tests/run-all.sh tests/hooks/*.sh tests/structure/*.sh
-```
-
-## Step 17: Summary
-
-Display the created structure and explain the auto-sync mechanisms:
-
-1. **CLAUDE.md Auto-Sync Rules** - Plan mode exit triggers doc updates
-2. **Hook (check-doc-sync.sh)** - Write/Edit triggers missing doc detection (with parent-dir walking)
-3. **Hook (secret-scan.sh)** - PreToolUse blocks commits containing secrets
-4. **Hook (session-context.sh)** - Session start loads project context
-5. **Hook (commit-msg)** - Auto-removes Co-Authored-By lines (AI contributor exclusion)
-6. **Skill (/sync-docs)** - Manual full documentation sync with quality scoring
-7. **Commands (/review, /test-all, /deploy)** - Common development workflows with error recovery
-8. **Agents (code-reviewer, security-auditor)** - Parallel analysis agents with structured output schemas
-9. **README.md** - Bilingual (EN/KR) project documentation with shields.io badges
-10. **CHANGELOG.md** - Bilingual (EN/KR) change log following Keep a Changelog convention
-11. **Test Suite (tests/run-all.sh)** - Automated harness validation
-12. **Deny List (settings.json)** - Dangerous commands explicitly blocked
-
-If existing project was detected, highlight what was adapted vs created fresh.
+Write the `<run /project-init:migrate-hooks, then>` part only when the contract check reported findings.

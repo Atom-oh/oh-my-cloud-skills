@@ -1,6 +1,6 @@
 # Documentation Templates
 
-Templates for `docs/` files.
+Templates for `docs/` files. Bilingual layout, tone, formatting, and Mermaid diagram rules come from `writing-style-guide.md` in this directory; each template below adds only the structure specific to its document.
 
 ---
 
@@ -8,23 +8,11 @@ Templates for `docs/` files.
 
 Path: `docs/architecture.md`
 
-This template generates a production-grade bilingual architecture document with Mermaid flowchart diagrams, layer-based component descriptions, and infrastructure tables.
-
-### Generation Rules
-
-When generating `docs/architecture.md`, Claude should:
-
-1. **Detect** the project's actual components, tech stack, and directory layout
-2. **Organize** components into architectural layers (see Layer Categories below)
-3. **Draw** a Mermaid flowchart (`flowchart TB`) showing component connections, with one `subgraph` per layer
-4. **Create** a Data Flow Summary as a Mermaid `flowchart LR` chain showing the critical path
-5. **List** infrastructure resources in tables if IaC files are detected
-6. **Record** key design decisions explaining WHY, not just WHAT
-7. **Include** both Korean and English sections with identical content
+`docs/architecture.md` describes components that exist in the repo, grouped by the Layer Categories below (only the layers that apply), with a full `flowchart TB` diagram, a `flowchart LR` Data Flow Summary of the critical path, infrastructure resources in tables when IaC is present, and Key Design Decisions that say why. Omit a section whose condition is not met, such as Infrastructure without IaC or Operations without runbooks, instead of leaving placeholders in it.
 
 ### Template Structure
 
-```markdown
+````markdown
 # Architecture
 
 <a href="#english"><img src="https://img.shields.io/badge/lang-English-blue.svg" alt="English"></a>
@@ -48,18 +36,21 @@ When generating `docs/architecture.md`, Claude should:
 - **<directory/>** -- <description>. <key detail>.
 - **<directory/>** -- <description>. <key detail>.
 
-<!-- Repeat for each layer -->
-
 ## Full Architecture Diagram
 
-<!-- Mermaid flowchart TB with one subgraph per layer -->
-<!-- Group related components in labeled subgraphs -->
-<!-- Show data flow direction with arrows (-->) -->
+```mermaid
+flowchart TB
+  subgraph <layer_id>[<Layer Name>]
+    <A>[<Component>] --> <B>[<Component>]
+  end
+```
 
 ## Data Flow Summary
 
-<!-- Mermaid flowchart LR showing the critical path -->
-<!-- Example: SDK --> APIGW --> Lambda --> Firehose --> S3 --> Athena --> Dashboard -->
+```mermaid
+flowchart LR
+  <Entry> --> <Step> --> <Store>[(<Store>)]
+```
 
 ## Infrastructure
 
@@ -76,12 +67,10 @@ When generating `docs/architecture.md`, Claude should:
 
 ## Key Design Decisions
 
-- <Decision> -- <Why this choice was made>
-- <Decision> -- <Why this choice was made>
+- <What was decided> -- <Why this choice was made over the alternatives>
 
 ## Operations
-- Deployment: see [docs/runbooks/deploy-production.md](runbooks/deploy-production.md)
-- Incident Response: see [docs/runbooks/incident-response.md](runbooks/incident-response.md)
+- <Runbook title>: see [docs/runbooks/<name>.md](runbooks/<name>.md)
 
 ---
 
@@ -89,8 +78,57 @@ When generating `docs/architecture.md`, Claude should:
 
 # 한국어
 
-<!-- Same structure as English section, in Korean -->
+## 시스템 개요
+
+<프로젝트 이름>은 <아키텍처 요약>입니다.
+<핵심 기술 요약>.
+<주요 데이터 흐름 요약>.
+
+## 구성 요소
+
+### <계층 이름> 계층
+- **<directory/>** -- <설명>. <핵심 세부 사항>.
+- **<directory/>** -- <설명>. <핵심 세부 사항>.
+
+## 전체 아키텍처 다이어그램
+
+```mermaid
+flowchart TB
+  subgraph <layer_id>[<Layer Name>]
+    <A>[<Component>] --> <B>[<Component>]
+  end
 ```
+
+## 데이터 흐름 요약
+
+```mermaid
+flowchart LR
+  <Entry> --> <Step> --> <Store>[(<Store>)]
+```
+
+## 인프라
+
+### 배포 리전
+- <region> (<위치>)
+
+### 모듈 / 리소스
+| 모듈 | 리소스 | 설명 |
+|------|--------|------|
+| <module> | <resources> | <설명> |
+
+### 배포된 리소스
+- <endpoint_name>: `<url_pattern>`
+
+## 주요 설계 결정
+
+- <결정 내용> -- <다른 대안 대신 이 방식을 택한 이유>
+
+## 운영
+- <런북 제목>: [docs/runbooks/<name>.md](runbooks/<name>.md) 참조
+````
+
+- Components: one bullet per directory or service that exists; the layer names come from the Layer Categories table.
+- Operations: link only runbooks that exist in `docs/runbooks/`, and omit the section when there are none, because a link to a runbook that was never written sends an operator nowhere during an incident.
 
 ### Layer Categories
 
@@ -107,32 +145,13 @@ Organize components into these standard layers (use only the layers that apply):
 | Security Layer | Auth and protection | WAF, IAM, Cognito, secrets management |
 | AI/ML Layer | Intelligence | Bedrock, SageMaker, agent systems |
 
-### Mermaid Flowchart Style Guide
+### Diagrams
 
-Use Mermaid flowchart inside a fenced ```mermaid code block (GitHub renders it natively):
+Direction, subgraphs, node shapes, English labels, and identical diagrams in both halves follow the writing-style-guide Diagram Rules. What an architecture document adds:
 
-```mermaid
-flowchart TB
-  subgraph layer_a[Layer Name]
-    A[Component A] --> B[Component B]
-  end
-  subgraph layer_b[Next Layer]
-    C[Component C]
-  end
-  B --> C
-```
-
-Rules:
-- Use `flowchart TB` for the full architecture diagram
-- Each layer gets its own `subgraph <id>[<Layer Name>]`
-- One component per node; arrows (`-->`) show data flow direction
-- Use node shapes meaningfully: `[Component]` for services/processes, `[(Store)]` for databases/storage, `([Entry Point])` for external entry points
-- Include key details in node labels where they matter (ports, protocols, formats)
-- Node and edge labels stay in English in both language sections; the diagram is duplicated identically (see writing-style-guide.md Diagram Rules)
-
-### Data Flow Summary Style
-
-Use a Mermaid `flowchart LR` chain showing the critical path:
+- The full diagram has one `subgraph` per layer from the Layer Categories table, with the same names as the Components section.
+- Put key details in node labels where they matter: ports, protocols, formats (for example `APIGW[API Gateway HTTPS 443]`).
+- The Data Flow Summary is the critical path only, as one left-to-right chain with branches where the path forks:
 
 ```mermaid
 flowchart LR
@@ -146,12 +165,12 @@ flowchart LR
 
 ### Key Design Decisions Style
 
-Each decision should explain WHY, not WHAT:
+Each decision explains why, not only what:
 
 - Good: "Use Firehose as buffer to support high throughput without Lambda throttling"
 - Bad: "Use Kinesis Firehose"
 
-Format: `<What was decided> -- <Why this choice was made over alternatives>`
+Format: `<What was decided> -- <Why this choice was made over alternatives>`. Link the ADR when one exists.
 
 ---
 
@@ -159,7 +178,7 @@ Format: `<What was decided> -- <Why this choice was made over alternatives>`
 
 Path: `docs/decisions/.template.md`
 
-**Style**: Follow [writing-style-guide.md](writing-style-guide.md) for bilingual structure and formatting rules.
+Numbering: the highest existing number plus one, as `ADR-NNN-concise-title.md` (for example `ADR-001-use-postgresql.md`).
 
 ```markdown
 # ADR-000: Title
@@ -177,7 +196,7 @@ Path: `docs/decisions/.template.md`
 Proposed | Accepted | Deprecated | Superseded
 
 ## Context
-<!-- Background explaining why a decision is needed -->
+<!-- The problem and the forces behind it, not the chosen solution -->
 
 ## Options Considered
 
@@ -190,7 +209,7 @@ Proposed | Accepted | Deprecated | Superseded
 - **Cons**: <disadvantages>
 
 ## Decision
-<!-- The decision that was made and the reasoning -->
+<!-- The chosen option and why it won over the others -->
 
 ## Consequences
 
@@ -213,7 +232,7 @@ Proposed | Accepted | Deprecated | Superseded
 제안됨 | 승인됨 | 더 이상 사용되지 않음 | 대체됨
 
 ## 배경
-<!-- 결정이 필요한 이유를 설명하는 배경 -->
+<!-- 선택한 해법이 아니라, 해결해야 할 문제와 그 배경 -->
 
 ## 검토한 옵션
 
@@ -226,7 +245,7 @@ Proposed | Accepted | Deprecated | Superseded
 - **단점**: <단점>
 
 ## 결정
-<!-- 내려진 결정과 그 근거 -->
+<!-- 선택한 옵션과 다른 옵션 대신 선택한 이유 -->
 
 ## 영향
 
@@ -240,25 +259,11 @@ Proposed | Accepted | Deprecated | Superseded
 - <관련 문서, 이슈, 또는 논의 링크>
 ```
 
-### ADR Numbering Convention
-
-1. List existing ADRs: `find docs/decisions -name 'ADR-*.md' -not -name '.template.md' | sort`
-2. Take the highest number and add 1
-3. Format: `ADR-NNN-concise-title.md`
-
-### Example ADRs
-
-- `ADR-001-use-postgresql.md`
-- `ADR-002-rest-api-design.md`
-- `ADR-003-adopt-typescript.md`
-
 ---
 
 ## Runbook Template
 
 Path: `docs/runbooks/.template.md`
-
-**Style**: Follow [writing-style-guide.md](writing-style-guide.md) for bilingual structure and formatting rules.
 
 ```markdown
 # Runbook: Title
@@ -279,25 +284,25 @@ Path: `docs/runbooks/.template.md`
 <!-- Circumstances that trigger this runbook -->
 
 ## Prerequisites
-<!-- Required permissions, tools, etc. -->
+<!-- Required permissions, tools, access -->
 
 ## Procedure
 
 ### 1. <First Phase>
-<!-- Detailed steps with copy-paste ready commands -->
+<!-- Copy-paste ready commands; after each state change, a command that shows it worked -->
 
 ### 2. <Second Phase>
-<!-- Detailed steps with copy-paste ready commands -->
+<!-- Copy-paste ready commands; after each state change, a command that shows it worked -->
 
 ## Verification
 - [ ] <check 1>
 - [ ] <check 2>
 
 ## Rollback
-<!-- Recovery procedure if something goes wrong -->
+<!-- Commands that undo each state-changing step; say which steps cannot be undone -->
 
 ## Notes
-- Last verified: YYYY-MM-DD
+- Last verified: <!-- YYYY-MM-DD of the last real run, or "not yet run" -->
 
 ---
 
@@ -312,26 +317,28 @@ Path: `docs/runbooks/.template.md`
 <!-- 이 런북을 따라야 하는 상황 -->
 
 ## 사전 요구 사항
-<!-- 필요한 권한, 도구 등 -->
+<!-- 필요한 권한, 도구, 접근 권한 -->
 
 ## 절차
 
 ### 1. <첫 번째 단계>
-<!-- 복사-붙여넣기 가능한 명령어와 상세 단계 -->
+<!-- 복사-붙여넣기 가능한 명령어; 상태를 바꾼 뒤마다 결과를 확인하는 명령어 -->
 
 ### 2. <두 번째 단계>
-<!-- 복사-붙여넣기 가능한 명령어와 상세 단계 -->
+<!-- 복사-붙여넣기 가능한 명령어; 상태를 바꾼 뒤마다 결과를 확인하는 명령어 -->
 
 ## 검증
 - [ ] <확인 1>
 - [ ] <확인 2>
 
 ## 롤백
-<!-- 문제 발생 시 복구 절차 -->
+<!-- 상태를 바꾼 각 단계를 되돌리는 명령어; 되돌릴 수 없는 단계는 명시 -->
 
 ## 참고
-- 최종 검증일: YYYY-MM-DD
+- 최종 검증일: <!-- 마지막으로 실제 실행한 날짜(YYYY-MM-DD) 또는 "아직 실행 안 함" -->
 ```
+
+- Notes: `Last verified` records the last time someone ran the procedure end to end, not the date the runbook was written, because an operator trusts a dated line as proof that the commands work.
 
 ### Recommended Runbooks
 
@@ -355,7 +362,7 @@ Path: `docs/onboarding.md`
 ## Quick Start
 
 ### 1. Prerequisites
-<!-- List required tools, accounts, and access -->
+<!-- Required tools, accounts, and access -->
 - [ ] <tool/runtime> installed (version X+)
 - [ ] Repository access granted
 - [ ] Environment variables configured (see .env.example)
@@ -373,10 +380,7 @@ Path: `docs/onboarding.md`
 - Review `docs/decisions/` for architectural decisions
 
 ## Development Workflow
-<!-- Day-to-day development process -->
-- Branch naming: `feat/`, `fix/`, `docs/`, `refactor/`
-- Commit convention: Conventional Commits
-- PR process: <describe>
+<!-- Day-to-day process as this repo actually runs it: branch naming, commit convention (see git log and any commit-msg hook), PR process. Leave out what the repo does not show. -->
 
 ## Key Concepts
 <!-- Domain-specific concepts new developers need to know -->
@@ -394,7 +398,7 @@ Path: `docs/onboarding.md`
 
 Path: `docs/api-reference.md`
 
-```markdown
+````markdown
 # API Reference
 
 ## Base URL
@@ -408,7 +412,7 @@ Path: `docs/api-reference.md`
 ### <Resource Name>
 
 #### List <Resources>
-```
+```http
 GET /resources
 ```
 
@@ -420,14 +424,14 @@ GET /resources
 **Response** `200 OK`
 
 #### Get <Resource>
-```
+```http
 GET /resources/:id
 ```
 
 **Response** `200 OK`
 
 #### Create <Resource>
-```
+```http
 POST /resources
 ```
 
@@ -451,7 +455,7 @@ POST /resources
 
 ## Rate Limits
 <!-- Rate limiting policy -->
-```
+````
 
 ---
 
@@ -479,14 +483,12 @@ JWT_EXPIRY=3600
 # External Services
 # API_KEY=
 # WEBHOOK_URL=
-
-# Claude Code Notifications (optional)
-# CLAUDE_NOTIFY_WEBHOOK=
 ```
 
 ### Rules
 
-- `.env.example` is committed to git (contains only placeholder values)
-- `.env` is NEVER committed (listed in `.gitignore`)
+- `.env.example` is committed to git and contains only placeholder values
+- `.env` is never committed; it is listed in `.gitignore` because it holds real secrets
 - Secrets use empty values or comments in `.env.example`
 - Each variable includes a comment explaining its purpose
+- Only variables the project's code reads belong here. `CLAUDE_NOTIFY_WEBHOOK` for the optional notify.sh hook does not: the hook reads it from the environment, never from `.env`, so its Configure note in `hook-scripts.md` is the one place that says where to set it.
