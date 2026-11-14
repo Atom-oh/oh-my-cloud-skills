@@ -6,11 +6,8 @@
     "name": "atomoh"
   },
   "agents": [
-    "./agents/presentation-agent.md",
     "./agents/reactive-presentation-agent.md",
     "./agents/architecture-diagram-agent.md",
-    "./agents/animated-diagram-agent.md",
-    "./agents/document-agent.md",
     "./agents/gitbook-agent.md",
     "./agents/workshop-agent.md",
     "./agents/brochure-agent.md",

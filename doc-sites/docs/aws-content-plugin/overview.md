@@ -34,7 +34,6 @@ Create web presentations, editable PowerPoint decks, diagrams, documents, worksh
 | Native editable AWS light PowerPoint | aws-light-fcd |
 | AWS Draw.io architecture | architecture-diagram |
 | Animated traffic or scenario diagram | animated-diagram |
-| Technical report or comparison | document-agent |
 | GitBook documentation | gitbook |
 | Workshop Studio labs | workshop-creator |
 | Product/solution landing page | brochure |

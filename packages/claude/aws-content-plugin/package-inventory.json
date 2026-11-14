@@ -4,15 +4,11 @@
   "version": "3.0.10",
   "files": {
     ".claude-plugin/plugin.json": {
-      "sha256": "688f80933496365fc53d1f4b92c3bda9f5b3fbbf0421aa69c2e83b2336684e78",
+      "sha256": "7cf821ab7af582ddb9666c52e72e8b06254026a0a1eb09005919fb563945c1ab",
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "074683d6ed067d261fe125954d98d1c20c95c8a6067f5138d15b969fb22271ff",
-      "executable": false
-    },
-    "agents/animated-diagram-agent.md": {
-      "sha256": "f6c83bf9ed26900f6eeca203611ae323ece293ded422f983cf164e7e092ef457",
+      "sha256": "b4bac03ec49cb33381979cb877fa5ed3e8e4a38291f1acf72838c3318a7b2dcd",
       "executable": false
     },
     "agents/architecture-diagram-agent.md": {
@@ -24,19 +20,11 @@
       "executable": false
     },
     "agents/content-review-agent.md": {
-      "sha256": "774bdaada9a0e9ef506f0e9dfacf0ae889e971313aa0269edc0b98c7c2fe9aba",
-      "executable": false
-    },
-    "agents/document-agent.md": {
-      "sha256": "7d6e7741153a0b28d17505d4ad4672ad90aa66c54913bd02ff23075e1ea26185",
+      "sha256": "f183e8a848b533e217407a720d92fc31ff88d17fa8ef4e38b38c17bd7f373533",
       "executable": false
     },
     "agents/gitbook-agent.md": {
-      "sha256": "e9050a50a95365d18f14c2054ea9f2ecaa05aa86d30f1f7efa42d037fd8d6d81",
-      "executable": false
-    },
-    "agents/presentation-agent.md": {
-      "sha256": "f0323ed1c2b2f9d94b56460d8136012d56727abd80fe9aeb2c2e39c358deaa70",
+      "sha256": "75df7e1e8758f751cfa7bf0397717eb3bbd3dcf78b9f1866defb4523456acdea",
       "executable": false
     },
     "agents/reactive-presentation-agent.md": {
@@ -444,7 +432,7 @@
       "executable": false
     },
     "skills/gitbook/references/component-patterns.md": {
-      "sha256": "dd24b80e218701c94a9fec8d293e0972e1a33175b10360dfb0c3413577f0deda",
+      "sha256": "b1d70a6864a462db5b62fa3450530f0638fe9f35e7625298f29d86bd58a79fe1",
       "executable": false
     },
     "skills/gitbook/references/structure-guide.md": {
@@ -456,7 +444,7 @@
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
-      "sha256": "e272c4af307961329ace61922ace9f548cec27a197e61efab118f93362970bd9",
+      "sha256": "3f7f62a00e5d9f6afb5d15abef1482968d0aebc44b080463e19e7427e78ddff3",
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
@@ -17352,7 +17340,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/remarp-format-guide.md": {
-      "sha256": "a8e6f1b09bbc4834f880cc2af80a9a2a0e441d1ba2fbb994f7bcb98df550ccb7",
+      "sha256": "1dd5b2bd4fd226e719b4cc40eb80aebd7d5709658cb9f6eb40ca6e4500013df6",
       "executable": false
     },
     "skills/reactive-presentation/references/slide-patterns.md": {
@@ -17396,7 +17384,7 @@
       "executable": false
     },
     "skills/reactive-presentation/scripts/remarp_to_slides.py": {
-      "sha256": "febe7fec7271f1eca3c2354c4633eb515bb9bf9ff783c3f4538d06d46f34ef7f",
+      "sha256": "3ab39f27ab7e07ef5eb42490b4e6054c9574a50cdf167e524857b76e6c522bac",
       "executable": false
     },
     "skills/slide-fix/SKILL.md": {

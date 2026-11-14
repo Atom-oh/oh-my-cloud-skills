@@ -165,9 +165,7 @@ architecture, labels, legend, and working reset/replay controls.
 
 ## Documents
 
-The [document agent](plugins/aws-content-plugin/agents/document-agent.md) writes
-technical reports and solution comparisons with evidence, diagrams, and useful
-references. [brochure](plugins/aws-content-plugin/skills/brochure/SKILL.md) creates a
+[brochure](plugins/aws-content-plugin/skills/brochure/SKILL.md) creates a
 product or solution landing page; [gh-home](plugins/aws-content-plugin/skills/gh-home/SKILL.md)
 creates a personal profile or portfolio. Both produce responsive HTML.
 

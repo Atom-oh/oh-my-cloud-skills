@@ -253,7 +253,6 @@ export const DEFAULT_POLICY: ModelPolicy = {
     'co-agent:pr-autofix-planner': 'opus',
     'co-agent:pr-autofix-implementer': 'opus',
     'aws-content-plugin:content-review-agent': 'opus',
-    'aws-content-plugin:presentation-agent': 'sonnet',
   },
 }
 

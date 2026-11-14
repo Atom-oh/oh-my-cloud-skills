@@ -9,13 +9,6 @@
       ]
     },
     {
-      "name": "animated-diagram-agent",
-      "path": ".codex-plugin/skills/animated-diagram-agent/SKILL.md",
-      "sources": [
-        "agents/animated-diagram-agent.md"
-      ]
-    },
-    {
       "name": "architecture-diagram",
       "path": ".codex-plugin/skills/architecture-diagram/SKILL.md",
       "sources": [
@@ -58,13 +51,6 @@
       ]
     },
     {
-      "name": "document-agent",
-      "path": ".codex-plugin/skills/document-agent/SKILL.md",
-      "sources": [
-        "agents/document-agent.md"
-      ]
-    },
-    {
       "name": "gh-home",
       "path": ".codex-plugin/skills/gh-home/SKILL.md",
       "sources": [
@@ -83,13 +69,6 @@
       "path": ".codex-plugin/skills/gitbook-agent/SKILL.md",
       "sources": [
         "agents/gitbook-agent.md"
-      ]
-    },
-    {
-      "name": "presentation-agent",
-      "path": ".codex-plugin/skills/presentation-agent/SKILL.md",
-      "sources": [
-        "agents/presentation-agent.md"
       ]
     },
     {

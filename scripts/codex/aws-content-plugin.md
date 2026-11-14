@@ -1,8 +1,8 @@
 # Content workflow in Codex
 
 Shared skill and agent procedures are available as Codex skills. For a generic
-presentation request, use `presentation-agent` to select native PPTX or web slides.
-Use `document-agent` for technical Markdown; other formats have named skills.
+presentation request, use `reactive-presentation-agent` for web slides or the `aws-light-fcd`
+skill for native PPTX. Technical Markdown has no dedicated agent; other formats have named skills.
 
 For every produced artifact, load `content-review-agent` and apply its actual
 rubric before declaring completion or publishing. The gate is PASS at 85/100,

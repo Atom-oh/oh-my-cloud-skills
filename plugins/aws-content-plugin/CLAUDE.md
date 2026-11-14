@@ -12,12 +12,12 @@ Maintain repository prose in English; generated artifacts follow the user's lang
 ### Presentation Workflow
 ```
 # Web/HTML (interactive):
-presentation-agent (dispatcher) → reactive-presentation-agent → validate (rejection loop) → build → content-review-agent → Deploy (GitHub Pages)
+reactive-presentation-agent → validate (rejection loop) → build → content-review-agent → Deploy (GitHub Pages)
 # Native PowerPoint (.pptx):
-presentation-agent (dispatcher) → aws-light-fcd skill (PptxGenJS, AWS Light theme) → check_pptx.py (rejection loop, ≥80 AND zero geometry findings) → embed_fonts.py → content-review-agent → .pptx
+aws-light-fcd skill (PptxGenJS, AWS Light theme) → check_pptx.py (rejection loop, ≥80 AND zero geometry findings) → embed_fonts.py → content-review-agent → .pptx
 ```
 > After authoring in Remarp, run the `remarp_to_slides.py validate` rejection loop: there must be zero CRITICAL findings before building.
-> **PPTX branch**: on a "pptx/PowerPoint/ppt" keyword or when the user picks PPTX, the dispatcher routes to the `aws-light-fcd` skill (python-pptx is not hand-written because the skill owns the validated design system and font embedding). The single gate in the pipeline above is `check_pptx.py`: score ≥80 **and** zero `[geometry]` findings — a geometry defect fails regardless of score.
+> **PPTX branch**: on a "pptx/PowerPoint/ppt" keyword or when the user picks PPTX, the `aws-light-fcd` skill is used directly (python-pptx is not hand-written because the skill owns the validated design system and font embedding). The single gate in the pipeline above is `check_pptx.py`: score ≥80 **and** zero `[geometry]` findings — a geometry defect fails regardless of score.
 
 ### Architecture Diagram Workflow
 ```
@@ -30,12 +30,7 @@ architecture-diagram-agent → layout_aws.py (YAML spec → .drawio) → validat
 
 ### Animated Diagram Workflow
 ```
-animated-diagram-agent → .html + .svg → (embed in presentation/gitbook or standalone)
-```
-
-### Document Workflow
-```
-document-agent → content-review-agent → .md output
+animated-diagram skill → .html + .svg → (embed in presentation/gitbook or standalone)
 ```
 
 ### GitBook Workflow
@@ -116,11 +111,8 @@ On a FAIL/REVIEW verdict, fix and re-review. Declare completion/deployment only 
 
 | Agent | Purpose |
 |-------|---------|
-| `presentation-agent` | Presentation format dispatcher (PPTX vs Web) |
 | `reactive-presentation-agent` | Interactive HTML slideshows (reactive-presentation framework, Remarp) |
 | `architecture-diagram-agent` | Static Draw.io XML diagrams → PNG/SVG export |
-| `animated-diagram-agent` | Dynamic SVG diagrams with SMIL animations |
-| `document-agent` | Markdown documents and reports |
 | `gitbook-agent` | GitBook documentation sites |
 | `workshop-agent` | AWS Workshop Studio content |
 | `brochure-agent` | Single-page responsive marketing brochure (HTML → GitHub Pages) |
@@ -175,7 +167,7 @@ unzip -q skills/reactive-presentation/assets/aws-icons.zip \
 | Need | Agent | Output |
 |------|-------|--------|
 | Static AWS architecture | `architecture-diagram-agent` | .drawio → .png |
-| Animated traffic flow | `animated-diagram-agent` | .html with SVG + SMIL |
+| Animated traffic flow | `animated-diagram` skill | .html with SVG + SMIL |
 | Workshop inline diagram | `workshop-agent` (Mermaid) | Mermaid in markdown |
 | Presentation Canvas animation | `reactive-presentation-agent` | Canvas JS in HTML slides |
 | Explorable/interactive diagram (zoom, path trace, MAP→READ→FULL) | `reactive-presentation-agent` (`:::archify` block — Archify, version-pinned, ADR-020) | self-contained HTML, iframed into the slide; official icons auto-injected |

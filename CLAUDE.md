@@ -142,7 +142,6 @@ Codex roles. Preserve the repository's role-based model/effort policy:
 | `opus` + `high` | Multi-step diagnosis and build workers |
 | `opus` + `medium` | The PR autofix implementer applying an approved plan |
 | `opus` + `low` | Narrow writers and analysts |
-| `sonnet` + `low` | The presentation format dispatcher |
 
 `hosts/claude/*/agents.json` owns installed agent assignments; do not infer a vendor model ID
 from these host aliases. Project-init's mirrored `doc-sync-checker` keeps its

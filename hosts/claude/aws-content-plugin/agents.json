@@ -1,12 +1,4 @@
 {
-  "animated-diagram-agent.md": {
-    "tools": "Read, Write, Glob, Grep, Bash",
-    "model": "opus",
-    "effort": "high",
-    "skills": [
-      "animated-diagram"
-    ]
-  },
   "architecture-diagram-agent.md": {
     "tools": "Read, Write, Edit, Glob, Grep, Bash",
     "model": "opus",
@@ -37,11 +29,6 @@
       "playwright"
     ]
   },
-  "document-agent.md": {
-    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
-    "model": "opus",
-    "effort": "low"
-  },
   "gitbook-agent.md": {
     "tools": "Read, Write, Glob, Grep, Bash, Agent, AskUserQuestion",
     "model": "opus",
@@ -49,11 +36,6 @@
     "skills": [
       "gitbook"
     ]
-  },
-  "presentation-agent.md": {
-    "tools": "AskUserQuestion",
-    "model": "sonnet",
-    "effort": "low"
   },
   "reactive-presentation-agent.md": {
     "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
