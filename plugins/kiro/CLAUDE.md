@@ -173,7 +173,8 @@ on that occurrence, a repo/tree redirect, a preceding `cd`/`pushd`, a preceding 
 commit` in the same invocation whose content the diffed range would miss,
 `--delete`/`--dry-run` (bundled short-flag clusters like `-fd`/`-vn` included, nothing
 to review either way), or an explicit refspec/`--all`/`--tags`/`--mirror` push the
-computed range doesn't describe. Enable via `/kiro:setup` or `/kiro:configure set review on_push on` — this
+computed range doesn't describe (naming `HEAD` or the current branch, read with
+`git symbolic-ref` in the hook's cwd, is still reviewed; an unresolvable branch skips). Enable via `/kiro:setup` or `/kiro:configure set review on_push on` — this
 warns (but still writes) if co-agent's own `push_gate` is ALSO on for this repo, since
 both firing means every push runs two independent review rounds. Run the same 3-lens
 pass on demand with `/kiro:review --range --lenses correctness,security,scope` (or via

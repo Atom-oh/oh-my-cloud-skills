@@ -255,6 +255,28 @@ assert_eq "skip skip" "$(_pgb 'git push --all')" "refspec: --all sends refs the 
 assert_eq "skip skip" "$(_pgb 'git push --tags')" "refspec: --tags likewise"
 assert_eq "skip skip" "$(_pgb 'git push --mirror origin')" "refspec: --mirror likewise"
 
+# Naming the CURRENT branch is the commonest push (`git push -u origin <branch>`) and sends
+# exactly what the range describes, so it is reviewed. The branch is read from the hook's
+# cwd, so these run inside a throwaway repo; anything unresolvable stays skipped.
+_PG_ROOT="$PWD"
+_PG_REPO="$(mktemp -d "${TMPDIR:-/tmp}/push-gate-repo-XXXXXX")"
+_pgr() { (cd "$_PG_REPO" && python3 "$_PG_ROOT/tests/hooks/_push_gate_skip_probe.py" --both "$1"); }
+git init -q -b feat-x "$_PG_REPO"
+git -C "$_PG_REPO" -c user.name=t -c user.email=t@example.invalid commit -q --allow-empty -m init
+assert_eq "GATED GATED" "$(_pgr 'git push -u origin feat-x')" "refspec: the current branch named explicitly is reviewed by both gates"
+assert_eq "GATED GATED" "$(_pgr 'git push origin feat-x')" "refspec: the current branch without -u is reviewed too"
+assert_eq "skip skip" "$(_pgr 'git push origin other-branch')" "refspec: another branch is still skipped when a branch resolves"
+assert_eq "skip skip" "$(_pgr 'git push origin feat-x:other')" "refspec: src:dst naming the branch is still skipped"
+assert_eq "skip skip" "$(_pgr 'git push origin feat-x other-branch')" "refspec: a second refspec after the current branch is skipped"
+assert_eq "skip skip" "$(_pgr 'git push origin HEAD other-branch')" "refspec: a second refspec after HEAD is skipped"
+git -C "$_PG_REPO" checkout -q --detach
+assert_eq "skip skip" "$(_pgr 'git push origin feat-x')" "refspec: a detached HEAD cannot confirm the branch, so the push is skipped"
+assert_eq "GATED GATED" "$(_pgr 'git push -u origin HEAD')" "refspec: HEAD is still reviewed on a detached HEAD"
+rm -rf "$_PG_REPO"
+_PG_NOREPO="$(mktemp -d "${TMPDIR:-/tmp}/push-gate-norepo-XXXXXX")"
+assert_eq "skip skip" "$( (cd "$_PG_NOREPO" && python3 "$_PG_ROOT/tests/hooks/_push_gate_skip_probe.py" --both 'git push origin feat-x') )" "refspec: outside a repository the branch is unresolved, so the push is skipped"
+rm -rf "$_PG_NOREPO"
+
 # --- co-agent push gate: --dry-run skip class, and the same compound-command fix as
 # kiro's push-scope-mismatch — a dry-run-then-real-push in ONE invocation must still be
 # gated on the real push, not blinded by the first occurrence's class. ---

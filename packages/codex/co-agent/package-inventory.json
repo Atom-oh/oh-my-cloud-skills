@@ -116,7 +116,7 @@
       "executable": false
     },
     "skills/co-agent/scripts/consensus_hooks.py": {
-      "sha256": "2a33ba62ffc525e15c2d73026dfa4f3ba8c44fdac74a871d8150041cdd28df85",
+      "sha256": "739c316bc56af5eefa5055abe5d8422be81a65ed6038374bdcd389c9bb9ceefa",
       "executable": true
     },
     "skills/co-agent/scripts/consensus_state.py": {

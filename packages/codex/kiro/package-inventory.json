@@ -8,7 +8,7 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "e6331eea0b1acb8538ea58a75241d2bc2838f7888294232e3cbe4e37dbc43855",
+      "sha256": "38771dbfa075a603e83395ba3a28ea0e98cc3fe1d6db34fd36c6d9265adce0b7",
       "executable": false
     },
     "agents/kiro-delegate-agent.md": {
@@ -60,7 +60,7 @@
       "executable": false
     },
     "skills/kiro-delegate/scripts/hook_match.py": {
-      "sha256": "f1bf3b18b510440726f6ba38194eec6dcbcddf725bbe2b5521f69d55ec532f4e",
+      "sha256": "ba47792410a004821fd42815abdb6f5e7101be3a13e16342f18b2432a60ef166",
       "executable": true
     },
     "skills/kiro-delegate/scripts/kiro_codex.py": {
