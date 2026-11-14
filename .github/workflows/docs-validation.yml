@@ -24,10 +24,12 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
           cache-dependency-path: doc-sites/package-lock.json
       - run: npm ci
+      - run: npm ci --prefix server
       - run: npm run typecheck
+      - run: npm run test:server
       # prebuild runs locale regression tests and rejects missing/stale translations.
       - run: npm run build

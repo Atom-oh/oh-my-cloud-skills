@@ -379,5 +379,413 @@
   },
   "home.plugin.agent-dash.description": {
     "message": "세션의 에이전트, 위임 관계, 대기 상태를 보여 주는 Claude Code 패널입니다."
+  },
+  "learn.content.purpose": {
+    "message": "아이디어를 보여줄 수 있는 결과물로 만드세요."
+  },
+  "learn.content.title": {
+    "message": "첫 프레젠테이션 만들기"
+  },
+  "learn.content.description": {
+    "message": "짧은 요청으로 시작해 열어 보고, 리허설하고, 공유할 수 있는 슬라이드를 만드세요. 작은 발표 자료부터 시작하고 다이어그램과 워크숍으로 넓혀 가세요."
+  },
+  "learn.content.prompt": {
+    "message": "개발자를 위한 Amazon Bedrock 소개 자료를 5장으로 만들어줘. 한국어로 작성하고 아키텍처 다이어그램 하나와 발표자 노트를 넣어줘. 게시 전에 로컬 미리보기를 보여줘."
+  },
+  "learn.content.result": {
+    "message": "발표자 노트가 있는 HTML 슬라이드와 로컬 미리보기가 만들어집니다. 게시 전에 검증 결과와 콘텐츠 리뷰 결과를 확인하세요."
+  },
+  "learn.content.check": {
+    "message": "미리보기를 열고 화살표 키로 이동해 보세요. S로 발표자 노트를 열고 인터랙션을 하나씩 리허설하세요. 여기에 보이는 캡처는 공개 예제이므로 직접 만든 자료에서도 확인하세요."
+  },
+  "learn.content.imageAlt": {
+    "message": "현재 슬라이드, 다음 슬라이드, 발표자 노트가 표시된 실제 Remarp 발표자 화면"
+  },
+  "learn.coagent.purpose": {
+    "message": "어려운 변경에 다른 관점을 더하세요."
+  },
+  "learn.coagent.title": {
+    "message": "AI 동료와 함께 변경 검토하기"
+  },
+  "learn.coagent.description": {
+    "message": "참여 가능한 AI를 확인하고 검토 범위를 정하세요. 구체적인 발견 사항을 다음 작업으로 연결할 수 있습니다."
+  },
+  "learn.coagent.prompt": {
+    "message": "co-agent로 참여할 AI의 준비 상태를 확인한 다음, 현재 변경 사항의 정확성과 빠진 검증을 리뷰해줘. 파일별 발견 사항과 참여하지 못한 리뷰어를 알려줘."
+  },
+  "learn.coagent.result": {
+    "message": "영향받는 파일과 구체적인 발견 사항, 리뷰 참여 범위를 종합한 결과를 받습니다. 현재 호스트가 의장을 맡고 Kiro와 반대 호스트 CLI가 참여합니다."
+  },
+  "learn.coagent.check": {
+    "message": "어떤 AI가 실제로 참여했는지 확인하세요. 발견 사항을 수용하기 전에 인용된 코드를 읽어 보세요. 리뷰는 단독 진행을 명시할 수 있지만 consensus와 harness에는 준비된 동료가 필요합니다."
+  },
+  "learn.init.purpose": {
+    "message": "프로젝트의 출발점을 명확하게 만드세요."
+  },
+  "learn.init.title": {
+    "message": "함께 일하기 쉬운 저장소 만들기"
+  },
+  "learn.init.description": {
+    "message": "실제 코드를 바탕으로 프로젝트 지침과 문서를 만드세요. 결정 기록과 운영 절차를 작업 가까이에 유지할 수 있습니다."
+  },
+  "learn.init.prompt": {
+    "message": "project-init으로 이 저장소를 살펴보고 현재 호스트에 맞는 프로젝트 지침과 온보딩 문서를 준비해줘. 기존 지침을 보존하고 변경 제안을 보여줘."
+  },
+  "learn.init.result": {
+    "message": "감지한 기술 스택을 바탕으로 호스트에 맞는 프로젝트 지침과 문서가 만들어집니다. 변경 사항을 diff로 검토할 수 있습니다."
+  },
+  "learn.init.check": {
+    "message": "설정 명령이 실제 저장소와 맞는지 확인하세요. 훅은 설치와 신뢰 설정 전에 내용을 검토하세요. 생성된 템플릿만으로 훅이 활성화되지는 않습니다."
+  },
+  "learn.ops.purpose": {
+    "message": "변경하기 전에 증상의 원인을 이해하세요."
+  },
+  "learn.ops.title": {
+    "message": "AWS · EKS 문제 조사하기"
+  },
+  "learn.ops.description": {
+    "message": "구체적인 증상과 계정, 리전에서 시작하세요. 초기 조사부터 해결 제안까지 근거를 따라갈 수 있습니다."
+  },
+  "learn.ops.prompt": {
+    "message": "aws-ops-plugin으로 EKS 워크로드를 읽기 전용으로 조사해줘. 먼저 사용할 AWS 프로필, 리전, 클러스터를 나와 확인해줘. 변경하기 전에 근거와 해결 방안을 설명해줘."
+  },
+  "learn.ops.result": {
+    "message": "범위가 명확한 조사 결과와 근거, 추정 원인, 해결 제안을 받습니다. 대상 서비스에 따라 별도의 공식 스킬 설치가 필요할 수 있습니다."
+  },
+  "learn.ops.check": {
+    "message": "근거에 나온 계정과 리전을 확인하세요. 확인된 원인과 가설을 구분하고 인프라 변경 제안을 검토한 뒤 적용하세요."
+  },
+  "learn.pr.purpose": {
+    "message": "풀 리퀘스트가 무엇을 기다리는지 확인하세요."
+  },
+  "learn.pr.title": {
+    "message": "작업 중에 PR 상태 확인하기"
+  },
+  "learn.pr.description": {
+    "message": "작업을 이어가며 CI와 리뷰 결과를 확인하세요. Claude Code에서는 패널을, 다른 호스트에서는 텍스트 상태 조회를 사용할 수 있습니다."
+  },
+  "learn.pr.prompt": {
+    "message": "pr-dash로 현재 풀 리퀘스트 상태와 CI, 최신 AI 리뷰 결과를 보여줘. 무엇을 기다리고 있는지와 어떤 커밋을 검토했는지 설명해줘."
+  },
+  "learn.pr.result": {
+    "message": "현재 저장소와 PR의 상태를 확인합니다. Claude Code 패널은 해당 호스트 전용이며 Codex에서는 읽기 전용 상태 조회 절차를 제공합니다."
+  },
+  "learn.pr.check": {
+    "message": "PR 번호와 커밋을 확인하세요. 이전 커밋의 통과 표시가 최신 변경의 통과를 의미하지는 않습니다. PR 저장소 밖에서는 패널이 조용히 대기할 수 있습니다."
+  },
+  "learn.agent.purpose": {
+    "message": "누가 작업하고 누가 기다리는지 파악하세요."
+  },
+  "learn.agent.title": {
+    "message": "위임한 작업을 한눈에 따라가기"
+  },
+  "learn.agent.description": {
+    "message": "Claude Code 대시보드에서 에이전트, 작업, 위임 관계를 확인하세요. 여러 에이전트가 필요한 작업을 진행할 때 유용합니다."
+  },
+  "learn.agent.prompt": {
+    "message": "Claude Code에서 agent-dash를 활성화하고 패널을 확인하는 방법을 설명해줘. 설치된 플러그인 가이드를 바탕으로 작업 상태, 위임 관계, 대기 중인 에이전트를 읽는 방법을 알려줘."
+  },
+  "learn.agent.result": {
+    "message": "현재 세션의 에이전트와 작업 상태를 Claude Code에서 확인합니다. Codex용 절차를 설치해도 Codex 전용 대시보드 패널이 생기지는 않습니다."
+  },
+  "learn.agent.check": {
+    "message": "현재 작업과 위임한 상위 에이전트를 찾아보세요. 비어 있거나 대기 중이라는 표시만으로 실패를 판단하지 마세요. 실제 세션과 작업 결과로 완료를 확인하세요."
+  },
+  "learn.step.install": {
+    "message": "설치하기"
+  },
+  "learn.step.try": {
+    "message": "첫 작업 해보기"
+  },
+  "learn.step.verify": {
+    "message": "결과 확인하기"
+  },
+  "learn.copied": {
+    "message": "복사했어요"
+  },
+  "learn.copyFailed": {
+    "message": "텍스트를 선택해 직접 복사해 주세요."
+  },
+  "learn.heading": {
+    "message": "읽는 시간을 줄이고, 만드는 시간으로."
+  },
+  "learn.lead": {
+    "message": "하고 싶은 일을 골라보세요. 짧은 안내를 따라 내 작업 공간에서 직접 해보고, 막히는 순간에는 가이드에게 물어보세요."
+  },
+  "learn.sixPaths": {
+    "message": "개 플러그인, 시작은 한곳에서"
+  },
+  "learn.reference": {
+    "message": "레퍼런스 둘러보기"
+  },
+  "learn.choose": {
+    "message": "무엇을 해볼까요?"
+  },
+  "learn.pluginNav": {
+    "message": "플러그인 학습 경로"
+  },
+  "learn.sideNote": {
+    "message": "실제 작업은 내 작업 공간에서. 다음 한 걸음은 이 가이드와 함께하세요."
+  },
+  "learn.ask": {
+    "message": "가이드에게 질문하기"
+  },
+  "learn.yourHost": {
+    "message": "사용 중인 코딩 어시스턴트"
+  },
+  "learn.hostNotice": {
+    "message": "실시간 대시보드 패널은 Claude Code 전용입니다. Codex에서는 설치된 가이드나 상태 조회 절차를 사용하세요."
+  },
+  "learn.yourTurn": {
+    "message": "직접 해보세요"
+  },
+  "learn.claudeInstall": {
+    "message": "Claude Code 안에서 아래 명령을 실행하세요. 필요하면 플러그인을 다시 불러온 뒤 새 작업을 시작하세요."
+  },
+  "learn.codexInstall": {
+    "message": "터미널에서 마켓플레이스를 등록하세요. Codex에서 /plugins를 열어 선택한 플러그인을 설치하고 새 스레드를 시작하세요."
+  },
+  "learn.tryHint": {
+    "message": "이 시작 프롬프트를 코딩 어시스턴트에 붙여 넣으세요. 대상, 언어, 범위는 내 프로젝트에 맞게 바꿔도 좋습니다."
+  },
+  "learn.promptLabel": {
+    "message": "시작 프롬프트"
+  },
+  "learn.copy": {
+    "message": "복사"
+  },
+  "learn.fullGuide": {
+    "message": "상세 가이드 열기"
+  },
+  "learn.expected": {
+    "message": "이런 결과를 기대하세요"
+  },
+  "learn.installResult": {
+    "message": "설치 목록에 플러그인이 나타납니다. 설치는 패키지가 준비됐다는 의미이며, 필요한 도구의 동작은 첫 작업에서 확인합니다."
+  },
+  "learn.enlarge": {
+    "message": "공개 예제 · 원본 크기로 보기"
+  },
+  "learn.workflow": {
+    "message": "작업 흐름 미리보기"
+  },
+  "learn.setupHelp": {
+    "message": "설정 · 문제 해결"
+  },
+  "learn.askFollowup": {
+    "message": "이어서 질문하기"
+  },
+  "learn.goDeeper": {
+    "message": "더 알아보기"
+  },
+  "learn.exploreTitle": {
+    "message": "지금 필요한 순간에 맞는 가이드."
+  },
+  "learn.author": {
+    "message": "발표 자료 작성하기"
+  },
+  "learn.present": {
+    "message": "리허설하고 발표하기"
+  },
+  "learn.presenter": {
+    "message": "발표자 가이드"
+  },
+  "learn.allFeatures": {
+    "message": "특정 기능 찾아보기"
+  },
+  "learn.library": {
+    "message": "레퍼런스"
+  },
+  "learn.pageTitle": {
+    "message": "직접 해보며 배우기"
+  },
+  "learn.pageDescription": {
+    "message": "Claude Code와 Codex의 플러그인 6개를 직접 따라 해보세요. 설치부터 첫 작업, 가이드 챗봇의 도움까지 한곳에서 시작합니다."
+  },
+  "chat.limit": {
+    "message": "오늘의 질문 한도에 도달했습니다. 가이드는 계속 이용할 수 있으며 질문은 내일 다시 시도해 주세요."
+  },
+  "chat.expired": {
+    "message": "계속하려면 다시 로그인해 주세요."
+  },
+  "chat.error": {
+    "message": "지금은 가이드 어시스턴트에 연결할 수 없습니다. 다시 시도할 수 있도록 질문을 보관했습니다."
+  },
+  "chat.launch": {
+    "message": "가이드에게 질문"
+  },
+  "chat.title": {
+    "message": "가이드 어시스턴트"
+  },
+  "chat.close": {
+    "message": "어시스턴트 닫기"
+  },
+  "chat.scope": {
+    "message": "질문 주제"
+  },
+  "chat.all": {
+    "message": "맞는 플러그인 찾기"
+  },
+  "chat.welcome": {
+    "message": "어떤 일을 해보고 싶으세요?"
+  },
+  "chat.intro": {
+    "message": "설치 방법, 작업 흐름, 다음 단계에 대해 물어보세요. 공개 가이드를 바탕으로 답변하고 더 읽을 수 있는 링크를 함께 드립니다."
+  },
+  "chat.exampleQuestion": {
+    "message": "첫 프레젠테이션을 만들고 발표자 노트를 확인하려면 어떻게 하나요?"
+  },
+  "chat.exampleLabel": {
+    "message": "첫 프레젠테이션 만드는 걸 도와줘"
+  },
+  "chat.you": {
+    "message": "나"
+  },
+  "chat.guide": {
+    "message": "가이드"
+  },
+  "chat.partial": {
+    "message": "일부 플러그인 담당 에이전트에 연결하지 못했습니다. 확인 가능한 가이드 근거로 답변했습니다."
+  },
+  "chat.sources": {
+    "message": "답변에 사용한 가이드"
+  },
+  "chat.thinking": {
+    "message": "관련 가이드를 확인하고 답변을 준비하고 있어요…"
+  },
+  "chat.offline": {
+    "message": "이 미리보기에는 채팅이 연결되지 않았습니다. 학습 경로와 레퍼런스는 이용할 수 있습니다."
+  },
+  "chat.signInHint": {
+    "message": "질문하려면 로그인해 주세요. 가이드는 로그인 없이 읽을 수 있습니다."
+  },
+  "chat.signIn": {
+    "message": "로그인 / 계정 만들기"
+  },
+  "chat.question": {
+    "message": "질문"
+  },
+  "chat.placeholder": {
+    "message": "하고 싶은 일을 알려주세요…"
+  },
+  "chat.privacy": {
+    "message": "자격증명이나 프로젝트의 비공개 정보는 입력하지 마세요."
+  },
+  "chat.send": {
+    "message": "보내기"
+  },
+  "chat.signOut": {
+    "message": "로그아웃하고 대화 지우기"
+  },
+  "learn.flow.1": {
+    "message": "요청 정리"
+  },
+  "learn.flow.2": {
+    "message": "슬라이드 · 노트"
+  },
+  "learn.flow.3": {
+    "message": "미리보기"
+  },
+  "learn.flow.4": {
+    "message": "콘텐츠 리뷰"
+  },
+  "learn.flow.5": {
+    "message": "준비 상태 확인"
+  },
+  "learn.flow.6": {
+    "message": "동료 AI 검토"
+  },
+  "learn.flow.7": {
+    "message": "의장 검증"
+  },
+  "learn.flow.8": {
+    "message": "발견 사항"
+  },
+  "learn.flow.9": {
+    "message": "저장소 확인"
+  },
+  "learn.flow.10": {
+    "message": "기술 스택 파악"
+  },
+  "learn.flow.11": {
+    "message": "지침 작성"
+  },
+  "learn.flow.12": {
+    "message": "변경 검토"
+  },
+  "learn.flow.13": {
+    "message": "범위 확인"
+  },
+  "learn.flow.14": {
+    "message": "근거 수집"
+  },
+  "learn.flow.15": {
+    "message": "가설 검증"
+  },
+  "learn.flow.16": {
+    "message": "해결 방안 제안"
+  },
+  "learn.flow.17": {
+    "message": "현재 저장소"
+  },
+  "learn.flow.18": {
+    "message": "풀 리퀘스트"
+  },
+  "learn.flow.19": {
+    "message": "검사 · 리뷰"
+  },
+  "learn.flow.20": {
+    "message": "다음 작업"
+  },
+  "learn.flow.21": {
+    "message": "현재 세션"
+  },
+  "learn.flow.22": {
+    "message": "상위 에이전트"
+  },
+  "learn.flow.23": {
+    "message": "위임한 작업"
+  },
+  "learn.flow.24": {
+    "message": "대기 · 결과"
+  },
+  "learn.pr.codexPrompt": {
+    "message": "설치된 pr-dash:pr-status 스킬로 현재 풀 리퀘스트, 최신 커밋, CI 검사, AI 리뷰 결과를 텍스트로 알려줘. 대기 중이거나 실패한 검사가 있으면 설명해줘."
+  },
+  "learn.agent.codexPrompt": {
+    "message": "설치된 agent-dash:agent-status 스킬로 Claude Code 팀 목록과 작업 파일을 읽어줘. 구성원 이름과 유형, 작업 상태, 담당자, 선행 작업 필드를 보고해줘. 과거 작업을 구분하고 이 파일만으로 알 수 없는 실시간 정보를 설명해줘."
+  },
+  "learn.agent.codexResult": {
+    "message": "확인 가능한 에이전트 팀 목록과 작업 파일을 읽기 전용 텍스트로 보고합니다. 누락되거나 오래된 기록은 명시하며, Codex 안에 별도의 대시보드 패널을 열지는 않습니다."
+  },
+  "learn.name.content": {
+    "message": "콘텐츠"
+  },
+  "learn.name.init": {
+    "message": "프로젝트 시작"
+  },
+  "learn.name.ops": {
+    "message": "AWS 운영"
+  },
+  "learn.name.pr": {
+    "message": "PR 대시보드"
+  },
+  "learn.name.agent": {
+    "message": "에이전트 대시보드"
+  },
+  "learn.agent.codexCheck": {
+    "message": "팀 이름, 작업 상태, 담당자, 선행 작업 필드를 확인하세요. 실행 중인 팀이 없다면 그 사실을 알려줘야 합니다. 이 파일은 실시간 대기 관계나 위임 이력을 보여주지 않습니다."
+  },
+  "learn.agent.flow.roster": {
+    "message": "팀 구성원 목록"
+  },
+  "learn.agent.flow.tasks": {
+    "message": "작업 파일"
+  },
+  "learn.agent.flow.owner": {
+    "message": "상태 · 담당자"
+  },
+  "learn.agent.flow.blocks": {
+    "message": "선행 작업 필드"
   }
 }

@@ -1,117 +1,13 @@
-import type {ReactNode} from 'react';
-import clsx from 'clsx';
-import Link from '@docusaurus/Link';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
+import React from 'react';
 import Layout from '@theme/Layout';
-import Heading from '@theme/Heading';
 import {translate} from '@docusaurus/Translate';
+import GuideWorkspace from '../components/GuideWorkspace';
 
-import styles from './index.module.css';
-
-const tagline = translate({id: 'home.tagline', message: 'Cloud workflows for Claude Code and Codex'});
-
-const plugins = [
-  {
-    title: "co-agent",
-    description: translate({id: "home.plugin.co-agent.description", message: "Peer review, decision support, ADRs, and verified implementation pipelines."}),
-    link: "/docs/co-agent/overview",
-  },
-  {
-    title: "project-init",
-    description: translate({id: "home.plugin.project-init.description", message: "Project setup, instructions, ADRs, runbooks, and documentation maintenance for both hosts."}),
-    link: "/docs/project-init/overview",
-  },
-  {
-    title: "aws-content-plugin",
-    description: translate({id: "home.plugin.aws-content-plugin.description", message: "Web and PowerPoint decks, architecture diagrams, workshops, brochures, and profiles."}),
-    link: "/docs/aws-content-plugin/overview",
-  },
-  {
-    title: "aws-ops-plugin",
-    description: translate({id: "home.plugin.aws-ops-plugin.description", message: "AWS and EKS diagnostics across infrastructure, security, observability, and cost."}),
-    link: "/docs/aws-ops-plugin/overview",
-  },
-  {
-    title: "pr-dash",
-    description: translate({id: "home.plugin.pr-dash.description", message: "A Claude Code pane for pull request checks and AI review status."}),
-    link: "/docs/pr-dash/overview",
-  },
-  {
-    title: "agent-dash",
-    description: translate({id: "home.plugin.agent-dash.description", message: "A Claude Code pane for the session's agents, who delegated to whom and who is waiting."}),
-    link: "/docs/agent-dash/overview",
-  }
-];
-
-function PluginCard({title, description, link}: typeof plugins[0]) {
+export default function Home() {
   return (
-    <div className="col col--4">
-      <Link to={link} style={{textDecoration: 'none', color: 'inherit'}}>
-        <div className="plugin-card">
-          <div className="plugin-card__title">{title}</div>
-          <div className="plugin-card__description">{description}</div>
-        </div>
-      </Link>
-    </div>
-  );
-}
-
-function HomepageHeader() {
-  const {siteConfig} = useDocusaurusContext();
-  return (
-    <header className={clsx('hero hero--primary', styles.heroBanner)}>
-      <div className="container">
-        <Heading as="h1" className="hero__title">
-          {siteConfig.title}
-        </Heading>
-        <p className="hero__subtitle">{tagline}</p>
-        <div className={styles.buttons}>
-          <Link
-            className="button button--secondary button--lg"
-            to="/docs/intro">
-            {translate({id: 'home.getStarted', message: 'Get started'})}
-          </Link>
-          <Link
-            className="button button--outline button--lg"
-            to="/docs/remarp-guide/introduction"
-            style={{color: 'white', borderColor: 'rgba(255,255,255,0.5)'}}>
-            {translate({id: 'home.remarpGuide', message: 'Remarp Guide'})}
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-export default function Home(): ReactNode {
-  return (
-    <Layout
-      title={translate({id: 'home.title', message: 'Home'})}
-      description={tagline}>
-      <HomepageHeader />
-      <main>
-        <section style={{padding: '3rem 0'}}>
-          <div className="container">
-            <div className="row">
-              {plugins.map((plugin) => (
-                <PluginCard key={plugin.title} {...plugin} />
-              ))}
-            </div>
-          </div>
-        </section>
-        <section style={{padding: '2rem 0 4rem'}}>
-          <div className="container">
-            <div className="row">
-              <div className="col col--8 col--offset-2" style={{textAlign: 'center'}}>
-                <Heading as="h2">{translate({id: 'home.hosts', message: 'Claude Code and Codex plugins'})}</Heading>
-                <p style={{fontSize: '1.1rem', color: 'var(--ifm-font-color-secondary)'}}>
-                  {translate({id: 'home.workflowDescription', message: 'Choose the plugins you need, install them in your host, and request a workflow in plain language. The guide explains setup, verification, and the boundaries of each integration.'})}
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
+    <Layout title={translate({id: 'learn.pageTitle', message: 'Learn by doing'})}
+      description={translate({id: 'learn.pageDescription', message: 'Hands-on learning paths for six Claude Code and Codex plugins. Install, try a first task, and get help from the guide assistant.'})}>
+      <GuideWorkspace />
     </Layout>
   );
 }

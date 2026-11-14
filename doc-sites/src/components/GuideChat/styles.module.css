@@ -1,0 +1,37 @@
+.launch { position: fixed; bottom: 24px; right: 24px; z-index: 220; border: 1px solid #b9cdbb; border-radius: 40px; background: #d6edc8; color: #183b2f; box-shadow: 0 6px 30px #0002; padding: 13px 22px; display: flex; align-items: center; gap: 10px; cursor: pointer; font: 600 15px var(--ifm-font-family-base); }
+.launch > span { font-size: 24px; line-height: 1; }
+.panel { --chat-bg: #fff; --chat-paper: #f3f5ef; --chat-ink: #203b38; --chat-muted: #506864; --chat-line: #dbe3da; position: fixed; right: 24px; bottom: 88px; width: 440px; max-width: calc(100vw - 32px); height: min(740px, calc(100dvh - 120px)); z-index: 230; display: flex; flex-direction: column; background: var(--chat-bg); color: var(--chat-ink); border: 1px solid var(--chat-line); border-radius: 16px; box-shadow: 0 18px 70px #0003; overflow: hidden; font-size: 14px; }
+:global([data-theme='dark']) .panel { --chat-bg: #17282b; --chat-paper: #101c20; --chat-ink: #e4eee7; --chat-muted: #aec3bb; --chat-line: #304649; }
+.panel button { font: inherit; cursor: pointer; } .panel button:focus-visible, .launch:focus-visible { outline: 3px solid #579372; outline-offset: 3px; }
+.panel > header { display: flex; justify-content: space-between; padding: 19px 22px; border-bottom: 1px solid var(--chat-line); align-items: center; }
+.panel h2 { font-size: 20px; margin: 6px 0 0; } .eyebrow { font: 11px monospace; letter-spacing: .14em; color: var(--chat-muted); }
+.panel > header button { background: none; border: 0; color: var(--chat-ink); font-size: 28px; min-width: 40px; min-height: 40px; }
+.context { padding: 12px 20px; display: flex; gap: 15px; align-items: center; background: var(--chat-paper); }
+.context label { font-size: 12px; white-space: nowrap; }
+.context select { min-width: 0; width: 100%; font: inherit; border: 1px solid var(--chat-line); padding: 7px; border-radius: 5px; background: var(--chat-bg); color: var(--chat-ink); }
+.conversation { min-height: 70px; flex: 1; overflow-y: auto; padding: 22px; overscroll-behavior: contain; }
+.welcome > span { font-size: 35px; color: var(--chat-muted); } .welcome h3 { font-size: 24px; margin: 12px 0; line-height: 1.35; }
+.welcome p { color: var(--chat-muted); font-size: 15px; line-height: 1.8; }
+.welcome button { background: var(--chat-paper); border: 1px solid var(--chat-line); color: var(--chat-ink); padding: 12px; border-radius: 8px; text-align: left; margin: 7px 0; }
+.user, .assistant { padding: 14px; margin-bottom: 15px; border-radius: 9px; }
+.user { background: var(--chat-paper); } .assistant { border: 1px solid var(--chat-line); }
+.conversation article strong { font-size: 12px; color: var(--chat-muted); } .conversation article p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.85; margin: 8px 0; }
+.sources { border-top: 1px solid var(--chat-line); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.sources a { color: var(--chat-ink); text-decoration: underline; }
+.status { color: var(--chat-muted); font-size: 13px; }
+.composer { border-top: 1px solid var(--chat-line); padding: 14px 20px; }
+.composer > p { font-size: 13px; margin: 0 0 10px; }
+.composer label { display: block; font-size: 12px; margin-bottom: 5px; }
+.composer textarea { width: 100%; resize: vertical; max-height: 150px; min-height: 65px; background: var(--chat-paper); color: var(--chat-ink); border: 1px solid var(--chat-line); border-radius: 7px; padding: 10px; font: 14px/1.6 var(--ifm-font-family-base); }
+.composer form > div { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin-top: 7px; }
+.composer small { font-size: 11px; line-height: 1.6; color: var(--chat-muted); }
+.composer form button, .signIn button { background: #d6edc8; border: 1px solid #8dac88; color: #183b2f; border-radius: 6px; padding: 8px 13px; flex-shrink: 0; }
+.composer button:disabled { opacity: .45; cursor: default; }
+.signIn { margin-bottom: 13px; } .signIn p { font-size: 13px; margin-bottom: 8px; }
+.error { color: #b94432; } :global([data-theme='dark']) .error { color: #ffb4a5; }
+.signOut { border: 0; background: none; color: var(--chat-muted); padding: 9px 0 0; font-size: 12px !important; text-decoration: underline; }
+@media (max-width: 600px) {
+  .launch { bottom: 14px; right: 14px; padding: 10px 16px; }
+  .panel { right: 12px; bottom: 76px; height: calc(100dvh - 95px); max-width: calc(100vw - 24px); }
+  .conversation { padding: 16px; } .composer { padding: 12px 15px; }
+}

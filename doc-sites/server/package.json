@@ -1,0 +1,19 @@
+{
+  "name": "skills-guide-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test tests/*.test.mjs",
+    "index": "node build-corpus.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "3.1169.0",
+    "@aws-sdk/client-dynamodb": "3.1169.0",
+    "aws-jwt-verify": "5.2.1"
+  }
+}
