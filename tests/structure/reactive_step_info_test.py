@@ -17,6 +17,16 @@ TAB_CLICK = ("this.parentNode.querySelectorAll('.tab-btn').forEach(b=>b.classLis
 TABS = ('<div class="tab-bar">' + "".join(
     f'<button class="tab-btn{" active" if i == 0 else ""}" onclick="{TAB_CLICK}">T{i}</button>'
     for i in range(3)) + "</div>")
+CMP_CLICK = ("this.parentNode.querySelectorAll('.compare-btn').forEach(b=>b.classList.remove('active'));"
+             "this.classList.add('active')")
+
+
+def _compare(active):
+    return '<div class="compare-toggle">' + "".join(
+        f'<button class="compare-btn{" active" if i == active else ""}" onclick="{CMP_CLICK}">C{i}</button>'
+        for i in range(3)) + "</div>"
+
+
 FRAG = '<p class="fragment"{attr}>f</p>'
 
 SLIDES = [
@@ -31,6 +41,8 @@ SLIDES = [
     _slide("<p>action</p>" + FRAG.format(attr="") * 2),                            # 8 action hides frags
     _slide(FRAG.format(attr="") * 2),                                              # 9 other slide
     _slide(TABS),                                                                  # 10 tabs only
+    _slide(_compare(-1)),                                                          # 11 compare, none active
+    _slide(_compare(1)),                                                           # 12 compare, middle active
 ]
 HTML = '<div class="slide-deck">\n' + "\n".join(SLIDES) + "\n</div>\n"
 
@@ -97,6 +109,42 @@ class StepInfoTests(DeckOverlayFixture):
         self.assertEqual(self.info(page), {"kind": "interactive", "cur": 1, "total": 2, "more": True})
         page.evaluate("() => deck.handleNavigationAction('down')")
         self.assertEqual(self.info(page), {"kind": "fragment", "cur": 0, "total": 1, "more": True})
+
+    def presses_until_exhausted(self, page):
+        """Real Down presses while getStepInfo still reports the interactive phase."""
+        return page.evaluate("""() => {
+          let n = 0;
+          while (deck.getStepInfo().kind === 'interactive' && n < 20) { deck.handleNavigationAction('down'); n++; }
+          return n;
+        }""")
+
+    def test_compare_no_active_matches_real_presses(self):
+        page = self.open("s.html")
+        self.goto(page, 11)
+        info = self.info(page)
+        self.assertEqual(info, {"kind": "interactive", "cur": 0, "total": 3, "more": True})
+        self.assertEqual(self.presses_until_exhausted(page), info["total"] - info["cur"])
+        self.assertEqual(self.active(page), 11)
+        self.assertEqual(self.info(page), {"kind": "none", "cur": None, "total": None, "more": False})
+
+    def test_compare_middle_active_matches_real_presses(self):
+        page = self.open("s.html")
+        self.goto(page, 12)
+        info = self.info(page)
+        self.assertEqual(info, {"kind": "interactive", "cur": 1, "total": 2, "more": True})
+        self.assertEqual(self.presses_until_exhausted(page), info["total"] - info["cur"])
+        self.assertEqual(self.active(page), 12)
+
+    def test_tabs_exhausted_then_fragments_hidden_then_revealed(self):
+        page = self.open("s.html")
+        self.goto(page, 7)
+        vis = "() => document.querySelectorAll('.slide')[7].querySelectorAll('.fragment.visible').length"
+        self.assertEqual(self.presses_until_exhausted(page), 2)
+        self.assertEqual(self.info(page), {"kind": "fragment", "cur": 0, "total": 1, "more": True})
+        self.assertEqual(page.evaluate(vis), 0)
+        page.evaluate("() => deck.handleNavigationAction('down')")
+        self.assertEqual(page.evaluate(vis), 2)
+        self.assertEqual(self.info(page), {"kind": "fragment", "cur": 1, "total": 1, "more": False})
 
     def test_tabs_only_exhausted(self):
         page = self.open("s.html")

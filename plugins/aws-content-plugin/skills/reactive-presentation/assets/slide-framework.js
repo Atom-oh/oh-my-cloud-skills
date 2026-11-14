@@ -1017,32 +1017,14 @@ class SlideFramework {
 
     if (slide.__canvasStep) return { kind: 'interactive', cur: null, total: null, more: true };
 
-    const tabBar = slide.querySelector('.tab-bar');
-    const tabBtns = tabBar
-      ? Array.from(tabBar.querySelectorAll('.tab-btn'))
-      : Array.from(slide.querySelectorAll('.tab-btn'));
-    let btns = null;
-    let activeIdx = 0;
-    if (tabBtns.length > 1) {
-      btns = tabBtns;
-      activeIdx = btns.findIndex(t => t.classList.contains('active'));
-      if (activeIdx < 0) {
-        activeIdx = btns.findIndex(t => {
-          const bg = (t.style.background || t.style.backgroundColor || '').toLowerCase();
-          return bg.includes('#00d4ff') || bg.includes('var(--accent');
-        });
+    const inter = this._interactiveButtons(slide);
+    if (inter) {
+      // Presses left = btns.length - 1 - activeIdx; activeIdx -1 (compare, none active) takes one more.
+      const remaining = inter.btns.length - 1 - inter.activeIdx;
+      if (remaining > 0) {
+        const cur = Math.max(0, inter.activeIdx);
+        return { kind: 'interactive', cur, total: cur + remaining, more: true };
       }
-      if (activeIdx < 0) activeIdx = 0;
-    } else {
-      const toggle = slide.querySelector('.compare-toggle');
-      const cmp = toggle ? Array.from(toggle.querySelectorAll('.compare-btn')) : [];
-      if (cmp.length > 1) {
-        btns = cmp;
-        activeIdx = Math.max(0, cmp.findIndex(b => b.classList.contains('active')));
-      }
-    }
-    if (btns && activeIdx < btns.length - 1) {
-      return { kind: 'interactive', cur: activeIdx, total: btns.length - 1, more: true };
     }
 
     // Fragments: group like revealNextFragment (equal data-fragment-index reveal together).
@@ -1061,19 +1043,10 @@ class SlideFramework {
     return { kind: 'fragment', cur, total, more: cur < total };
   }
 
-  cycleInteractive(direction) {
-    const slide = this.slides[this.currentSlide];
-    if (!slide) return false;
-
-    // Try canvas/timeline step navigation (registered via __canvasStep)
-    if (slide.__canvasStep) {
-      const dir = direction > 0 ? 'next' : 'prev';
-      const result = slide.__canvasStep(dir);
-      if (result !== false) return true;
-      return false;
-    }
-
-    // Try tabs — detect .tab-bar container first, then fall back to any .tab-btn group
+  // Tab or compare-toggle buttons of a slide and the active index, shared by cycleInteractive
+  // and getStepInfo. Tabs: no active -> 0. Compare: no active -> -1 (first Down clicks button 0).
+  _interactiveButtons(slide) {
+    // Tabs — detect .tab-bar container first, then fall back to any .tab-btn group
     const tabBar = slide.querySelector('.tab-bar');
     const tabBtns = tabBar
       ? Array.from(tabBar.querySelectorAll('.tab-btn'))
@@ -1089,19 +1062,33 @@ class SlideFramework {
         });
       }
       if (activeIdx < 0) activeIdx = 0;
-      const nextIdx = Math.max(0, Math.min(activeIdx + direction, tabBtns.length - 1));
-      if (nextIdx !== activeIdx) {
-        tabBtns[nextIdx].click();
-        return true;
-      }
-      return false;
+      return { btns: tabBtns, activeIdx };
     }
 
-    // Try compare toggles
     const toggle = slide.querySelector('.compare-toggle');
     if (toggle) {
       const btns = Array.from(toggle.querySelectorAll('.compare-btn'));
-      const activeIdx = btns.findIndex(b => b.classList.contains('active'));
+      return { btns, activeIdx: btns.findIndex(b => b.classList.contains('active')) };
+    }
+    return null;
+  }
+
+  cycleInteractive(direction) {
+    const slide = this.slides[this.currentSlide];
+    if (!slide) return false;
+
+    // Try canvas/timeline step navigation (registered via __canvasStep)
+    if (slide.__canvasStep) {
+      const dir = direction > 0 ? 'next' : 'prev';
+      const result = slide.__canvasStep(dir);
+      if (result !== false) return true;
+      return false;
+    }
+
+    // Tabs or compare toggles
+    const inter = this._interactiveButtons(slide);
+    if (inter) {
+      const { btns, activeIdx } = inter;
       const nextIdx = Math.max(0, Math.min(activeIdx + direction, btns.length - 1));
       if (nextIdx !== activeIdx) {
         btns[nextIdx].click();
