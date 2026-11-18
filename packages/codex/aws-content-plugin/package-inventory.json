@@ -28,7 +28,7 @@
       "executable": false
     },
     "agents/reactive-presentation-agent.md": {
-      "sha256": "1fdb86064a93925848d4a58a6aeeefb751cbd111775d73fc85b1a9691efe9fe2",
+      "sha256": "d742aa1c6483b69d8841609b69156c8627ed596aaf87757166bc3f4fdada8564",
       "executable": false
     },
     "agents/workshop-agent.md": {
@@ -444,7 +444,7 @@
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
-      "sha256": "2dc2b9bf038f3c927a55425c3868fdb14cefd81f14f999b19452a48785db4fdc",
+      "sha256": "c64a55a2792c18be5d3a5292d5de731bec3dcbe0e06e6dd5ac7b2803d5379a04",
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
@@ -17288,7 +17288,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/authoring-rules.md": {
-      "sha256": "8b4e6e80c5660bfb7acaea9004e74553ca3e2bd91fe0f16912fa977f7eb90ede",
+      "sha256": "1c7a08b166a06230de11d1c0f121af99bbdccc339e6f47578b7155ae9aa1a8bf",
       "executable": false
     },
     "skills/reactive-presentation/references/aws-icons-guide.md": {
@@ -17340,7 +17340,7 @@
       "executable": false
     },
     "skills/reactive-presentation/references/remarp-format-guide.md": {
-      "sha256": "342b86322bbd4d38452edce0abf3814544da8f78292c612532ad59337b25a870",
+      "sha256": "764e7ba248e4255dd11b81dad555cca958b89f31bd06d4491df654446720b1a4",
       "executable": false
     },
     "skills/reactive-presentation/references/slide-patterns.md": {

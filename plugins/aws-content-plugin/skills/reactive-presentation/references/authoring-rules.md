@@ -97,6 +97,7 @@ Each tell is enforced by a **lint rule id** (machine-detected) or by the review 
 | Gradient-text headings, decorative gradient orbs | Meaningless decoration, zero information density | Visual hierarchy from content and role tokens, remove decoration | guideline (review gate) |
 | Empty lower-half space (content occupies < 55% of the body height) | Half-empty slide reads as filler | Card title + description, 2×2 grid instead of 4×1, merge slides (§1 density rules) | `UNDERFILL` (measure_deck) |
 | Encyclopedia-tone descriptive titles (e.g. "2026 Frontier AI Model Trends") | Flat label, no edge | Assertive/argumentative/question/twist headline (≤28 chars) | Slide Title Voice (gate) + `TITLE_LENGTH` (lint checks length only) |
+| Stiff read-aloud notes (every sentence ending in `~하겠습니다`, definitions with no scene or question) | Sounds like a report being read, hard for the audience to follow | Natural spoken script per remarp-format-guide.md "Spoken script voice" | guideline (review gate) |
 | Free-form or missing speaker notes | Cannot be presented from, no structure | `[요약]` ("Summary") five-tier structured notes (150+ chars) | `NOTE_STRUCTURE` / `MISSING_NOTES` (lint) |
 
 > Items with a rule id are mechanically caught by `validate` (§1) or `measure_deck.py` (§1 density gates); gate items (copy style, decoration, title voice) are checked by `content-review-agent`.

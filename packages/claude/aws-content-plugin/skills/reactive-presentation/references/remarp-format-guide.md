@@ -1454,12 +1454,37 @@ preamble; the content layers are `[요약]` → spoken → `[약어]` → `[출�
 2. **`[요약]`** — 3–5 one-line bullets summarizing the slide's key points so the
    speaker can scan them at a glance. The `NOTE_STRUCTURE` lint warns when a content
    slide's notes omit this `[요약]` layer.
-3. **Spoken script** — the actual talk track in 존댓말 (polite conversational Korean),
-   with inline `{cue: ...}` markers where you want to pause, ask, or transition.
+3. **Spoken script** — the actual talk track for one presenter, written as natural
+   speech in 존댓말 rather than a read-aloud report, with inline `{cue: ...}` markers
+   where you want to pause, ask, or transition. This is the canonical voice rule for
+   speaker notes (see "Spoken script voice" below).
    On a slide with steps, put exactly one `↓` per press the slide takes right after the sentence
    that finishes a step (a quick check counts one); the presenter window draws it as a badge.
    Never write what to press ("아래 화살표로", "눌러 볼게요"), and use no `↓` in `[요약]`,
    `[출처]`, `[약어]` or `{...}` markers. See [step-guidance.md](step-guidance.md#3-down-marks-in-the-speaker-notes).
+
+#### Spoken script voice
+
+Write the way a good live presenter talks to the room. These are patterns to apply,
+not phrases to copy:
+
+- **Soft spoken endings**: mix `~거든요`, `~잖아요`, `~예요`, `~하시면 돼요` with
+  `~합니다`. Do not end every sentence with `~하겠습니다`.
+- **Scenes and analogies**: explain with something the audience can picture from their
+  own work (opening a warehouse door and carrying every tool to the desk, coming back
+  from a one-hour meeting to a cold cache), not with an abstract definition.
+- **Ask, then answer**: pose the question the audience is likely thinking ("왜 이럴 때는
+  clear가 더 나을까요?"), pause with `{cue: question}`, then answer it.
+- **Connect backwards and forwards**: refer to what was said earlier ("아까 훅에서 봤던")
+  and bridge to the next slide in one natural sentence.
+- **Repeat the one thing that matters**: restate the key takeaway once in different, short
+  words, then use a signpost such as "자, 다음은" or "하나 더 있어요".
+- **Concrete over general**: give the real number, the command to type, or the setting to
+  check ("세션을 켜고 `/context`를 쳐 보세요, 5%에서 60%까지 차 있을 수 있어요").
+- **Sentences you can say in one breath**: break long ones, and allow a spoken fragment
+  when it lands the point. Keep every sentence something a person would actually say.
+- Notes still follow the copy-style rules (no em dashes or middle dots) and never tell
+  the audience to hold questions (`AUDIENCE_TONE`).
 4. **`[약어]`** — abbreviations the stated audience may not know (omit the block
    if there are none). Use `audience` and `level`, not a blanket exemption for
    API, JSON, EKS or S3. These presenter notes supplement the audience-facing
@@ -1476,21 +1501,24 @@ Full example:
 {timing: 2min}
 {cue: pause}
 [요약]
-• Container Insights 핵심 메트릭은 CPU·메모리·네트워크 3가지
-• request 대비 사용률을 봐야 함 — limit만 보면 throttling 놓침
+• Container Insights 핵심 메트릭은 CPU, 메모리, 네트워크 3가지
+• request 대비 사용률을 봐야 함 (limit만 보면 throttling을 놓침)
 • 메모리는 RSS가 아니라 Working Set 기준
 
-이 슬라이드에서는 CloudWatch Container Insights의 핵심 메트릭 3가지를 살펴보겠습니다.
-먼저 CPU 사용률인데요, request 대비 실제 사용량 비율을 봐야 합니다.
+클러스터가 느려졌을 때 제일 먼저 열어보는 게 Container Insights인데요, 메트릭이 많아서
+처음엔 뭘 봐야 할지 막막하거든요. 오늘은 딱 세 가지만 보면 돼요. CPU, 메모리, 네트워크예요.
+먼저 CPU는 limit이 아니라 request 대비 사용률을 보셔야 해요. limit만 보면 throttling이
+일어나고 있는데도 모르고 지나가거든요.
 
 {cue: question}
-혹시 OOMKilled를 경험해보신 분 계신가요? — 대부분 메모리 메트릭을 모니터링하지 않아 발생합니다.
+혹시 파드가 OOMKilled로 갑자기 죽은 경험 있으세요? 대부분 메모리를 안 보고 있다가 생기는 일이에요.
+그래서 메모리는 RSS가 아니라 Working Set으로 보세요. 이거 하나만 기억하셔도 충분해요.
 
 {cue: transition}
-다음 슬라이드에서 이 메트릭들을 대시보드로 구성하는 방법을 보겠습니다.
+자, 이 세 가지를 눈으로 한 번에 보려면 대시보드가 필요하죠. 다음 슬라이드에서 같이 만들어 볼게요.
 
 [약어]
-• RSS: Resident Set Size — 프로세스가 점유한 물리 메모리
+• RSS: Resident Set Size, 프로세스가 점유한 물리 메모리
 
 [출처]
 • AWS Container Insights 문서, throttling 임계값 수치
