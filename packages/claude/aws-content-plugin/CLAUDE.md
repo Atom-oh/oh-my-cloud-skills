@@ -125,6 +125,7 @@ On a FAIL/REVIEW verdict, fix and re-review. Declare completion/deployment only 
 | `reactive-presentation` | Presentation framework assets, scripts, references, AWS icons |
 | `architecture-diagram` | Draw.io templates, AWS icon reference, layout patterns |
 | `animated-diagram` | SMIL animation guide, HTML templates, AWS diagram patterns |
+| `sketch-diagram` | Light hand-drawn animated concept diagram (inline SVG, deck theme tokens) for slide openers and friendly explainers |
 | `gitbook` | GitBook structure guide, component patterns |
 | `slide-fix` | Issue annotation-based slide repair (reads `<!-- issue: -->`, fixes, rebuilds) |
 | `workshop-creator` | Workshop Studio directives, templates, references |

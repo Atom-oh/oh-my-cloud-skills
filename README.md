@@ -104,6 +104,7 @@ does not activate those project hooks. See
 | “Create an editable AWS light PowerPoint deck from this outline.” | aws-light-fcd |
 | “Draw this multi-AZ AWS architecture and export PNG.” | architecture-diagram |
 | “Show request traffic and a failover scenario.” | animated-diagram |
+| “Give me a light, hand-drawn overview diagram to open this slide section.” | sketch-diagram |
 | “Build a Workshop Studio lab with verification and cleanup.” | workshop-creator |
 | “Diagnose why these pods cannot reach the service.” | ops-network-diagnosis |
 | “Assess this cluster's health.” | ops-health-check |
@@ -162,6 +163,10 @@ that dependency and output contract rather than treating it as another marketpla
 uses SVG/SMIL for repeated traffic motion and JavaScript/CSS state machines for
 controlled scaling, deployment, and failover scenarios. Keep a readable static
 architecture, labels, legend, and working reset/replay controls.
+
+[sketch-diagram](plugins/aws-content-plugin/skills/sketch-diagram/SKILL.md) is the
+lighter option: a hand-drawn, theme-token SVG concept diagram with dots flowing along
+the real topology, meant as a friendly slide opener rather than an architecture record.
 
 ## Documents
 
