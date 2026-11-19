@@ -86,6 +86,13 @@
       ]
     },
     {
+      "name": "sketch-diagram",
+      "path": ".codex-plugin/skills/sketch-diagram/SKILL.md",
+      "sources": [
+        "skills/sketch-diagram/SKILL.md"
+      ]
+    },
+    {
       "name": "slide-fix",
       "path": ".codex-plugin/skills/slide-fix/SKILL.md",
       "sources": [

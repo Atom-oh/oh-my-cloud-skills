@@ -1,0 +1,45 @@
+{
+  "skill_name": "sketch-diagram",
+  "evals": [
+    {
+      "id": 0,
+      "name": "opener-loop-ko",
+      "prompt": "Claude Code 워크숍 첫 슬라이드에 넣을 가벼운 손그림 스타일 도식을 만들어줘. 주제는 'Claude Code가 일하는 한 바퀴': 사용자가 요청하면 코드와 문서를 읽고, 계획을 세우고, 도구로 실행한 뒤 결과를 확인하고, 부족하면 다시 돌아가. 움직이는 점으로 흐름이 보였으면 좋겠어.",
+      "expected_output": "A single self-contained inline SVG diagram (hand-drawn look with a wobble filter, washed bands or cards, doodle icons) whose flow dots follow the real topology, including a feedback loop back to the start, using only theme role tokens.",
+      "files": [],
+      "assertions": [
+        "Uses an SVG filter with feTurbulence and feDisplacementMap for the hand-drawn wobble",
+        "The retry or check-and-repeat loop is drawn as a visible edge, not omitted",
+        "Flow dots use offset-path (or equivalent) on paths that match visible edges, including the loop",
+        "Colours come from var(--*) role tokens or currentColor; no raw hex or rgb literals in the diagram",
+        "Includes a prefers-reduced-motion rule that disables the animation",
+        "Labels are short Korean phrases taken from the user's topic, not the template's wording",
+        "No em dashes or middle dots in any label"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "not-for-aws-architecture",
+      "prompt": "ALB, EKS, RDS가 들어간 VPC 아키텍처 다이어그램을 공식 AWS 아이콘으로 그려줘.",
+      "expected_output": "The sketch-diagram skill is not chosen; the request is routed to architecture-diagram (official icons, exact boundaries).",
+      "files": [],
+      "assertions": [
+        "Does not produce a hand-drawn sketch diagram",
+        "Routes to architecture-diagram or animated-diagram"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "slide-embedding",
+      "prompt": "이 손그림 도식을 reactive-presentation 슬라이드에 넣어줘. 슬라이드 제목은 '한 번 돌면 다음은 쉬워져요'야.",
+      "expected_output": "A Remarp slide whose :::html block contains a <style> element and the SVG together, with spoken-voice notes, and validate shows no RAW_HEX, INLINE_STYLE or EM_DASH findings.",
+      "files": [],
+      "assertions": [
+        "Styles are inside a <style> within the :::html block, not in a :::css block",
+        "The preview-only token block with hex values is not copied into the slide",
+        "The slide has a :::notes block with a [요약] summary and a conversational script",
+        "remarp_to_slides.py validate is run and reports no CRITICAL findings"
+      ]
+    }
+  ]
+}

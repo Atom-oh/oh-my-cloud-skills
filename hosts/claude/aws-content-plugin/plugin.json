@@ -11,6 +11,7 @@
     "./skills/reactive-presentation",
     "./skills/architecture-diagram",
     "./skills/animated-diagram",
+    "./skills/sketch-diagram",
     "./skills/gitbook",
     "./skills/workshop-creator",
     "./skills/slide-fix",

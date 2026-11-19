@@ -8,7 +8,7 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "b4bac03ec49cb33381979cb877fa5ed3e8e4a38291f1acf72838c3318a7b2dcd",
+      "sha256": "4a802b232546c9636da460c8110ac15898e00bba27568ebe708a3d0cc4a4b70a",
       "executable": false
     },
     "agents/architecture-diagram-agent.md": {
@@ -444,7 +444,7 @@
       "executable": false
     },
     "skills/reactive-presentation/SKILL.md": {
-      "sha256": "c64a55a2792c18be5d3a5292d5de731bec3dcbe0e06e6dd5ac7b2803d5379a04",
+      "sha256": "1f2ac45576f03d8413757e95db038a88727c49f4f75e838066e43f4807dc73b8",
       "executable": false
     },
     "skills/reactive-presentation/assets/animation-utils.js": {
@@ -17391,6 +17391,30 @@
       "sha256": "3ab39f27ab7e07ef5eb42490b4e6054c9574a50cdf167e524857b76e6c522bac",
       "executable": false
     },
+    "skills/sketch-diagram/SKILL.md": {
+      "sha256": "b9f36ed209591555308c1bacac51bff78d11468a0d8bee0e63ffd2a26b7df23e",
+      "executable": false
+    },
+    "skills/sketch-diagram/evals/evals.json": {
+      "sha256": "da815ede7752774cede00f5620e7fd1dd8305cdbfd6e0b3ca27a8fb29574b5e9",
+      "executable": false
+    },
+    "skills/sketch-diagram/references/layouts.md": {
+      "sha256": "0387247088b4b834a34f76bbddcd49e901babefe873064275f7daf362139d265",
+      "executable": false
+    },
+    "skills/sketch-diagram/references/recipes.md": {
+      "sha256": "b594761ff9cda9c883b015634258a7ecf4eef2c3d19df07942e4a7be37064b32",
+      "executable": false
+    },
+    "skills/sketch-diagram/references/slide-embedding.md": {
+      "sha256": "23283f086d1d4e02375a801b9f523aba819335a11ba1da17afc3414ab3a9f840",
+      "executable": false
+    },
+    "skills/sketch-diagram/templates/sketch-opener.html": {
+      "sha256": "0fdf0a2409ddecd1eb2fe930b7e0720d8b55bb5080609c0e56493804939fddad",
+      "executable": false
+    },
     "skills/slide-fix/SKILL.md": {
       "sha256": "37cb535b10c1b9357d1bcd28d1d10d7987e754ce7a146ccc255321a3ec533747",
       "executable": false
@@ -17543,6 +17567,10 @@
       "sha256": "4694ce6094b4c7660563e078772daf7b5c9bcb128159cc0dc0f138de33eae1a7",
       "executable": false
     },
+    ".codex-plugin/skills/sketch-diagram/SKILL.md": {
+      "sha256": "f2661d031b767e47bd5b22b4cf3e63973b94680bef6a1533820aff5f787a4c15",
+      "executable": false
+    },
     ".codex-plugin/skills/slide-fix/SKILL.md": {
       "sha256": "e1156a50530f70ddac1b7617380c5d60ea1b4424a2b6c13b345b5caadc80831a",
       "executable": false
@@ -17560,7 +17588,7 @@
       "executable": false
     },
     ".codex-plugin/inventory.json": {
-      "sha256": "af9d3122c91e22cecd7c9e2bf2e7d71cf0483ed22a23e20ffa583e16a8886140",
+      "sha256": "2891ae58138b5eaf9da7f0e872b132f37b46b65707848457268ba0d0975ec2a5",
       "executable": false
     },
     ".codex-plugin/runtime.md": {
