@@ -47,5 +47,5 @@ it as a data URI woff2 in the slide's `<style>`; otherwise rely on the fallback 
 ## Choosing sketch versus other diagram forms
 
 Use sketch-diagram for a quick, friendly overview at the start of a section. Use
-`:::archify` or canvas when the audience must explore or step through a precise
-architecture.
+`line-art-scene` when the audience should be walked through steps with a moving camera,
+callouts and a side panel, and `:::archify` when they must explore a precise architecture.

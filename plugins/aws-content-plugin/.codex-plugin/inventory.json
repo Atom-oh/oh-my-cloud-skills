@@ -72,6 +72,13 @@
       ]
     },
     {
+      "name": "line-art-scene",
+      "path": ".codex-plugin/skills/line-art-scene/SKILL.md",
+      "sources": [
+        "skills/line-art-scene/SKILL.md"
+      ]
+    },
+    {
       "name": "reactive-presentation",
       "path": ".codex-plugin/skills/reactive-presentation/SKILL.md",
       "sources": [
