@@ -6,6 +6,8 @@ model: "opus"
 effort: "high"
 skills:
   - "reactive-presentation"
+  - "sketch-diagram"
+  - "line-art-scene"
 mcpServers:
   - "playwright"
 ---
@@ -103,6 +105,10 @@ Speaker notes alone do not meet this requirement. Review semantic coverage befor
 handoff; `DETAIL_REF` checks wiring only.
 
 **Choosing a slide form**: pick the representation that matches the content's complexity — simple flows use the `:::canvas` DSL, complex architectures use `:::html` + `:::css` (theme.css's `.flow-h`/`.flow-group`/`.flow-box`), and interactions requiring logic use `:::html` + `:::script`. Boundary values (e.g., canvas element count) are validated by `remarp_to_slides.py validate`, with `references/authoring-rules.md` as the canon — choosing the right form up front via the Slide Type Decision Guide below avoids cycling through the rejection loop.
+
+**Stepped line-art scene**: when the audience must be walked through a flow one step per press (request path, pipeline, protocol), use the `line-art-scene` skill: a `@fit: off` slide with an empty host in `:::html`, the scene mounted from `:::script`, and one `↓` per phase in the notes. For a light, non-stepped overview use `sketch-diagram` instead.
+
+**Light opener diagram**: when a section needs a friendly, hand-drawn overview (not an exact architecture), use the `sketch-diagram` skill and embed its SVG with a `<style>` inside a `:::html` block.
 
 **Speaker notes**: every slide gets `:::notes`. The goal is enough content for the presenter to speak to that slide for 1-3 minutes from the notes alone — not a repeat of the slide text, but conversational elaboration on why it matters, practical application, and common mistakes, opening with `{timing:}` and closing with `{cue: transition}` plus a bridge into the next slide. Write the script as one presenter speaking naturally to the room, following "Spoken script voice" in `references/remarp-format-guide.md` (soft spoken endings, audience scenes, ask-then-answer, concrete numbers and commands).
 

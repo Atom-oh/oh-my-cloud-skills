@@ -126,6 +126,7 @@ On a FAIL/REVIEW verdict, fix and re-review. Declare completion/deployment only 
 | `architecture-diagram` | Draw.io templates, AWS icon reference, layout patterns |
 | `animated-diagram` | SMIL animation guide, HTML templates, AWS diagram patterns |
 | `sketch-diagram` | Light hand-drawn animated concept diagram (inline SVG, deck theme tokens) for slide openers and friendly explainers |
+| `line-art-scene` | Stepped hand-drawn flow scene for reactive-presentation slides (moving camera, packet on real paths, callouts, side panel); modules copied into the deck by the Remarp build |
 | `gitbook` | GitBook structure guide, component patterns |
 | `slide-fix` | Issue annotation-based slide repair (reads `<!-- issue: -->`, fixes, rebuilds) |
 | `workshop-creator` | Workshop Studio directives, templates, references |

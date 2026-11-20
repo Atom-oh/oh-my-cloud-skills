@@ -42,7 +42,9 @@
     "model": "opus",
     "effort": "high",
     "skills": [
-      "reactive-presentation"
+      "reactive-presentation",
+      "sketch-diagram",
+      "line-art-scene"
     ],
     "mcpServers": [
       "playwright"
