@@ -4,15 +4,13 @@
     "brochure-agent": "high",
     "content-review-agent": "xhigh",
     "gitbook-agent": "low",
-    "reactive-presentation-agent": "high",
-    "workshop-agent": "high"
+    "reactive-presentation-agent": "high"
   },
   "explicit_skills": [
     "architecture-diagram-agent",
     "brochure-agent",
     "content-review-agent",
     "gitbook-agent",
-    "reactive-presentation-agent",
-    "workshop-agent"
+    "reactive-presentation-agent"
   ]
 }

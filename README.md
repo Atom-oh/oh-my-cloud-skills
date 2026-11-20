@@ -16,7 +16,7 @@ and PR and agent status views.
 
 | Plugin | Workflows |
 |---|---|
-| [aws-content-plugin](plugins/aws-content-plugin/) | Interactive web decks, editable PowerPoint, architecture and animated diagrams, technical documents, GitBook sites, workshops, brochures, and personal profiles |
+| [aws-content-plugin](plugins/aws-content-plugin/) | Interactive web decks, editable PowerPoint, architecture and animated diagrams, technical documents, GitBook sites, brochures, and personal profiles |
 | [aws-ops-plugin](plugins/aws-ops-plugin/) | AWS/EKS troubleshooting, health checks, networking, identity, observability, storage, databases, analytics, cost, and Well-Architected reviews |
 | [co-agent](plugins/co-agent/) | Peer review, decisions, ADRs, context synchronization, consensus/harness implementation, PR feedback fixes, and ADR reconciliation |
 | [project-init](plugins/project-init/) | Initialize and maintain the current host's project instructions, skills, architecture docs, ADRs, runbooks, and reference guides |
@@ -105,7 +105,6 @@ does not activate those project hooks. See
 | “Draw this multi-AZ AWS architecture and export PNG.” | architecture-diagram |
 | “Show request traffic and a failover scenario.” | animated-diagram |
 | “Give me a light, hand-drawn overview diagram to open this slide section.” | sketch-diagram |
-| “Build a Workshop Studio lab with verification and cleanup.” | workshop-creator |
 | “Diagnose why these pods cannot reach the service.” | ops-network-diagnosis |
 | “Assess this cluster's health.” | ops-health-check |
 | “Get a second opinion on this diff.” | co-agent (review mode) |
@@ -179,12 +178,6 @@ creates a personal profile or portfolio. Both produce responsive HTML.
 [gitbook](plugins/aws-content-plugin/skills/gitbook/SKILL.md) supplies site structure,
 SUMMARY navigation, rich components, diagrams, and cross-link checks. Create language
 variants only when the deliverable requires them.
-
-## Workshops
-
-[workshop-creator](plugins/aws-content-plugin/skills/workshop-creator/SKILL.md)
-produces Workshop Studio modules, labs, directives, and optional infrastructure.
-Each lab explains prerequisites, commands, expected results, verification, and cleanup.
 
 ## AWS Ops
 

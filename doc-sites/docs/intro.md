@@ -32,7 +32,7 @@ before updating an existing co-agent setup that selected Antigravity.
 | --- | --- |
 | [co-agent](/docs/co-agent/overview) | Second opinions, decisions, ADRs, and implementation pipelines with peer review. The current host chairs the work. |
 | [project-init](/docs/project-init/overview) | Initialize project instructions and structure, synchronize documentation, and create ADRs, runbooks, and reference guides for either host. |
-| [aws-content-plugin](/docs/aws-content-plugin/overview) | Create web presentations, editable PowerPoint decks, diagrams, documents, workshops, brochures, and portfolio pages. |
+| [aws-content-plugin](/docs/aws-content-plugin/overview) | Create web presentations, editable PowerPoint decks, diagrams, documents, brochures, and portfolio pages. |
 | [aws-ops-plugin](/docs/aws-ops-plugin/overview) | Diagnose AWS and EKS incidents across compute, networking, identity, observability, storage, databases, analytics, and cost. |
 | [pr-dash](/docs/pr-dash/overview) | Watch a pull request's CI checks and AI review in a Claude Code pane, or as text in Codex. |
 | [agent-dash](/docs/agent-dash/overview) | See which agents are working, who delegated to whom and who is waiting, in a Claude Code pane, or as a roster in Codex. |

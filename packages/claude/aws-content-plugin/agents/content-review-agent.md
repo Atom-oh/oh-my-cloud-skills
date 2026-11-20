@@ -28,7 +28,7 @@ The non-code-artifact analog of superpowers:requesting-code-review — route her
 | Animated SVG | animated-diagram skill | Animation correctness, color coding |
 | Markdown Documents | written directly (no dedicated agent) | Structure, content, references |
 | GitBook Pages | gitbook-agent | Navigation, components, cross-refs |
-| Workshop Content | workshop-agent | Directives, structure, bilingual consistency |
+| Workshop Content | authored outside this plugin (rubric under Workshop below) | Directives, structure, bilingual consistency |
 | Brochure (HTML) | brochure-agent | Responsive tiers (mobile/tablet/PC), CTA presence, copy↔diagram consistency, product-UI screenshots present when the product has a **reachable** web UI or the user supplied captures (alt text + captions; flag that raster screenshots need a manual eyeball for baked-in account IDs/ARNs/tokens/internal URLs — text PII scan can't see pixels). Do **not** dock a brochure for missing screenshots when the product has no reachable UI and none were provided (matches brochure-agent rule 9). Also: relative asset links, accessibility, PII (account IDs / internal CIDRs/IPs) |
 | PPTX Decks (native) | aws-light-fcd skill | `check_pptx.py` score ≥80 (text overflow/overlap, off-canvas, footer, page-number sanity, Pretendard-only, no placeholder text) + official AWS/AgentCore icons |
 
@@ -101,10 +101,12 @@ Finding consolidation (still a finding — just recorded once, not once per occu
 - SUMMARY.md navigation matches actual pages
 - GitBook components use correct syntax; cross-references resolve to existing pages
 
-**Workshop:**
-- Workshop Studio directives (NOT Hugo shortcodes)
-- No `chapter: true` in front matter
-- Bilingual file pairs exist (.ko.md + .en.md); contentspec.yaml valid
+**Workshop** (self-contained rubric; the authoring skill is maintained outside this plugin):
+- Workshop Studio directives (NOT Hugo shortcodes); an outer container directive has more colons than the container inside it
+- Front matter is YAML with only `title`, `weight`, `hidden` (any other key, e.g. `chapter`, fails the build)
+- Colons in Markdown body text are escaped as `\:`; no raw HTML; images come from `/static` or `/assets`
+- Bilingual file pairs exist (.ko.md + .en.md) with identical commands, code and image paths; contentspec.yaml valid
+- Every hands-on step has a verification step with expected output
 
 ### 7. Icon Inspection
 - No null or broken icon references; icons contextually appropriate and consistent

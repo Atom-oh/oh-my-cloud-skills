@@ -113,15 +113,13 @@ Build checks compile into a new temporary output directory. Existing HTML, comme
 
 ## Adding Eval Cases for Other Skills
 
-Create a new subdirectory matching the skill name:
+Create a new subdirectory matching the skill name. Example layout (only `reactive-presentation/` exists today):
 
 ```
 evals/
 ├── reactive-presentation/   # Existing
-├── architecture-diagram/    # New skill evals
-│   └── basic-diagram.yaml
-└── workshop-creator/        # New skill evals
-    └── basic-module.yaml
+└── architecture-diagram/    # Example: new skill evals
+    └── basic-diagram.yaml
 ```
 
 The `plugin` field in YAML must match the plugin directory name (e.g., `aws-content-plugin`, `aws-ops-plugin`).

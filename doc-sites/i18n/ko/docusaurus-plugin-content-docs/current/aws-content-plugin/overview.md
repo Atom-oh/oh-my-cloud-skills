@@ -24,7 +24,7 @@ title: "AWS 콘텐츠 플러그인"
 
 # AWS 콘텐츠 플러그인
 
-웹 프레젠테이션, 편집 가능한 PowerPoint 덱, 다이어그램, 문서, 워크숍, 브로슈어와 포트폴리오 페이지를 제작합니다.
+웹 프레젠테이션, 편집 가능한 PowerPoint 덱, 다이어그램, 문서, 브로슈어와 포트폴리오 페이지를 제작합니다.
 
 ## 작업 흐름 선택 {#choose-a-workflow}
 
@@ -35,7 +35,6 @@ title: "AWS 콘텐츠 플러그인"
 | AWS Draw.io 아키텍처 | architecture-diagram |
 | 트래픽·시나리오 애니메이션 다이어그램 | animated-diagram |
 | GitBook 문서 | gitbook |
-| Workshop Studio 실습 | workshop-creator |
 | 제품·솔루션 소개 페이지 | brochure |
 | 개인 프로필·포트폴리오 | gh-home |
 | Remarp 이슈 주석 반영 | slide-fix |
