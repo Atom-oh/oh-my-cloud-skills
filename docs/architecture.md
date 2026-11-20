@@ -28,9 +28,9 @@ Claude manifest (2026-11-20). Project-init uses convention-based source discover
 | project-init | Project scaffolding and documentation management | 1 | 10 | 1 | 12 | 0 |
 | pr-dash | PR checks and AI review status: Claude Code mod pane plus a text skill | 1 | 0 | 0 | 1 | 0 |
 | agent-dash | Agent tree, estimated waits and an opt-in model policy: Claude Code mod plus a roster text skill | 1 | 0 | 0 | 1 | 0 |
-| **Total** | | **21** | **15** | **23** | **59** | **16** |
+| **Total** | | **21** | **15** | **19** | **55** | **16** |
 
-The **59 source procedures** currently map to **59 Codex entry skills**. These are
+The **55 source procedures** currently map to **55 Codex entry skills**. These are
 separate inventories: same-name source aliases can share an entry. Specialist
 entries are procedures, not native Codex agent roles.
 The **16 plugin hook commands** exclude repository hooks and project-init's
