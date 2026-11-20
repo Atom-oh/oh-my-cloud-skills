@@ -20,11 +20,14 @@ falls to 0, so stopping looks natural.
 
 - One step is one packet journey along one wire span. The packet runs after a short `lead`
   so the camera settles first.
-- The camera eases to the step's frame when the step changes (exponential smoothing, about 4 per
-  second) and holds still while the packet travels.
+- When the step changes, the camera eases to the step's frame over exactly the step's `lead`
+  (up to 0.9 s for the overview) and then holds still while the packet travels. A step with
+  `lead: 0` cuts straight to its frame. `mode: 'auto'` keeps a softer exponential follow.
 - A step change draws immediately (`go()` redraws at once), so the presenter window and a
   background deck window stay in sync even when no animation frames arrive.
 - Reduced motion jumps the camera to each step's frame and shows the packet's end state.
+  Figures stand at their `goto` target in their end pose (hands on the keyboard, a raised hand
+  up), and the `busy` nod, sweat drop, sound word and glyphs are hidden.
 
 ## Timing
 

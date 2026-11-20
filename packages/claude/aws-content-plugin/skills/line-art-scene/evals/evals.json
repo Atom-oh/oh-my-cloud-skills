@@ -5,10 +5,11 @@
       "id": 0,
       "name": "stepped-request-walkthrough",
       "prompt": "Claude Code 워크숍 슬라이드에 '사내 PC에서 Bedrock까지 요청이 흐르는 길'을 단계별로 보여주는 선화 장면을 만들어줘. 사내망, 전용선, VPC 엔드포인트, Bedrock 순서로 4단계이고, 발표자가 아래 화살표로 한 단계씩 넘기고 싶어.",
-      "expected_output": "A Remarp slide with @fit: off, an empty host in :::html, a :::script that imports ./common/line-art-scene/flowscene.js and mounts a scene spec with an overview plus four phases, literal ./common/aws-icons icon URLs, and notes with exactly four down marks.",
+      "expected_output": "A Remarp slide with @fit: off, a host in :::html holding a static fallback (one sentence and a numbered list of the steps), a :::script that imports ./common/line-art-scene/flowscene.js and mounts a scene spec with an overview plus four phases, literal ./common/aws-icons icon URLs, and notes with exactly four down marks.",
       "files": [],
       "assertions": [
         "The slide has @fit: off",
+        "The host div holds a static fallback summary of every step, so PDF export is not blank",
         "The mount call imports ./common/line-art-scene/flowscene.js and passes a spec with an overview and four phases",
         "Icon src values are literal ./common/aws-icons/<category>/<file>.svg paths",
         "The notes contain exactly one down mark per phase and never say which key to press",

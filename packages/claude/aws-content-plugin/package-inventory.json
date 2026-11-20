@@ -28,7 +28,7 @@
       "executable": false
     },
     "agents/reactive-presentation-agent.md": {
-      "sha256": "03be6bb851bfdf5a74c27b9f1a0eb1a5e738af0019021d436921109ba2033317",
+      "sha256": "39911c6caf40521baf7a204fcd91913b6e9e4959031a42bd2bc45f151bbf824f",
       "executable": false
     },
     "agents/workshop-agent.md": {
@@ -440,7 +440,7 @@
       "executable": false
     },
     "skills/line-art-scene/SKILL.md": {
-      "sha256": "e2427519837a04772b3e26be5f5567857e45ab2b648c1f540f4961b64db7422c",
+      "sha256": "05776b092a1d89521d555f5583de458294d82f8a581a321f7834b69f7c339072",
       "executable": false
     },
     "skills/line-art-scene/assets/flowscene.css": {
@@ -448,7 +448,7 @@
       "executable": false
     },
     "skills/line-art-scene/assets/flowscene.js": {
-      "sha256": "ee08c1c161c70e88a2e34dee02923bd7780f9df5a1b444c9b84af2d236da3e82",
+      "sha256": "714b02e7d6a6e38f6f0f3fb17f3c4026f905808bb1daee5ba154decdfb8a39f3",
       "executable": false
     },
     "skills/line-art-scene/assets/gait.js": {
@@ -464,19 +464,19 @@
       "executable": false
     },
     "skills/line-art-scene/evals/evals.json": {
-      "sha256": "ce0451ede7eaa08cca3912d7562aa657baa72aaa01120acd4a2cf045a8c613a3",
+      "sha256": "d9abf7c0c0d05754ddfd06b8964efc24a2124125080d876ab9607bbb1b1670b5",
       "executable": false
     },
     "skills/line-art-scene/references/motion.md": {
-      "sha256": "2d7e3382e643d64ca1fa98a9d1c451af1c70f10846e8fae130bf26cbf742cdb4",
+      "sha256": "67bc6abaa50c5cb5d4e6e5fe01c7ec9852ab18df264c05ec20793f403a169c56",
       "executable": false
     },
     "skills/line-art-scene/references/scene-spec.md": {
-      "sha256": "13bac885810254ac4684fc90c126139dffd4ee60b629c31f8fa768057f9b43ca",
+      "sha256": "98536d753553f0f393b64b7bb041e6f36e8f52caabaabdaca1477bcd086b8b41",
       "executable": false
     },
     "skills/line-art-scene/references/slide-embedding.md": {
-      "sha256": "7d9a4a6865845b50ae23dc0f7ed0cf170754806fb9922c601fee9d68c6c7a74c",
+      "sha256": "5761b5291aff7a0741e79de761b9509d560b402589f1d9dc691484637d8ddbd8",
       "executable": false
     },
     "skills/line-art-scene/references/style.md": {
@@ -484,11 +484,11 @@
       "executable": false
     },
     "skills/line-art-scene/references/verification.md": {
-      "sha256": "2f33ba0a937df30076ec975de0aa3186f29146b7614ccda1c6b39f42a2e0126f",
+      "sha256": "39f000e0611c05ad0934be1ff841c2c9511bb42c77c30f10933af51242c4634f",
       "executable": false
     },
     "skills/line-art-scene/templates/scene-example.remarp.md": {
-      "sha256": "3011e7047809a7c182548b0150559af5f44eaea2d9291159c6b9a808338bf8f7",
+      "sha256": "640b67993e111811b0e86b18fa02b62e538fb9bad50e3c2018b2971713fd5069",
       "executable": false
     },
     "skills/reactive-presentation/REMARP.md": {

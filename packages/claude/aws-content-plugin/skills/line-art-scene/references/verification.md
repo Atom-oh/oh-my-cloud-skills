@@ -12,8 +12,13 @@ Show nothing before these pass.
    (progress bar visible at the bottom).
 4. `deck.getStepInfo()` reports `cur` from 0 to the number of phases and `more: false` on the
    last step. The number of `↓` marks in the notes equals the number of phases.
-5. Reduced motion: with the preference on, each Down shows the step's end state at once.
+5. Reduced motion: with the preference on, each Down shows the step's end state at once and
+   nothing moves afterwards: figures stand at their end position and a `busy` figure shows no
+   nod, sweat drop or glyphs.
 6. Leave the slide and come back: the scene is on step 0 again.
+7. PDF export: the scene slide shows the host's static fallback (the sentence and the numbered
+   steps), not a blank body. The print view runs no slide scripts, so this is the expected PDF
+   content.
 
 A stepping script, using Python Playwright and a local chromium:
 

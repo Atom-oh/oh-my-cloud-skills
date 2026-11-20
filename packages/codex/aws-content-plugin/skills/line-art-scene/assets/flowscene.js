@@ -4,8 +4,9 @@
  * line-art figures, and a side panel with the step title, code lines and checks.
  *
  * One scene is one plain data object (see references/scene-spec.md). The scene opens on the
- * full picture (step 0, so PDF export and reduced motion show everything), then each Down
+ * full picture (step 0, so reduced motion and every slide entry show everything), then each Down
  * press or click on the stage plays the next step once and holds its end state; Up goes back.
+ * PDF export runs no scripts, so a PDF shows the host's static fallback markup; mount() replaces it.
  *
  *   import('./common/line-art-scene/flowscene.js').then(m => m.mount('#scene', SPEC));
  *
@@ -41,7 +42,7 @@ export function mount(sel, S) {
   const uid = 'fs' + Math.random().toString(36).slice(2, 7);
   const slide = host.closest('.slide');
 
-  // Build the markup when the author left the host empty.
+  // Build the markup unless the author supplied a .fs-stage; this replaces any static fallback.
   if (!host.querySelector('.fs-stage')) {
     host.innerHTML = '<div class="fs-stage"></div><div class="fs-side"><div class="fs-step"></div><div class="fs-title"></div>' +
       '<pre class="fs-code"></pre><div class="fs-checks"></div><div class="fs-say"></div><div class="fs-prog"><i></i></div>' +
@@ -179,8 +180,11 @@ export function mount(sel, S) {
     }) : [];
     let x = f.at[0], phase = 0;
     return {
-      f, draw(t, dt, ph, act) {
+      f, draw(t, dt, ph, act, calm) {
+        // calm is reduced motion: no walk, no spring travel, no busy loop; the end pose is drawn at once
+        if (calm) t = 0;
         const want = (f.goto && ph && f.goto[ph.key] != null) ? f.goto[ph.key] : f.at[0];
+        if (calm) x = want;
         const moving = Math.abs(want - x) > 0.02;
         if (moving) { phase += dt / walk.period; x += Math.sign(want - x) * Math.min(Math.abs(want - x), walk.speed * 0.028 * dt); }
         const [sx, sy] = pj(x, f.at[1], f.at[2]);
@@ -188,11 +192,12 @@ export function mount(sel, S) {
         const p = walk.pose(phase, moving ? 1 : 0);
         p.feet.forEach((fo, i) => { legs[i].draw([p.hip, fo.knee, fo.ankle], [0.3, 0.8]); shoe(shoes[i], fo.ankle, fo.pitch); });
         g.insertBefore(legs[p.front].g, body); g.insertBefore(shoes[p.front], body);
-        const b = p.bob, typing = (f.pose === 'type' || act === 'type') ? 1 : 0, k = f.busy ? (act === 'type' ? 1 : 0.5) : 0;
-        const tb = typeBlend.step(typing, dt), lean = 2 * k * tb, nod = k ? Math.sin(t * 7.5) * 0.9 * k : 0;
+        const b = p.bob, typing = (f.pose === 'type' || act === 'type') ? 1 : 0, k = f.busy && !calm ? (act === 'type' ? 1 : 0.5) : 0;
+        if (calm) { typeBlend.x = typing; typeBlend.v = 0; raise.x = act === 'raise' ? 1 : 0; raise.v = 0; }
+        const tb = calm ? typeBlend.x : typeBlend.step(typing, dt), lean = 2 * k * tb, nod = k ? Math.sin(t * 7.5) * 0.9 * k : 0;
         body.setAttribute('d', `M35 ${42 + b} Q41 ${38.4 + b} 47 ${42 + b} L47.5 ${73 + b} Q40 ${76 + b} 32.5 ${73 + b}Z`);
         head.setAttribute('cx', 43 + lean); head.setAttribute('cy', 31.4 + b + nod);
-        const r = raise.step(act === 'raise' ? 1 : 0, dt);
+        const r = calm ? raise.x : raise.step(act === 'raise' ? 1 : 0, dt);
         const tp = (k ? tap(t * (2.4 + 2.6 * k)) * 1.4 : tb ? tap(t * 2.2) : 0) * tb, tq = (k ? tap(t * (2.4 + 2.6 * k) + 0.4) * 1.4 : tp) * tb;
         const rest = [42, 72], desk = [60 + lean, 66 + tp + b];
         const handFar = [rest[0] + (desk[0] - rest[0]) * tb, rest[1] + b + (desk[1] - b - rest[1]) * tb];
@@ -263,6 +268,7 @@ export function mount(sel, S) {
   let framesReady = svg.getBBox().width > 0;
   const CYCLE = PH.reduce((a, p) => a + p.d, 0);
   let cam = OVER.slice();
+  let camStep = -1, camFrom = cam.slice();   // step the camera last eased toward, and where it started
   svg.setAttribute('viewBox', OVER.map(v => v.toFixed(1)).join(' '));
 
   let cur = -1;
@@ -330,7 +336,7 @@ export function mount(sel, S) {
     const dt = Math.min(0.5, last ? Math.max(0, now - last) / 1000 : 0); last = now;
     if (!active()) return;
     // the slide may have been hidden when the scene mounted (getBBox is 0 then): measure now
-    if (!framesReady && svg.getBBox().width > 0) { computeFrames(); framesReady = true; cam = OVER.slice(); }
+    if (!framesReady && svg.getBBox().width > 0) { computeFrames(); framesReady = true; cam = OVER.slice(); camStep = -1; }
     let i, s;
     if (STEP) { i = idx; s = still ? PH[i].d : Math.min((now - phaseStart) / 1000, PH[i].d); }  // reduced motion: end state at once
     else {
@@ -367,11 +373,18 @@ export function mount(sel, S) {
     chk.forEach((c, k) => c.classList.toggle('ok', k < lit));
     if (S.frame) S.frame({ parts, marks, tags, wires, svg, lit, ph, u, t, all: !!ph.all });
 
-    figs.forEach(fg => fg.draw(t, Math.min(dt, 0.05), ph, (fg.f.act || {})[ph.key] || null));
+    figs.forEach(fg => fg.draw(t, Math.min(dt, 0.05), ph, (fg.f.act || {})[ph.key] || null, still));
 
     if (still) svg.setAttribute('viewBox', ((STEP && ph.frame) || OVER).map(v => v.toFixed(1)).join(' '));
-    else {
-      // the camera moves only when the step changes, never while the packet travels
+    else if (STEP) {
+      // the camera eases to the step's frame during the lead and is exactly there when the packet
+      // starts, so it never moves while the packet travels (the overview eases for up to 0.9 s)
+      if (camStep !== i) { camStep = i; camFrom = cam.slice(); }
+      const camT = Math.min(ph.all ? 0.9 : lead, ph.d), c = camT > 0 ? ease(clamp(s / camT, 0, 1)) : 1;
+      cam = camFrom.map((v, j) => v + (ph.frame[j] - v) * c);
+      svg.setAttribute('viewBox', cam.map(v => v.toFixed(1)).join(' '));
+    } else {
+      // auto mode (a looping film) keeps the exponential follow
       const k = 1 - Math.exp(-dt * 4.2);
       cam = cam.map((v, j) => v + (ph.frame[j] - v) * k);
       svg.setAttribute('viewBox', cam.map(v => v.toFixed(1)).join(' '));

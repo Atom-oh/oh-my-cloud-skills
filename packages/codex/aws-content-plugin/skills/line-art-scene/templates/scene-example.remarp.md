@@ -29,7 +29,15 @@ Welcome. In this short block we follow a single request from a laptop to a table
 
 :::html
 
-<div id="scene-request"></div>
+<div id="scene-request">
+<p>A request leaves the office network signed, passes the API gateway and a function, reads a table, and the answer returns by the same path.</p>
+<ol>
+<li>Client: signs the request</li>
+<li>API gateway: checks the caller</li>
+<li>Function: runs the logic</li>
+<li>Table: stores the result and answers</li>
+</ol>
+</div>
 :::
 
 :::script
@@ -76,7 +84,7 @@ import('./common/line-art-scene/flowscene.js').then(function (m) {
       { key: 'run',   label: 'STEP 3', title: 'The function runs', say: 'The logic reads the body and decides.',
         focus: ['fn'], badge: 'fn', packet: { wire: 'req', span: [2, 3] }, lines: [3] },
       { key: 'store', label: 'STEP 4', title: 'The table answers', say: 'The answer goes back the same way.',
-        focus: ['table'], badge: 'table', packet: { wire: 'req', span: [3, 0], mode: 'pingpong' }, lines: [3] }
+        focus: ['table'], badge: 'table', packet: { wire: 'req', span: [3, 0] }, lines: [3] }
     ]
   });
 });
