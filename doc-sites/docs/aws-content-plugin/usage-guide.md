@@ -61,9 +61,9 @@ Native PowerPoint uses aws-light-fcd assets and PptxGenJS, then embeds fonts and
 
 Use the Draw.io layout generator for supported AWS patterns. Validate XML and layout before export, and use the canonical token file for size/color rules. Animated SVG suits repeating traffic; JavaScript/CSS handles scenario controls. On a slide, use Canvas for at most four boxes/icons in a simple linear flow; use HTML/CSS for groups, branches, or larger architectures.
 
-## Documents, sites, and workshops {#documents-sites-and-workshops}
+## Documents and sites {#documents-sites-and-workshops}
 
-The document agent writes reports and comparisons. GitBook supplies multi-page navigation and rich documentation components. Workshop Creator supplies Workshop Studio structure, directives, lab verification, and cleanup. Brochure builds product/solution landing pages; gh-home builds a personal profile with experience, skills, and selected work. For a profile refresh, confirm before overwriting an existing `index.html` and preserve unrelated CNAME, robots.txt, and analytics files.
+The document agent writes reports and comparisons. GitBook supplies multi-page navigation and rich documentation components. Brochure builds product/solution landing pages; gh-home builds a personal profile with experience, skills, and selected work. For a profile refresh, confirm before overwriting an existing `index.html` and preserve unrelated CNAME, robots.txt, and analytics files.
 
 ## Revision and review {#revision-and-review}
 

@@ -61,9 +61,9 @@ python3 plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_t
 
 지원되는 AWS 패턴에는 Draw.io 레이아웃 생성기를 사용합니다. 내보내기 전에 XML과 레이아웃을 검증하고 크기·색상 규칙은 기준 토큰 파일을 따릅니다. 반복되는 트래픽은 SVG 애니메이션으로, 시나리오 제어는 JavaScript/CSS로 구현합니다. 슬라이드의 Canvas는 상자·아이콘이 최대 네 개인 단순 선형 흐름에 사용합니다. 그룹, 분기나 더 큰 아키텍처에는 HTML/CSS를 사용합니다.
 
-## 문서, 사이트와 워크숍 {#documents-sites-and-workshops}
+## 문서와 사이트 {#documents-sites-and-workshops}
 
-문서 에이전트는 보고서와 비교 문서를 작성합니다. GitBook은 여러 페이지의 탐색 구조와 다양한 문서 구성 요소를 제공합니다. Workshop Creator는 Workshop Studio 구조, 지시문, 실습 검증과 정리를 지원합니다. Brochure는 제품·솔루션 소개 페이지를, gh-home은 경력, 기술과 대표 작업을 담은 개인 프로필을 만듭니다. 프로필을 갱신할 때는 기존 `index.html`을 덮어쓰기 전에 확인하고, 관련 없는 CNAME, robots.txt와 분석 파일은 보존합니다.
+문서 에이전트는 보고서와 비교 문서를 작성합니다. GitBook은 여러 페이지의 탐색 구조와 다양한 문서 구성 요소를 제공합니다. Brochure는 제품·솔루션 소개 페이지를, gh-home은 경력, 기술과 대표 작업을 담은 개인 프로필을 만듭니다. 프로필을 갱신할 때는 기존 `index.html`을 덮어쓰기 전에 확인하고, 관련 없는 CNAME, robots.txt와 분석 파일은 보존합니다.
 
 ## 수정과 리뷰 {#revision-and-review}
 

@@ -1,7 +1,7 @@
 # AWS Content Plugin — Shared plugin guidance
 
 Shared procedures for Claude Code and Codex: presentations, diagrams, documents,
-GitBook sites, workshops and brochures. Codex exposes specialist entry skills rather
+GitBook sites and brochures. Codex exposes specialist entry skills rather
 than native Claude agent roles; use the package adapters and actual host capabilities.
 Maintain repository prose in English; generated artifacts follow the user's language.
 
@@ -38,11 +38,6 @@ animated-diagram skill → .html + .svg → (embed in presentation/gitbook or st
 gitbook-agent → content-review-agent → GitBook pages → git push
 ```
 
-### Workshop Workflow
-```
-workshop-agent → content-review-agent → Workshop Studio content
-```
-
 ### Brochure Workflow
 ```
 brochure-agent → gather product facts → (architecture-diagram → SVG) → (Playwright UI capture)
@@ -67,7 +62,6 @@ gather facts (existing page / GitHub / user confirmation) → self-contained res
 | Trigger | Team | Pipeline |
 |--------|----|-----------|
 | Presentation ≥60 min or 3+ blocks | `content-presentation` | Multi-Phase |
-| Workshop with 3+ modules | `content-workshop` | Multi-Phase |
 | GitBook with 5+ chapters | `content-gitbook` | Block-Parallel |
 | Presentation + diagram + document requested together | `content-cross-type` | Cross-Type |
 
@@ -87,7 +81,7 @@ When a trigger is met, spawn subagents (one in parallel per block); otherwise st
 
 ### Auto-Trigger
 
-As soon as a deliverable is finished — slide/animation `.html`, `.drawio`, technical-doc `.md`, GitBook/Workshop project, brochure/profile `.html`, `.pptx` (after the check_pptx.py gate + embed_fonts.py) — invoke content-review-agent with `review content at [path]`.
+As soon as a deliverable is finished — slide/animation `.html`, `.drawio`, technical-doc `.md`, GitBook project, brochure/profile `.html`, `.pptx` (after the check_pptx.py gate + embed_fonts.py) — invoke content-review-agent with `review content at [path]`.
 
 ### Review Loop
 
@@ -114,7 +108,6 @@ On a FAIL/REVIEW verdict, fix and re-review. Declare completion/deployment only 
 | `reactive-presentation-agent` | Interactive HTML slideshows (reactive-presentation framework, Remarp) |
 | `architecture-diagram-agent` | Static Draw.io XML diagrams → PNG/SVG export |
 | `gitbook-agent` | GitBook documentation sites |
-| `workshop-agent` | AWS Workshop Studio content |
 | `brochure-agent` | Single-page responsive marketing brochure (HTML → GitHub Pages) |
 | `content-review-agent` | Cross-cutting quality review (all content types) |
 
@@ -128,7 +121,6 @@ On a FAIL/REVIEW verdict, fix and re-review. Declare completion/deployment only 
 | `sketch-diagram` | Light hand-drawn animated concept diagram (inline SVG, deck theme tokens) for slide openers and friendly explainers |
 | `gitbook` | GitBook structure guide, component patterns |
 | `slide-fix` | Issue annotation-based slide repair (reads `<!-- issue: -->`, fixes, rebuilds) |
-| `workshop-creator` | Workshop Studio directives, templates, references |
 | `brochure` | Responsive brochure design system, golden example, self-check script |
 | `gh-home` | Personal profile / developer portfolio page design system — sidebar+timeline+project-card spine; reuses `brochure`'s self-check script |
 | `aws-light-fcd` | Native **PPTX** decks (PptxGenJS) — AWS Light theme, Pretendard, 11 layout builders + arch-diagram kit; shares the 811-icon library via `kit.icon()` |
@@ -169,6 +161,5 @@ unzip -q skills/reactive-presentation/assets/aws-icons.zip \
 |------|-------|--------|
 | Static AWS architecture | `architecture-diagram-agent` | .drawio → .png |
 | Animated traffic flow | `animated-diagram` skill | .html with SVG + SMIL |
-| Workshop inline diagram | `workshop-agent` (Mermaid) | Mermaid in markdown |
 | Presentation Canvas animation | `reactive-presentation-agent` | Canvas JS in HTML slides |
 | Explorable/interactive diagram (zoom, path trace, MAP→READ→FULL) | `reactive-presentation-agent` (`:::archify` block — Archify, version-pinned, ADR-020) | self-contained HTML, iframed into the slide; official icons auto-injected |

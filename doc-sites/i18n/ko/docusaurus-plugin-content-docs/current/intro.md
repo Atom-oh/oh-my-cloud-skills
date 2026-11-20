@@ -32,7 +32,7 @@ title: "시작하기"
 | --- | --- |
 | [co-agent](/docs/co-agent/overview) | 외부 AI 검토를 통해 추가 의견, 의사결정, ADR, 구현 파이프라인을 지원합니다. 현재 호스트가 작업을 주도합니다. |
 | [project-init](/docs/project-init/overview) | 두 호스트용 프로젝트 지침과 구조를 초기화하고 문서를 동기화하며 ADR, 운영 절차서, 참조 가이드를 작성합니다. |
-| [aws-content-plugin](/docs/aws-content-plugin/overview) | 웹 프레젠테이션, 편집 가능한 PowerPoint 슬라이드, 다이어그램, 문서, 워크숍, 브로슈어, 포트폴리오 페이지를 만듭니다. |
+| [aws-content-plugin](/docs/aws-content-plugin/overview) | 웹 프레젠테이션, 편집 가능한 PowerPoint 슬라이드, 다이어그램, 문서, 브로슈어, 포트폴리오 페이지를 만듭니다. |
 | [aws-ops-plugin](/docs/aws-ops-plugin/overview) | 컴퓨팅, 네트워크, 자격 증명, 관측성, 스토리지, 데이터베이스, 분석, 비용 영역의 AWS 및 EKS 인시던트를 진단합니다. |
 | [pr-dash](/docs/pr-dash/overview) | 풀 리퀘스트의 CI 검사와 AI 리뷰를 Claude Code 패널에서, Codex에서는 텍스트로 확인합니다. |
 | [agent-dash](/docs/agent-dash/overview) | 어떤 에이전트가 일하고 있는지, 누가 누구에게 일을 맡겼는지, 누가 기다리는지를 Claude Code 패널에서, Codex에서는 명단으로 확인합니다. |

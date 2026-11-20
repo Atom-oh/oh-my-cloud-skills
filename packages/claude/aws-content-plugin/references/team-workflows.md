@@ -9,7 +9,6 @@
 | Trigger condition | Team name | Pipeline |
 |-------------|---------|-----------|
 | Presentation ≥ 60 min or 3+ blocks | `content-presentation` | Multi-Phase Pipeline |
-| Workshop with 3+ modules | `content-workshop` | Multi-Phase Pipeline |
 | GitBook with 5+ chapters | `content-gitbook` | Block-Parallel (Phase 3 only) |
 | Presentation + diagram + document requested together | `content-cross-type` | Cross-Type Parallel |
 
@@ -28,7 +27,7 @@
 - A simple task quickly resolvable with a direct read/grep
 - Work with sequential dependencies where parallelizing wouldn't help
 
-## Multi-Phase Pipeline (presentation/workshop)
+## Multi-Phase Pipeline (presentation)
 
 A 4-phase pipeline that splits the work across specialist agents:
 
@@ -103,7 +102,7 @@ When parallel subagents write the same file, the last write silently wins (no co
 - Shared index files (`SUMMARY.md`, `_presentation.remarp.md`, `contentspec.yaml`, or any file that defines the overall structure) are modified **only by the team lead (main session)**.
 - Shared context files (`research-context.md`, `presentation-outline.md`) are written only by whoever produces them in that phase, and are read-only in later phases.
 
-This rule applies identically across gitbook/workshop/reactive-presentation team runs (each agent file references this section as a pointer).
+This rule applies identically across gitbook/reactive-presentation team runs (each agent file references this section as a pointer).
 
 ## Sequential-Workflow Preservation Rules
 

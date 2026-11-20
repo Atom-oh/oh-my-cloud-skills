@@ -120,8 +120,8 @@ evals/
 ├── reactive-presentation/   # Existing
 ├── architecture-diagram/    # New skill evals
 │   └── basic-diagram.yaml
-└── workshop-creator/        # New skill evals
-    └── basic-module.yaml
+└── gitbook/                 # New skill evals
+    └── basic-site.yaml
 ```
 
 The `plugin` field in YAML must match the plugin directory name (e.g., `aws-content-plugin`, `aws-ops-plugin`).

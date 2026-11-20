@@ -18,11 +18,11 @@ Practice checkmarks are user-controlled session state, not inferred execution.
 
 Counts below are derived from shared `skills/*/SKILL.md`, `commands/*.md`,
 `agents/*.md`, generated `.codex-plugin/inventory.json`, and command hooks in each
-Claude manifest (2026-11-14). Project-init uses convention-based source discovery.
+Claude manifest (2026-11-20). Project-init uses convention-based source discovery.
 
 | Plugin | Purpose | Source skills | Commands | Agents | Codex entries | Plugin hooks |
 |---|---|---:|---:|---:|---:|---:|
-| aws-content-plugin | Presentations, diagrams, documents, workshops | 9 | 0 | 9 | 18 | 6 |
+| aws-content-plugin | Presentations, diagrams, documents, brochures | 9 | 0 | 5 | 14 | 6 |
 | aws-ops-plugin | AWS infrastructure diagnosis and review | 6 | 0 | 10 | 16 | 2 |
 | co-agent | Multi-AI review, decisions, ADRs and implementation workflows | 3 | 5 | 3 | 11 | 8 |
 | project-init | Project scaffolding and documentation management | 1 | 10 | 1 | 12 | 0 |

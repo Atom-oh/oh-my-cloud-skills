@@ -3,7 +3,6 @@
     "./agents/reactive-presentation-agent.md",
     "./agents/architecture-diagram-agent.md",
     "./agents/gitbook-agent.md",
-    "./agents/workshop-agent.md",
     "./agents/brochure-agent.md",
     "./agents/content-review-agent.md"
   ],
@@ -13,7 +12,6 @@
     "./skills/animated-diagram",
     "./skills/sketch-diagram",
     "./skills/gitbook",
-    "./skills/workshop-creator",
     "./skills/slide-fix",
     "./skills/brochure",
     "./skills/gh-home",

@@ -11,7 +11,7 @@
       "name": "aws-content-plugin",
       "version": "3.0.10",
       "source": "./packages/claude/aws-content-plugin",
-      "description": "AWS cloud content creation — presentations, architecture diagrams, animated diagrams, documents, GitBook sites, workshops, and brochures"
+      "description": "AWS cloud content creation — presentations, architecture diagrams, animated diagrams, documents, GitBook sites, and brochures"
     },
     {
       "name": "aws-ops-plugin",

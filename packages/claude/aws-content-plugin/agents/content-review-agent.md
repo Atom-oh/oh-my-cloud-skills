@@ -28,7 +28,7 @@ The non-code-artifact analog of superpowers:requesting-code-review — route her
 | Animated SVG | animated-diagram skill | Animation correctness, color coding |
 | Markdown Documents | written directly (no dedicated agent) | Structure, content, references |
 | GitBook Pages | gitbook-agent | Navigation, components, cross-refs |
-| Workshop Content | workshop-agent | Directives, structure, bilingual consistency |
+| Workshop Content | authored outside this plugin | Directives, structure, bilingual consistency |
 | Brochure (HTML) | brochure-agent | Responsive tiers (mobile/tablet/PC), CTA presence, copy↔diagram consistency, product-UI screenshots present when the product has a **reachable** web UI or the user supplied captures (alt text + captions; flag that raster screenshots need a manual eyeball for baked-in account IDs/ARNs/tokens/internal URLs — text PII scan can't see pixels). Do **not** dock a brochure for missing screenshots when the product has no reachable UI and none were provided (matches brochure-agent rule 9). Also: relative asset links, accessibility, PII (account IDs / internal CIDRs/IPs) |
 | PPTX Decks (native) | aws-light-fcd skill | `check_pptx.py` score ≥80 (text overflow/overlap, off-canvas, footer, page-number sanity, Pretendard-only, no placeholder text) + official AWS/AgentCore icons |
 
