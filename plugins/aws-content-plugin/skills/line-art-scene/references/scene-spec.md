@@ -29,9 +29,11 @@ copies only the referenced files.
 `{ at:[x,y,z], dir?:1|-1, scale?:0.9, colour?, pose?:'stand'|'type', busy?, sound?, glyphs?, gait?:'walk'|'shuffle'|'run', goto?:{phaseKey:x}, act?:{phaseKey:'type'|'raise'} }`
 
 - `goto` makes the figure walk along x to a target while that phase is active, feet planted.
+  Under reduced motion it appears at the target at once.
 - `act` per phase: `type` puts both hands on a keyboard, `raise` lifts a hand.
 - `busy` adds nodding, a sweat drop and floating glyphs; `sound` is the word that flickers beside
-  the typist (any language, default none); `glyphs` is the list of floating strings.
+  the typist (any language, default none); `glyphs` is the list of floating strings. Reduced
+  motion hides these effects.
 
 ## Side panel
 
@@ -54,7 +56,7 @@ Each item of `phases` is one Down press:
 | `packet` | `{ wire, span:[from,to], mode?, colour?, hold?, stopAt?, waitAt?, mark? }` |
 | `lines` | Panel code lines to highlight |
 | `checks` | `true` lights the checklist during this step |
-| `d`, `lead` | Duration (default 3 s) and seconds before the packet starts (default 0.9) |
+| `d`, `lead` | Duration (default 3 s) and seconds before the packet starts (default 0.9); the camera moves only during the lead |
 | `cam`, `zoom`, `segment` | Frame these ids instead of `focus`; minimum frame width fraction; `false` stops the frame growing to fit the packet path |
 
 Packet modes: default travels `span[0]` to `span[1]`; `pingpong` goes and returns; `wait` pauses
