@@ -20,7 +20,7 @@
       "executable": false
     },
     "agents/content-review-agent.md": {
-      "sha256": "316bbb8ab18c3a658e6f23d4254be3268c251ba808a816c070bafa1bea02fb18",
+      "sha256": "3cf816d832fef7c454e8db130126e13a6880642052bd3e6b4ca4c0a03f046121",
       "executable": false
     },
     "agents/gitbook-agent.md": {
