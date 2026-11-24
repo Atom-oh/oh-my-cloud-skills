@@ -1,0 +1,45 @@
+{
+  "skill_name": "line-art-scene",
+  "evals": [
+    {
+      "id": 0,
+      "name": "stepped-request-walkthrough",
+      "prompt": "Claude Code 워크숍 슬라이드에 '사내 PC에서 Bedrock까지 요청이 흐르는 길'을 단계별로 보여주는 선화 장면을 만들어줘. 사내망, 전용선, VPC 엔드포인트, Bedrock 순서로 4단계이고, 발표자가 아래 화살표로 한 단계씩 넘기고 싶어.",
+      "expected_output": "A Remarp slide with @fit: off, a host in :::html holding a static fallback (one sentence and a numbered list of the steps), a :::script that imports ./common/line-art-scene/flowscene.js and mounts a scene spec with an overview plus four phases, literal ./common/aws-icons icon URLs, and notes with exactly four down marks.",
+      "files": [],
+      "assertions": [
+        "The slide has @fit: off",
+        "The host div holds a static fallback summary of every step, so PDF export is not blank",
+        "The mount call imports ./common/line-art-scene/flowscene.js and passes a spec with an overview and four phases",
+        "Icon src values are literal ./common/aws-icons/<category>/<file>.svg paths",
+        "The notes contain exactly one down mark per phase and never say which key to press",
+        "No raw hex colours, no em dashes and no middle dots in labels or notes",
+        "remarp_to_slides.py validate is run and has no CRITICAL finding"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "choose-light-diagram-instead",
+      "prompt": "세션 첫머리에 넣을 가벼운 손그림 개념도 한 장만 만들어줘. 단계별로 넘길 필요는 없어.",
+      "expected_output": "The line-art-scene skill is not chosen; the request is routed to sketch-diagram because it is a light, non-stepped overview.",
+      "files": [],
+      "assertions": [
+        "Does not build a stepped flow scene",
+        "Routes to sketch-diagram"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "verify-before-showing",
+      "prompt": "이 선화 장면을 만들었는데 제대로 동작하는지 확인해줘.",
+      "expected_output": "The scene is built, served over http, and stepped through every phase in light and dark with screenshots, checking step info, note marks, reduced motion and slide re-entry.",
+      "files": [],
+      "assertions": [
+        "Serves the built deck over http rather than opening file://",
+        "Steps through every phase and inspects screenshots in both themes",
+        "Checks that deck.getStepInfo reports cur from 0 to the number of phases",
+        "Checks reduced motion shows each step end state at once"
+      ]
+    }
+  ]
+}
