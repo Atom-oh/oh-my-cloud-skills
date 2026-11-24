@@ -88,6 +88,7 @@ import('./common/line-art-scene/flowscene.js').then(m => m.mount('#scene-request
 | Scene is a small box with the side panel cut off | slide fit engine shrank the content | add `@fit: off` to the slide |
 | Nothing renders, console says a module failed | page opened from `file://` | serve over http (GitHub Pages, `python3 -m http.server`) |
 | PDF export shows a blank slide body | host left empty; the PDF print view runs no slide scripts | put the static fallback (`<p>` plus `<ol>`) inside the host |
+| An unpacked ZIP export shows the static fallback and a failed module import | the ZIP export (reactive-presentation `export-utils.js`, `ExportUtils.downloadZIP`) skips `common/line-art-scene/` and the icon URLs inside the spec, and it stores `common/` beside the deck folder while a built page loads `./common/` from its own folder | share or host the whole build output directory, which already holds `common/line-art-scene/` and `common/aws-icons/`, instead of the ZIP |
 | Icons are broken images | icon URL is not the literal `./common/aws-icons/<category>/<file>.svg` | use the literal path so the build can find and copy it |
 | Down skips the scene or leaves the slide early | `registerSlideAction` index mismatch or scene mounted on another slide | mount inside the slide that holds the host element |
 | Presenter window shows no step count | `state()` missing | keep the default handlers, do not replace them |

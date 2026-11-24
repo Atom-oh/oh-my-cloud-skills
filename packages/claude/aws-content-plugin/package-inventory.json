@@ -440,7 +440,7 @@
       "executable": false
     },
     "skills/line-art-scene/SKILL.md": {
-      "sha256": "05776b092a1d89521d555f5583de458294d82f8a581a321f7834b69f7c339072",
+      "sha256": "6e9383f49a8eb5668b9e327b7fc3abe5f1574fa7eede0acd1dab0e8b0b292383",
       "executable": false
     },
     "skills/line-art-scene/assets/flowscene.css": {
@@ -448,7 +448,7 @@
       "executable": false
     },
     "skills/line-art-scene/assets/flowscene.js": {
-      "sha256": "714b02e7d6a6e38f6f0f3fb17f3c4026f905808bb1daee5ba154decdfb8a39f3",
+      "sha256": "15cfe9bce3378184afa3b0d64bbde577ada343df4f77d24a9f3aa34d1e6245fd",
       "executable": false
     },
     "skills/line-art-scene/assets/gait.js": {
@@ -468,7 +468,7 @@
       "executable": false
     },
     "skills/line-art-scene/references/motion.md": {
-      "sha256": "67bc6abaa50c5cb5d4e6e5fe01c7ec9852ab18df264c05ec20793f403a169c56",
+      "sha256": "a7e91519c44600696aaa8a827efd46e3e1c7f409b713a3701e0aa3e3650206ca",
       "executable": false
     },
     "skills/line-art-scene/references/scene-spec.md": {
@@ -476,7 +476,7 @@
       "executable": false
     },
     "skills/line-art-scene/references/slide-embedding.md": {
-      "sha256": "5761b5291aff7a0741e79de761b9509d560b402589f1d9dc691484637d8ddbd8",
+      "sha256": "f87347a3d80f54c97dbe7e76b7e3524b8fe67308be04a13101a435bef2fc97b9",
       "executable": false
     },
     "skills/line-art-scene/references/style.md": {
@@ -484,7 +484,7 @@
       "executable": false
     },
     "skills/line-art-scene/references/verification.md": {
-      "sha256": "39f000e0611c05ad0934be1ff841c2c9511bb42c77c30f10933af51242c4634f",
+      "sha256": "3f59f9f27752d7dd084ea3e986a2880a115eda9a9d45edaaf222b7b70851de95",
       "executable": false
     },
     "skills/line-art-scene/templates/scene-example.remarp.md": {

@@ -180,13 +180,18 @@ export function mount(sel, S) {
     }) : [];
     let x = f.at[0], phase = 0;
     return {
-      f, draw(t, dt, ph, act, calm) {
+      f,
+      // back to the mount position, so every slide entry starts from the overview
+      reset() { x = f.at[0]; phase = 0; },
+      draw(t, dt, ph, act, calm) {
         // calm is reduced motion: no walk, no spring travel, no busy loop; the end pose is drawn at once
         if (calm) t = 0;
         const want = (f.goto && ph && f.goto[ph.key] != null) ? f.goto[ph.key] : f.at[0];
         if (calm) x = want;
         const moving = Math.abs(want - x) > 0.02;
-        if (moving) { phase += dt / walk.period; x += Math.sign(want - x) * Math.min(Math.abs(want - x), walk.speed * 0.028 * dt); }
+        // planted feet: the stance foot moves walk.speed figure units per second, the figure is drawn at
+        // its scale and one world unit of x is K SVG units, so x advances speed * scale / K per second
+        if (moving) { phase += dt / walk.period; x += Math.sign(want - x) * Math.min(Math.abs(want - x), walk.speed * (f.scale || 0.9) / K * dt); }
         const [sx, sy] = pj(x, f.at[1], f.at[2]);
         place(g, sx, sy, moving ? (want > x ? 1 : -1) : (f.dir || 1), f.scale || 0.9);
         const p = walk.pose(phase, moving ? 1 : 0);
@@ -325,11 +330,18 @@ export function mount(sel, S) {
     };
     if (document.querySelector('.slide-deck')) attach(); else bindKeys();
   }
-  // `.active` is added about 350 ms after rp:slidechange, so match the event's slide index
+  // `.active` is added about 350 ms after rp:slidechange and the slide is `.entering` until then,
+  // so match the event's slide index, snap the camera and figures back to the overview, and let
+  // draw() run while the slide is entering: the transition then shows step 0, not the last step
   document.addEventListener('rp:slidechange', e => {
-    if (e.detail && e.detail.index === myIndex()) { clock = 0; paused = false; go(0); }
+    if (e.detail && e.detail.index === myIndex()) {
+      clock = 0; paused = false;
+      cam = OVER.slice(); camFrom = cam.slice(); camStep = -1;
+      figs.forEach(fg => fg.reset());
+      go(0);
+    }
   });
-  const active = () => !slide || slide.classList.contains('active');
+  const active = () => !slide || slide.classList.contains('active') || slide.classList.contains('entering');
 
   function draw(now) {
     // real elapsed time, so a sparse frame rate never slows the scene; dt only feeds the smoothing

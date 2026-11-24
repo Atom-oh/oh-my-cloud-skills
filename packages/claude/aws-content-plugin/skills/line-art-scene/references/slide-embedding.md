@@ -46,7 +46,12 @@ Sentence that finishes step one.↓ Sentence that finishes step two.↓
 4. **Assets**: when the built page contains `common/line-art-scene/`, the build copies this
    skill's `assets/*.js` and `flowscene.css` there. Each icon URL written as
    `./common/aws-icons/<category>/<file>.svg` is copied by the existing icon pass. No manual
-   copy is needed.
+   copy is needed. The ZIP export (`ExportUtils.downloadZIP`, the ZIP buttons in `toc.html`) is
+   not a runnable copy of such a deck: it skips `common/line-art-scene/` and the icon URLs inside
+   the spec, and it stores `common/` beside the deck folder while a built page loads `./common/`
+   from its own folder. An unpacked ZIP shows the static fallback and the console reports a
+   failed module import. To share or re-host a deck with a scene, publish or copy the whole build
+   output directory.
 5. **Notes**: exactly one `↓` per press, right after the sentence that finishes a step, never
    saying what to press (see reactive-presentation `references/step-guidance.md`). The count
    equals the number of `phases`. Voice follows "Spoken script voice" in the Remarp format guide.

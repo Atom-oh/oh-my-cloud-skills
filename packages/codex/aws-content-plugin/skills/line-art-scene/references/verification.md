@@ -15,7 +15,7 @@ Show nothing before these pass.
 5. Reduced motion: with the preference on, each Down shows the step's end state at once and
    nothing moves afterwards: figures stand at their end position and a `busy` figure shows no
    nod, sweat drop or glyphs.
-6. Leave the slide and come back: the scene is on step 0 again.
+6. Leave the slide and come back: the side panel and camera are on step 0 already during the slide transition (the first 350 ms), and figures stand at their start position.
 7. PDF export: the scene slide shows the host's static fallback (the sentence and the numbered
    steps), not a blank body. The print view runs no slide scripts, so this is the expected PDF
    content.
