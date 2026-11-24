@@ -4,11 +4,11 @@
   "version": "3.0.10",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "3b0a813e10ec574a1d8edfb5518f656ffc1b764fa2833a84b09b1e7a7bcdcd8f",
+      "sha256": "5ba01db4a22db3e35bcc35aa64abe38ef4e58404dc0fbcccbf8c6f5a6d39ce26",
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "218e336fe929b3fc65343ac543f39ddf1d68649915ef351bafb81e4bd5704632",
+      "sha256": "51d152bd29f06b42e2b9b0f8b9dbbc08d3e86a9d6ff7a7e2147c6e9a8ccd4710",
       "executable": false
     },
     "agents/architecture-diagram-agent.md": {
@@ -20,7 +20,7 @@
       "executable": false
     },
     "agents/content-review-agent.md": {
-      "sha256": "4547d7c91e52993619423fd0f452f775ee81ee9743b11fc52597627d096501fe",
+      "sha256": "262c32aaba26f93fe1b6d9ace3b8487a7ec006583de6d23434dc3e217b06e987",
       "executable": false
     },
     "agents/gitbook-agent.md": {
@@ -31,12 +31,8 @@
       "sha256": "d8978c78d0ab086afb8b06a15623b154e9c3953d8cef5ffab532753dd81be02c",
       "executable": false
     },
-    "agents/workshop-agent.md": {
-      "sha256": "dc81579b8725cda49d44dacb96864737457dffe6c8486b28ba3318509128a914",
-      "executable": false
-    },
     "references/team-workflows.md": {
-      "sha256": "7c83db4cb4ee11a312e00d53dab7c0672365972bea5f90e9fa999abca91c43b5",
+      "sha256": "f8c2f2f3e0ad708c6f19f1fc6ad8ed24ece9f3e079d31a640d25d23ca69fba5b",
       "executable": false
     },
     "skills/animated-diagram/SKILL.md": {
@@ -17471,86 +17467,6 @@
       "sha256": "37cb535b10c1b9357d1bcd28d1d10d7987e754ce7a146ccc255321a3ec533747",
       "executable": false
     },
-    "skills/workshop-creator/SKILL.md": {
-      "sha256": "79203f72060a5d0ef26d54ba5dda515ac5f860a44b9f34fb4d401b0ec92c638b",
-      "executable": false
-    },
-    "skills/workshop-creator/references/alert-reference.md": {
-      "sha256": "a61230eb8e5b66cea069e2a6ee598ebb4b91b386bc2ff15b5e58773e3961fd24",
-      "executable": false
-    },
-    "skills/workshop-creator/references/central-account-guide.md": {
-      "sha256": "e8653f608503a2f0acc65fc703ce98856947ac7fa599aa8b47d62595ab99f1d3",
-      "executable": false
-    },
-    "skills/workshop-creator/references/cloudformation-reference.md": {
-      "sha256": "6cfb6438489ec0b50c17692458ca3f2d4abfdd0b68c5ea50745fe72aa296adf7",
-      "executable": false
-    },
-    "skills/workshop-creator/references/code-reference.md": {
-      "sha256": "d83fe070e36c385f770da8f8796cef21123e9a0cc263e44464d709f83cf251d0",
-      "executable": false
-    },
-    "skills/workshop-creator/references/contentspec-complete.md": {
-      "sha256": "2e5b24e09ac56a2ef502c93bdfd48c26e9159938f66271517ab6d0e4ebb47708",
-      "executable": false
-    },
-    "skills/workshop-creator/references/directives-complete.md": {
-      "sha256": "9aec5037007d3635176f80c30fdad6f0f4f4caedb61e02c489e452acc8d26875",
-      "executable": false
-    },
-    "skills/workshop-creator/references/event-operations-guide.md": {
-      "sha256": "77d712d1b1b911cfc72ac9232eef069852fb98eab110271fa72ee1f090bad8c9",
-      "executable": false
-    },
-    "skills/workshop-creator/references/event-params-guide.md": {
-      "sha256": "fb83bdf8840bcadb191767f721b0ee65e569238ddf5bbee869c085ce68658a9b",
-      "executable": false
-    },
-    "skills/workshop-creator/references/event-quotas-guide.md": {
-      "sha256": "cca498a4492261746117cb82034f20ae6fa0ee57ca03568cb49472b3abc50455",
-      "executable": false
-    },
-    "skills/workshop-creator/references/front-matter.md": {
-      "sha256": "00edc686ddfa7dd0edcaf5f0324872efc5fa3083e8fa1e01f4774164e80bec0a",
-      "executable": false
-    },
-    "skills/workshop-creator/references/image-reference.md": {
-      "sha256": "526cc026676c581c0aafe4d07a3db5ea3faf3f6ea4315426c4a2056eeb58e474",
-      "executable": false
-    },
-    "skills/workshop-creator/references/infrastructure-guide.md": {
-      "sha256": "831f626915dbe76a64f19380518e8c8c03cab63cfe507491d2730cae3bd71406",
-      "executable": false
-    },
-    "skills/workshop-creator/references/platform-features-guide.md": {
-      "sha256": "eeb5411a27988caf334262cf749304124872bedc331f7d11cb3f471b5fec09a5",
-      "executable": false
-    },
-    "skills/workshop-creator/references/supported-services-guide.md": {
-      "sha256": "0e632c2bc0600d3b169e23565238292d5df7e6c32c8fd4ba98b1de36250ddad1",
-      "executable": false
-    },
-    "skills/workshop-creator/references/tabs-reference.md": {
-      "sha256": "a938f07e2f67b4efbc38a7188bc12ef5c1ca6b4c55809ad92756084eb4dc9ca2",
-      "executable": false
-    },
-    "skills/workshop-creator/references/workshop-assets-guide.md": {
-      "sha256": "539009eea5bca9f2c4c8c38f9c8a6433b9108f1d43ef5fb3c4a542f63e528c10",
-      "executable": false
-    },
-    "skills/workshop-creator/references/workshop-templates.md": {
-      "sha256": "aa945265a0b16633b26029a9de0df9d0bcdc4c1a619af5c82ef66282bb1a32eb",
-      "executable": false
-    },
-    "skills/workshop-creator/templates/contentspec.yaml": {
-      "sha256": "8db74b708d5eb16e00e1349514d9710b736c4c8f1b3b557cb16b96b61b263f80",
-      "executable": false
-    },
-    "skills/workshop-creator/templates/iam-policy.json": {
-      "sha256": "3953b84abb48cf23949a0710e018e7238e9dc62ff10011153db5026dfdee5ae2",
-      "executable": false
-    },
     ".codex-plugin/skills/animated-diagram/SKILL.md": {
       "sha256": "d5dafc00ea291e3f047c798066bd8427671b111c12d2302e2973b09561ac4e4e",
       "executable": false
@@ -17631,20 +17547,8 @@
       "sha256": "e1156a50530f70ddac1b7617380c5d60ea1b4424a2b6c13b345b5caadc80831a",
       "executable": false
     },
-    ".codex-plugin/skills/workshop-agent/SKILL.md": {
-      "sha256": "4c58ecf11c9bc7a5020201ecbe267da6b33108c2a4941b09968858ae94ccd1e4",
-      "executable": false
-    },
-    ".codex-plugin/skills/workshop-agent/agents/openai.yaml": {
-      "sha256": "70f2527941d4ea334cde6a57e79f6e515694e773a5d165891b4b208f3b93004f",
-      "executable": false
-    },
-    ".codex-plugin/skills/workshop-creator/SKILL.md": {
-      "sha256": "9ee08221e74f7c8bd847fd0e6388dfbdd5d8961fc411aa82738728dca314e2c6",
-      "executable": false
-    },
     ".codex-plugin/inventory.json": {
-      "sha256": "dc9a7b51498501ecbad4a55dc401311154c9e43eb9b6ba779f3a6315a0ac0ab0",
+      "sha256": "c741c90fcfd8df281717de50cf4dd6276c249a4e124c1e56fddd24d8e50e8abc",
       "executable": false
     },
     ".codex-plugin/runtime.md": {

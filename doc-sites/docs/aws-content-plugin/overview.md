@@ -24,7 +24,7 @@ title: "AWS content plugin"
 
 # AWS content plugin
 
-Create web presentations, editable PowerPoint decks, diagrams, documents, workshops, brochures, and portfolio pages.
+Create web presentations, editable PowerPoint decks, diagrams, documents, brochures, and portfolio pages.
 
 ## Choose a workflow {#choose-a-workflow}
 
@@ -35,7 +35,6 @@ Create web presentations, editable PowerPoint decks, diagrams, documents, worksh
 | AWS Draw.io architecture | architecture-diagram |
 | Animated traffic or scenario diagram | animated-diagram |
 | GitBook documentation | gitbook |
-| Workshop Studio labs | workshop-creator |
 | Product/solution landing page | brochure |
 | Personal profile/portfolio | gh-home |
 | Remarp issue annotations | slide-fix |

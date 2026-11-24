@@ -49,13 +49,5 @@
     "mcpServers": [
       "playwright"
     ]
-  },
-  "workshop-agent.md": {
-    "tools": "Read, Write, Glob, Grep, Bash, AskUserQuestion",
-    "model": "opus",
-    "effort": "high",
-    "skills": [
-      "workshop-creator"
-    ]
   }
 }

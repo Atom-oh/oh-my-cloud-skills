@@ -105,20 +105,6 @@
       "sources": [
         "skills/slide-fix/SKILL.md"
       ]
-    },
-    {
-      "name": "workshop-agent",
-      "path": ".codex-plugin/skills/workshop-agent/SKILL.md",
-      "sources": [
-        "agents/workshop-agent.md"
-      ]
-    },
-    {
-      "name": "workshop-creator",
-      "path": ".codex-plugin/skills/workshop-creator/SKILL.md",
-      "sources": [
-        "skills/workshop-creator/SKILL.md"
-      ]
     }
   ]
 }

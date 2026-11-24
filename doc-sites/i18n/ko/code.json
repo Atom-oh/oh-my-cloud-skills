@@ -387,7 +387,7 @@
     "message": "첫 프레젠테이션 만들기"
   },
   "learn.content.description": {
-    "message": "짧은 요청으로 시작해 열어 보고, 리허설하고, 공유할 수 있는 슬라이드를 만드세요. 작은 발표 자료부터 시작하고 다이어그램과 워크숍으로 넓혀 가세요."
+    "message": "짧은 요청으로 시작해 열어 보고, 리허설하고, 공유할 수 있는 슬라이드를 만드세요. 작은 발표 자료부터 시작하고 다이어그램과 문서로 넓혀 가세요."
   },
   "learn.content.prompt": {
     "message": "개발자를 위한 Amazon Bedrock 소개 자료를 5장으로 만들어줘. 한국어로 작성하고 아키텍처 다이어그램 하나와 발표자 노트를 넣어줘. 게시 전에 로컬 미리보기를 보여줘."
@@ -859,24 +859,6 @@
   },
   "workflows.animated-flow.check": {
     "message": "정지 상태에서 라벨을 읽어보세요. 시작·초기화와 트래픽 경로가 설명한 아키텍처에 맞는지 확인하세요."
-  },
-  "workflows.workshop.output": {
-    "message": "Workshop Studio"
-  },
-  "workflows.workshop.title": {
-    "message": "핸즈온 워크숍 만들기"
-  },
-  "workflows.workshop.summary": {
-    "message": "모듈·실습·사전 준비·결과 확인·정리 절차를 구성합니다."
-  },
-  "workflows.workshop.prompt": {
-    "message": "입문자를 위한 AWS 워크숍을 실습 3개로 만들어줘. 사전 준비와 확인할 비용을 명시하고 Workshop Studio 문법을 사용해 각 실습의 예상 결과와 정리 절차를 넣어줘."
-  },
-  "workflows.workshop.result": {
-    "message": "모듈 페이지와 재현 가능한 실습 절차가 있는 Workshop Studio 프로젝트를 받습니다."
-  },
-  "workflows.workshop.check": {
-    "message": "테스트 환경에서 실습 하나를 따라 해보세요. 참가자에게 공유하기 전에 사전 조건·예상 출력·언어 대응·정리 절차를 확인하세요."
   },
   "workflows.gitbook.output": {
     "message": "문서 사이트"

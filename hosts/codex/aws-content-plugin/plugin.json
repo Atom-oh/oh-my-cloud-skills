@@ -2,8 +2,8 @@
   "skills": "./.codex-plugin/skills/",
   "interface": {
     "displayName": "AWS Content Plugin",
-    "shortDescription": "Create AWS presentations, diagrams, docs, GitBook sites, workshops, and brochures.",
-    "longDescription": "Build AWS-focused content with reusable Codex skills for reactive presentations, architecture diagrams, animated diagrams, GitBook pages, workshops, brochures, and slide quality fixes.",
+    "shortDescription": "Create AWS presentations, diagrams, docs, GitBook sites, and brochures.",
+    "longDescription": "Build AWS-focused content with reusable Codex skills for reactive presentations, architecture diagrams, animated diagrams, GitBook pages, brochures, and slide quality fixes.",
     "developerName": "atomoh",
     "category": "Content Creation",
     "capabilities": [

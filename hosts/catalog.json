@@ -11,7 +11,7 @@
     "aws-content-plugin": {
       "name": "aws-content-plugin",
       "version": "3.0.10",
-      "description": "AWS cloud content creation plugin — presentations, architecture diagrams, animated diagrams, documents, GitBook sites, workshops, and brochures",
+      "description": "AWS cloud content creation plugin — presentations, architecture diagrams, animated diagrams, documents, GitBook sites, and brochures",
       "author": {
         "name": "atomoh"
       }

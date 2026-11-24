@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- aws-content-plugin: the `workshop-creator` skill and `workshop-agent` are no longer part of the public
+  marketplace. Both moved to a separately maintained internal plugin. Their host registrations, generated
+  Claude/Codex package copies, team-workflow trigger and public guide pages (English and Korean) are gone.
+  `content-review-agent` still reviews Workshop Studio content that was written elsewhere.
+
 ### Added
 
 - reactive-presentation: step guidance for presenters. `deck.getStepInfo()` reports how many presses a
