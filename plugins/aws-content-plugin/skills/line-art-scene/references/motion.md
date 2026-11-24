@@ -3,10 +3,11 @@
 ## Gait
 
 `gait({ kind: 'walk' | 'shuffle' | 'run' })` returns `{ speed, period, pose(phase, go) }`. Advance
-`phase += dt / period` and move the figure by exactly `speed * scale` units per second: the stance
-foot then stays still on the ground. Never speed a gait up to fit a compressed clock; shorten the
-journey or the arrival schedule instead. `pose(phase, go)` blends to a standing pose as `go`
-falls to 0, so stopping looks natural.
+`phase += dt / period` and move the figure by exactly `speed * scale` SVG user units per second,
+which is `speed * scale / K` world units along x (`flowscene.js` does this): the stance foot then
+stays still on the ground. Never speed a gait up to fit a compressed clock; shorten the journey or
+the arrival schedule instead. `pose(phase, go)` blends to a standing pose as `go` falls to 0, so
+stopping looks natural.
 
 ## Springs and keyed poses
 
