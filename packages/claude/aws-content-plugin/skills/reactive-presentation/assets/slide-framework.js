@@ -355,7 +355,18 @@ class SlideFramework {
   }
 
   // Get action for a key (supports custom mappings)
-  getKeyAction(key) {
+  // Korean, Japanese and other non-Latin input methods report the composed character
+  // (KeyN -> 'ㅜ') or 'Process' instead of the letter, so N/T/F/G/S/H did nothing.
+  // Fall back to the physical key only then; Latin layouts (Dvorak, AZERTY) keep their letters.
+  getKeyAction(key, code) {
+    const action = this.lookupKeyAction(key);
+    if (action || !code) return action;
+    const m = /^Key([A-Z])$/.exec(code);
+    const nonLatin = key === 'Process' || key === 'Unidentified' || /[^\x00-\x7F]/.test(key || '');
+    return m && nonLatin ? this.lookupKeyAction(m[1].toLowerCase()) : null;
+  }
+
+  lookupKeyAction(key) {
     // Check custom mappings first
     if (this.keyMappings[key]) {
       return this.keyMappings[key];
@@ -571,7 +582,7 @@ class SlideFramework {
           (e.target && e.target.isContentEditable) ||
           document.body.classList.contains('rp-search-open')) return;
 
-      const action = this.getKeyAction(e.key);
+      const action = this.getKeyAction(e.key, e.code);
       if (!action) return;
 
       switch (action) {

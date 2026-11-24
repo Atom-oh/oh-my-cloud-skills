@@ -76,7 +76,16 @@ class PresenterView {
     this._destroyPen();
 
     const html = this.createPresenterHTML();
-    this.presenterWindow = window.open('', 'presenter', 'width=1200,height=800');
+    const win = window.open('', 'presenter', 'width=1200,height=800');
+    if (!win) {
+      // Pop-up blocked: say so instead of failing silently on win.document.
+      const ko = (document.documentElement.lang || '').toLowerCase().startsWith('ko');
+      window.alert(ko
+        ? '브라우저가 발표자 창 팝업을 차단했습니다. 주소창의 팝업 차단 아이콘에서 이 사이트를 허용한 뒤 N을 다시 누르세요.'
+        : 'The browser blocked the presenter window pop-up. Allow pop-ups for this site, then press N again.');
+      return;
+    }
+    this.presenterWindow = win;
     this.presenterWindow.document.write(html);
     this.presenterWindow.document.close();
 
@@ -693,7 +702,7 @@ ${styleSheets}
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
           (e.target && e.target.isContentEditable)) return;
 
-      const action = this.framework.getKeyAction(e.key);
+      const action = this.framework.getKeyAction(e.key, e.code);
       switch (action) {
         case 'next':
         case 'prev':
