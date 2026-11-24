@@ -464,7 +464,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-nav.js": {
-      "sha256": "7ca6498a0cab525df06a19756c59e2f19b31432f9daf6f2c287dd21dfc6b75f7",
+      "sha256": "2ce2898aa8341737bd8a4f9a72877f70cc08bab1e6b4912009166e0768bb6c72",
       "executable": false
     },
     "skills/reactive-presentation/assets/deck-overlay.css": {
@@ -500,7 +500,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/presenter-view.js": {
-      "sha256": "210d8eb5dce0a2cca60ff43d5c8f2e6dc5e459a4d05733895cd30c79411b5216",
+      "sha256": "ec14bfb9d685661de45274e0b9ded0c70652668bba3439b50b8a3d710cf69be5",
       "executable": false
     },
     "skills/reactive-presentation/assets/quiz-component.js": {
@@ -508,7 +508,7 @@
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-framework.js": {
-      "sha256": "0ed54d7ac7c61c5cdb7ba47686aba9e9a3df988592b702232c03866400d63fcf",
+      "sha256": "00f45cbd58ea25236559862f513fdd163bb7e1f88c476c69764b2a6f3a51dbd1",
       "executable": false
     },
     "skills/reactive-presentation/assets/slide-renderer.js": {
