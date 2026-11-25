@@ -360,7 +360,7 @@ def _validate_config_shape(value, shape, path):
         raise ValueError(f"{path}: invalid value type")
 
 
-def effective(root, warn=False, strict=False):
+def effective(root, warn=False, strict=False, apply_scope=True):
     # Precedence low→high: committed defaults → user scope (~/.claude) → repo-local (.claude).
     # Display commands show rename-only hygiene warnings once rather than per fan-out call.
     # Retired-peer, consent and malformed-config diagnostics always remain visible.
@@ -409,7 +409,9 @@ def effective(root, warn=False, strict=False):
                 print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
     from co_agent_host import kiro_scope_allowed
 
-    if not kiro_scope_allowed():
+    # Kiro participates only in eligible AWS tasks. apply_scope=False exposes the
+    # persisted setting so setup can report a scope exclusion instead of hiding it.
+    if apply_scope and not kiro_scope_allowed():
         cfg["panel"]["kiro-cli"]["enabled"] = False
     return cfg
 

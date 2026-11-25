@@ -80,14 +80,17 @@ class RetiredPeerTests(unittest.TestCase):
         return probes
 
     def test_default_panel_and_model_matrix_are_host_cross_peers_only(self):
+        self.configure({"panel": {"kiro-cli": {"enabled": True}}})
         for host, peers in (("claude", ["kiro-cli", "codex"]),
                             ("codex", ["kiro-cli", "claude"])):
-            with self.subTest(host=host):
-                rc, text, _ = self.cli(["panel", "--host", host])
-                self.assertEqual((0, peers), (rc, text.split()))
-                rc, text, _ = self.cli(["pairs", "--host", host, "--profile", "deep"])
-                self.assertEqual(0, rc)
-                self.assertEqual(set(peers), {line.split("\t")[0] for line in text.splitlines()})
+            for scope, expected in (("aws-cdk-authoring", peers), (None, peers[1:])):
+                with self.subTest(host=host, scope=scope), patch.dict(
+                        os.environ, {"CO_AGENT_TASK_SCOPE": scope} if scope else {}):
+                    rc, text, _ = self.cli(["panel", "--host", host])
+                    self.assertEqual((0, expected), (rc, text.split()))
+                    rc, text, _ = self.cli(["pairs", "--host", host, "--profile", "deep"])
+                    self.assertEqual(0, rc)
+                    self.assertEqual(set(expected), {line.split("\t")[0] for line in text.splitlines()})
 
     def test_stale_overrides_cannot_restore_retired_panel_members_or_model_pairs(self):
         for user in (False, True):
@@ -147,8 +150,9 @@ class RetiredPeerTests(unittest.TestCase):
 
     def test_report_does_not_discover_or_probe_retired_clis(self):
         self.configure({"panel": {"agy": {"enabled": True}, "antigravity": {},
-                                  "gemini": {"enabled": True}}})
-        with contextlib.redirect_stderr(io.StringIO()):
+                                  "gemini": {"enabled": True}, "kiro-cli": {"enabled": True}}})
+        with contextlib.redirect_stderr(io.StringIO()), patch.dict(
+                os.environ, {"CO_AGENT_TASK_SCOPE": "aws-resource-review"}):
             probes = self.ready("codex", {"kiro-cli": "READY", "claude": "READY",
                                           "agy": "READY"})
         self.assertEqual(["kiro-cli", "claude"], probes)
@@ -156,13 +160,15 @@ class RetiredPeerTests(unittest.TestCase):
         self.assertEqual({"kiro-cli", "claude"}, set(summary["peers"]))
 
     def test_hook_panels_and_config_failure_fallback_do_not_reintroduce_retired_peers(self):
-        self.configure({"panel": {peer: {"enabled": True} for peer in RETIRED}})
+        self.configure({"panel": {**{peer: {"enabled": True} for peer in RETIRED},
+                                  "kiro-cli": {"enabled": True}}})
         for host, expected in (("claude", {"kiro-cli", "codex"}),
                                ("codex", {"kiro-cli", "claude"})):
             for unavailable in (False, True):
                 with self.subTest(host=host, unavailable=unavailable):
                     with contextlib.ExitStack() as stack:
-                        stack.enter_context(patch.dict(os.environ, {"CO_AGENT_HOST": host}))
+                        stack.enter_context(patch.dict(os.environ, {"CO_AGENT_HOST": host,
+                                                                    "CO_AGENT_TASK_SCOPE": "aws-architecture-review"}))
                         stack.enter_context(patch.object(hooks.shutil, "which",
                                                          side_effect=lambda peer: "/fake/" + peer))
                         stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
@@ -203,7 +209,7 @@ class RetiredPeerTests(unittest.TestCase):
         for peer in RETIRED:
             with patch.dict(os.environ, {"CO_AGENT_THIRD_AI": peer}):
                 rc, output, diagnostic = self.cli(["panel"])
-            self.assertEqual((0, "kiro-cli codex"), (rc, output))
+            self.assertEqual((0, "codex"), (rc, output))
             self.assertIn("CO_AGENT_THIRD_AI", diagnostic)
             self.assertIn("retir", diagnostic.lower())
 

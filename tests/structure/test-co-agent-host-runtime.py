@@ -70,6 +70,8 @@ class HostRuntimeTests(unittest.TestCase):
         return rc, output.getvalue().strip()
 
     def test_host_detection_and_explicit_override(self):
+        # Kiro joins only when enabled and CO_AGENT_TASK_SCOPE names an eligible AWS task.
+        self.configure({"panel": {"kiro-cli": {"enabled": True}}})
         cases = [
             ({}, [], "kiro-cli codex"),
             ({"CODEX_THREAD_ID": "thread"}, [], "kiro-cli claude"),
@@ -82,8 +84,11 @@ class HostRuntimeTests(unittest.TestCase):
             ({"CO_AGENT_HOST": "claude"}, ["--host", "codex"], "kiro-cli claude"),
         ]
         for markers, flags, expected in cases:
-            with self.subTest(markers=markers, flags=flags), patch.dict(os.environ, markers):
-                self.assertEqual((0, expected), self.config_cli(["panel", *flags]))
+            with self.subTest(markers=markers, flags=flags):
+                with patch.dict(os.environ, {**markers, "CO_AGENT_TASK_SCOPE": "aws-cdk-authoring"}):
+                    self.assertEqual((0, expected), self.config_cli(["panel", *flags]))
+                with patch.dict(os.environ, markers):
+                    self.assertEqual((0, expected.split()[-1]), self.config_cli(["panel", *flags]))
         with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread"}):
             with contextlib.redirect_stderr(io.StringIO()):
                 self.assertEqual((3, ""), self.config_cli(["implementer"]))
@@ -121,19 +126,33 @@ class HostRuntimeTests(unittest.TestCase):
         return json.loads((self.root / ".claude/co-agent-panel.local.json").read_text()), probes
 
     def test_setup_probes_only_enabled_peers_of_detected_host(self):
-        self.configure({"panel": {"claude": {"enabled": False}}})
-        with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread"}):
+        self.configure({"panel": {"claude": {"enabled": False}, "kiro-cli": {"enabled": True}}})
+        with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread",
+                                     "CO_AGENT_TASK_SCOPE": "aws-resource-review"}):
             summary, probes = self.report()
         self.assertEqual(["kiro-cli"], probes)
         self.assertEqual({"kiro-cli"}, set(summary["peers"]))
+        # Unscoped, the enabled Kiro is never probed and never recorded READY.
+        with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread"}):
+            summary, probes = self.report()
+        self.assertEqual([], probes)
+        self.assertNotEqual("READY", summary["peers"].get("kiro-cli", {}).get("status"))
 
     def test_setup_explicit_host_and_freshness_across_hosts(self):
-        summary, probes = self.report(host="codex")
-        self.assertEqual(["kiro-cli", "claude"], probes)
-        self.assertEqual("codex", summary.get("host"))
-        self.assertFalse(panel.is_fresh(str(self.root)))
+        self.configure({"panel": {"kiro-cli": {"enabled": True}}})
+        # The config hash covers the scope-filtered panel, so keep one scope throughout.
+        with patch.dict(os.environ, {"CO_AGENT_TASK_SCOPE": "aws-architecture-review"}):
+            summary, probes = self.report(host="codex")
+            self.assertEqual(["kiro-cli", "claude"], probes)
+            self.assertEqual("codex", summary.get("host"))
+            self.assertFalse(panel.is_fresh(str(self.root)))
+            with patch.dict(os.environ, {"CO_AGENT_HOST": "codex"}):
+                self.assertTrue(panel.is_fresh(str(self.root)))
+        # A record made under an eligible scope is stale for an unscoped run.
         with patch.dict(os.environ, {"CO_AGENT_HOST": "codex"}):
-            self.assertTrue(panel.is_fresh(str(self.root)))
+            self.assertFalse(panel.is_fresh(str(self.root)))
+        summary, probes = self.report(host="codex")
+        self.assertEqual(["claude"], probes)
 
     def test_readiness_never_counts_the_current_host_from_an_old_summary(self):
         self.report(host="claude")
@@ -141,17 +160,26 @@ class HostRuntimeTests(unittest.TestCase):
             self.assertFalse(panel.gate_eligible(str(self.root), "codex"))
 
     def test_gate_panel_includes_claude_and_excludes_codex(self):
-        with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread"}):
-            with patch.object(hooks.shutil, "which", side_effect=lambda peer: "/fake/" + peer):
+        self.configure({"panel": {"kiro-cli": {"enabled": True}}})
+        with patch.object(hooks.shutil, "which", side_effect=lambda peer: "/fake/" + peer):
+            with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread",
+                                         "CO_AGENT_TASK_SCOPE": "aws-cdk-authoring"}):
                 peers, _ = hooks._panel(str(self.root))
-        self.assertEqual(["kiro-cli", "claude"], peers)
+            self.assertEqual(["kiro-cli", "claude"], peers)
+            with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread"}):
+                peers, _ = hooks._panel(str(self.root))
+            self.assertEqual(["claude"], peers)
 
     def test_gate_path_fallback_still_uses_the_detected_host(self):
-        with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread"}):
-            with patch.object(hooks, "cac", None):
-                with patch.object(hooks.shutil, "which", side_effect=lambda peer: "/fake/" + peer):
+        with patch.object(hooks, "cac", None):
+            with patch.object(hooks.shutil, "which", side_effect=lambda peer: "/fake/" + peer):
+                with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread",
+                                             "CO_AGENT_TASK_SCOPE": "aws-terraform-authoring"}):
                     peers, _ = hooks._panel(str(self.root))
-        self.assertEqual({"kiro-cli", "claude"}, set(peers))
+                self.assertEqual({"kiro-cli", "claude"}, set(peers))
+                with patch.dict(os.environ, {"CODEX_THREAD_ID": "thread"}):
+                    peers, _ = hooks._panel(str(self.root))
+                self.assertEqual({"claude"}, set(peers))
 
     def run_gate(self, event, verdict="BLOCK: correctness issue", returncode=0):
         self.configure({
@@ -189,6 +217,19 @@ class HostRuntimeTests(unittest.TestCase):
             fn = hooks.ev_pre_push_gate if event == "push" else hooks.ev_pre_pr_gate
             rc = fn(str(self.root))
         return rc, calls
+
+    def test_unscoped_report_records_configured_kiro_as_skipped(self):
+        self.configure({"panel": {"kiro-cli": {"enabled": True}}})
+        summary, probes = self.report(host="claude")
+        self.assertEqual(["codex"], probes)
+        self.assertEqual({"access": "none", "raw_cli": False, "status": "SKIPPED",
+                          "reason": "Kiro requires an eligible AWS task scope"},
+                         summary["peers"]["kiro-cli"])
+        self.assertFalse(panel.gate_eligible(str(self.root), "kiro-cli", host="claude"))
+        self.configure({})
+        summary, probes = self.report(host="claude")
+        self.assertEqual(["codex"], probes)
+        self.assertNotIn("kiro-cli", summary["peers"])
 
     def test_claude_only_peer_can_block_pr_and_push(self):
         for event, count in (("pr", 1), ("push", 3)):
