@@ -56,7 +56,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 import consensus_state as cs
-from co_agent_host import HOSTS, detect_host, peer_roster, retired_peer_message
+from co_agent_host import HOSTS, detect_host, kiro_scope_allowed, peer_roster, retired_peer_message
 from co_agent_env import sanitized_env as _sanitized_env, _SENSITIVE_ENV_RE, CLAUDE_GATE_ISOLATION
 try:
     import co_agent_config as cac
@@ -568,8 +568,6 @@ def _scan_secret(diff):
 
 
 def _path_panel(host):
-    from co_agent_host import kiro_scope_allowed
-
     """Degraded fallback when the config module is unavailable: review CLIs on PATH."""
     peers = [ai for ai in peer_roster(host) if ai in _REVIEW and shutil.which(ai)
              and (ai != "kiro-cli" or kiro_scope_allowed())]

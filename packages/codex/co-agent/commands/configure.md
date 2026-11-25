@@ -91,12 +91,13 @@ For arguments other than `analyze`, dispatch explicitly:
    python3 "$H" set codex effort high           # Codex reasoning effort
    python3 "$H" set claude model sonnet --host codex
    python3 "$H" set claude effort max --host codex
-   python3 "$H" set kiro-cli  model claude-opus-5.5 # Kiro model (see `kiro-cli chat --list-models`)
+   python3 "$H" set kiro-cli enabled true       # opt in; Kiro also needs an eligible CO_AGENT_TASK_SCOPE
+   python3 "$H" set kiro-cli model <kiro-model-id>  # Kiro model (see `kiro-cli chat --list-models`)
    python3 "$H" set timeout 300                 # global per-CLI timeout (s)
    python3 "$H" set codex context_limit 400000  # raise/lower a model's context window
    python3 "$H" set autosync on                 # auto-sync AI context on CLAUDE.md change
-   python3 "$H" set codex model openai.gpt-6.1-sol --scope user   # write to ~/.claude (all your repos)
-   python3 "$H" set kiro-cli models claude-opus-5.5,minimax-m2.5  # multi-model list
+   python3 "$H" set codex model <codex-model-id> --scope user   # write to ~/.claude (all your repos)
+   python3 "$H" set kiro-cli models <kiro-model-a>,<kiro-model-b>  # multi-model list (shipped lists are empty)
    python3 "$H" set profile deep                # activate each AI's `models` list
    python3 "$H" set harness review_mode relay    # harness gate: hybrid (default) | relay | parallel
    python3 "$H" set harness parallel_tasks 3     # harness implement wave size (1 = sequential)
@@ -119,6 +120,13 @@ For arguments other than `analyze`, dispatch explicitly:
      model's direction, capped by `consensus.max_calls`. All overrides ride the CLIs' real
      headless flags, so this works fully non-interactively; gate usage:
      `references/hybrid-gate.md` (default gate) and `references/relay-chain-gate.md` → "Multi-model relay".
+   - The shipped defaults leave every `model` null and every `models` list empty, so each
+     peer CLI runs its own configured model and `profile deep` resolves to one pair per
+     enabled peer, the same as `default`, until an operator sets a `models` list.
+   - Kiro ships disabled. `set kiro-cli enabled true` alone does not add it: `panel`,
+     `pairs`, `matrix`, `enabled kiro-cli` and setup probes include Kiro only when
+     `CO_AGENT_TASK_SCOPE` names an eligible AWS task (see "Kiro scope" in
+     `skills/co-agent/SKILL.md`).
    - `pr_autofix max_iterations` bounds the `/co-agent:pr-autofix` review→fix→push loop
      (positive int, default 5). It's a config knob rather than a skill constant because the
      right bound tracks how noisy the repo's review CI is; the skill reads it via
@@ -170,7 +178,7 @@ placement points:
 | Role | Character | Lever | Recommendation |
 |------|------|------|------|
 | **Chair** (triage/synthesis/final verdict) | narrow and strong | Host model: `/model opusplan` (plan=Opus·execute=Sonnet), or spawn the `gate-chair` subagent (`agents/gate-chair.md`, `model: opus`) | Keep a strong judgment model here — economizing here weakens the entire gate |
-| **Find panel** (hybrid gate F phase) | wide and cheap | `profile deep` + a low-cost model in each AI's `models` list (e.g. kiro `minimax-m2.5`) | Discovery is driven by diversity of perspective — model count matters more than per-model cost |
+| **Find panel** (hybrid gate F phase) | wide and cheap | `profile deep` + a low-cost model in each operator-supplied `models` list (the shipped lists are empty) | Discovery is driven by diversity of perspective — model count matters more than per-model cost |
 | **Verify panel** (V phase) | narrow and strong | The gate automatically uses `pairs --profile default` — each AI's single `model` becomes the verify model | Set `model` to each AI's strongest tier |
 | **Implementer** (harness write path) | generation-focused | `set harness implementer <ai>` + `implementer_model <m>` / `implementer_effort <e>` (falls back to the panel's `model`/`effort` if unset) | For a peer with confirmed included subscription access, use **that CLI's strongest generation model** — fewer fix rounds directly saves wall-clock time. Only lower to a cheaper model when metered billing applies, and use the review gate as a backstop |
 

@@ -24,8 +24,8 @@ import hashlib
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
-from co_agent_host import (HOSTS, ACTIVE_PEERS, detect_host, peer_roster,
-                           retired_peer_message)
+from co_agent_host import (HOSTS, ACTIVE_PEERS, detect_host, kiro_scope_allowed,
+                           peer_roster, retired_peer_message)
 from co_agent_env import sanitized_env as _sanitized_env, CLAUDE_GATE_ISOLATION
 
 try:
@@ -38,6 +38,7 @@ SCHEMA_VERSION = 2
 PEERS = ACTIVE_PEERS
 PEER_PLUGINS = {"codex": "openai/codex-plugin-cc"}   # peer → official Claude Code plugin repo
 PEER_MARKETPLACES = {"codex": "openai-codex"}   # peer → official marketplace.json "name" field
+KIRO_SCOPE_REASON = "Kiro requires an eligible AWS task scope"
 
 
 def detect_cli(peer):
@@ -196,11 +197,8 @@ def probe(peer, timeout=90, nonce="STATIC", gate=False):
         return "ERROR", retired
     if peer not in PEERS or peer not in ADAPTERS:
         return "ERROR", f"unknown peer {peer}"
-    if peer == "kiro-cli":
-        from co_agent_host import kiro_scope_allowed
-
-        if not kiro_scope_allowed():
-            return "SKIPPED", "Kiro requires an eligible AWS task scope"
+    if peer == "kiro-cli" and not kiro_scope_allowed():
+        return "SKIPPED", KIRO_SCOPE_REASON
     if not detect_cli(peer):
         return "ABSENT", "command not found"
     sentinel = f"COAGENT_PROBE_{nonce}"
@@ -325,10 +323,18 @@ def report(root, plugins_root, as_json=False, host=None):
         print("cannot resolve enabled panel: co_agent_config unavailable", file=sys.stderr)
         return 2
     # Probe sequentially: peers may share one backend and throttle each other.
-    enabled = co_agent_config.effective(root).get("panel", {})
-    peers = {peer: _peer_entry(peer, plugins_root)
-             for peer in co_agent_config.panel_ais(host)
-             if peer in peer_roster(host) and enabled.get(peer, {}).get("enabled", True)}
+    # Read the persisted panel so a configured Kiro outside an eligible AWS task scope
+    # is recorded as SKIPPED with its reason instead of silently disappearing.
+    configured = co_agent_config.effective(root, apply_scope=False).get("panel", {})
+    peers = {}
+    for peer in co_agent_config.panel_ais(host):
+        if peer not in peer_roster(host) or not configured.get(peer, {}).get("enabled", True):
+            continue
+        if peer == "kiro-cli" and not kiro_scope_allowed():
+            peers[peer] = {"access": "none", "raw_cli": False, "status": "SKIPPED",
+                           "reason": KIRO_SCOPE_REASON}
+            continue
+        peers[peer] = _peer_entry(peer, plugins_root)
     summary = {
         "schema_version": SCHEMA_VERSION,
         "generated_at": datetime.datetime.now().astimezone().isoformat(),

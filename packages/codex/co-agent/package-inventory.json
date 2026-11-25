@@ -24,7 +24,7 @@
       "executable": false
     },
     "commands/configure.md": {
-      "sha256": "4e2f38b557a07453577323df596f43b1b670bbe81c07b8d343ef806168e28560",
+      "sha256": "cc47ecf7ae73406f8dad257fcd61e92574a17909dc79c7c063c4c392a0048ff9",
       "executable": false
     },
     "commands/consensus.md": {
@@ -100,11 +100,11 @@
       "executable": true
     },
     "skills/co-agent/scripts/check_panel.py": {
-      "sha256": "af16b5dcdb0b380fccea4644afaa448aca3ef70436e37d6fe707673ba99ba93f",
+      "sha256": "f59caf4f5bf0cd3046f9451b69be3d2dfe816d01abe31ccff4b2c7dbfeca831e",
       "executable": true
     },
     "skills/co-agent/scripts/co_agent_config.py": {
-      "sha256": "026c06034a25840ec54ffccbb9bf49f32e088e12c4ba5860361fa1418d8abfe9",
+      "sha256": "2bc21ae5f1e3d8bac1b68fbccc0310240ebf2f6be94466775cc535e64c455013",
       "executable": true
     },
     "skills/co-agent/scripts/co_agent_env.py": {
@@ -116,7 +116,7 @@
       "executable": false
     },
     "skills/co-agent/scripts/consensus_hooks.py": {
-      "sha256": "fdd7d162316cc0fd518c1493c25a1e90305fdd7fd89d54f47cfcda4be75378ff",
+      "sha256": "b408ac2928624256932f51855af2493412154cf08f4cb8b217949eb5945a54f0",
       "executable": true
     },
     "skills/co-agent/scripts/consensus_state.py": {
