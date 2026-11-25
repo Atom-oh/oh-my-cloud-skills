@@ -78,7 +78,7 @@ def model_family(tag, model):
 
 
 def assignments(codex_enabled, kiro_cells):
-    cells = [("codex", "global.openai.gpt-6-astra")] if codex_enabled else []
+    cells = [("codex", "default")] if codex_enabled else []
     for line in kiro_cells.splitlines():
         if line.strip():
             model, tag = line.rsplit(":", 1)
