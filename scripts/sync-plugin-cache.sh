@@ -37,13 +37,13 @@ for name in sorted(json.load(open(sys.argv[1]))["plugins"]):
     print(name)
 PY
 )
-mapfile -t PLUGINS <<< "$PLUGIN_LIST"
 for HOST in "${HOSTS[@]}"; do
 CACHE_BASE="$STATE_ROOT/.$HOST/plugins/cache/oh-my-cloud-skills"
 SRC_BASE="$PROJECT_DIR/packages/$HOST"
 OTHER_HOST=claude
 [[ "$HOST" == claude ]] && OTHER_HOST=codex
-for plugin in "${PLUGINS[@]}"; do
+while IFS= read -r plugin; do
+  [[ -n "$plugin" ]] || continue
   PLUGIN_JSON="$SRC_BASE/$plugin/.$HOST-plugin/plugin.json"
   if [[ ! -f "$PLUGIN_JSON" ]]; then
     echo "Generate $HOST/$plugin first with scripts/sync-codex-plugins.py" >&2
@@ -104,7 +104,7 @@ for plugin in "${PLUGINS[@]}"; do
       fi
     fi
   done < <(find "$SRC_BASE/$plugin" -type f -print0)
-done
+done <<< "$PLUGIN_LIST"
 done
 
 echo ""
