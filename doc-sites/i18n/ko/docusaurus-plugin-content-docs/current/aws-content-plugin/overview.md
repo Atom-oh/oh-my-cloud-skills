@@ -34,12 +34,14 @@ title: "AWS 콘텐츠 플러그인"
 | 기본 개체를 편집할 수 있는 AWS 라이트 PowerPoint | aws-light-fcd |
 | AWS Draw.io 아키텍처 | architecture-diagram |
 | 트래픽·시나리오 애니메이션 다이어그램 | animated-diagram |
+| 슬라이드 도입부용 가벼운 손그림 개요 다이어그램 | sketch-diagram |
+| 슬라이드용 단계별 애니메이션 흐름 장면 | line-art-scene |
 | GitBook 문서 | gitbook |
 | 제품·솔루션 소개 페이지 | brochure |
 | 개인 프로필·포트폴리오 | gh-home |
 | Remarp 이슈 주석 반영 | slide-fix |
 
-프레젠테이션 요청 분류 에이전트는 요청 형식에 따라 웹 또는 기본 PowerPoint 제작 경로를 선택합니다. 정적 다이어그램에는 Draw.io를, 웹 슬라이드의 복잡한 아키텍처에는 HTML/CSS를 사용합니다. 작은 선형 흐름에는 Canvas를 사용할 수 있습니다. 외부 Archify 결과물을 삽입할 수 있지만, Archify가 마켓플레이스에 추가로 포함된 플러그인은 아닙니다.
+프레젠테이션 요청 분류 에이전트는 요청 형식에 따라 웹 또는 기본 PowerPoint 제작 경로를 선택합니다. 정적 다이어그램에는 Draw.io를, 웹 슬라이드의 복잡한 아키텍처에는 HTML/CSS를 사용합니다. 작은 선형 흐름에는 Canvas를 사용할 수 있습니다. 가벼운 도입부에는 손그림 스타일의 sketch-diagram을, 키를 누를 때마다 한 단계씩 설명하는 흐름에는 line-art-scene을 사용합니다. 외부 Archify 결과물을 삽입할 수 있지만, Archify가 마켓플레이스에 추가로 포함된 플러그인은 아닙니다.
 
 ## 빌드와 리뷰 {#build-and-review}
 

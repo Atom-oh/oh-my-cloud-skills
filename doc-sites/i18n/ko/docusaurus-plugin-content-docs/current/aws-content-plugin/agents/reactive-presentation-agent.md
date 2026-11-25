@@ -55,6 +55,10 @@ The port carries VXLAN traffic between nodes.
 제공합니다. [청중 수준에 맞는 설명 규칙](/docs/aws-content-plugin/skills/reactive-presentation#audience-aware-explanations)을
 따르고 콘텐츠 리뷰에서 호버, 키보드와 터치 접근을 확인합니다.
 
+## 다이어그램 스킬 {#diagram-skills}
+
+섹션 시작에 가벼운 손그림 개요가 필요하면 [sketch-diagram](/docs/aws-content-plugin/skills/sketch-diagram) 스킬을 사용합니다. 키를 누를 때마다 한 단계씩, 움직이는 카메라와 콜아웃으로 설명하는 흐름에는 [line-art-scene](/docs/aws-content-plugin/skills/line-art-scene)을 사용합니다.
+
 ## 검증 정책 {#validation-policy}
 
 빌드하려면 CRITICAL 진단이 없어야 합니다. `DETAIL_REF`는 CRITICAL입니다.

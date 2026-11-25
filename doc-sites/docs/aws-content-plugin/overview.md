@@ -34,12 +34,14 @@ Create web presentations, editable PowerPoint decks, diagrams, documents, brochu
 | Native editable AWS light PowerPoint | aws-light-fcd |
 | AWS Draw.io architecture | architecture-diagram |
 | Animated traffic or scenario diagram | animated-diagram |
+| Light hand-drawn overview diagram for a slide opener | sketch-diagram |
+| Step-by-step animated flow scene for a slide | line-art-scene |
 | GitBook documentation | gitbook |
 | Product/solution landing page | brochure |
 | Personal profile/portfolio | gh-home |
 | Remarp issue annotations | slide-fix |
 
-The presentation dispatcher selects web or native PowerPoint based on the requested format. Static diagrams use Draw.io; complex architecture inside a web slide uses HTML/CSS; small linear sequences can use Canvas. An external Archify composition can be embedded as an artifact, but Archify is not an additional bundled marketplace plugin.
+The presentation dispatcher selects web or native PowerPoint based on the requested format. Static diagrams use Draw.io; complex architecture inside a web slide uses HTML/CSS; small linear sequences can use Canvas. For a friendly opener use the hand-drawn sketch-diagram, and for a flow explained one key press at a time use line-art-scene. An external Archify composition can be embedded as an artifact, but Archify is not an additional bundled marketplace plugin.
 
 ## Build and review {#build-and-review}
 

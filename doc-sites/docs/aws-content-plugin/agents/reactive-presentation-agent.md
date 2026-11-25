@@ -55,6 +55,10 @@ teaching for L100–200. Chart captions need reading guidance; quotations need
 attribution and context. Follow the [audience-aware explanation rules](/docs/aws-content-plugin/skills/reactive-presentation#audience-aware-explanations)
 and verify hover, keyboard, and touch access during content review.
 
+## Diagram skills {#diagram-skills}
+
+For a light, hand-drawn overview at the start of a section, the agent uses the [sketch-diagram](/docs/aws-content-plugin/skills/sketch-diagram) skill. For a flow explained one key press at a time, with a moving camera and callouts, it uses [line-art-scene](/docs/aws-content-plugin/skills/line-art-scene).
+
 ## Validation policy {#validation-policy}
 
 Build requires zero CRITICAL findings. `DETAIL_REF` is CRITICAL. `EM_DASH`,
