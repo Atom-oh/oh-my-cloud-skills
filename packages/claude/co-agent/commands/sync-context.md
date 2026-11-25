@@ -27,8 +27,9 @@ Maintain one concise, reviewed `AGENTS.md` as the shared project context.
    Use the first line
    `<!-- generated-by: co-agent · source: reviewed AGENTS.md -->`.
 5. Validate the candidate before replacing `AGENTS.md`. Run
-   `python3 scripts/check_ai_context.py <project-dir> --check-candidate <candidate-path>`
-   using the plugin's bundled script. Preserve `AGENTS.override.md` and require
+   `python3 "${CLAUDE_PLUGIN_ROOT}/skills/co-agent/scripts/check_ai_context.py" <project-dir> --check-candidate <candidate-path>`.
+   After publishing, run the same script with only `<project-dir>` to repeat those
+   checks and the residual context-file secret audit. Preserve `AGENTS.override.md` and require
    approval before replacing a hand-written `AGENTS.md`. Report reviewers, size,
    material changes and unresolved feedback.
 6. Keep Claude's project instructions pointing at the shared `AGENTS.md` and

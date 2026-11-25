@@ -193,13 +193,14 @@ co-agent's ADR mode provides the **collaboration layer** that enriches the
 
 ## Project context files
 
-Keep `CLAUDE.md` as the canonical project memory. Its distilled `AGENTS.md` is
-shared by the supported context adapters below; Claude reads `CLAUDE.md`.
+`/co-agent:sync-context` (`commands/sync-context.md`) maintains one cross-reviewed
+`AGENTS.md` shared by the supported context adapters below; Claude reads `CLAUDE.md`.
+Older repositories may still carry the legacy `AGENTS.md` distilled from `CLAUDE.md`.
 
 | AI | File | Behaviour / limits | co-agent action |
 |----|------|--------------------|-----------------|
-| **Kiro** | `.kiro/steering/project-context.md` | Always-loaded steering bridge that references `AGENTS.md` with `#[[file:AGENTS.md]]` — same distilled file Codex reads, not a second copy of `CLAUDE.md`. (`kiro-cli chat` has a documented content-vs-metadata gap — see the fan-out's `fs_read` pointer.) | create/update bridge |
-| **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | distill + validate |
+| **Kiro** | `.kiro/steering/project-context.md` | Always-loaded steering bridge that references `AGENTS.md` with `#[[file:AGENTS.md]]`: the same shared file Codex reads, not a second copy of `CLAUDE.md`. (`kiro-cli chat` has a documented content-vs-metadata gap; see the fan-out's `fs_read` pointer.) | create/update bridge |
+| **Codex** | `AGENTS.md` | Merged git-root→cwd; **~32 KiB project-doc cap** (oversized → truncated). `AGENTS.override.md` wins locally. | cross-review + validate |
 
 
 > **Legacy context files.** Co-agent invokes neither retired CLI (`agy` or `gemini`).
@@ -224,7 +225,7 @@ exhaustive file inventories. **Never include secrets** — this file goes to thi
 
 ### Kiro steering bridge
 
-Kiro shares the **same distilled `AGENTS.md`** Codex reads, through a steering file —
+Kiro shares the **same `AGENTS.md`** Codex reads, through a steering file:
 not a second copy, and not the full unabridged `CLAUDE.md` (that would give Kiro a more
 complete but *inconsistent* view of the project vs. the rest of the panel; consistency
 across peers wins here):
@@ -243,26 +244,37 @@ inclusion: always
 If a hand-written `.kiro/steering/project-context.md` already exists without that file
 reference, leave it untouched and report that it needs manual merge.
 
-### Generation marker + safety
+### Markers + safety
 
-The generated `AGENTS.md` carries a marker on line 1 so the validator can detect staleness
-and never clobber a hand-written file:
+`/co-agent:sync-context` publishes the reviewed format. Its exact first line is
+`REVIEWED_MARKER` in `scripts/check_ai_context.py`, quoted in `commands/sync-context.md`;
+the file carries no `CLAUDE.md` sha.
+
+- Validate a candidate before publishing it with
+  `python3 scripts/check_ai_context.py <project-dir> --check-candidate <candidate-path>`.
+  It checks the marker, the line and byte caps from `commands/sync-context.md` step 4
+  and the secret scan, and fails on a missing file or marker.
+- Default mode (`python3 scripts/check_ai_context.py <project-dir>`) repeats those checks
+  on the published `AGENTS.md` without requiring `CLAUDE.md`, and still secret-scans a
+  residual `GEMINI.md` (ADR-022). `--verify AGENTS.md` is the silent yes/no form.
+- A consumer may forward the file under a stricter cap. This repository's review CI
+  (`scripts/pr-review/context.py`) calls the same `_file_problems()` helper with its
+  `AGENTS_CAP`.
+
+The legacy format distilled from `CLAUDE.md` is still validated. Its line-1 marker
+carries the `CLAUDE.md` sha:
 
 ```
 <!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: <sha12> · generated-at: <date> · DO NOT EDIT — edit CLAUDE.md then run /co-agent sync-context -->
 ```
 
-- Emit it with `python3 scripts/check_ai_context.py <dir> --emit-marker` (hashes the
-  current `CLAUDE.md`), then prepend a one-line **neutral** role header — NOT "You are
-  Codex" (the supported adapters consume the same validated file):
-  `> You are an external reviewer for this repo — project context below, distilled from
-  CLAUDE.md. This file is shared verbatim by the external review panel (not a per-AI copy).`
-- Files **without** the marker are treated as hand-written → left untouched (this also
-  protects Codex's `AGENTS.override.md`).
-- Validate after writing: `python3 scripts/check_ai_context.py <project-dir>` — checks
-  marker, size cap, staleness (claude-md-sha vs current `CLAUDE.md`), and runs a secret scan.
-- A plugin **PostToolUse hook** on `CLAUDE.md` Edit/Write runs the validator and prints a
-  reminder when `AGENTS.md` drifts out of sync.
+- `--emit-marker` prints that marker for the current `CLAUDE.md`; default mode reports a
+  sha mismatch as STALE.
+- Files **without** a co-agent marker are treated as hand-written and left untouched
+  (this also protects Codex's `AGENTS.override.md`).
+- A plugin **PostToolUse hook** on `CLAUDE.md` Edit/Write runs default mode and prints a
+  reminder when it fails. A reviewed `AGENTS.md` has no staleness check, so the hook
+  stays silent unless a cap, secret or residual-file problem exists.
 
 ## Notes
 

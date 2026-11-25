@@ -26,7 +26,7 @@ workflow; the six modes then route by the requested task.
 | Review | Attributed findings, verified against the diff, and a synthesis verdict |
 | Decide | Option comparison, recommendation and deciding trade-off |
 | ADR | Nygard ADR draft with verified rationale and alternatives |
-| sync-context | Distilled `AGENTS.md` plus the Kiro steering bridge |
+| sync-context | Cross-reviewed `AGENTS.md` plus the Kiro steering bridge |
 | consensus | Host implementation through the P0–P5 plan/implementation/review pipeline |
 | harness | Host design/tests; one configured peer implements in isolated worktrees; host commits |
 
@@ -143,10 +143,14 @@ Use `commands/configure.md` and `co_agent_config.py show` for current models, su
 flags, timeouts, context limits and iteration bounds; avoid copying model IDs here.
 Harness implementer overrides are stored per implementer and affect only its write path.
 
-`commands/sync-context.md` distills `CLAUDE.md` into one shared `AGENTS.md` and a
+`commands/sync-context.md` cross-reviews one concise shared `AGENTS.md` and keeps a
 `.kiro/steering/project-context.md` bridge containing `#[[file:AGENTS.md]]`.
-`skills/co-agent/scripts/check_ai_context.py` validates marker, size, staleness and
-secret patterns. Preserve handwritten context files; never overwrite them merely to
+`skills/co-agent/scripts/check_ai_context.py` validates the reviewed format (marker,
+line and byte caps, secrets) and the legacy sha-bearing format distilled from
+`CLAUDE.md` (marker, size, staleness, secrets); default mode also audits a residual
+`GEMINI.md` (ADR-022). Review CI forwards either format through the same
+`_file_problems()` helper under `AGENTS_CAP` in `scripts/pr-review/context.py`.
+Preserve handwritten context files; never overwrite them merely to
 satisfy a check. Autosync is opt-in. The current authorized host owns review-memory
 updates; planner and implementer workers must not write that memory.
 
