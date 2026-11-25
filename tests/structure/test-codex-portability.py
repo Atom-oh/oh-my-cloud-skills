@@ -365,12 +365,25 @@ class PortabilityTests(unittest.TestCase):
             shutil.copytree(self.generated, root, dirs_exist_ok=True)
             source = root / "plugins/project-init/agents/doc-sync-checker.md"
             original = source.read_text()
-            source.write_text(original.replace("model: opus", "model: haiku\nmemory: project\neffort: low"))
+            assigned = json.loads(
+                (root / "hosts/claude/project-init/agents.json").read_text())["doc-sync-checker.md"]
+            # The host entry restates the mirrored values, so the shared file gets
+            # different ones; only then does the installed copy show where each came from.
+            shared = {"tools": "Read", "model": "haiku", "effort": "low", "memory": "project"}
+            for key, value in shared.items():
+                self.assertNotEqual(value, assigned.get(key), key)
+            head, separator, body = original.partition("\n---\n")
+            self.assertTrue(head.startswith("---\n") and separator, "shared agent needs frontmatter")
+            kept = [line for line in head.split("\n") if line.split(":", 1)[0] not in shared]
+            mutated = "\n".join(kept + [f"{key}: {value}" for key, value in shared.items()]) + separator + body
+            self.assertNotEqual(original, mutated)
+            source.write_text(mutated)
             subprocess.run([sys.executable, str(GENERATOR), "--root", str(root)], check=True, capture_output=True)
-            installed = root / "packages/claude/project-init/agents/doc-sync-checker.md"
-            self.assertRegex(installed.read_text(), r'(?m)^model: "opus"$')
-            self.assertNotRegex(installed.read_text(), r"(?m)^(memory|effort):")
-            self.assertEqual(original.replace("model: opus", "model: haiku\nmemory: project\neffort: low"), source.read_text())
+            installed = (root / "packages/claude/project-init/agents/doc-sync-checker.md").read_text()
+            for key in shared:
+                expected = [f"{key}: {json.dumps(assigned[key])}"] if key in assigned else []
+                self.assertEqual(expected, re.findall(rf"(?m)^{key}:.*$", installed), key)
+            self.assertEqual(mutated, source.read_text())
 
     def test_codex_hook_changes_do_not_change_claude_package(self):
         with tempfile.TemporaryDirectory() as tmp:
