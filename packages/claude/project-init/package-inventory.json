@@ -12,7 +12,7 @@
       "executable": false
     },
     "agents/doc-sync-checker.md": {
-      "sha256": "b16ceea5a819f63920ec83d24dd05d70f37f3bf2cad4a7103fcb6e8893fb19c6",
+      "sha256": "1482c88d6641fc51b9ffbe6868ddb18517f91290707749df5ad31661dcefe222",
       "executable": false
     },
     "commands/add-adr.md": {

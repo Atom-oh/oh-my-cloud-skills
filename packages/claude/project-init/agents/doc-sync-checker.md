@@ -1,8 +1,9 @@
 ---
 name: doc-sync-checker
 description: Read-only documentation audit for /project-init:sync-docs. Returns one report of module CLAUDE.md coverage, stale root CLAUDE.md and architecture.md content, ADR and runbook gaps, implementation reference problems (missing layer docs, broken Code Pointers, INDEX drift), and CLAUDE.md quality scores, with severity and confidence on every finding. Use it for a whole-project documentation audit, not a single-file question.
-tools: "Read, Glob, Grep, Bash(find:*), Bash(git log:*), Bash(ls:*)"
-model: "opus"
+tools: "Read, Glob, Grep, Bash"
+model: "sonnet"
+effort: "medium"
 color: "cyan"
 ---
 
