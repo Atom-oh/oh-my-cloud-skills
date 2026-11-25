@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Validate / check staleness of co-agent-generated AGENTS.md context.
 
-co-agent distills CLAUDE.md ONCE into a lean, shared AGENTS.md for supported peers:
+co-agent keeps one lean, shared AGENTS.md for supported peers (the reviewed format from
+sync-context, or the legacy format distilled from CLAUDE.md):
   - AGENTS.md  → Codex CLI auto-loads it from the repo root (32 KiB project-doc cap;
                  merged git-root→cwd). Kiro's .kiro/steering/project-context.md
                  bridges to this SAME file via #[[file:AGENTS.md]] (not CLAUDE.md
@@ -21,8 +22,15 @@ Usage:
                                                               # MISSING or hand-written file is a fail here, not
                                                               # a note: "safe to hand to a third-party AI" must
                                                               # be a strict yes/no, not "nothing to report")
+  python3 check_ai_context.py [project_dir] --check-candidate <file>
+      # exit 0 ONLY if <file> exists, starts with REVIEWED_MARKER and passes
+      # reviewed_problems() (line/byte caps, secrets); prints each problem
 
-Marker (must be on/near line 1 of a generated file):
+Reviewed format (sync-context output): line 1 is exactly REVIEWED_MARKER; no CLAUDE.md
+sha applies. --verify AGENTS.md checks it silently; default mode needs no CLAUDE.md for it
+and still runs the RESIDUAL_SCAN secret audit.
+
+Legacy generated marker (must be on/near line 1 of a sha-bearing file):
   <!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: <sha12> · generated-at: <date> -->
 """
 import sys
@@ -70,6 +78,14 @@ def _file_problems(path, sha, cap=None):
         return ["missing"]
     with open(path, encoding="utf-8") as f:
         body = f.read()
+    if is_reviewed(body):
+        # Reviewed format: no CLAUDE.md sha to compare. Apply the reviewed line, byte and
+        # secret checks plus the caller's own cap (AGENTS_CAP in scripts/pr-review/context.py).
+        problems = reviewed_problems(body)
+        size = len(body.encode("utf-8"))
+        if cap is not None and size > cap:
+            problems.append(f"{size} B > {cap} B cap; shorten the reviewed AGENTS.md")
+        return problems
     if not MARKER_RE.search(body):
         return ["hand-written (no co-agent marker)"]
     problems = []
@@ -97,34 +113,45 @@ def main() -> int:
     if "--check-candidate" in sys.argv:
         index = sys.argv.index("--check-candidate") + 1
         if index >= len(sys.argv):
+            print("--check-candidate requires a candidate file path")
             return 2
-        target = sys.argv[index]
-    elif not emit and verify_target in (None, "AGENTS.md"):
-        target = os.path.join(root, "AGENTS.md")
-    else:
-        target = None
-    if target and os.path.isfile(target):
-        with open(target, encoding="utf-8") as f:
+        candidate = sys.argv[index]
+        if not os.path.isfile(candidate):
+            print(f"Candidate file not found: {candidate}")
+            return 1
+        with open(candidate, encoding="utf-8") as f:
+            body = f.read()
+        if not is_reviewed(body):
+            print("Candidate is missing the reviewed AGENTS.md marker")
+            return 1
+        problems = reviewed_problems(body)
+        for problem in problems:
+            print(problem)
+        return int(bool(problems))
+
+    # A reviewed AGENTS.md carries no CLAUDE.md sha. --verify checks only its reviewed caps
+    # (silently); default mode skips the CLAUDE.md requirement but still runs the
+    # RESIDUAL_SCAN audit and note output below (ADR-022).
+    reviewed_body = None
+    agents_path = os.path.join(root, "AGENTS.md")
+    if not emit and verify_target in (None, "AGENTS.md") and os.path.isfile(agents_path):
+        with open(agents_path, encoding="utf-8") as f:
             body = f.read()
         if is_reviewed(body):
-            problems = reviewed_problems(body)
-            if not verify_target:
-                for problem in problems:
-                    print(problem)
-            return int(bool(problems))
-    if "--check-candidate" in sys.argv:
-        print("Candidate is missing the reviewed AGENTS.md marker")
-        return 1
+            reviewed_body = body
+    if reviewed_body is not None and verify_target:
+        return int(bool(reviewed_problems(reviewed_body)))
 
     claude_path = os.path.join(root, "CLAUDE.md")
-    if not os.path.isfile(claude_path):
+    if reviewed_body is None and not os.path.isfile(claude_path):
         if verify_target:
             return 1   # no CLAUDE.md → nothing was distilled → not safe to hand out
         print(f"❌ no CLAUDE.md in {root} — nothing to sync from.")
         return 2
-    with open(claude_path, encoding="utf-8") as f:
-        src = f.read()
-    sha = claude_sha(src)
+    sha = None   # unused for a reviewed AGENTS.md, which may have no CLAUDE.md
+    if os.path.isfile(claude_path):
+        with open(claude_path, encoding="utf-8") as f:
+            sha = claude_sha(f.read())
 
     if emit:
         today = datetime.date.today().isoformat()
@@ -138,6 +165,9 @@ def main() -> int:
 
     problems, notes = [], []
     for name, cap in MANAGED.items():
+        if name == "AGENTS.md" and reviewed_body is not None:
+            problems.extend(reviewed_problems(reviewed_body))
+            continue
         p = os.path.join(root, name)
         if not os.path.isfile(p):
             notes.append(f"{name}: not generated yet (run /co-agent sync-context)")
@@ -181,6 +211,9 @@ def main() -> int:
         for p in problems:
             print(f"   • {p}")
         return 1
+    if reviewed_body is not None:
+        print("Reviewed AGENTS.md is within its line and byte caps, no secrets.")
+        return 0
     print("✅ AGENTS.md is in sync with CLAUDE.md, within size cap, no secrets.")
     return 0
 

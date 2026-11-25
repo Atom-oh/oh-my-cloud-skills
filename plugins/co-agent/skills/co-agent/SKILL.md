@@ -222,7 +222,7 @@ peers only). Run it once before relying on the panel; auth fixes stay guidance-o
 | Review | Synthesis report: consensus vs dissent (attributed), severity table, Well-Architected notes, PASS/REVIEW/FAIL verdict |
 | Decide | Comparison table + one recommendation + the deciding trade-off |
 | ADR | Nygard ADR draft at `docs/decisions/ADR-NNN.md` |
-| sync-context | Marker-carrying `AGENTS.md` + Kiro steering bridge, validated by `check_ai_context.py` |
+| sync-context | Cross-reviewed `AGENTS.md` (reviewed marker on line 1) + Kiro steering bridge, validated by `check_ai_context.py --check-candidate` |
 | Consensus / harness | Local commits + `.claude/co-agent-consensus/report.md` |
 
 Always state which panel members actually ran, and which were skipped (missing, disabled,
@@ -233,7 +233,7 @@ over context limit, errored).
 - `references/ai-cli-adapters.md` — Supported peer CLI commands, detection, fan-out pattern, fallbacks, **project-context files**
 - `references/architecture-review-framework.md` — the review rubric: severity definitions + PASS/REVIEW/FAIL thresholds
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
-- `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md (size cap, marker, secrets); `--emit-marker` for generation
+- `scripts/check_ai_context.py`: validate `AGENTS.md`. `--check-candidate` checks a reviewed candidate (marker, line/byte caps, secrets); default mode adds the residual-file secret audit; the legacy sha-bearing format keeps its staleness check and `--emit-marker`
 - `scripts/co_agent_config.py` + `co-agent.defaults.json` — panel settings (model/effort/enabled/timeout); driven by the **`/co-agent:configure`** command, overrides in `.claude/co-agent.local.json`
 - `scripts/check_citations.py` — diff-only citation classification (supported/needs-review/unsupported); plans and other documents use chair quotation/section checks
 - `references/consensus-pipeline.md` — **AUTHORITATIVE** for `/co-agent:consensus`: P0–P5 phases, entry decision table, Stage A/B/C roadmap
