@@ -196,6 +196,11 @@ def probe(peer, timeout=90, nonce="STATIC", gate=False):
         return "ERROR", retired
     if peer not in PEERS or peer not in ADAPTERS:
         return "ERROR", f"unknown peer {peer}"
+    if peer == "kiro-cli":
+        from co_agent_host import kiro_scope_allowed
+
+        if not kiro_scope_allowed():
+            return "SKIPPED", "Kiro requires an eligible AWS task scope"
     if not detect_cli(peer):
         return "ABSENT", "command not found"
     sentinel = f"COAGENT_PROBE_{nonce}"

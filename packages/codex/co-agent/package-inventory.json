@@ -44,11 +44,11 @@
       "executable": false
     },
     "skills/co-agent/SKILL.md": {
-      "sha256": "0847f53f0d6e805d1cc9c0896f5874b96703943bb9ee156e1ff8fd9941bbfedf",
+      "sha256": "2cd6791c4bc3df00d04cb3033d7fbc55f6800d994f3afcbb22a08af78c54de83",
       "executable": false
     },
     "skills/co-agent/co-agent.defaults.json": {
-      "sha256": "f2030816e38400c3d1b2dc00471876ef2dc6638085c0cb26692475dcb2acb8cc",
+      "sha256": "145841e348dd87f22d676680cf23e3c16d24e2f47e7c812d6b5479f10f722d37",
       "executable": false
     },
     "skills/co-agent/references/ai-cli-adapters.md": {
@@ -100,11 +100,11 @@
       "executable": true
     },
     "skills/co-agent/scripts/check_panel.py": {
-      "sha256": "1936d0d330193416586925f82a79954b27ff61d11763141037f0f6067ad46bc6",
+      "sha256": "af16b5dcdb0b380fccea4644afaa448aca3ef70436e37d6fe707673ba99ba93f",
       "executable": true
     },
     "skills/co-agent/scripts/co_agent_config.py": {
-      "sha256": "10e0e10bbdac6c65394a9940bc88f325f561c0bc30f77fa5ec1bab23090b4b02",
+      "sha256": "026c06034a25840ec54ffccbb9bf49f32e088e12c4ba5860361fa1418d8abfe9",
       "executable": true
     },
     "skills/co-agent/scripts/co_agent_env.py": {
@@ -112,11 +112,11 @@
       "executable": false
     },
     "skills/co-agent/scripts/co_agent_host.py": {
-      "sha256": "f9f45aea9b0216bc36372f8914efb1a73db146e3f6b91c33c23a705dc564bdf1",
+      "sha256": "ec000c4be3b4b2f5bf35fa252d3bcb6dee28e52ff43cb11eed50db4101140c30",
       "executable": false
     },
     "skills/co-agent/scripts/consensus_hooks.py": {
-      "sha256": "739c316bc56af5eefa5055abe5d8422be81a65ed6038374bdcd389c9bb9ceefa",
+      "sha256": "fdd7d162316cc0fd518c1493c25a1e90305fdd7fd89d54f47cfcda4be75378ff",
       "executable": true
     },
     "skills/co-agent/scripts/consensus_state.py": {

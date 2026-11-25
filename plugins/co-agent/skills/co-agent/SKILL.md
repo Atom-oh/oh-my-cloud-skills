@@ -34,6 +34,30 @@ READY raw-CLI peers and cannot continue solo.
 > These are six modes; `setup` is a separate command. Optional local hook behavior
 > does not relax mandatory repository CI, Critical/Major, coverage or security gates.
 
+## Kiro scope
+
+Use Kiro only to review AWS architecture or AWS resources, or to author AWS CDK
+or Terraform. Apply this restriction before readiness probes and peer calls,
+including when a persisted profile enables Kiro. For mixed tasks, give Kiro only
+the eligible AWS portion. For eligible tasks, select the matching
+`CO_AGENT_TASK_SCOPE` value for readiness and panel commands:
+`aws-architecture-review`, `aws-resource-review`, `aws-cdk-authoring`, or
+`aws-terraform-authoring`. Enable Kiro in panel configuration if desired.
+General reviews, ADRs, documentation, and unrelated
+implementation use the opposite host peer. Respect the harness writer sandbox
+requirements. Use the peer CLI's configured model unless the operator explicitly
+selects a model.
+
+### Optional Kiro authoring
+
+When the user explicitly selects Kiro for AWS CDK or Terraform authoring, use the
+matching authoring scope and request a proposed code diff from Kiro using the
+read-only CLI adapter. Provide only the relevant AWS files and requirements.
+Ask for code, without permission to write files or run deployment commands.
+The host reviews and applies the proposed diff, then runs the normal synth or
+validation checks. Otherwise the host uses its normal implementation workflow.
+This option is local and does not enable Kiro in GitHub Actions.
+
 ## Step 0: Detect the panel (always first)
 
 ```bash

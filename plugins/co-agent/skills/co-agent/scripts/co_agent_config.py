@@ -407,6 +407,10 @@ def effective(root, warn=False, strict=False):
                 if not isinstance(e, (json.JSONDecodeError, OSError)):
                     raise   # Preserve advisory behavior for other invalid inputs.
                 print(f"⚠️  ignoring malformed {lp}: {e}", file=sys.stderr)
+    from co_agent_host import kiro_scope_allowed
+
+    if not kiro_scope_allowed():
+        cfg["panel"]["kiro-cli"]["enabled"] = False
     return cfg
 
 
