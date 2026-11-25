@@ -8,7 +8,7 @@
       "executable": false
     },
     "CLAUDE.md": {
-      "sha256": "154dd70869f838d31adccd82531c4fc0baeaf7f7c152355151754df9693db65b",
+      "sha256": "ae5a4b20761468208762fba65e9923f49c2543ebfbeab5f193d5e7a69272ccf4",
       "executable": false
     },
     "agents/gate-chair.md": {
@@ -40,11 +40,11 @@
       "executable": false
     },
     "commands/sync-context.md": {
-      "sha256": "dc33d6df44bd9295a32f4dfc37d601e3505d2a3cd18f0ae729be7932b8713302",
+      "sha256": "64968b11a2c6566a98b0fe1483417503b0ff53a665a11916e7fd610d1d55e7b8",
       "executable": false
     },
     "skills/co-agent/SKILL.md": {
-      "sha256": "0847f53f0d6e805d1cc9c0896f5874b96703943bb9ee156e1ff8fd9941bbfedf",
+      "sha256": "0f3a524f6d76c101dd2410d1e2df90f3ab54ceddc8c55b556710c99a2f2b8d7b",
       "executable": false
     },
     "skills/co-agent/co-agent.defaults.json": {
@@ -52,7 +52,7 @@
       "executable": false
     },
     "skills/co-agent/references/ai-cli-adapters.md": {
-      "sha256": "c809877a577b54513f88c01aa696d10451e373bdd6ca1d205c3f0a9e12157657",
+      "sha256": "ca1b4cd25b0492637104912eaf165ece98395ce94d37f8f5293faea188828dd7",
       "executable": false
     },
     "skills/co-agent/references/architecture-review-framework.md": {
@@ -92,7 +92,7 @@
       "executable": true
     },
     "skills/co-agent/scripts/check_ai_context.py": {
-      "sha256": "edd3763a095a33a61de89d2141b0c2cd0fd968e6fed0a45d37c2270b6f34f666",
+      "sha256": "d30f36c3f0762ff61fcdc49b96814d96d1ee45d5c351bec176507774814a5aa8",
       "executable": true
     },
     "skills/co-agent/scripts/check_citations.py": {
@@ -276,7 +276,7 @@
       "executable": false
     },
     ".codex-plugin/skills/sync-context/SKILL.md": {
-      "sha256": "744e5ced331347b3fa6a23f42d3f6bd63ed2dd63f00f4550271eee70fb1e4aef",
+      "sha256": "432c3fba38bf6a1ad5dd7d192117230288a6bc38d466daf7b95836fab214ef44",
       "executable": false
     },
     ".codex-plugin/inventory.json": {

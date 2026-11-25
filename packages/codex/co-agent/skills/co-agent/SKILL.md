@@ -129,49 +129,11 @@ DIFF=$(git diff "origin/$BASE...HEAD" 2>/dev/null); [ -z "$DIFF" ] && DIFF=$(git
    layer; `/add-adr` is not modified — see `references/ai-cli-adapters.md` → ADR
    hand-off).
 
-### Mode 4 — sync-context  (also the standalone command **`/co-agent:sync-context`**)
+### Mode 4 — sync-context
 
-Give the external AIs project context so they review with the project's conventions.
-The supported context adapters share the **same distilled `AGENTS.md`**. Kiro's
-bridge is `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]`; native loading
-and validated context fold-in are specified in `ai-cli-adapters.md`. Claude uses
-canonical `CLAUDE.md`. Validate generated context before relying on its provenance.
-
-**DISTILL — do NOT copy `CLAUDE.md` verbatim** (a dumped copy bloats/truncates; Codex
-caps project docs at 32 KiB). Produce one lean, review-oriented core:
-
-1. Read the project's `CLAUDE.md` and distill: language/stack, build·test·lint commands,
-   naming + banned patterns, architectural boundaries, PR/review expectations, a short
-   review checklist, known false-positives. Omit transient state and tool internals not
-   relevant to review. **No secrets.**
-2. Prepend the marker line (`scripts/check_ai_context.py <dir> --emit-marker`) plus a
-   neutral header — `> You are an external reviewer for this repo — project context
-   below, distilled from CLAUDE.md. This file is shared verbatim by the external review panel
-   (not a per-AI copy).` — and write to **`AGENTS.md` only**.
-3. **Only overwrite files that carry the co-agent marker** — never clobber a
-   hand-written `AGENTS.md` or Codex's `AGENTS.override.md`.
-4. Ensure `.kiro/steering/project-context.md` exists and contains exactly the bridge
-   below; if an existing steering file has other hand-written content and lacks the
-   file reference, leave it and report that it needs manual merge.
-
-   ```markdown
-   ---
-   name: project-context
-   inclusion: always
-   ---
-
-   # Project Context
-
-   #[[file:AGENTS.md]]
-   ```
-
-5. Validate — size cap, marker, staleness, secret scan:
-
-```bash
-python3 scripts/check_ai_context.py <project-dir>
-```
-
-> A PostToolUse hook reminds you when `CLAUDE.md` changes so these stay in sync.
+Use the standalone `/co-agent:sync-context` procedure in
+[`commands/sync-context.md`](../../commands/sync-context.md). Draft independently,
+cross-review the drafts, and validate one compact shared `AGENTS.md`.
 
 ### Mode 5 — Consensus pipeline  (also **`/co-agent:consensus`**)
 
@@ -260,7 +222,7 @@ peers only). Run it once before relying on the panel; auth fixes stay guidance-o
 | Review | Synthesis report: consensus vs dissent (attributed), severity table, Well-Architected notes, PASS/REVIEW/FAIL verdict |
 | Decide | Comparison table + one recommendation + the deciding trade-off |
 | ADR | Nygard ADR draft at `docs/decisions/ADR-NNN.md` |
-| sync-context | Marker-carrying `AGENTS.md` + Kiro steering bridge, validated by `check_ai_context.py` |
+| sync-context | Cross-reviewed `AGENTS.md` (reviewed marker on line 1) + Kiro steering bridge, validated by `check_ai_context.py --check-candidate` |
 | Consensus / harness | Local commits + `.claude/co-agent-consensus/report.md` |
 
 Always state which panel members actually ran, and which were skipped (missing, disabled,
@@ -271,7 +233,7 @@ over context limit, errored).
 - `references/ai-cli-adapters.md` — Supported peer CLI commands, detection, fan-out pattern, fallbacks, **project-context files**
 - `references/architecture-review-framework.md` — the review rubric: severity definitions + PASS/REVIEW/FAIL thresholds
 - `references/aws-well-architected.md` — 6-pillar checklist for the review mode
-- `scripts/check_ai_context.py` — validate/staleness-check generated AGENTS.md (size cap, marker, secrets); `--emit-marker` for generation
+- `scripts/check_ai_context.py`: validate `AGENTS.md`. `--check-candidate` checks a reviewed candidate (marker, line/byte caps, secrets); default mode adds the residual-file secret audit; the legacy sha-bearing format keeps its staleness check and `--emit-marker`
 - `scripts/co_agent_config.py` + `co-agent.defaults.json` — panel settings (model/effort/enabled/timeout); driven by the **`/co-agent:configure`** command, overrides in `.claude/co-agent.local.json`
 - `scripts/check_citations.py` — diff-only citation classification (supported/needs-review/unsupported); plans and other documents use chair quotation/section checks
 - `references/consensus-pipeline.md` — **AUTHORITATIVE** for `/co-agent:consensus`: P0–P5 phases, entry decision table, Stage A/B/C roadmap

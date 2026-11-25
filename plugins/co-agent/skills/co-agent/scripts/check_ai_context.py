@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Validate / check staleness of co-agent-generated AGENTS.md context.
 
-co-agent distills CLAUDE.md ONCE into a lean, shared AGENTS.md for supported peers:
+co-agent keeps one lean, shared AGENTS.md for supported peers (the reviewed format from
+sync-context, or the legacy format distilled from CLAUDE.md):
   - AGENTS.md  → Codex CLI auto-loads it from the repo root (32 KiB project-doc cap;
                  merged git-root→cwd). Kiro's .kiro/steering/project-context.md
                  bridges to this SAME file via #[[file:AGENTS.md]] (not CLAUDE.md
@@ -21,8 +22,15 @@ Usage:
                                                               # MISSING or hand-written file is a fail here, not
                                                               # a note: "safe to hand to a third-party AI" must
                                                               # be a strict yes/no, not "nothing to report")
+  python3 check_ai_context.py [project_dir] --check-candidate <file>
+      # exit 0 ONLY if <file> exists, starts with REVIEWED_MARKER and passes
+      # reviewed_problems() (line/byte caps, secrets); prints each problem
 
-Marker (must be on/near line 1 of a generated file):
+Reviewed format (sync-context output): line 1 is exactly REVIEWED_MARKER; no CLAUDE.md
+sha applies. --verify AGENTS.md checks it silently; default mode needs no CLAUDE.md for it
+and still runs the RESIDUAL_SCAN secret audit.
+
+Legacy generated marker (must be on/near line 1 of a sha-bearing file):
   <!-- generated-by: co-agent · source: CLAUDE.md · claude-md-sha: <sha12> · generated-at: <date> -->
 """
 import sys
@@ -40,6 +48,24 @@ SHA_RE = re.compile(r"claude-md-sha:\s*([0-9a-f]{12})")
 SECRET_RE = re.compile(r"AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|(?:password|secret|api[_-]?key)\s*[:=]\s*['\"][^'\"]{6,}", re.I)
 
 
+REVIEWED_MARKER = "<!-- generated-by: co-agent · source: reviewed AGENTS.md -->"
+
+
+def reviewed_problems(body):
+    problems = []
+    if len(body.splitlines()) > 200:
+        problems.append("AGENTS.md exceeds the 200-line cap")
+    if len(body.encode("utf-8")) > 10 * 1024:
+        problems.append("AGENTS.md exceeds the 10 KiB cap")
+    if SECRET_RE.search(body):
+        problems.append("possible secret/credential in reviewed context")
+    return problems
+
+
+def is_reviewed(body):
+    return body.splitlines()[:1] == [REVIEWED_MARKER]
+
+
 def claude_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
@@ -52,6 +78,14 @@ def _file_problems(path, sha, cap=None):
         return ["missing"]
     with open(path, encoding="utf-8") as f:
         body = f.read()
+    if is_reviewed(body):
+        # Reviewed format: no CLAUDE.md sha to compare. Apply the reviewed line, byte and
+        # secret checks plus the caller's own cap (AGENTS_CAP in scripts/pr-review/context.py).
+        problems = reviewed_problems(body)
+        size = len(body.encode("utf-8"))
+        if cap is not None and size > cap:
+            problems.append(f"{size} B > {cap} B cap; shorten the reviewed AGENTS.md")
+        return problems
     if not MARKER_RE.search(body):
         return ["hand-written (no co-agent marker)"]
     problems = []
@@ -76,15 +110,48 @@ def main() -> int:
     verify_idx = sys.argv.index("--verify") + 1 if "--verify" in sys.argv else None
     verify_target = sys.argv[verify_idx] if verify_idx and verify_idx < len(sys.argv) else None
 
+    if "--check-candidate" in sys.argv:
+        index = sys.argv.index("--check-candidate") + 1
+        if index >= len(sys.argv):
+            print("--check-candidate requires a candidate file path")
+            return 2
+        candidate = sys.argv[index]
+        if not os.path.isfile(candidate):
+            print(f"Candidate file not found: {candidate}")
+            return 1
+        with open(candidate, encoding="utf-8") as f:
+            body = f.read()
+        if not is_reviewed(body):
+            print("Candidate is missing the reviewed AGENTS.md marker")
+            return 1
+        problems = reviewed_problems(body)
+        for problem in problems:
+            print(problem)
+        return int(bool(problems))
+
+    # A reviewed AGENTS.md carries no CLAUDE.md sha. --verify checks only its reviewed caps
+    # (silently); default mode skips the CLAUDE.md requirement but still runs the
+    # RESIDUAL_SCAN audit and note output below (ADR-022).
+    reviewed_body = None
+    agents_path = os.path.join(root, "AGENTS.md")
+    if not emit and verify_target in (None, "AGENTS.md") and os.path.isfile(agents_path):
+        with open(agents_path, encoding="utf-8") as f:
+            body = f.read()
+        if is_reviewed(body):
+            reviewed_body = body
+    if reviewed_body is not None and verify_target:
+        return int(bool(reviewed_problems(reviewed_body)))
+
     claude_path = os.path.join(root, "CLAUDE.md")
-    if not os.path.isfile(claude_path):
+    if reviewed_body is None and not os.path.isfile(claude_path):
         if verify_target:
             return 1   # no CLAUDE.md → nothing was distilled → not safe to hand out
         print(f"❌ no CLAUDE.md in {root} — nothing to sync from.")
         return 2
-    with open(claude_path, encoding="utf-8") as f:
-        src = f.read()
-    sha = claude_sha(src)
+    sha = None   # unused for a reviewed AGENTS.md, which may have no CLAUDE.md
+    if os.path.isfile(claude_path):
+        with open(claude_path, encoding="utf-8") as f:
+            sha = claude_sha(f.read())
 
     if emit:
         today = datetime.date.today().isoformat()
@@ -98,6 +165,9 @@ def main() -> int:
 
     problems, notes = [], []
     for name, cap in MANAGED.items():
+        if name == "AGENTS.md" and reviewed_body is not None:
+            problems.extend(reviewed_problems(reviewed_body))
+            continue
         p = os.path.join(root, name)
         if not os.path.isfile(p):
             notes.append(f"{name}: not generated yet (run /co-agent sync-context)")
@@ -141,6 +211,9 @@ def main() -> int:
         for p in problems:
             print(f"   • {p}")
         return 1
+    if reviewed_body is not None:
+        print("Reviewed AGENTS.md is within its line and byte caps, no secrets.")
+        return 0
     print("✅ AGENTS.md is in sync with CLAUDE.md, within size cap, no secrets.")
     return 0
 
