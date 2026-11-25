@@ -40,11 +40,11 @@
       "executable": false
     },
     "commands/sync-context.md": {
-      "sha256": "dc33d6df44bd9295a32f4dfc37d601e3505d2a3cd18f0ae729be7932b8713302",
+      "sha256": "850d610e48a1d6d2d0eb8f41939b6572eab8f07bbcf920ff81a3234cd60eee42",
       "executable": false
     },
     "skills/co-agent/SKILL.md": {
-      "sha256": "0847f53f0d6e805d1cc9c0896f5874b96703943bb9ee156e1ff8fd9941bbfedf",
+      "sha256": "fe7bfa8a79be31d12be8afdb47982a60e8b0c7be0ef412eebcd6654870c66a19",
       "executable": false
     },
     "skills/co-agent/co-agent.defaults.json": {
@@ -92,7 +92,7 @@
       "executable": true
     },
     "skills/co-agent/scripts/check_ai_context.py": {
-      "sha256": "edd3763a095a33a61de89d2141b0c2cd0fd968e6fed0a45d37c2270b6f34f666",
+      "sha256": "219ed6363e6b1bca9961d984388a5d00a566bd2ab4219f10fe9e307c5dcda990",
       "executable": true
     },
     "skills/co-agent/scripts/check_citations.py": {
@@ -276,7 +276,7 @@
       "executable": false
     },
     ".codex-plugin/skills/sync-context/SKILL.md": {
-      "sha256": "744e5ced331347b3fa6a23f42d3f6bd63ed2dd63f00f4550271eee70fb1e4aef",
+      "sha256": "432c3fba38bf6a1ad5dd7d192117230288a6bc38d466daf7b95836fab214ef44",
       "executable": false
     },
     ".codex-plugin/inventory.json": {

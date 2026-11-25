@@ -129,49 +129,11 @@ DIFF=$(git diff "origin/$BASE...HEAD" 2>/dev/null); [ -z "$DIFF" ] && DIFF=$(git
    layer; `/add-adr` is not modified — see `references/ai-cli-adapters.md` → ADR
    hand-off).
 
-### Mode 4 — sync-context  (also the standalone command **`/co-agent:sync-context`**)
+### Mode 4 — sync-context
 
-Give the external AIs project context so they review with the project's conventions.
-The supported context adapters share the **same distilled `AGENTS.md`**. Kiro's
-bridge is `.kiro/steering/project-context.md` → `#[[file:AGENTS.md]]`; native loading
-and validated context fold-in are specified in `ai-cli-adapters.md`. Claude uses
-canonical `CLAUDE.md`. Validate generated context before relying on its provenance.
-
-**DISTILL — do NOT copy `CLAUDE.md` verbatim** (a dumped copy bloats/truncates; Codex
-caps project docs at 32 KiB). Produce one lean, review-oriented core:
-
-1. Read the project's `CLAUDE.md` and distill: language/stack, build·test·lint commands,
-   naming + banned patterns, architectural boundaries, PR/review expectations, a short
-   review checklist, known false-positives. Omit transient state and tool internals not
-   relevant to review. **No secrets.**
-2. Prepend the marker line (`scripts/check_ai_context.py <dir> --emit-marker`) plus a
-   neutral header — `> You are an external reviewer for this repo — project context
-   below, distilled from CLAUDE.md. This file is shared verbatim by the external review panel
-   (not a per-AI copy).` — and write to **`AGENTS.md` only**.
-3. **Only overwrite files that carry the co-agent marker** — never clobber a
-   hand-written `AGENTS.md` or Codex's `AGENTS.override.md`.
-4. Ensure `.kiro/steering/project-context.md` exists and contains exactly the bridge
-   below; if an existing steering file has other hand-written content and lacks the
-   file reference, leave it and report that it needs manual merge.
-
-   ```markdown
-   ---
-   name: project-context
-   inclusion: always
-   ---
-
-   # Project Context
-
-   #[[file:AGENTS.md]]
-   ```
-
-5. Validate — size cap, marker, staleness, secret scan:
-
-```bash
-python3 scripts/check_ai_context.py <project-dir>
-```
-
-> A PostToolUse hook reminds you when `CLAUDE.md` changes so these stay in sync.
+Use the standalone `/co-agent:sync-context` procedure in
+[`commands/sync-context.md`](../../commands/sync-context.md). Draft independently,
+cross-review the drafts, and validate one compact shared `AGENTS.md`.
 
 ### Mode 5 — Consensus pipeline  (also **`/co-agent:consensus`**)
 

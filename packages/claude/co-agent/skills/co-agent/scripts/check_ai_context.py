@@ -40,6 +40,24 @@ SHA_RE = re.compile(r"claude-md-sha:\s*([0-9a-f]{12})")
 SECRET_RE = re.compile(r"AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{30,}|(?:password|secret|api[_-]?key)\s*[:=]\s*['\"][^'\"]{6,}", re.I)
 
 
+REVIEWED_MARKER = "<!-- generated-by: co-agent · source: reviewed AGENTS.md -->"
+
+
+def reviewed_problems(body):
+    problems = []
+    if len(body.splitlines()) > 200:
+        problems.append("AGENTS.md exceeds the 200-line cap")
+    if len(body.encode("utf-8")) > 10 * 1024:
+        problems.append("AGENTS.md exceeds the 10 KiB cap")
+    if SECRET_RE.search(body):
+        problems.append("possible secret/credential in reviewed context")
+    return problems
+
+
+def is_reviewed(body):
+    return body.splitlines()[:1] == [REVIEWED_MARKER]
+
+
 def claude_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
@@ -75,6 +93,28 @@ def main() -> int:
     emit = "--emit-marker" in sys.argv[1:]
     verify_idx = sys.argv.index("--verify") + 1 if "--verify" in sys.argv else None
     verify_target = sys.argv[verify_idx] if verify_idx and verify_idx < len(sys.argv) else None
+
+    if "--check-candidate" in sys.argv:
+        index = sys.argv.index("--check-candidate") + 1
+        if index >= len(sys.argv):
+            return 2
+        target = sys.argv[index]
+    elif not emit and verify_target in (None, "AGENTS.md"):
+        target = os.path.join(root, "AGENTS.md")
+    else:
+        target = None
+    if target and os.path.isfile(target):
+        with open(target, encoding="utf-8") as f:
+            body = f.read()
+        if is_reviewed(body):
+            problems = reviewed_problems(body)
+            if not verify_target:
+                for problem in problems:
+                    print(problem)
+            return int(bool(problems))
+    if "--check-candidate" in sys.argv:
+        print("Candidate is missing the reviewed AGENTS.md marker")
+        return 1
 
     claude_path = os.path.join(root, "CLAUDE.md")
     if not os.path.isfile(claude_path):
