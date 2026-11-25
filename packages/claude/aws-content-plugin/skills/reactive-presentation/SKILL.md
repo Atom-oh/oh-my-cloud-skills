@@ -51,6 +51,8 @@ Theme choice: default (AWS console light) · `theme: { mode: dark }` (squid-ink 
 
 > **Light opener diagram**: for a friendly overview at the start of a section, use the `sketch-diagram` skill (hand-drawn inline SVG in a `:::html` block with a `<style>`, theme tokens only). Keep `:::archify` and canvas for precise or explorable diagrams.
 
+> **Stepped line-art scene**: for a step-by-step animated walkthrough (moving camera, packet along real paths, callouts, side panel) use the `line-art-scene` skill. It needs `@fit: off`, mounts from `:::script`, and the build copies its assets to `common/line-art-scene/`.
+
 > **Speaker notes**: every slide needs `:::notes` — enough content and structure for the presenter to speak to that slide from the notes alone (`{timing}`/`{cue}` markers + `[요약]` ("Summary") bullets + a conversational script in a live presenter's natural voice, see "Spoken script voice"). Missing or unstructured notes are flagged by validate as `MISSING_NOTES`/`NOTE_STRUCTURE`. Schema: remarp-format-guide.md "Structured Note Schema". **Step marks**: put exactly one `↓` in the script per press the slide takes, right after the sentence that finishes a step, and never write what to press; step contract, events and animation defaults: [references/step-guidance.md](references/step-guidance.md).
 
 > ⚠️ **Interactive-First**: the more information-dense a slide is, the more it should use interactive patterns (tabs, grid cards, fragments) — a wall of bullets doesn't get read. The canon for thresholds, tab templates, and color tokens: **authoring-rules.md §4·§5** (validate backstops this with `INTERACTIVE_FIRST`/`CANVAS_COMPLEXITY`).

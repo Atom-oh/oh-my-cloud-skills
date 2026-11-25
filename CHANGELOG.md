@@ -40,6 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   behind the focused one, so the step changed state but nothing was drawn until the deck window
   regained focus. `AnimationLoop` now has `drawNow()`, the framework redraws running loops right
   after a slide action, and a 100 ms fallback timer draws while no frame arrives.
+- reactive-presentation: letter shortcuts (N presenter, T theme, F fullscreen, G, S, H and
+  Ctrl/Cmd+K search) now work while a Korean, Japanese or other non-Latin input method is on.
+  Those input methods report the composed character (`ㅜ` for KeyN) or `Process` instead of
+  the letter, so the shortcut table never matched. `getKeyAction(key, code)` falls back to the
+  physical key (`e.code`) only for non-ASCII keys, so Latin remaps such as Dvorak keep their
+  own letters. When the browser blocks the presenter pop-up, the deck now shows an alert
+  instead of failing silently on `null.document`.
 
 ## [3.0.10] - 2026-11-14
 

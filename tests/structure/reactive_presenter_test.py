@@ -1123,6 +1123,54 @@ class PresenterPreviewMirrorTests(_PresenterBase):
         self.assertEqual(self.errors, [])
 
 
+KEYDOWN = "k => document.dispatchEvent(new KeyboardEvent('keydown', { key: k[0], code: k[1], bubbles: true }))"
+
+
+class ShortcutKeyTests(_PresenterBase):
+    """Letter shortcuts under non-Latin input methods, and a blocked presenter pop-up."""
+
+    def setUp(self):
+        self.ctx = self.browser.new_context(viewport={"width": 1600, "height": 900})
+        self.page = self.ctx.new_page()
+        self.page.set_default_timeout(5000)
+        self.errors = []
+        self.page.on("pageerror", lambda exc: self.errors.append(str(exc)))
+        self.page.goto(self.url, wait_until="networkidle")
+        self.page.wait_for_timeout(300)
+
+    def dark(self):
+        return self.page.evaluate("() => document.querySelector('.slide-deck').classList.contains('theme-dark')")
+
+    def test_ime_letter_opens_presenter(self):
+        # Korean IME on macOS reports the jamo; Windows Chrome reports 'Process'.
+        for key in ("ㅜ", "Process"):
+            with self.ctx.expect_page() as info:
+                self.page.evaluate(KEYDOWN, [key, "KeyN"])
+            info.value.close()
+            self.page.evaluate("() => { deck.presenterView.presenterWindow = null; }")
+        self.assertEqual(self.errors, [])
+
+    def test_ime_fallback_only_for_non_latin_keys(self):
+        before = self.dark()
+        self.page.evaluate(KEYDOWN, ["ㅅ", "KeyT"])
+        self.assertNotEqual(self.dark(), before)
+        # A Latin remap (Dvorak/AZERTY) keeps its own letter: 'x' on KeyT is not T.
+        before = self.dark()
+        self.page.evaluate(KEYDOWN, ["x", "KeyT"])
+        self.assertEqual(self.dark(), before)
+        self.assertEqual(self.errors, [])
+
+    def test_blocked_popup_is_reported(self):
+        messages = []
+        self.page.on("dialog", lambda d: (messages.append(d.message), d.dismiss()))
+        self.page.evaluate("() => { window.open = () => null; }")
+        self.page.keyboard.press("n")
+        self.page.wait_for_timeout(300)
+        self.assertEqual(len(messages), 1)
+        self.assertIn("pop-up", messages[0])
+        self.assertEqual(self.errors, [])
+
+
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=2).result
     if result.skipped and result.testsRun <= len(result.skipped):

@@ -426,7 +426,8 @@
 
     if (isTypingTarget(event.target) || isOverview()) return false;
     const searchShortcut = (event.metaKey || event.ctrlKey) &&
-      event.key.toLocaleLowerCase() === 'k';
+      (event.key.toLocaleLowerCase() === 'k' ||
+       (event.code === 'KeyK' && /[^\x00-\x7F]|^Process$/.test(event.key)));
     if (searchShortcut || event.key === '/') {
       event.preventDefault();
       openSearch();

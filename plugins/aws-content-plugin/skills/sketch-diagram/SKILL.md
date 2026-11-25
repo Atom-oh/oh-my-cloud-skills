@@ -1,6 +1,6 @@
 ---
 name: sketch-diagram
-description: "Create a light, hand-drawn animated concept diagram (wobbly ink lines, soft washes, doodle icons, dots flowing along the real topology) as inline SVG for a slide opener or a friendly explainer. Use for 'sketch diagram', 'hand-drawn diagram', 'doodle diagram', 'animated sketch', 'light opener diagram for a slide', '손그림 다이어그램', '스케치 다이어그램', '가볍게 시작하는 도식'. Not for AWS architecture accuracy (use architecture-diagram or animated-diagram), and not for step-by-step deep dives (use Remarp `:::archify` or canvas)."
+description: "Create a light, hand-drawn animated concept diagram (wobbly ink lines, soft washes, doodle icons, dots flowing along the real topology) as inline SVG for a slide opener or a friendly explainer. Use for 'sketch diagram', 'hand-drawn diagram', 'doodle diagram', 'animated sketch', 'light opener diagram for a slide', '손그림 다이어그램', '스케치 다이어그램', '가볍게 시작하는 도식'. Not for AWS architecture accuracy (use architecture-diagram or animated-diagram), and not for step-by-step deep dives (use `line-art-scene`, or Remarp `:::archify` for explorable diagrams)."
 allowed-tools:
   - Read
   - Write
@@ -25,7 +25,8 @@ for deck theme tokens.
 | First content slide after the cover, a "here is the whole idea" picture | **sketch-diagram** |
 | Friendly explainer of a loop, pipeline, hub, comparison or timeline | **sketch-diagram** |
 | Exact AWS services, VPC and account boundaries, official icons | `architecture-diagram` / `animated-diagram` |
-| Step-by-step walkthrough or explorable diagram | Remarp `:::archify` / canvas in `reactive-presentation` |
+| Step-by-step walkthrough with a moving camera and callouts | `line-art-scene` |
+| Explorable diagram the audience can pan and zoom | Remarp `:::archify` in `reactive-presentation` |
 | Several slides of dense diagrams | not this skill; sketch style loses legibility past about 8 nodes |
 
 ## Workflow

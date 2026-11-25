@@ -104,6 +104,7 @@ does not activate those project hooks. See
 | “Create an editable AWS light PowerPoint deck from this outline.” | aws-light-fcd |
 | “Draw this multi-AZ AWS architecture and export PNG.” | architecture-diagram |
 | “Show request traffic and a failover scenario.” | animated-diagram |
+| “Walk through this request path one step per press, with a moving camera and callouts.” | line-art-scene |
 | “Give me a light, hand-drawn overview diagram to open this slide section.” | sketch-diagram |
 | “Diagnose why these pods cannot reach the service.” | ops-network-diagnosis |
 | “Assess this cluster's health.” | ops-health-check |
@@ -162,6 +163,12 @@ that dependency and output contract rather than treating it as another marketpla
 uses SVG/SMIL for repeated traffic motion and JavaScript/CSS state machines for
 controlled scaling, deployment, and failover scenarios. Keep a readable static
 architecture, labels, legend, and working reset/replay controls.
+
+[line-art-scene](plugins/aws-content-plugin/skills/line-art-scene/SKILL.md) is the
+slide-native option for a stepped walkthrough: a hand-drawn cutaway with a moving camera, a
+packet that follows real paths, numbered callouts, small line-art people and a side panel,
+advanced with the slide's Down and Up keys. Its modules ship with the skill and the Remarp
+build copies them into the deck.
 
 [sketch-diagram](plugins/aws-content-plugin/skills/sketch-diagram/SKILL.md) is the
 lighter option: a hand-drawn, theme-token SVG concept diagram with dots flowing along

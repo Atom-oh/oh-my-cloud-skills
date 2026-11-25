@@ -5047,12 +5047,40 @@ class RemarpProjectBuilder:
             if src.exists():
                 shutil.copy2(str(src), str(dest / fname))
 
+    def _copy_scene_assets(self, html_files: List[str]) -> None:
+        """Copy the line-art-scene modules when a built page imports them.
+
+        A page that references common/line-art-scene/ gets the sibling skill's assets
+        (flowscene.js/css and its ink, gait, motion modules) copied into its common/ directory.
+        """
+        marker = 'common/line-art-scene/'
+        used = False
+        for html_file in html_files:
+            if os.path.exists(html_file):
+                with open(html_file, 'r', encoding='utf-8') as f:
+                    if marker in f.read():
+                        used = True
+                        break
+        if not used:
+            return
+        src_dir = Path(__file__).parent.parent.parent / 'line-art-scene' / 'assets'
+        if not src_dir.exists():
+            print(f"Warning: {marker} is referenced but the line-art-scene skill assets were not found at {src_dir}")
+            return
+        dest = self.output_dir / 'common' / 'line-art-scene'
+        dest.mkdir(parents=True, exist_ok=True)
+        for src in src_dir.iterdir():
+            if src.is_file() and src.suffix in ('.js', '.css'):
+                shutil.copy2(str(src), str(dest / src.name))
+
     def _copy_referenced_icons(self, html_files: List[str]) -> None:
         """Copy only AWS icons that are actually referenced in HTML files.
 
         Scans generated HTML for icon references like ./common/aws-icons/{category}/{filename}
-        and copies only those files from the source icons directory.
+        and copies only those files from the source icons directory. Scene modules are
+        copied first (see _copy_scene_assets) because every build path calls this method.
         """
+        self._copy_scene_assets(html_files)
         scripts_dir = Path(__file__).parent
         skill_dir = scripts_dir.parent  # reactive-presentation/
         icons_dir = skill_dir / 'icons'
