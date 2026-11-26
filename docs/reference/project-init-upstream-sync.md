@@ -4,7 +4,7 @@
 > **only when syncing** (the root `CLAUDE.md` holds only a summary of the source).
 
 - **Source**: `git@github.com:whchoi98/project-init.git` (path: `plugins/project-init/`) · **Author**: whchoi98
-- **Last synced**: 2026-09-25, upstream `13ee3e1` (v2.4.0)
+- **Last synced**: 2026-11-24, upstream `7ed7597` (v3.1.0)
 
 ## Maintenance policy
 
@@ -49,9 +49,13 @@ outweighed the benefit, so **all divergence was cleaned up**:
   during mirror cleanup. The approved replacement is a generated Codex overlay and
   marketplace entry, maintained separately from the mirrored sources.
 - The local model-tier adjustment (`sonnet`+`low` in `agents/doc-sync-checker.md`) was
-  also reverted. The upstream value (`model: opus`, no `effort` specified) is kept as-is,
-  because this file belongs to the upstream mirror. Host-specific model/effort
-  choices belong in repository-owned adapters, not patches to mirrored procedures.
+  also reverted, because this file belongs to the upstream mirror. The installed Claude
+  agent follows the upstream execution fields as-is; at the last sync recorded above they
+  are `tools: Read, Glob, Grep, Bash`, `model: sonnet`, `effort: medium` and `color: cyan`.
+  The generator strips these fields from the mirrored file and applies only
+  `hosts/claude/project-init/agents.json`, so after each sync restate the synced values
+  there instead of patching the mirrored procedure. Codex reasoning intent stays separate
+  in `hosts/codex/project-init/execution.json`.
 
 ## Sync procedure
 

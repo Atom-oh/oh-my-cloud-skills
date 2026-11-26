@@ -105,13 +105,24 @@ class ProviderDiagnostics(unittest.TestCase):
         self.assertEqual(result.returncode,0,result.stderr)
         return root
 
-    def test_explicit_astra_and_sol_pins(self):
+    def test_codex_uses_runner_default_and_explicit_kiro_override(self):
         root=self.panel({})
         codex=json.loads((root/'codex.args.json').read_text())
-        self.assertIn('--model',codex)
-        self.assertEqual(codex[codex.index('--model')+1],'global.openai.gpt-6-astra')
+        self.assertNotIn('--model', codex)
         kiro=json.loads((root/'kiro-gpt.args.json').read_text())
         self.assertEqual(kiro[kiro.index('--model')+1],'gpt-5.6-sol')
+
+    def test_github_actions_excludes_enabled_kiro_cells(self):
+        root, env = self.setup_fixture({})
+        env["GITHUB_ACTIONS"] = "true"
+        result = subprocess.run(
+            ["bash", str(ROOT/"scripts/pr-review/run-panel.sh"), str(root/"diff"),
+             str(root/"lenses"), str(root/"work")],
+            cwd=root, env=env, text=True, capture_output=True, timeout=25,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((root/"codex.args.json").is_file())
+        self.assertFalse(list(root.glob("*kiro*.args.json")))
 
     def test_terminal_panel_errors_cannot_be_overwritten_by_retry(self):
         for tag in ('codex','kiro-opus'):

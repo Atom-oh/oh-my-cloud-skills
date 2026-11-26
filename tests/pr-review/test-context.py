@@ -86,6 +86,20 @@ class ReviewContextTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, str(CONTEXT.AGENTS_CAP)):
             CONTEXT.build_context(self.root)
 
+    def test_reviewed_context_is_forwarded_under_the_same_cap_and_secret_checks(self):
+        marker = CONTEXT.CHECKER["REVIEWED_MARKER"]
+        path = self.root / "AGENTS.md"
+        path.write_text(marker + "\nREVIEWED_BASE_POLICY\n", encoding="utf-8")
+        self.assertIn("REVIEWED_BASE_POLICY", CONTEXT.build_context(self.root))
+        path.write_text(marker + "\n" + "x" * CONTEXT.AGENTS_CAP + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "cannot be forwarded.*" + str(CONTEXT.AGENTS_CAP)):
+            CONTEXT.build_context(self.root)
+        for body in (marker + "\nAKIAIOSFODNN7EXAMPLE\n", "# Preamble\n" + marker + "\n"):
+            with self.subTest(body=body):
+                path.write_text(body, encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    CONTEXT.build_context(self.root)
+
     def test_actual_repository_context_builds(self):
         text = CONTEXT.build_context(ROOT)
         self.assertLessEqual(len(text.encode()), CONTEXT.CONTEXT_CAP)

@@ -61,3 +61,56 @@ printf '# My own AGENTS.md\nNo marker here.\n' > "$CTX_DIR/AGENTS.md"
 HAND_OUT=$(python3 "$SCRIPT" "$CTX_DIR" 2>&1) && HAND_RC=0 || HAND_RC=$?
 assert_eq "0" "$HAND_RC" "hand-written AGENTS.md (no marker) → exit 0"
 assert_contains "$HAND_OUT" "hand-written" "hand-written AGENTS.md → noted, not clobbered"
+
+# Reviewed AGENTS.md format (cross-reviewed by sync-context). Read the marker literal from the
+# module rather than retyping it here. Everything stays under $CTX_DIR (EXIT trap above).
+RV_MARKER=$(python3 -c 'import runpy, sys; print(runpy.run_path(sys.argv[1])["REVIEWED_MARKER"])' "$SCRIPT")
+RV_CAND="$CTX_DIR/candidate.md"
+
+printf '%s\n# Shared context\nRun bash tests/run-all.sh.\n' "$RV_MARKER" > "$RV_CAND"
+RV_OUT=$(python3 "$SCRIPT" "$CTX_DIR" --check-candidate "$RV_CAND" 2>&1) && RV_RC=0 || RV_RC=$?
+assert_eq "0" "$RV_RC" "reviewed candidate within caps passes --check-candidate"
+
+{ printf '%s\n' "$RV_MARKER"; seq 1 200; } > "$RV_CAND"
+RV_OUT=$(python3 "$SCRIPT" "$CTX_DIR" --check-candidate "$RV_CAND" 2>&1) && RV_RC=0 || RV_RC=$?
+assert_eq "1" "$RV_RC" "reviewed candidate over 200 lines fails --check-candidate"
+assert_contains "$RV_OUT" "200-line" "over-length candidate names the line cap"
+
+printf '%s\n%10240s\n' "$RV_MARKER" x > "$RV_CAND"
+RV_OUT=$(python3 "$SCRIPT" "$CTX_DIR" --check-candidate "$RV_CAND" 2>&1) && RV_RC=0 || RV_RC=$?
+assert_eq "1" "$RV_RC" "reviewed candidate over 10 KiB fails --check-candidate"
+assert_contains "$RV_OUT" "10 KiB" "oversized candidate names the byte cap"
+
+printf '# No reviewed marker\n' > "$RV_CAND"
+RV_OUT=$(python3 "$SCRIPT" "$CTX_DIR" --check-candidate "$RV_CAND" 2>&1) && RV_RC=0 || RV_RC=$?
+assert_eq "1" "$RV_RC" "candidate without the reviewed marker fails --check-candidate"
+assert_contains "$RV_OUT" "missing the reviewed AGENTS.md marker" "unmarked candidate names the missing marker"
+
+RV_OUT=$(python3 "$SCRIPT" "$CTX_DIR" --check-candidate "$CTX_DIR/absent.md" 2>&1) && RV_RC=0 || RV_RC=$?
+assert_eq "1" "$RV_RC" "missing candidate file fails --check-candidate"
+assert_contains "$RV_OUT" "not found" "missing candidate reports file not found"
+
+# Default mode on a published reviewed AGENTS.md keeps the ADR-022 residual GEMINI.md audit.
+printf '%s\n# Shared context\n' "$RV_MARKER" > "$CTX_DIR/AGENTS.md"
+printf '# legacy context\nAKIAIOSFODNN7EXAMPLE\n' > "$CTX_DIR/GEMINI.md"
+RV_OUT=$(python3 "$SCRIPT" "$CTX_DIR" 2>&1) && RV_RC=0 || RV_RC=$?
+assert_eq "1" "$RV_RC" "reviewed AGENTS.md plus secret-bearing GEMINI.md fails default mode"
+assert_contains "$RV_OUT" "GEMINI.md: residual unmanaged file with a possible secret" "default mode reports the residual GEMINI.md secret"
+RV_OUT=$(python3 "$SCRIPT" "$CTX_DIR" --verify AGENTS.md 2>&1) && RV_RC=0 || RV_RC=$?
+assert_eq "0" "$RV_RC" "verify mode accepts a reviewed AGENTS.md"
+assert_eq "" "$RV_OUT" "verify mode stays silent for a reviewed AGENTS.md"
+
+printf '# legacy context\n' > "$CTX_DIR/GEMINI.md"
+RV_OUT=$(python3 "$SCRIPT" "$CTX_DIR" 2>&1) && RV_RC=0 || RV_RC=$?
+assert_eq "0" "$RV_RC" "reviewed AGENTS.md plus clean GEMINI.md passes default mode"
+assert_contains "$RV_OUT" "residual unmanaged file present" "default mode still prints the residual GEMINI.md note"
+
+printf '%s\nAKIAIOSFODNN7EXAMPLE\n' "$RV_MARKER" > "$CTX_DIR/AGENTS.md"
+RV_OUT=$(python3 "$SCRIPT" "$CTX_DIR" 2>&1) && RV_RC=0 || RV_RC=$?
+assert_eq "1" "$RV_RC" "secret in reviewed AGENTS.md fails default mode"
+assert_contains "$RV_OUT" "possible secret" "secret in reviewed AGENTS.md is reported"
+
+mkdir -p "$CTX_DIR/no-claude"
+printf '%s\n# Shared context\n' "$RV_MARKER" > "$CTX_DIR/no-claude/AGENTS.md"
+RV_OUT=$(python3 "$SCRIPT" "$CTX_DIR/no-claude" 2>&1) && RV_RC=0 || RV_RC=$?
+assert_eq "0" "$RV_RC" "reviewed AGENTS.md needs no CLAUDE.md in default mode"

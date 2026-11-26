@@ -39,7 +39,8 @@ CFG="$DIR/panel_config.py"
 # Anchor configuration at this repository, with the documented test override.
 # An arbitrary caller cwd must not silently ignore .claude/pr-review.local.json.
 REPO_ROOT="${PR_REVIEW_CONFIG_ROOT:-$DIR/../..}"
-if ! KIRO_CELLS_RAW="$(python3 "$CFG" kiro-cells --root "$REPO_ROOT")"; then
+KIRO_CELLS_RAW=""
+if [ "${GITHUB_ACTIONS:-}" != true ] && ! KIRO_CELLS_RAW="$(python3 "$CFG" kiro-cells --root "$REPO_ROOT")"; then
   echo "run-panel.sh: panel_config.py kiro-cells failed (malformed/wrong-shape config?) — refusing to run with an unverified roster" >&2
   exit 1
 fi
@@ -274,10 +275,10 @@ for lens_file in "${LENS_FILES[@]}"; do
   fi
   CODEX_PROMPT+=$'\n\n'"$FORMAT_INSTRUCTIONS"
 
-  # Codex pins Astra; its existing runner provider configuration remains in effect.
+  # Codex uses the runner configuration.
   if [ "$CODEX_ENABLED" = 1 ] && command -v codex >/dev/null 2>&1; then
     ( try_panel codex "$SLOT/codex-$lens.md" "$SLOT/codex-$lens.err" \
-        launch_codex codex exec -s read-only --skip-git-repo-check --model global.openai.gpt-6-astra "$CODEX_PROMPT" ) &
+        launch_codex codex exec -s read-only --skip-git-repo-check "$CODEX_PROMPT" ) &
   else echo "[skip] codex/$lens (disabled or binary absent)" >&2; : > "$SLOT/codex-$lens.md"; fi
 
   # Derive enabled Kiro calls and result tags from the same validated array.
