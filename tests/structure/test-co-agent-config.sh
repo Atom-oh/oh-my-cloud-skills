@@ -23,7 +23,19 @@ R=$(mktemp -d "${TMPDIR:-/tmp}/coagentcfg.XXXXXX")
 SHOW=$(python3 "$CFG" show --root "$R" 2>&1)
 assert_contains "$SHOW" "kiro-cli" "show lists kiro-cli"
 assert_contains "$SHOW" "codex" "show lists codex"
-assert_eq "kiro-cli codex" "$(python3 "$CFG" panel --root "$R")" "fresh Claude panel selects only Kiro and Codex"
+# Kiro ships disabled and joins the panel only when enabled AND CO_AGENT_TASK_SCOPE names
+# an eligible AWS task. Scope inline per command so nothing leaks into later sourced suites.
+assert_eq "codex" "$(env -u CO_AGENT_TASK_SCOPE python3 "$CFG" panel --root "$R")" "fresh Claude panel ships Kiro disabled and selects only Codex"
+assert_eq "codex" "$(CO_AGENT_TASK_SCOPE=aws-cdk-authoring python3 "$CFG" panel --root "$R")" "an eligible scope alone does not enable the shipped-disabled Kiro"
+RK=$(mktemp -d "${TMPDIR:-/tmp}/coagentkiro.XXXXXX")
+python3 "$CFG" set kiro-cli enabled true --root "$RK" >/dev/null 2>&1
+assert_eq "kiro-cli codex" "$(CO_AGENT_TASK_SCOPE=aws-cdk-authoring python3 "$CFG" panel --root "$RK")" "enabled Kiro joins the Claude panel for an eligible AWS scope"
+assert_eq "codex" "$(env -u CO_AGENT_TASK_SCOPE python3 "$CFG" panel --root "$RK")" "enabled Kiro is excluded from an unscoped Claude panel"
+assert_eq "codex" "$(CO_AGENT_TASK_SCOPE=general-review python3 "$CFG" panel --root "$RK")" "enabled Kiro is excluded for an ineligible scope"
+env -u CO_AGENT_TASK_SCOPE python3 "$CFG" enabled kiro-cli --root "$RK" >/dev/null 2>&1 && KU_RC=0 || KU_RC=$?
+assert_eq "1" "$KU_RC" "enabled kiro-cli exits 1 without an eligible scope even when configured on"
+CO_AGENT_TASK_SCOPE=aws-cdk-authoring python3 "$CFG" enabled kiro-cli --root "$RK" >/dev/null 2>&1 && KS_RC=0 || KS_RC=$?
+assert_eq "0" "$KS_RC" "enabled kiro-cli exits 0 for an eligible scope when configured on"
 assert_contains "$SHOW" "240" "show reports default timeout 240"
 
 # Codex-hosted co-agent swaps the current host out of the advisory panel:
@@ -31,8 +43,10 @@ assert_contains "$SHOW" "240" "show reports default timeout 240"
 CODEX_HOST_SHOW=$(python3 "$CFG" show --host codex --root "$R" 2>&1)
 assert_contains "$CODEX_HOST_SHOW" "host codex" "codex-host show reports host"
 assert_contains "$CODEX_HOST_SHOW" "claude" "codex-host show lists claude"
-CODEX_HOST_PANEL=$(python3 "$CFG" panel --host codex --root "$R" 2>&1)
-assert_eq "kiro-cli claude" "$CODEX_HOST_PANEL" "codex-host panel selects Kiro and the opposite host"
+CODEX_HOST_PANEL=$(env -u CO_AGENT_TASK_SCOPE python3 "$CFG" panel --host codex --root "$R" 2>&1)
+assert_eq "claude" "$CODEX_HOST_PANEL" "codex-host default panel selects only the opposite host"
+assert_eq "kiro-cli claude" "$(CO_AGENT_TASK_SCOPE=aws-terraform-authoring python3 "$CFG" panel --host codex --root "$RK" 2>&1)" "codex-host panel adds enabled Kiro for an eligible AWS scope"
+assert_eq "claude" "$(env -u CO_AGENT_TASK_SCOPE python3 "$CFG" panel --host codex --root "$RK" 2>&1)" "codex-host unscoped panel excludes enabled Kiro"
 
 python3 "$CFG" set claude model sonnet --host codex --root "$R" >/dev/null 2>&1
 python3 "$CFG" set claude effort max --host codex --root "$R" >/dev/null 2>&1
@@ -40,10 +54,11 @@ CLAUDE_FLAGS=$(python3 "$CFG" flags claude --host codex --root "$R" 2>&1 | tr '\
 assert_contains "$CLAUDE_FLAGS" "model sonnet" "claude flags include model (--model)"
 assert_contains "$CLAUDE_FLAGS" "effort max" "claude flags include effort"
 
-# Retired peer environment/config cannot reintroduce a third reviewer.
-NO_GEMINI_FALLBACK=$(CO_AGENT_THIRD_AI=gemini python3 "$CFG" panel --root "$R" 2>"$R/retired-env.err")
+# Retired peer environment/config cannot reintroduce a third reviewer (full scoped roster).
+NO_GEMINI_FALLBACK=$(CO_AGENT_TASK_SCOPE=aws-cdk-authoring CO_AGENT_THIRD_AI=gemini python3 "$CFG" panel --root "$RK" 2>"$RK/retired-env.err")
 assert_eq "kiro-cli codex" "$NO_GEMINI_FALLBACK" "obsolete third-peer environment cannot add a retired reviewer"
-assert_contains "$(cat "$R/retired-env.err")" "retired" "obsolete peer environment has migration guidance"
+assert_contains "$(cat "$RK/retired-env.err")" "retired" "obsolete peer environment has migration guidance"
+rm -rf "$RK"
 python3 "$CFG" set gemini enabled false --root "$R" >/dev/null 2>&1 && GS=0 || GS=$?
 assert_eq "2" "$GS" "gemini is rejected as a retired ai (exit 2)"
 
@@ -76,11 +91,14 @@ assert_eq "2" "$GE_RC" "set kiro-cli effort → rejected (exit 2)"
 python3 "$CFG" set codex effort turbo --root "$R" >/dev/null 2>&1 && IE_RC=0 || IE_RC=$?
 assert_eq "2" "$IE_RC" "invalid effort value → exit 2"
 
-# disable kiro-cli → dropped from panel, enabled check fails
+# enable then disable kiro-cli under an eligible scope, so the explicit disable (not the
+# scope gate or the shipped default) is what drops it
+python3 "$CFG" set kiro-cli enabled true --root "$R" >/dev/null 2>&1
+assert_eq "kiro-cli codex" "$(CO_AGENT_TASK_SCOPE=aws-cdk-authoring python3 "$CFG" panel --root "$R" 2>&1)" "scoped panel includes kiro-cli before the explicit disable"
 python3 "$CFG" set kiro-cli enabled false --root "$R" >/dev/null 2>&1
-PANEL=$(python3 "$CFG" panel --root "$R" 2>&1)
+PANEL=$(CO_AGENT_TASK_SCOPE=aws-cdk-authoring python3 "$CFG" panel --root "$R" 2>&1)
 assert_eq "codex" "$PANEL" "disabled kiro-cli removed from panel"
-python3 "$CFG" enabled kiro-cli --root "$R" >/dev/null 2>&1 && KI_RC=0 || KI_RC=$?
+CO_AGENT_TASK_SCOPE=aws-cdk-authoring python3 "$CFG" enabled kiro-cli --root "$R" >/dev/null 2>&1 && KI_RC=0 || KI_RC=$?
 assert_eq "1" "$KI_RC" "enabled kiro-cli → exit 1 when disabled"
 python3 "$CFG" enabled codex --root "$R" >/dev/null 2>&1 && CO_RC=0 || CO_RC=$?
 assert_eq "0" "$CO_RC" "enabled codex → exit 0 when enabled"

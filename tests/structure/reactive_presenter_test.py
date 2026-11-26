@@ -288,7 +288,11 @@ class _PresenterBase(unittest.TestCase):
 
     def assert_fragment_sync(self, count):
         self.assert_slide_sync(2)
-        self.assertEqual(self.page.locator(".slide.active .fragment.visible").count(), count)
+        # A mirrored presenter lens clones the visible fragments into the deck window; count the
+        # slide's own fragments only.
+        self.assertEqual(self.page.evaluate(
+            "() => [...document.querySelectorAll('.slide.active .fragment.visible')]"
+            ".filter(f => !f.closest('.rp-lens')).length"), count)
         self.pv.wait_for_function(
             "count => document.querySelectorAll('#p-current .fragment.visible').length === count",
             arg=count, timeout=5000)
@@ -891,6 +895,19 @@ class PresenterLensTests(_PresenterBase):
             {"lenses": 1, "inPreview": False, "fragments": 1})
         for key in ("cx", "cy", "sx", "sy"):
             self.assertAlmostEqual(after[key], before[key], delta=1, msg=key)
+        self.assertEqual(self.errors, [])
+
+    def test_fragment_sync_ignores_the_mirrored_lens_clone(self):
+        # The presenter lens is mirrored into the deck window as a clone of the visible
+        # slide content, fragments included. assert_fragment_sync used to count those clone
+        # fragments as slide fragments, so it passed only while the clone had not arrived yet.
+        self.goto(2)
+        self.pv.keyboard.press("KeyY")
+        self.hover(self.pv, self.preview_box(), 0.5, 0.5)
+        self.page.keyboard.press("ArrowRight")
+        self.page.wait_for_function(
+            "() => document.querySelectorAll('.rp-lens .fragment.visible').length === 1")
+        self.assert_fragment_sync(1)
         self.assertEqual(self.errors, [])
 
     def test_closing_presenter_window_keeps_deck_lens(self):

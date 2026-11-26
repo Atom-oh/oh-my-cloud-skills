@@ -6,6 +6,13 @@ ACTIVE_PEERS = ("kiro-cli", "claude", "codex")
 RETIRED_PEERS = ("agy", "antigravity", "gemini")
 
 
+def kiro_scope_allowed():
+    return os.environ.get("CO_AGENT_TASK_SCOPE") in {
+        "aws-architecture-review", "aws-resource-review", "aws-cdk-authoring",
+        "aws-terraform-authoring",
+    }
+
+
 def peer_roster(host):
     """The current host never participates as its own external peer."""
     if host not in HOSTS:

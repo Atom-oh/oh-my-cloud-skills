@@ -21,20 +21,26 @@ rm -f "$CD" "$CJ"
 
 # --- multi-model panel ---
 R=$(mktemp -d "${TMPDIR:-/tmp}/coc.XXXXXX")
-# Set the profile explicitly so these assertions don't depend on the committed default
-# (which is `deep` — opus/minimax as the mainstay Kiro panel; glm-5 dropped for its
-# false-positive rate, see the pr-review kiro-glm-drop ADR).
+# Shipped defaults disable Kiro with an empty models list, and Kiro joins only an eligible
+# AWS task scope. Enable Kiro with a two-model fixture list, set the profile explicitly,
+# and scope each Kiro-inclusive command inline (nothing leaks into later sourced suites).
+CO_AGENT_HOST=claude python3 "$CFG" set kiro-cli enabled true --root "$R" >/dev/null 2>&1
+CO_AGENT_HOST=claude python3 "$CFG" set kiro-cli models "kiro-model-a,kiro-model-b" --root "$R" >/dev/null 2>&1
 CO_AGENT_HOST=claude python3 "$CFG" set profile default --root "$R" >/dev/null 2>&1
-DEF=$(CO_AGENT_HOST=claude python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
+DEF=$(CO_AGENT_TASK_SCOPE=aws-architecture-review CO_AGENT_HOST=claude python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
 assert_eq "2" "$DEF" "default profile → one pair per external AI (2)"
+UDEF=$(env -u CO_AGENT_TASK_SCOPE CO_AGENT_HOST=claude python3 "$CFG" pairs --root "$R" 2>/dev/null | cut -f1 | paste -sd ' ' -)
+assert_eq "codex" "$UDEF" "unscoped default profile excludes the enabled Kiro"
 CO_AGENT_HOST=claude python3 "$CFG" set profile deep --root "$R" >/dev/null 2>&1
-DEEP=$(CO_AGENT_HOST=claude python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
+DEEP=$(CO_AGENT_TASK_SCOPE=aws-architecture-review CO_AGENT_HOST=claude python3 "$CFG" pairs --root "$R" 2>/dev/null | wc -l | tr -d ' ')
 assert_eq "3" "$DEEP" "deep profile → kiro-cli 2 models + codex (3)"
+UDEEP=$(env -u CO_AGENT_TASK_SCOPE CO_AGENT_HOST=claude python3 "$CFG" pairs --root "$R" 2>/dev/null | cut -f1 | paste -sd ' ' -)
+assert_eq "codex" "$UDEEP" "unscoped deep profile excludes the enabled Kiro"
 # --profile: per-invocation tiering override (hybrid gate: find=deep, verify=default)
-POV=$(CO_AGENT_HOST=claude python3 "$CFG" pairs --profile default --root "$R" 2>/dev/null | wc -l | tr -d ' ')
+POV=$(CO_AGENT_TASK_SCOPE=aws-architecture-review CO_AGENT_HOST=claude python3 "$CFG" pairs --profile default --root "$R" 2>/dev/null | wc -l | tr -d ' ')
 assert_eq "2" "$POV" "pairs --profile default overrides configured deep (2 pairs)"
 CO_AGENT_HOST=claude python3 "$CFG" set profile default --root "$R" >/dev/null 2>&1
-POV2=$(CO_AGENT_HOST=claude python3 "$CFG" pairs --profile deep --root "$R" 2>/dev/null | wc -l | tr -d ' ')
+POV2=$(CO_AGENT_TASK_SCOPE=aws-architecture-review CO_AGENT_HOST=claude python3 "$CFG" pairs --profile deep --root "$R" 2>/dev/null | wc -l | tr -d ' ')
 assert_eq "3" "$POV2" "pairs --profile deep overrides configured default (3 pairs)"
 CO_AGENT_HOST=claude python3 "$CFG" set profile deep --root "$R" >/dev/null 2>&1
 CO_AGENT_HOST=claude python3 "$CFG" pairs --profile bogus --root "$R" >/dev/null 2>&1 && PB=0 || PB=$?
@@ -43,9 +49,10 @@ CO_AGENT_HOST=claude python3 "$CFG" pairs --root "$R" --profile >/dev/null 2>&1 
 assert_eq "2" "$PM" "pairs --profile with missing value hard-fails (exit 2)"
 assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" matrix --profile default --root "$R" 2>&1)" "profile default" "matrix --profile default reports the overridden profile"
 assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" matrix --root "$R" 2>&1)" "max calls" "matrix prints max-calls budget"
-# Kiro's 2 models (opus/minimax) are cross-vendor via the router → intended diversity,
-# NOT the same-family redundancy warning.
-assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" matrix --root "$R" 2>&1)" "cross-vendor" "matrix notes kiro-cli cross-vendor diversity"
+# The fixture's 2 Kiro models are cross-vendor via the Kiro router, so the scoped matrix
+# reports intended diversity, NOT the same-family redundancy warning.
+assert_contains "$(CO_AGENT_TASK_SCOPE=aws-architecture-review CO_AGENT_HOST=claude python3 "$CFG" matrix --root "$R" 2>&1)" "cross-vendor" "matrix notes kiro-cli cross-vendor diversity"
+assert_grep_no_match "kiro-cli" "$(env -u CO_AGENT_TASK_SCOPE CO_AGENT_HOST=claude python3 "$CFG" matrix --root "$R" 2>&1)" "unscoped matrix omits the enabled Kiro"
 # A genuine same-family duplicate (two Codex models) DOES warn.
 CO_AGENT_HOST=claude python3 "$CFG" set codex models "Model Alpha (High),Model Beta" --root "$R" >/dev/null 2>&1
 assert_contains "$(CO_AGENT_HOST=claude python3 "$CFG" matrix --root "$R" 2>&1)" "same provider family" "matrix warns on same-family duplicates"
