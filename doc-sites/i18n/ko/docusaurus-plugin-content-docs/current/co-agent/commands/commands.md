@@ -36,7 +36,7 @@ git이 추적하는 `.claude/co-agent.local.json`은 어느 게이트도 활성�
 
 ## /co-agent:sync-context {#co-agent-1}
 
-CLAUDE.md에서 생성 마커가 있는 AGENTS.md를 만들고 Kiro steering 브리지를 연결합니다. 소스 해시로 오래된 생성 컨텍스트를 식별하며, 마커 없는 수동 작성 파일은 보호합니다. Antigravity는 더 이상 co-agent의 외부 AI가 아닙니다.
+호스트와 사용 가능한 반대편 호스트 검토자가 간결한 공유 AGENTS.md(200줄, 10 KiB 이하)를 초안 작성하고 교차 검토한 뒤 `--check-candidate`로 검증하며, Kiro steering 브리지를 유지합니다. 컨텍스트 초안 작성에는 Kiro를 사용하지 않습니다. 소스 해시 마커가 있는 예전 파일도 계속 검증하고, 마커 없는 수동 작성 파일은 보호합니다. Antigravity는 더 이상 co-agent의 외부 AI가 아닙니다.
 
 ## /co-agent:consensus {#co-agent-2}
 

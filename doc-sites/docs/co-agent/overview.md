@@ -50,6 +50,10 @@ are retired. Refresh setup after migrating old provider settings.
 The [v2.0.0 migration guide](/docs/releases/v2.0.0#co-agent-migration) describes
 the supported peers and implementation choices.
 
+## Kiro task scope {#kiro-task-scope}
+
+Kiro joins a panel only for eligible AWS work: AWS architecture review, AWS resource review, and AWS CDK or Terraform authoring. It ships disabled, so enable it in the panel configuration and select the matching task scope with `CO_AGENT_TASK_SCOPE` (`aws-architecture-review`, `aws-resource-review`, `aws-cdk-authoring` or `aws-terraform-authoring`). The restriction applies before readiness probes and peer calls, even when a saved profile enables Kiro. General reviews, ADRs, documentation and unrelated implementation use the opposite host CLI only. In a mixed task, Kiro receives just the eligible AWS part. Shipped model lists are empty, so each peer CLI runs its own configured model until you set a `models` list.
+
 ## Components {#components}
 
 The canonical `co-agent` skill runs in the current host instead of a duplicate
@@ -81,7 +85,7 @@ a separate, authorized configuration change.
 
 ## Context synchronization {#context-synchronization}
 
-`/co-agent:sync-context` distills `CLAUDE.md` into a marked `AGENTS.md` and creates `.kiro/steering/project-context.md` as a bridge. The source hash detects drift; unmarked handwritten files are protected. Use `/co-agent:configure set autosync on` to opt into automatic synchronization prompts.
+`/co-agent:sync-context` maintains one concise, reviewed `AGENTS.md`. The host and an available opposite-host reviewer draft independently from the same secret-free evidence, cross-review each other, and the host reconciles one candidate of at most 200 lines and 10 KiB. The candidate is checked with `check_ai_context.py --check-candidate` before it replaces the file, and a residual-file secret audit runs after publishing. Handwritten files without the co-agent marker are protected, and `.kiro/steering/project-context.md` keeps a bridge to the shared file. Kiro is not used for context drafting. An older `AGENTS.md` distilled from `CLAUDE.md` is still validated, including its source-hash drift check. Use `/co-agent:configure set autosync on` to opt into automatic synchronization prompts.
 
 ## Related workflows {#related-workflows}
 
