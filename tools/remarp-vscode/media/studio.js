@@ -104,7 +104,7 @@
                 if (draftDirty && !confirm('Discard the current source draft and select another slide?')) return;
                 slideIndex = index; selected = undefined; draftDirty = false; bounds = [];
                 $('proposal').value = s.source; draftGeneration = generation;
-                navigation(); inspector(); view();
+                navigation(); inspector(); view(); status(ready,$('status').textContent);
             }, $('slides'), 'slide-item');
             b.classList.toggle('selected', index === slideIndex); b.setAttribute('aria-label', `${index + 1}. ${s.title}`);
             // A bounded window of real renderer thumbnails, not a second renderer.

@@ -62,7 +62,7 @@ Installing the VS Code extension is separate from installing Claude/Codex skills
 ### Blank Studio or build errors
 
 **Preview** and **Open Design Studio** are separate commands. Preview does not open
-the editable Studio. Version 0.2.1 fixes two code-server startup failures: host
+the editable Studio. Since version 0.2.1, two code-server startup failures are fixed: host
 messages rejected after VS Code masks `window.parent`, and nested renderer URLs
 that bypass the webview resource service worker. The renderer remains opaque
 (`sandbox="allow-scripts"`); it never receives the VS Code API or host-channel token.

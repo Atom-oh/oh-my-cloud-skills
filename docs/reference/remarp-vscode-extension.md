@@ -66,10 +66,11 @@ complex domain-specific language (DSL) and arbitrary DOM/layout operations are n
 resolve to actual hyphenated renderer IDs. Canvas drags account for both editor and
 Canvas scales; pointer release commits once and Escape cancels.
 
-AI uses selected-slide clipboard handoff, pasted replacement source, candidate
-compilation and a read-only virtual-document diff before Apply/Reject. Source changes
-expire proposals. This is not an automatic provider adapter; no host skills are
-invoked by the UI. Issue comments can instead be handled by `/slide-fix` separately.
+AI uses either explicit headless generation (Claude by default; Kiro or Codex selectable)
+or clipboard handoff with pasted replacement source. Both produce a candidate that is
+compiled and shown as a read-only virtual-document diff before Apply/Reject. Source changes
+expire proposals, cancellation is honored and stale results are discarded; nothing calls a
+provider when Studio opens and no host skills are invoked by the UI. Issue comments can instead be handled by `/slide-fix` separately.
 See [ADR-028](../decisions/ADR-028-remarp-design-studio.md), which partially supersedes
 ADR-024 but retains source-first authoring and no general layout DSL.
 
