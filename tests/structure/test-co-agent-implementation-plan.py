@@ -249,13 +249,18 @@ class ImplementationPlanTests(unittest.TestCase):
 
 
     def test_only_ready_codex_can_be_delegated_writer_and_host_fallback_is_not_a_peer(self):
+        self.configure({"panel": {"kiro-cli": {"enabled": True}}})
+        # Readiness and planning share one scope: the config hash covers the scoped panel.
+        scope = patch.dict(os.environ, {"CO_AGENT_TASK_SCOPE": "aws-cdk-authoring"})
+        scope.start()
+        self.addCleanup(scope.stop)
         self.ready("claude", {"codex": "READY", "kiro-cli": "READY"})
         rc, output, _ = self.cli(["implementation-plan", "--host", "claude"])
         self.assertEqual(0, rc)
         self.assertEqual({"schema_version": 1, "mode": "peer", "host": "claude",
                           "implementer": "codex", "reviewers": ["kiro-cli", "codex"]},
                          json.loads(output))
-        self.configure({"panel": {"codex": {"enabled": False}}})
+        self.configure({"panel": {"codex": {"enabled": False}, "kiro-cli": {"enabled": True}}})
         self.ready("claude", {"kiro-cli": "READY"})
         self.assertEqual(3, self.cli(["implementation-plan", "--host", "claude"])[0])
         rc, output, _ = self.cli(["implementation-plan", "--host", "claude",

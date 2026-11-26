@@ -24,7 +24,7 @@
       "executable": false
     },
     "commands/configure.md": {
-      "sha256": "4e2f38b557a07453577323df596f43b1b670bbe81c07b8d343ef806168e28560",
+      "sha256": "cc47ecf7ae73406f8dad257fcd61e92574a17909dc79c7c063c4c392a0048ff9",
       "executable": false
     },
     "commands/consensus.md": {
@@ -44,11 +44,11 @@
       "executable": false
     },
     "skills/co-agent/SKILL.md": {
-      "sha256": "0f3a524f6d76c101dd2410d1e2df90f3ab54ceddc8c55b556710c99a2f2b8d7b",
+      "sha256": "982ca0e77e13d495b544d097f89c8b5ad07f1e6675c3e864580113fd4cd937f2",
       "executable": false
     },
     "skills/co-agent/co-agent.defaults.json": {
-      "sha256": "f2030816e38400c3d1b2dc00471876ef2dc6638085c0cb26692475dcb2acb8cc",
+      "sha256": "145841e348dd87f22d676680cf23e3c16d24e2f47e7c812d6b5479f10f722d37",
       "executable": false
     },
     "skills/co-agent/references/ai-cli-adapters.md": {
@@ -100,11 +100,11 @@
       "executable": true
     },
     "skills/co-agent/scripts/check_panel.py": {
-      "sha256": "1936d0d330193416586925f82a79954b27ff61d11763141037f0f6067ad46bc6",
+      "sha256": "f59caf4f5bf0cd3046f9451b69be3d2dfe816d01abe31ccff4b2c7dbfeca831e",
       "executable": true
     },
     "skills/co-agent/scripts/co_agent_config.py": {
-      "sha256": "10e0e10bbdac6c65394a9940bc88f325f561c0bc30f77fa5ec1bab23090b4b02",
+      "sha256": "2bc21ae5f1e3d8bac1b68fbccc0310240ebf2f6be94466775cc535e64c455013",
       "executable": true
     },
     "skills/co-agent/scripts/co_agent_env.py": {
@@ -112,11 +112,11 @@
       "executable": false
     },
     "skills/co-agent/scripts/co_agent_host.py": {
-      "sha256": "f9f45aea9b0216bc36372f8914efb1a73db146e3f6b91c33c23a705dc564bdf1",
+      "sha256": "ec000c4be3b4b2f5bf35fa252d3bcb6dee28e52ff43cb11eed50db4101140c30",
       "executable": false
     },
     "skills/co-agent/scripts/consensus_hooks.py": {
-      "sha256": "739c316bc56af5eefa5055abe5d8422be81a65ed6038374bdcd389c9bb9ceefa",
+      "sha256": "b408ac2928624256932f51855af2493412154cf08f4cb8b217949eb5945a54f0",
       "executable": true
     },
     "skills/co-agent/scripts/consensus_state.py": {
