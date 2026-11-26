@@ -49,7 +49,8 @@ when none is available, the workflow must explicitly select an authorized host
 implementation plan with `--allow-host-implementation`. An enabled, fresh READY
 raw-CLI reviewer remains mandatory. Fix invalid configuration or readiness before
 continuing. Kiro can review but cannot be the external harness writer because it
-lacks the required write sandbox.
+lacks the required write sandbox. It also joins only eligible AWS tasks; see
+[Kiro task scope](/docs/co-agent/overview#kiro-task-scope).
 
 Keep configuration, readiness and flag queries tied to the orchestration project
 where setup ran. Only the writer changes cwd to its task worktree. Follow the

@@ -36,7 +36,7 @@ see the [configuration contract](https://github.com/Atom-oh/oh-my-cloud-skills/b
 
 ## /co-agent:sync-context {#co-agent-1}
 
-Generate marked AGENTS.md from CLAUDE.md and wire the Kiro steering bridge. Source hashes identify stale generated context; handwritten unmarked files are protected. Antigravity is no longer a co-agent peer.
+Draft and cross-review one concise shared AGENTS.md (at most 200 lines and 10 KiB) with the host and an available opposite-host reviewer, validate it with `--check-candidate`, and keep the Kiro steering bridge. Kiro is not used for context drafting. Older source-hash marked files are still validated; handwritten unmarked files are protected. Antigravity is no longer a co-agent peer.
 
 ## /co-agent:consensus {#co-agent-2}
 

@@ -49,6 +49,10 @@ Codex가 호스트이면 Claude를 사용합니다. Antigravity(`agy`)와 기존
 지원되는 외부 AI와 구현 방식은 [v2.0.0 마이그레이션 가이드](/docs/releases/v2.0.0#co-agent-migration)에서
 설명합니다.
 
+## Kiro 작업 범위 {#kiro-task-scope}
+
+Kiro는 적격한 AWS 작업에서만 패널에 참여합니다. AWS 아키텍처 검토, AWS 리소스 검토, AWS CDK나 Terraform 작성이 해당합니다. 기본값은 비활성이므로 패널 설정에서 켠 뒤 `CO_AGENT_TASK_SCOPE`로 알맞은 작업 범위를 선택합니다(`aws-architecture-review`, `aws-resource-review`, `aws-cdk-authoring`, `aws-terraform-authoring`). 이 제한은 준비 상태 확인과 외부 AI 호출 전에 적용되며, 저장된 프로필이 Kiro를 켜 두었더라도 같습니다. 일반 검토, ADR, 문서 작성, 관련 없는 구현에는 반대편 호스트 CLI만 사용합니다. 여러 성격이 섞인 작업에서는 Kiro에게 적격한 AWS 부분만 전달합니다. 기본으로 제공되는 모델 목록은 비어 있어서, `models` 목록을 지정하기 전까지 각 CLI는 자체에 설정된 모델로 실행됩니다.
+
 ## 구성 요소 {#components}
 
 기준 `co-agent` 스킬은 중복된 조정 에이전트 대신 현재 호스트에서 실행됩니다.
@@ -81,7 +85,7 @@ Claude 패키지에는 `gate-chair`, `pr-autofix-planner`, `pr-autofix-implement
 
 ## 컨텍스트 동기화 {#context-synchronization}
 
-`/co-agent:sync-context`는 `CLAUDE.md`를 생성 마커가 있는 `AGENTS.md`로 요약하고 `.kiro/steering/project-context.md` 브리지를 만듭니다. 소스 해시로 변경 불일치를 감지하며 마커 없는 수동 작성 파일은 보호합니다. 자동 동기화 안내를 사용하려면 `/co-agent:configure set autosync on`을 실행합니다.
+`/co-agent:sync-context`는 간결하게 검토된 `AGENTS.md` 하나를 유지합니다. 호스트와 사용 가능한 반대편 호스트 검토자가 같은 비밀 없는 근거로 각자 초안을 쓰고 서로 교차 검토하며, 호스트가 200줄과 10 KiB 이하의 후보 하나로 정리합니다. 후보는 파일을 교체하기 전에 `check_ai_context.py --check-candidate`로 검증하고, 게시 후에는 잔여 파일 비밀 점검을 실행합니다. co-agent 마커가 없는 수동 작성 파일은 보호하며, `.kiro/steering/project-context.md`는 공유 파일을 가리키는 브리지를 유지합니다. 컨텍스트 초안 작성에는 Kiro를 사용하지 않습니다. `CLAUDE.md`에서 요약한 예전 `AGENTS.md`도 소스 해시 불일치 감지를 포함해 계속 검증합니다. 자동 동기화 안내를 사용하려면 `/co-agent:configure set autosync on`을 실행합니다.
 
 ## 관련 워크플로 {#related-workflows}
 

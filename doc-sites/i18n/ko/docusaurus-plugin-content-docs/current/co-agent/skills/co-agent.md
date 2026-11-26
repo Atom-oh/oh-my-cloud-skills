@@ -31,8 +31,8 @@ title: "co-agent 스킬"
 ## 모드별 계약 {#mode-contracts}
 
 이 스킬에는 6개 모드가 있습니다. Review는 정해진 diff나 범위를 검토하고 Decide는
-명시된 대안을 비교합니다. ADR는 대안과 결과를 정리하고 Sync-context는 공유 지침을
-생성합니다. Consensus에서는 호스트가 검토 게이트를 거쳐 구현합니다. Harness는 자격을 갖춘
+명시된 대안을 비교합니다. ADR는 대안과 결과를 정리하고 Sync-context는 공유 AGENTS.md를
+교차 검토합니다. Consensus에서는 호스트가 검토 게이트를 거쳐 구현합니다. Harness는 자격을 갖춘
 READY 외부 AI를 사용하며, 적격 구현자가 없으면 승인된 호스트 계획을 명시적으로 선택합니다.
 호스트 모드는 `--allow-host-implementation`을 사용합니다. 진행 전에 설정과 준비 상태
 오류를 반드시 해결해야 합니다. 활성화되어 있고 최신 READY 상태인 raw CLI 검토자는
