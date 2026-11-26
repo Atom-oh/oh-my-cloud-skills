@@ -32,9 +32,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   press) and `NOTE_MARK_IN_META` (a `↓` in a `[요약]`/`[출처]`/`[약어]` layer or inside `{...}`), which decode
   the note strings and so also work on decks compiled by `remarp_to_slides.py`; `measure_deck.py`
   `STEP_MARKS` (the `↓` count in a slide's notes versus the Down presses it really takes).
+- Add explicit headless AI generation to Remarp extension 0.3.0 Design Studio,
+  defaulting to Claude with selectable Kiro/Codex and provider-specific executable,
+  model and effort settings, plus a shared timeout. Bound private request context, support
+  cancellation/stale-result rejection, and compile a candidate plus read-only diff
+  before explicit Apply. Retain the clipboard workflow; no automatic source saving
+  or AI calls on opening Studio.
 
 ### Fixed
 
+- Fix Remarp extension 0.2.1 Design Studio remaining blank in code-server: authenticate
+  shell-bound host messages independently of `window.parent` and bundle renderer
+  resources into an opaque sandbox document. Recognize ordinary Markdown frontmatter,
+  offer source-file selection, and retain startup diagnostics instead of silently
+  leaving the canvas at "Building snapshot".
+- Fix Remarp extension 0.2.1 Approximate Text Preview clipping a fixed-size slide
+  inside a flex-shrunk wrapper in split panes. Fit the complete slide without
+  changing its aspect ratio, honor frontmatter ratio/size, and keep notes separate.
 - reactive-presentation: a canvas animation step (↑/↓) pressed in the presenter window no longer
   waits for the deck window to receive an animation frame. A browser can stop painting the window
   behind the focused one, so the step changed state but nothing was drawn until the deck window

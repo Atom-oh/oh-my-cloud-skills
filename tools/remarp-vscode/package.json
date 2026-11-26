@@ -2,7 +2,7 @@
   "name": "remarp-vscode",
   "displayName": "Remarp Slides",
   "description": "Author reactive presentations with the remarp markdown format",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "aws-cloud-skills",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -132,6 +132,95 @@
           "type": "boolean",
           "default": true,
           "description": "Sync editor cursor position with preview slide. When enabled, clicking in the editor scrolls the preview to the corresponding slide."
+        },
+        "remarp.ai.provider": {
+          "type": "string",
+          "enum": [
+            "claude",
+            "kiro",
+            "codex"
+          ],
+          "default": "claude",
+          "description": "Default headless AI provider in Design Studio. Uses CLI authentication on the extension host (code-server). Source is sent only when Generate with AI is clicked."
+        },
+        "remarp.ai.timeoutSeconds": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 1800,
+          "default": 180,
+          "description": "Headless AI request timeout in seconds. Cancellation leaves source unchanged."
+        },
+        "remarp.ai.claude.executable": {
+          "type": "string",
+          "default": "claude",
+          "scope": "machine",
+          "description": "claude CLI command name or absolute executable path on the extension host. Not a shell command. Requires a current CLI supporting the headless flags."
+        },
+        "remarp.ai.claude.model": {
+          "type": "string",
+          "default": "",
+          "description": "claude model ID or alias. Empty uses the CLI default. Available models depend on your provider account; no shared catalog is assumed."
+        },
+        "remarp.ai.claude.effort": {
+          "type": "string",
+          "enum": [
+            "",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default": "",
+          "description": "claude reasoning effort. Empty uses the CLI default. Supported levels depend on the selected model and CLI version."
+        },
+        "remarp.ai.kiro.executable": {
+          "type": "string",
+          "default": "kiro-cli",
+          "scope": "machine",
+          "description": "kiro CLI command name or absolute executable path on the extension host. Not a shell command. Requires a current CLI supporting the headless flags."
+        },
+        "remarp.ai.kiro.model": {
+          "type": "string",
+          "default": "",
+          "description": "kiro model ID or alias. Empty uses the CLI default. Available models depend on your provider account; no shared catalog is assumed."
+        },
+        "remarp.ai.kiro.effort": {
+          "type": "string",
+          "enum": [
+            "",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "default": "",
+          "description": "kiro reasoning effort. Empty uses the CLI default. Supported levels depend on the selected model and CLI version."
+        },
+        "remarp.ai.codex.executable": {
+          "type": "string",
+          "default": "codex",
+          "scope": "machine",
+          "description": "codex CLI command name or absolute executable path on the extension host. Not a shell command. Requires a current CLI supporting the headless flags."
+        },
+        "remarp.ai.codex.model": {
+          "type": "string",
+          "default": "",
+          "description": "codex model ID or alias. Empty uses the CLI default. Available models depend on your provider account; no shared catalog is assumed."
+        },
+        "remarp.ai.codex.effort": {
+          "type": "string",
+          "enum": [
+            "",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "default": "",
+          "description": "codex reasoning effort. Empty uses the CLI default. Supported levels depend on the selected model and CLI version."
         }
       }
     },
@@ -159,7 +248,8 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "test": "npm run compile && node --test test/*.test.cjs",
-    "test:browser": "npm run compile && python3 test/studio-browser.py",
+    "test:browser": "npm run compile && python3 test/studio-browser.py && python3 test/preview-browser.py",
+    "test:code-server": "npm run compile && python3 test/studio-code-server.py",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts"
   },

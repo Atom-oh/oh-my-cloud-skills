@@ -39,14 +39,15 @@ const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 const crypto_1 = require("crypto");
-const studioSnapshot_1 = require("./studioSnapshot");
+const studioAssets_1 = require("./studioAssets");
 const escape = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;');
 const json = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
-function studioShell(webview, extension) {
-    const nonce = (0, crypto_1.randomBytes)(24).toString('hex');
+function studioShell(webview, extension, nonce = (0, crypto_1.randomBytes)(24).toString('hex'), hostChannel = (0, crypto_1.randomBytes)(24).toString('hex')) {
+    validateNonce(nonce);
+    validateNonce(hostChannel);
     const resource = (file) => escape(webview.asWebviewUri(vscode.Uri.joinPath(extension, 'media', file)).toString());
     return `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline'; frame-src ${webview.cspSource}; img-src ${webview.cspSource} data:;">
+<meta http-equiv="Content-Security-Policy" content="${studioPolicy(nonce, webview.cspSource)}">
 <meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="${resource('studio.css')}"></head>
 <body><header><strong>Remarp Studio</strong><button id="design" aria-pressed="true">Design</button><button id="play" aria-pressed="false">Play</button>
 <label>Zoom <select id="zoom"><option value="fit">Fit</option><option value="0.25">25%</option><option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option></select></label>
@@ -54,45 +55,106 @@ function studioShell(webview, extension) {
 <main><aside id="navigation"><h2>Slides</h2><div id="slides"></div><h2>Layers</h2><div id="layers"></div></aside>
 <section id="viewport" aria-label="Slide design canvas"><div id="stage"><iframe id="preview" title="Compiler-rendered slide" sandbox="allow-scripts"></iframe><div id="overlay"></div></div></section>
 <aside id="inspector"><h2>Selection</h2><p id="owner"></p><button id="source">Reveal in source</button><div id="fields"></div><h2>Slide settings</h2><div id="settings"></div><details><summary>Selected slide source / AI response</summary><label for="proposal">Remarp source</label><textarea id="proposal" spellcheck="false"></textarea><button id="propose">Preview candidate &amp; diff</button></details></aside></main>
-<footer><div><label for="prompt">AI improvement request — selected slide only</label><input id="prompt" placeholder="Shorten the cards and improve spacing"><button id="copy">Copy AI request</button><button id="issue">Add /slide-fix issue</button></div>
-<small>Copies the selected source to your clipboard. No AI is called automatically. Paste the returned slide source into the inspector to preview it.</small>
+<footer><div><label for="prompt">AI improvement request — selected slide only</label><input id="prompt" placeholder="Shorten the cards and improve spacing"><label for="aiProvider">Provider</label><select id="aiProvider"><option value="claude">Claude</option><option value="kiro">Kiro</option><option value="codex">Codex</option></select><button id="generateAI">Generate with AI</button><button id="cancelAI" hidden>Cancel AI</button><button id="aiSettings">AI settings</button><button id="copy">Copy AI request</button><button id="issue">Add /slide-fix issue</button></div>
+<small>Generate sends the selected slide and request to the provider CLI on the extension host. Review the candidate and diff before Apply; source is never saved automatically. Copy AI request remains available for manual handoff.</small><div><span id="aiProfile"></span> <span id="aiStatus" role="status" aria-live="polite"></span></div>
 <div id="candidate" hidden><strong>Candidate — source unchanged</strong><button id="diff">Open diff</button><button id="apply">Apply proposal</button><button id="reject">Reject</button></div>
-<pre id="diagnostics" aria-live="polite" hidden></pre></footer><script nonce="${nonce}" src="${resource('studio.js')}"></script></body></html>`;
+<pre id="diagnostics" aria-live="polite" hidden></pre></footer><script nonce="${nonce}" data-studio-channel="${hostChannel}" src="${resource('studio.js')}"></script></body></html>`;
 }
-/** The deck is a separate document, not srcdoc (which inherits the shell CSP). */
-function studioFrame(webview, extension, html, output, snapshot, original, manifest, generation) {
-    const resource = (file) => webview.asWebviewUri(vscode.Uri.file(file)).toString();
-    const base = resource(snapshot) + '/';
-    // Prefer build output, then snapshot assets. Original project assets are bounded by
-    // localResourceRoots; no workspace-wide root is exposed.
-    const resolve = (url) => {
-        if (/^(?:[a-z][\w+.-]*:|\/\/|#)/i.test(url)) {
-            return url;
+/** srcdoc inherits this nonce-only script policy; sandboxing keeps the renderer opaque. */
+function studioPolicy(nonce, shellResource) {
+    const resource = shellResource ? shellResource + ' ' : '';
+    return `default-src 'none'; base-uri 'none'; script-src 'nonce-${nonce}'; style-src ${resource}'unsafe-inline' data: https:; img-src ${resource}data: blob: https:; font-src data: https:; media-src data: blob: https:; connect-src data: https:; frame-src 'self';`;
+}
+function validateNonce(nonce) {
+    if (!/^[a-zA-Z0-9_-]{16,128}$/.test(nonce)) {
+        throw new Error('Invalid Studio script nonce.');
+    }
+}
+const script = (nonce, source) => {
+    (0, studioAssets_1.assertStudioDocumentSize)(4 * Math.ceil(Buffer.byteLength(source) / 3) + 256);
+    return `<script nonce="${nonce}" src="data:text/javascript;base64,${Buffer.from(source).toString('base64')}"></script>`;
+};
+/** No renderer request depends on the code-server webview service worker. */
+function studioFrame(_webview, extension, html, output, snapshot, _original, manifest, generation, nonce = (0, crypto_1.randomBytes)(24).toString('hex')) {
+    validateNonce(nonce);
+    // Bundling never reads original workspace paths. The two inputs are bounded isolated
+    // compiler output and source snapshots; source/map/JSON files are not renderer assets.
+    const bundled = (0, studioAssets_1.bundleStudioAssets)(html, output, snapshot);
+    const handlers = [];
+    let handlerBytes = 0;
+    const events = new Set(['onclick', 'ondblclick', 'onchange', 'oninput', 'onkeydown', 'onkeyup', 'onkeypress',
+        'onmousedown', 'onmouseup', 'onmousemove', 'onmouseenter', 'onmouseleave', 'onmouseover', 'onmouseout',
+        'onpointerdown', 'onpointerup', 'onpointermove', 'onpointerenter', 'onpointerleave', 'onpointercancel',
+        'onfocus', 'onblur', 'onfocusin', 'onfocusout', 'onsubmit', 'onreset', 'ontouchstart', 'ontouchmove',
+        'ontouchend', 'ontouchcancel', 'oncontextmenu', 'onwheel', 'onselect', 'oncut', 'oncopy', 'onpaste']);
+    let elementId = 0;
+    // Event attribute code stays authored renderer code. Compile it into nonce-bearing
+    // listener functions, not eval/Function or a relaxation of the shell's script policy.
+    const convertEvents = (tag) => {
+        const assignments = [];
+        tag = (0, studioAssets_1.mapAttributes)(tag, (name, value) => {
+            if (name === 'data-remarp-studio-event') {
+                return undefined;
+            }
+            if (/^on[a-z]+$/.test(name)) {
+                if (events.has(name)) {
+                    assignments.push({ event: name, code: value });
+                }
+                return undefined;
+            }
+            return value;
+        });
+        if (!assignments.length) {
+            return tag;
         }
-        let decoded;
-        try {
-            decoded = decodeURIComponent(url.split(/[?#]/)[0]);
+        const id = String(elementId++);
+        for (const handler of assignments) {
+            const listener = script(nonce, `(() => { const element = document.querySelector('[data-remarp-studio-event="${id}"]'); if (element) element.${handler.event} = function(event) {\n${handler.code}\n}; })();`);
+            handlerBytes += Buffer.byteLength(listener);
+            (0, studioAssets_1.assertStudioDocumentSize)(handlerBytes);
+            handlers.push(listener);
         }
-        catch {
-            return url;
+        return tag.replace(/\s*\/?>(?=$)/, ending => ` data-remarp-studio-event="${id}"${ending}`);
+    };
+    html = (0, studioAssets_1.boundedReplace)(bundled.html, studioAssets_1.htmlTokens, (token, block, attrs, body) => {
+        if (token.startsWith('<!--')) {
+            return token;
         }
-        const suffix = url.slice(url.split(/[?#]/)[0].length);
-        for (const root of [output, snapshot, original]) {
-            const file = path.resolve(root, decoded);
-            if ((0, studioSnapshot_1.inside)(root, file) && fs.existsSync(file) && (0, studioSnapshot_1.inside)(root, fs.realpathSync(file))) {
-                return resource(file) + suffix;
+        if (/^<base\b/i.test(token)) {
+            return '';
+        }
+        if (/^<meta\b/i.test(token)) {
+            let policy = false;
+            (0, studioAssets_1.mapAttributes)(token, (name, value) => { if (name === 'http-equiv' && value.toLowerCase() === 'content-security-policy') {
+                policy = true;
+            } return value; });
+            if (policy) {
+                return '';
             }
         }
-        return url;
-    };
-    // Keep all authored/runtime scripts inside the sandbox. Never inject acquireVsCodeApi.
-    html = html.replace(/<meta\b[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '').replace(/<base\b[^>]*>/gi, '');
-    const attributes = (tag) => tag.replace(/\b(src|href)=("|')([^"']+)\2/g, (_m, attr, quote, url) => `${attr}=${quote}${escape(resolve(url.replace(/&amp;/g, '&')))}${quote}`);
-    html = html.replace(/(<script\b[^>]*>)([\s\S]*?)(<\/script>)|<[A-Za-z][^>]*>/gi, (tag, opening, body, closing) => opening ? attributes(opening) + body + closing : attributes(tag));
-    const policy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline' https:; script-src ${webview.cspSource} 'unsafe-inline' https:; img-src ${webview.cspSource} https: data:; font-src ${webview.cspSource} https: data:; media-src ${webview.cspSource} https:; connect-src ${webview.cspSource} https:; frame-src https:;">`;
-    html = html.replace(/<head\b[^>]*>/i, m => m + policy + `<base href="${escape(base)}">`);
+        if (block && block.toLowerCase() === 'script') {
+            const opening = `<${block}${attrs}>`.replace(/\snonce(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/gi, '');
+            return opening.replace(/>$/, ` nonce="${nonce}">`) + body + `</${block}>`;
+        }
+        if (block) {
+            return convertEvents(`<${block}${attrs}>`) + body + `</${block}>`;
+        }
+        return convertEvents(token);
+    });
+    if (!/<head\b/i.test(html)) {
+        html = '<!doctype html><html><head></head><body>' + html + '</body></html>';
+    }
+    const policy = `<meta http-equiv="Content-Security-Policy" content="${studioPolicy(nonce)}">`;
+    const bootstrap = script(nonce, `window.__remarpStudioAssets=${json(bundled.images)};\n` + fs.readFileSync(path.join(extension.fsPath, 'media', 'studio-assets.js'), 'utf8'));
+    (0, studioAssets_1.assertStudioDocumentSize)(Buffer.byteLength(html) + Buffer.byteLength(policy) + Buffer.byteLength(bootstrap));
+    html = html.replace(/<head\b[^>]*>/i, head => head + policy + bootstrap);
     const nodes = manifest.slides.flatMap((slide, index) => slide.nodes.map(node => ({ id: node.id, renderId: node.renderId, geometry: node.geometry, slide: index })));
-    const bridge = resource(path.join(extension.fsPath, 'media', 'studio-frame.js'));
-    return html.replace(/<\/body>/i, `<script>window.__remarpStudio=${json({ generation, nodes })};</script><script src="${escape(bridge)}"></script></body>`);
+    const bridge = script(nonce, `window.__remarpStudio=${json({ generation, nodes, assetWarnings: bundled.warnings })};\n` + fs.readFileSync(path.join(extension.fsPath, 'media', 'studio-frame.js'), 'utf8'));
+    (0, studioAssets_1.assertStudioDocumentSize)(Buffer.byteLength(html) + Buffer.byteLength(bridge) + handlerBytes);
+    const result = html.replace(/<\/body>/i, handlers.join('') + bridge + '</body>');
+    if (Buffer.byteLength(result) > 64 * 1024 * 1024) {
+        throw new Error('Studio renderer document exceeds the 64 MiB transfer limit.');
+    }
+    return result;
 }
 //# sourceMappingURL=studioRenderer.js.map

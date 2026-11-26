@@ -3,7 +3,14 @@
     'use strict';
     const config = window.__remarpStudio;
     if (!config) return;
-    const params = new URLSearchParams(location.search), thumbnail = params.has('studioThumbnail');
+    const report = (type, message) => parent.postMessage({ type, generation: config.generation,
+        message: String(message).slice(0, 2000) }, '*');
+    window.addEventListener('error', event => {
+        if (event.message) report('studio-render-error', event.message);
+    });
+    window.addEventListener('unhandledrejection', event => report('studio-render-error', event.reason));
+    const thumbnailMatch = /^remarp-studio-thumbnail:(\d+)$/.exec(window.name);
+    const thumbnail = !!thumbnailMatch;
     let mode = thumbnail ? 'design' : 'play', pending = false, designSidebar;
     const revealAdvance = new Map();
     const runtime = () => typeof deck !== 'undefined' ? deck : null;
@@ -79,8 +86,11 @@
         configure(); schedule();
     });
     const startup = () => {
+        if (Array.isArray(config.assetWarnings) && config.assetWarnings.length) {
+            report('studio-render-warning', 'Some local assets are unavailable in Studio:\n' + config.assetWarnings.join('\n'));
+        }
         if (thumbnail) {
-            runtime()?.showSlide(Number(params.get('studioSlide')) || 0, false);
+            runtime()?.showSlide(Number(thumbnailMatch[1]) || 0, false);
             configure();
         }
         new ResizeObserver(schedule).observe(document.body);
