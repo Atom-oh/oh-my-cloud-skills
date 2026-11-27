@@ -47,12 +47,12 @@ The extension's version is separate from the cloud-skills plugin version. In the
 | Package | What the review established |
 | --- | --- |
 | Checked-in 0.1.0 VSIX | An older package without the Design Studio command |
-| Maintained repository source 0.2.0 | Studio and both preview commands; manual AI handoff. Its Studio has known real-host delivery/resource problems in code-server |
-| Separately reviewed local 0.3.0 development build | Newer code-server renderer and explicit AI generation. It is not the 0.2.0 source on main, and this guide does not establish that it is publicly released |
+| Earlier 0.2.0 source | Studio and both preview commands with the manual AI handoff only. Its Studio had real-host delivery/resource problems in code-server |
+| Maintained repository source 0.3.0 | Studio, both preview commands, the manual AI handoff and explicit **Generate with AI**, plus the code-server Studio startup fix. This guide does not establish that it is publicly released |
 
 For code-server Studio, obtain a build that the maintainer has tested in a real code-server Extension Host. Do not install the old checked-in VSIX expecting Studio, or downgrade a newer installation just to match a filename in an example. If your package has different commands, compare its installed manifest rather than assuming every feature below is present.
 
-The 0.3.0 development build has remaining [review findings](#reviewed-limitations); a successful smoke test does not make it a finished release.
+The dated review recorded [findings](#reviewed-limitations) against a local 0.3.0 development build; a successful smoke test does not make a build a finished release.
 
 ## Install in the editor you actually use {#install-in-your-editor}
 
@@ -139,11 +139,11 @@ Source/configuration changes trigger snapshot rebuilds. After changing an image 
 
 For example: “Shorten these two cards while preserving their technical meaning, speaker notes, and reveal order.” Keep an external copy of an unsubmitted response before changing slides.
 
-### Explicit generation in the reviewed 0.3.0 development build {#development-ai-generation}
+### Explicit generation in 0.3.0 {#development-ai-generation}
 
-This subsection applies only when your installed build has **Generate with AI**. The maintained 0.2.0 package does not implement that button.
+This subsection applies when your installed build has **Generate with AI**, which the maintained 0.3.0 source adds. Older 0.2.0 packages do not implement that button.
 
-Choose a slide and provider, enter the request, then select **Generate with AI**. The development build runs the selected Claude, Kiro, or Codex CLI on the extension host. Opening Studio does not start generation. The request can use provider quota or incur charges, and the selected source is sent to that provider when you generate.
+Choose a slide and provider, enter the request, then select **Generate with AI**. The extension runs the selected Claude (default), Kiro, or Codex CLI on the extension host only after that explicit click. Opening Studio does not start generation. The request can use provider quota or incur charges, and the selected source is sent to that provider when you generate.
 
 **AI settings** opens the relevant editor settings. Authentication and the executable must be available on the code-server host under the same user as the extension. The extension does not install the CLI or log you in. Available models and effort levels depend on that provider and CLI; leaving a model blank uses its default.
 
@@ -183,7 +183,7 @@ The manifest registers Ctrl/Cmd+Shift+Right and Left for source-slide navigation
 | `remarp.buildScriptPath` | Empty | Explicit absolute converter path, before automatic discovery |
 | `remarp.scrollSync` | true | Synchronize source cursor and preview slide |
 
-`remarp.autoPreview` and `remarp.buildOnSave` are not contributed settings in maintained 0.2.0. Extra AI settings in a development build do not imply that they exist in an older installed package.
+`remarp.autoPreview` and `remarp.buildOnSave` are not contributed settings in maintained 0.3.0. Its `remarp.ai` settings do not exist in an older installed package.
 
 ## Editing and issues {#editing-and-issues}
 
@@ -199,18 +199,18 @@ Changes made in the presentation's browser-only speaker-note editor are separate
 | Markdown file is not recognized | Remarp filename/frontmatter, saved initial file, and language mode |
 | Compiler not found | Explicit compiler path on the server and Python 3 available to its Extension Host |
 | Unknown studio command | The configured compiler is older than the Studio interface; choose the matching compiler |
-| Studio stays blank in code-server | Check the installed version and diagnostics. Main 0.2.0 has real-host startup problems; use a verified newer build or the standalone compiled deck |
+| Studio stays blank in code-server | Check the installed version and diagnostics. 0.2.0 had real-host startup problems that 0.3.0 fixes; install 0.3.0, verify it in the real code-server Extension Host, or use the standalone compiled deck |
 | Source changed but the compiled preview did not | Run Build and Preview Compiled HTML again; that panel does not continuously rebuild |
 | Image changed but Studio shows the old image | Use Refresh and keep referenced assets inside the project |
 | A field or diagram cannot be edited | Use Reveal in source; not every source construct has a safe visual-edit capability |
-| AI button or settings are missing | Check the version. Maintained 0.2.0 uses the manual clipboard handoff |
-| AI fails in a development build | Check the provider CLI on the server, authentication, supported options/model, and timeout; do not assume laptop authentication is shared |
+| AI button or settings are missing | Check the version. Generate with AI and its settings arrive in 0.3.0; older 0.2.0 packages offer only the manual clipboard handoff |
+| Generate with AI fails | Check the provider CLI on the server, authentication, supported options/model, and timeout; do not assume laptop authentication is shared |
 
 ## Reviewed limitations {#reviewed-limitations}
 
-The [dated maintainer review](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/docs/reference/2026-11-14-remarp-code-server-review.md) distinguishes main source from the separately installed development build:
+The [dated maintainer review](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/docs/reference/2026-11-14-remarp-code-server-review.md) distinguished the then-current main source (0.2.0) from a separately installed 0.3.0 development build:
 
-- **Main 0.2.0 in code-server:** Studio's host-message and nested-resource delivery can fail even though mocked browser tests pass. Use a real-host-verified package for Studio, and keep the standalone compiled deck as the final check.
+- **0.2.0 in code-server:** Studio's host-message and nested-resource delivery could fail even though mocked browser tests passed; 0.3.0 fixes this startup path. Still verify Studio in a real code-server Extension Host, and keep the standalone compiled deck as the final check.
 - **Local 0.3.0 card-body editing:** structural Markdown such as a code fence can alter later slide structure. Use plain text for a bounded visual edit; make structural changes in source and validate the whole deck.
 - **Local 0.3.0 CSS imports:** quoted local imports can be omitted during staging and prevent Studio from rendering. Keep a directly usable stylesheet or use standalone output until that staging path is corrected.
 - **Unsubmitted proposal drafts:** navigating in Play can discard the draft. Copy it out or finish the candidate/apply decision before moving to another slide.

@@ -41,44 +41,49 @@ const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
 const child_process_1 = require("child_process");
 const crypto_1 = require("crypto");
+const studioAI_1 = require("./studioAI");
 const studioModel_1 = require("./studioModel");
 const studioSnapshot_1 = require("./studioSnapshot");
 const studioRenderer_1 = require("./studioRenderer");
+const studioSource_1 = require("./studioSource");
 const diffDocuments = new Map();
 const markers = ['_presentation.md', '_presentation.remarp.md', 'remarp.yaml', 'remarp.yml'];
 function registerStudio(context, compilerFor) {
     context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('remarp-studio', {
         provideTextDocumentContent: uri => diffDocuments.get(uri.toString()) || ''
     }));
-    context.subscriptions.push(vscode.commands.registerCommand('remarp.studio', () => {
-        const document = vscode.window.activeTextEditor?.document;
-        if (!document || document.uri.scheme !== 'file' || !(document.languageId === 'remarp' || document.fileName.endsWith('.remarp.md') || path.basename(document.fileName) === '_presentation.md')) {
-            vscode.window.showWarningMessage('Open local Remarp source to start Studio.');
-            return;
-        }
+    const output = vscode.window.createOutputChannel('Remarp Studio');
+    context.subscriptions.push(output);
+    context.subscriptions.push(vscode.commands.registerCommand('remarp.studio', async (uri) => {
         if (!vscode.workspace.isTrusted) {
             vscode.window.showWarningMessage('Remarp Studio requires a trusted workspace. Use Approximate Text Preview instead.');
             return;
         }
-        const compiler = compilerFor(document);
-        if (!compiler) {
-            vscode.window.showErrorMessage('Configure remarp.buildScriptPath with a Studio-capable remarp_to_slides.py.');
-            return;
-        }
         try {
-            const session = new StudioSession(context.extensionUri, document, compiler);
+            const document = await (0, studioSource_1.selectStudioSource)(uri);
+            if (!document) {
+                return;
+            } // Dismissing the file picker is not a failure.
+            const compiler = compilerFor(document);
+            if (!compiler) {
+                vscode.window.showErrorMessage('Configure remarp.buildScriptPath with a Studio-capable remarp_to_slides.py.');
+                return;
+            }
+            const session = new StudioSession(context.extensionUri, document, compiler, output);
             context.subscriptions.push(session);
         }
         catch (error) {
+            output.appendLine(`Remarp Studio: ${error}`);
             vscode.window.showErrorMessage(`Remarp Studio: ${error}`);
         }
     }));
 }
 class StudioSession {
-    constructor(extension, entry, compiler) {
+    constructor(extension, entry, compiler, output) {
         this.extension = extension;
         this.entry = entry;
         this.compiler = compiler;
+        this.output = output;
         this.disposables = [];
         this.requested = 0;
         this.building = false;
@@ -87,6 +92,8 @@ class StudioSession {
         this.stages = [];
         this.diffKeys = [];
         this.messages = Promise.resolve();
+        this.rendererNonce = (0, crypto_1.randomBytes)(24).toString('hex');
+        this.hostChannel = (0, crypto_1.randomBytes)(24).toString('hex');
         this.root = fs.realpathSync(path.dirname(entry.fileName));
         if (path.resolve(path.dirname(entry.fileName)) !== this.root) {
             throw new Error('Open the project through its real path, not a directory symlink.');
@@ -96,9 +103,9 @@ class StudioSession {
         this.temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'remarp-studio-')));
         this.panel = vscode.window.createWebviewPanel('remarpStudio', 'Remarp Design Studio', vscode.ViewColumn.Beside, {
             enableScripts: true, retainContextWhenHidden: true,
-            localResourceRoots: [extension, vscode.Uri.file(this.root), vscode.Uri.file(this.temporary)]
+            localResourceRoots: [vscode.Uri.joinPath(extension, 'media')]
         });
-        this.panel.webview.html = (0, studioRenderer_1.studioShell)(this.panel.webview, extension);
+        this.panel.webview.html = (0, studioRenderer_1.studioShell)(this.panel.webview, extension, this.rendererNonce, this.hostChannel);
         this.disposables.push(this.panel.onDidDispose(() => this.dispose()));
         this.disposables.push(this.panel.webview.onDidReceiveMessage(message => {
             this.messages = this.messages.then(() => this.receive(message)).catch(error => this.error(error));
@@ -110,6 +117,12 @@ class StudioSession {
         }));
         const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(this.root, '*.{md,yaml,yml}'));
         this.disposables.push(watcher, watcher.onDidChange(() => this.schedule()), watcher.onDidCreate(() => this.schedule()), watcher.onDidDelete(() => this.schedule()));
+        this.disposables.push(vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration('remarp.ai', this.entry.uri)) {
+                this.cancelAI();
+                this.postAISettings();
+            }
+        }));
         this.schedule(0);
     }
     isSource(file) { return this.project ? path.dirname(file) === this.root && /\.(md|ya?ml)$/i.test(file) : path.resolve(file) === path.resolve(this.entry.fileName); }
@@ -144,10 +157,35 @@ class StudioSession {
             return false;
         }
     }
-    post(message) { if (!this.disposed) {
-        void this.panel.webview.postMessage(message);
-    } }
-    error(error) { this.post({ type: 'error', message: String(error) }); }
+    post(message) {
+        if (this.disposed) {
+            return;
+        }
+        // postMessage may run before the shell script is listening. Keep the latest
+        // UI state so its ready handshake can recover both success and failure.
+        if (message.type === 'compiled' || message.type === 'candidate') {
+            this.viewState = message;
+            this.statusState = undefined;
+            this.errorState = undefined;
+        }
+        else if (message.type === 'status') {
+            this.statusState = message;
+            this.errorState = undefined;
+        }
+        else if (message.type === 'error') {
+            this.errorState = message;
+        }
+        void this.panel.webview.postMessage({ ...message, studioChannel: this.hostChannel });
+    }
+    error(error) {
+        if (this.disposed) {
+            return;
+        }
+        const message = String(error);
+        this.output?.appendLine(`[${path.basename(this.entry.fileName)}] ${message}`);
+        this.post({ type: 'error', message, ready: this.ready,
+            status: this.ready ? 'Action failed — see diagnostics' : this.current ? 'Build failed — previous preview is stale' : 'Studio could not build this source' });
+    }
     pruneStages() {
         // Keep live renderer resources and two recent stages for in-flight requests.
         // Run even after failures: invalid source must not grow temporary storage.
@@ -164,6 +202,7 @@ class StudioSession {
         if (this.disposed) {
             return;
         }
+        this.cancelAI();
         this.ready = false;
         this.proposal = undefined;
         this.requested++;
@@ -211,10 +250,8 @@ class StudioSession {
             }
         }
         const htmlPath = (0, studioSnapshot_1.sourcePath)(output, manifest.html);
-        const html = (0, studioRenderer_1.studioFrame)(this.panel.webview, this.extension, fs.readFileSync(htmlPath, 'utf8'), output, snapshot, this.root, manifest, generation);
-        const frame = path.join(output, 'studio-frame.html');
-        fs.writeFileSync(frame, html, 'utf8');
-        return { manifest, frameUrl: this.panel.webview.asWebviewUri(vscode.Uri.file(frame)).toString(), generation, sources, stage: directory };
+        const frameHtml = (0, studioRenderer_1.studioFrame)(this.panel.webview, this.extension, fs.readFileSync(htmlPath, 'utf8'), output, snapshot, this.root, manifest, generation, this.rendererNonce);
+        return { manifest, frameHtml, generation, sources, stage: directory };
     }
     async rebuild() {
         if (this.building || this.disposed) {
@@ -297,9 +334,27 @@ class StudioSession {
             return;
         }
         if (message.type === 'ready') {
-            if (this.current) {
-                this.post({ type: 'compiled', ...this.current, sources: undefined, stage: undefined, ready: this.ready });
+            this.postAISettings();
+            for (const state of [this.viewState, this.statusState, this.errorState, this.aiState]) {
+                if (state) {
+                    void this.panel.webview.postMessage({ ...state, ready: this.ready, studioChannel: this.hostChannel });
+                }
             }
+            return;
+        }
+        // Source access must remain available when compilation fails or no map exists.
+        // Without a current map, reveal only the known entry, never a caller-supplied path.
+        if (message.type === 'reveal' && (!this.current || !this.ready)) {
+            const document = await vscode.workspace.openTextDocument(this.entry.uri);
+            await vscode.window.showTextDocument(document, { preserveFocus: false });
+            return;
+        }
+        if (message.type === 'aiSettings') {
+            await vscode.commands.executeCommand('workbench.action.openSettings', 'remarp.ai');
+            return;
+        }
+        if (message.type === 'cancelAI') {
+            this.cancelAI();
             return;
         }
         if (message.type === 'refresh') {
@@ -350,56 +405,138 @@ class StudioSession {
             this.post({ type: 'notice', message: 'AI request copied. Run it in your configured AI session; paste the returned slide source to preview a candidate.' });
             return;
         }
+        if (message.type === 'generateAI') {
+            if (this.ai || this.building || this.proposal) {
+                throw new Error('Finish the current AI request or proposal first.');
+            }
+            const config = this.aiConfig((0, studioAI_1.aiProvider)(message.provider));
+            const prompt = (0, studioAI_1.aiRequest)(slide.source, message.prompt);
+            this.beginAI(base, slide.id, config, prompt);
+            return;
+        }
         if (message.type === 'propose') {
-            if (this.building) {
-                throw new Error('Wait for the current build.');
+            if (this.ai) {
+                throw new Error('Cancel the AI request before previewing another candidate.');
             }
-            const intent = { slide: slide.id, operation: 'source', value: message.value };
-            const { file, patches } = (0, studioModel_1.planEdit)(base.manifest, intent);
-            const before = base.sources.get(file).text, after = (0, studioModel_1.applyPatches)(before, patches);
-            const sources = new Map(base.sources);
-            sources.set(file, { text: after });
-            this.building = true;
-            this.ready = false;
-            this.post({ type: 'status', ready: false, message: 'Building candidate — source unchanged' });
-            try {
-                const candidate = await this.compile(sources, base.generation);
-                if (this.current !== base || this.requested !== base.generation || !this.unchanged(base.sources)) {
-                    throw new Error('Source changed while generating candidate.');
-                }
-                const proposal = { id: (0, crypto_1.randomBytes)(16).toString('hex'), file, patches, before, after, base, candidate };
-                this.proposal = proposal;
-                this.post({ type: 'candidate', manifest: candidate.manifest, frameUrl: candidate.frameUrl, generation: base.generation, proposalId: proposal.id, ready: false });
-                await this.showDiff(proposal);
-            }
-            finally {
-                this.building = false;
-                this.pruneStages();
-                if (this.disposed) {
-                    fs.rmSync(this.temporary, { recursive: true, force: true });
-                }
-                else if (this.requested !== base.generation) {
-                    void this.rebuild();
-                }
-                else if (!this.proposal) {
-                    this.ready = this.unchanged(base.sources);
-                    this.post({ type: 'status', ready: this.ready, message: 'Candidate failed; current source unchanged' });
-                }
-            }
+            await this.previewCandidate(base, slide.id, message.value);
             return;
         }
         if (message.type === 'edit') {
+            this.cancelAI();
             const intent = { slide: slide.id, node: message.node, operation: message.operation, value: message.value, property: message.property };
             const { file, patches } = (0, studioModel_1.planEdit)(base.manifest, intent);
             await this.apply(base, file, patches);
         }
         // Authored renderer observations never arrive here as source-write intents.
     }
+    async previewCandidate(base, slideId, value, fromAI = false) {
+        const slide = (0, studioModel_1.findSlide)(base.manifest, slideId);
+        if (this.building) {
+            throw new Error('Wait for the current build.');
+        }
+        const intent = { slide: slide.id, operation: 'source', value };
+        const { file, patches } = (0, studioModel_1.planEdit)(base.manifest, intent);
+        const before = base.sources.get(file).text, after = (0, studioModel_1.applyPatches)(before, patches);
+        const sources = new Map(base.sources);
+        sources.set(file, { text: after });
+        this.building = true;
+        this.ready = false;
+        this.post({ type: 'status', ready: false, message: 'Building candidate — source unchanged' });
+        try {
+            const candidate = await this.compile(sources, base.generation);
+            if (this.disposed || !vscode.workspace.isTrusted || this.current !== base || this.requested !== base.generation || !this.unchanged(base.sources)) {
+                throw new Error('Source, session or workspace trust changed while generating candidate.');
+            }
+            if (fromAI) {
+                const original = base.manifest.slides, next = candidate.manifest.slides;
+                if (next.length !== original.length || original.some((s, i) => next[i].file !== s.file || (s.id !== slideId && next[i].source !== s.source))) {
+                    throw new Error('AI changed the slide structure or another slide. Request a single slide replacement.');
+                }
+            }
+            const proposal = { id: (0, crypto_1.randomBytes)(16).toString('hex'), file, patches, before, after, base, candidate };
+            this.proposal = proposal;
+            this.post({ type: 'candidate', manifest: candidate.manifest, frameHtml: candidate.frameHtml, generation: base.generation, proposalId: proposal.id, ready: false });
+            await this.showDiff(proposal);
+        }
+        finally {
+            this.building = false;
+            this.pruneStages();
+            if (this.disposed) {
+                fs.rmSync(this.temporary, { recursive: true, force: true });
+            }
+            else if (this.requested !== base.generation) {
+                void this.rebuild();
+            }
+            else if (!this.proposal) {
+                this.ready = this.unchanged(base.sources);
+                this.post({ type: 'status', ready: this.ready, message: 'Candidate failed; current source unchanged' });
+            }
+        }
+    }
+    aiConfig(provider) {
+        const config = vscode.workspace.getConfiguration('remarp.ai', this.entry.uri);
+        return (0, studioAI_1.validateAIConfig)({ provider,
+            executable: config.get(`${provider}.executable`, provider === 'kiro' ? 'kiro-cli' : provider),
+            model: config.get(`${provider}.model`, '').trim(),
+            effort: config.get(`${provider}.effort`, ''), timeoutSeconds: config.get('timeoutSeconds', 180)
+        });
+    }
+    postAISettings() {
+        const config = vscode.workspace.getConfiguration('remarp.ai', this.entry.uri);
+        this.post({ type: 'aiSettings', provider: config.get('provider', 'claude'),
+            profiles: Object.fromEntries(studioAI_1.providers.map(provider => [provider, {
+                    model: config.get(`${provider}.model`, ''), effort: config.get(`${provider}.effort`, '')
+                }])) });
+    }
+    aiStatus(busy, message) {
+        this.aiState = { type: 'aiStatus', busy, message };
+        this.post(this.aiState);
+    }
+    cancelAI() {
+        if (!this.ai) {
+            return;
+        }
+        const job = this.ai;
+        this.ai = undefined;
+        job.cancel();
+        this.aiStatus(false, 'AI request cancelled — source unchanged');
+    }
+    beginAI(base, slideId, config, prompt) {
+        const job = (0, studioAI_1.startAI)(config, prompt);
+        this.ai = job;
+        this.aiStatus(true, `Generating with ${config.provider} · ${config.model || 'CLI default'} · ${config.effort || 'default effort'} — source unchanged`);
+        // Do not await the process in receive(): Cancel and source-change events
+        // must remain responsive. Only candidate compilation enters the edit queue.
+        const complete = (source, error) => {
+            this.messages = this.messages.then(async () => {
+                if (this.disposed || this.ai !== job) {
+                    return;
+                }
+                this.ai = undefined;
+                this.aiStatus(false, error ? 'AI failed — source unchanged' : 'AI finished — validating candidate');
+                if (error) {
+                    this.error(error);
+                    return;
+                }
+                if (!vscode.workspace.isTrusted || this.current !== base || this.requested !== base.generation || !this.unchanged(base.sources)) {
+                    this.error(new Error('Source or workspace trust changed during AI generation. Result discarded.'));
+                    return;
+                }
+                await this.previewCandidate(base, slideId, source, true);
+            }).catch(error => this.error(error));
+        };
+        void job.result.then(source => complete(source), error => complete(undefined, error));
+    }
     dispose() {
         if (this.disposed) {
             return;
         }
+        // Mark disposed first and cancel without posting: when VS Code fires
+        // onDidDispose the webview is already gone and touching it throws.
         this.disposed = true;
+        const job = this.ai;
+        this.ai = undefined;
+        job?.cancel();
         if (this.timer) {
             clearTimeout(this.timer);
         }
@@ -409,7 +546,10 @@ class StudioSession {
         if (!this.building) {
             fs.rmSync(this.temporary, { recursive: true, force: true });
         }
-        this.panel.dispose();
+        try {
+            this.panel.dispose();
+        }
+        catch { /* panel already disposed by VS Code */ }
     }
 }
 exports.StudioSession = StudioSession;

@@ -154,6 +154,33 @@ class RemarpPreviewPanel {
         }
         return result;
     }
+    _slideDimensions(fm) {
+        const fallback = { width: 1280, height: 720 };
+        const dimension = (value) => Number.isFinite(value) && value >= 1 && value <= 16384;
+        // Handle quoted dimension values without changing the lightweight frontmatter parser.
+        const value = (key) => (fm[key] || '').replace(/^(['"])(.*)\1$/, '$2').trim();
+        // Like compiled Remarp, an explicit valid size takes precedence over ratio.
+        const size = value('size').match(/^(\d+)x(\d+)$/);
+        if (size) {
+            const width = Number(size[1]), height = Number(size[2]);
+            if (dimension(width) && dimension(height)) {
+                return { width, height };
+            }
+        }
+        const ratio = value('ratio').match(/^(\d+)\s*:\s*(\d+)$/);
+        if (ratio) {
+            const rw = Number(ratio[1]), rh = Number(ratio[2]);
+            if (Number.isSafeInteger(rw) && Number.isSafeInteger(rh) && rw > 0 && rh > 0) {
+                // Preserve Preview's design envelope and fit arbitrary ratios inside it.
+                const scale = Math.min(fallback.width / rw, fallback.height / rh);
+                const width = rw * scale, height = rh * scale;
+                if (dimension(width) && dimension(height)) {
+                    return { width, height };
+                }
+            }
+        }
+        return fallback;
+    }
     _parseSlides() {
         const text = this._document.getText();
         const lines = text.split('\n');
@@ -408,10 +435,7 @@ class RemarpPreviewPanel {
         const renderedContent = this._transformByType(slideType, rawRenderedContent, slide, fm);
         // Prompt bar JS URI
         const promptBarJsUri = this._panel.webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'prompt-bar.js'));
-        // Slide size from frontmatter (e.g. size: 960x720 for 4:3)
-        const sizeMatch = (fm['size'] || '').match(/^(\d+)x(\d+)$/);
-        const slideWidth = sizeMatch ? parseInt(sizeMatch[1], 10) : 1280;
-        const slideHeight = sizeMatch ? parseInt(sizeMatch[2], 10) : 720;
+        const { width: slideWidth, height: slideHeight } = this._slideDimensions(fm);
         // Global styles from frontmatter directives
         const bgColor = fm['backgroundColor'] || '';
         const bgImage = fm['backgroundImage'] || '';
@@ -472,13 +496,17 @@ class RemarpPreviewPanel {
             height: 100vh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
         .toolbar {
+            flex: none;
             background: var(--bg-secondary);
             padding: 8px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
             border-bottom: 1px solid var(--border);
         }
         .toolbar-left {
@@ -521,9 +549,13 @@ class RemarpPreviewPanel {
             flex: 1;
             display: flex;
             overflow: hidden;
+            min-width: 0;
+            min-height: 0;
         }
         .slide-container {
             flex: 1;
+            min-width: 0;
+            min-height: 0;
             overflow: hidden;
             display: flex;
             align-items: center;
@@ -531,15 +563,20 @@ class RemarpPreviewPanel {
             padding: 8px;
         }
         .slide-wrapper {
+            /* Keep the design box intact: flex shrinking followed by scale clips the slide twice. */
+            flex: none;
             width: ${slideWidth}px;
+            height: ${slideHeight}px;
             transform-origin: center center;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
         }
         .sidebar {
+            flex: 0 0 320px;
             width: 320px;
-            min-width: 280px;
+            min-width: 0;
+            min-height: 0;
             background: var(--bg-secondary);
             border-left: 1px solid var(--border);
             display: flex;
@@ -548,6 +585,7 @@ class RemarpPreviewPanel {
         }
         .sidebar-content {
             flex: 1;
+            min-height: 0;
             overflow-y: auto;
             padding: 12px 16px;
         }
@@ -560,11 +598,21 @@ class RemarpPreviewPanel {
             margin: 0 0 8px 0;
         }
         .sidebar-section + .sidebar-section { margin-top: 16px; }
+        @media (max-width: 720px) {
+            .main-layout { flex-direction: column; }
+            .sidebar {
+                flex: 0 0 40%;
+                width: 100%;
+                min-height: 120px;
+                border-left: none;
+                border-top: 1px solid var(--border);
+            }
+        }
         .slide {
             background: ${slideBg};
             ${slideBgImage}
             background-size: cover;
-            padding: 48px 60px;
+            padding: ${Math.min(48, slideHeight / 4)}px ${Math.min(60, slideWidth / 4)}px;
             width: ${slideWidth}px;
             height: ${slideHeight}px;
             position: relative;
@@ -867,7 +915,7 @@ class RemarpPreviewPanel {
         /* Prompt bar (inside sidebar) */
         .prompt-bar { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--bg-secondary); }
         .prompt-form { display: flex; gap: 6px; }
-        .prompt-input { flex: 1; background: var(--surface); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 12px; font-family: inherit; outline: none; }
+        .prompt-input { flex: 1; min-width: 0; background: var(--surface); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 12px; font-family: inherit; outline: none; }
         .prompt-input:focus { border-color: var(--accent); }
         .prompt-input::placeholder { color: var(--text-muted); }
         .prompt-submit { background: var(--accent); color: white; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; font-size: 13px; line-height: 1; }
@@ -957,10 +1005,9 @@ class RemarpPreviewPanel {
             const container = document.querySelector('.slide-container');
             const wrapper = document.querySelector('.slide-wrapper');
             if (!container || !wrapper) return;
-            const cw = container.clientWidth - 16;
-            const ch = container.clientHeight - 16;
-            const wrapperHeight = wrapper.scrollHeight;
-            const scale = Math.min(cw / ${slideWidth}, ch / wrapperHeight);
+            const cw = Math.max(0, container.clientWidth - 16);
+            const ch = Math.max(0, container.clientHeight - 16);
+            const scale = Math.min(cw / ${slideWidth}, ch / ${slideHeight});
             wrapper.style.transform = 'scale(' + scale + ')';
         }
         scaleSlide();

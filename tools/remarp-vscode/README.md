@@ -1,7 +1,7 @@
 # Remarp Slides: VS Code extension
 
 Source-first presentation authoring with syntax highlighting, outline/completions,
-approximate text preview, compiled HTML preview and **Design Studio** (0.2.0).
+approximate text preview, compiled HTML preview and **Design Studio** (0.3.0).
 Remarp remains the source; generated HTML is never an independent editing target.
 
 ## Install and open Studio
@@ -10,11 +10,17 @@ Build/package commands are maintained in [CLAUDE.md](CLAUDE.md). Install the new
 VSIX, not the repository's older `remarp-vscode-0.1.0.vsix`:
 
 ```bash
-code --install-extension /tmp/remarp-vscode-0.2.0.vsix --force
+code --install-extension /tmp/remarp-vscode-0.3.0.vsix --force
 ```
 
-Run **Developer: Reload Window**, open a local `.remarp.md` or presentation marker,
-and choose **Remarp: Open Design Studio** from the Command Palette. Studio requires
+For code-server, use `code-server --install-extension /tmp/remarp-vscode-0.3.0.vsix --force`
+in the server terminal, or **Extensions: Install from VSIX...** in the browser UI.
+
+Run **Developer: Reload Window** after installation and choose **Remarp: Open Design
+Studio** from the Command Palette. Open a local `.remarp.md`, `_presentation.md`, or
+ordinary `.md` with `remarp: true` frontmatter. Studio recognizes the current buffer,
+including unsaved frontmatter. With no suitable active source, it uses the sole open
+Remarp source or asks you to select a file. Studio requires
 VS Code 1.85+, Python 3, workspace trust and a compiler supporting `studio`.
 If automatic discovery selects an older installed plugin, configure:
 
@@ -24,7 +30,7 @@ If automatic discovery selects an older installed plugin, configure:
 }
 ```
 
-This repository does not establish that version 0.2.0 is published on Marketplace.
+This repository does not establish that version 0.3.0 is published on Marketplace.
 Installing the VS Code extension is separate from installing Claude/Codex skills.
 
 ## Design Studio workflow
@@ -46,21 +52,126 @@ Installing the VS Code extension is separate from installing Claude/Codex skills
 - **Resources**: referenced project-local assets are staged with size/count limits.
   Absolute/traversing paths and asset symlinks are rejected. Refresh after changing
   assets; automatic watching is limited to project source/config files.
+  In code-server, the renderer receives a self-contained sandbox document rather
+  than navigating to an internal VS Code resource URL. Local scripts, styles,
+  CSS imports, fonts and images are bundled; runtime Canvas icons and logos use a
+  finite image map. Remote HTTPS assets still require network access. Missing
+  optional local media are reported without preventing the rest of the deck from
+  rendering. Keep referenced assets inside the presentation project.
 
-### AI improvement: manual, reviewable handoff
+### Blank Studio or build errors
 
-1. Select a slide and enter a request; **Copy AI request** copies its source/context.
-2. Run that request in your configured Claude, Codex or other AI session. No
-   provider is automatically invoked and the extension stores no provider key.
-3. Paste replacement slide source into **Selected slide source / AI response**.
-4. **Preview candidate & diff** compiles without modifying the original and opens
-   a read-only source diff. **Apply proposal** commits one revision-checked source
-   edit; **Reject** leaves source untouched.
+**Preview** and **Open Design Studio** are separate commands. Preview does not open
+the editable Studio. Version 0.3.0 fixes two code-server startup failures: host
+messages rejected after VS Code masks `window.parent`, and nested renderer URLs
+that bypass the webview resource service worker. The renderer remains opaque
+(`sandbox="allow-scripts"`); it never receives the VS Code API or host-channel token.
 
-Typing or external source changes expire pending proposals. An outdated draft must
-be reset from current source before it can be proposed again. Alternatively, **Add
-/slide-fix issue** writes `<!-- issue: text -->`; run the skill separately in your AI
-host. Studio does not bypass presentation validation, content review or deployment gates.
+Build failures appear in Studio's status/diagnostics and the **Remarp Studio** Output
+channel, including errors raised before the UI finishes loading. **Reveal in source**
+works even without a successful build. A renderer that does not start within 15
+seconds displays a diagnostic; use **Refresh** to retry. If the compiler reports an
+unknown `studio` command, update the configured compiler path above.
+
+Studio is not a general browser for arbitrary authored applications. Common inline
+interaction handlers are converted to nonce-authorized listeners; nested documents
+(including embedded Archify diagrams),
+dynamic local script/module imports, and arbitrary local fetch requests are not
+bundled. Use the standalone compiled presentation for those browser-only features.
+
+### AI improvement: headless generation with explicit Apply
+
+1. Select a slide, enter an improvement request and choose **Claude**, **Kiro** or
+   **Codex**. Claude is the default. **AI settings** opens VS Code settings filtered
+   to `remarp.ai`; the provider selector is a per-panel choice and does not change
+   the configured default.
+2. Click **Generate with AI**. The extension runs that provider's CLI on the
+   **extension host** (the server for code-server), sending the selected slide and
+   request to the provider. This can consume your provider quota or incur charges.
+   No background generation happens merely by opening Studio or changing settings.
+3. The replacement is compiled in isolation and shown as a **candidate** with a
+   read-only source diff. Inspect the preview, preserved notes, assets and diff.
+4. **Apply proposal** performs one revision-checked edit of the unsaved source;
+   **Reject** leaves source untouched. Save explicitly when satisfied.
+
+**Cancel AI** stops generation. Typing, Refresh, AI configuration changes or closing
+Studio cancels outstanding work. Changed source or revoked workspace trust discards
+late results. Invalid/oversized responses and extra slides are rejected; compiler
+validation still applies. An outdated manual source draft must be reset before
+starting generation. Generation has no automatic retry or provider fallback.
+
+#### Settings and authentication
+
+Install and authenticate the desired CLI **on the code-server host**, using the
+same user as its Extension Host. A browser-side CLI installation is not sufficient.
+The extension does not install CLIs, perform login, or store API keys. Keep keys
+out of VS Code settings and slide source. CLI authentication and approved provider
+environment variables remain under your control. Kiro headless authentication may
+require `KIRO_API_KEY`, depending on CLI version/account; check its authentication
+requirements rather than assuming an interactive session certifies headless access.
+
+Example VS Code user/remote settings:
+
+```json
+{
+  "remarp.ai.provider": "claude",
+  "remarp.ai.timeoutSeconds": 180,
+  "remarp.ai.claude.executable": "claude",
+  "remarp.ai.claude.model": "sonnet",
+  "remarp.ai.claude.effort": "high",
+  "remarp.ai.kiro.executable": "kiro-cli",
+  "remarp.ai.kiro.model": "",
+  "remarp.ai.kiro.effort": "",
+  "remarp.ai.codex.executable": "codex",
+  "remarp.ai.codex.model": "",
+  "remarp.ai.codex.effort": ""
+}
+```
+
+Executable settings are machine-scoped: use a command available on the server's
+PATH or an absolute executable path, not shell arguments or an alias. Model fields
+accept provider-specific IDs/aliases; empty Model/Effort uses that invocation's CLI
+default, not a shared model catalog. Codex deliberately ignores `config.toml`: its
+user-selected defaults, custom provider endpoints and profiles are not inherited.
+Use Remarp model/effort settings and standard Codex authentication for this adapter. Available models and supported effort levels depend on
+your account and CLI. Effort choices: Claude/Kiro `low`, `medium`, `high`, `xhigh`,
+`max`; Codex `minimal`, `low`, `medium`, `high`, `xhigh`. These are selectable values,
+not a guarantee that every model supports them. Timeout is 10–1,800 seconds.
+
+A current CLI supporting the flags below is required; older versions fail visibly
+instead of downgrading permission controls:
+
+| Provider | Headless adapter |
+|----------|------------------|
+| Claude | `--print`, JSON final result, `--safe-mode`, empty `--tools`, strict empty MCP configuration, no session persistence; request on stdin |
+| Kiro | `chat --agent <generated> --no-interactive --output-format stream-json`; generated zero-tool agent with the request as one private resource, no configured MCP/hooks; no private source in argv |
+| Codex | `exec --sandbox read-only --ephemeral --ignore-user-config --ignore-rules`; shell/unified-exec/hooks disabled, web search disabled, final-message file; request on stdin |
+
+Each run uses a private temporary directory, not the presentation project, with
+bounded input/output and process cancellation. Raw CLI diagnostics, credentials and stderr are not logged or shown; validated
+replacement source is shown as the candidate. Diagnostics explain missing executables,
+authentication errors, incompatible options and timeouts. Claude/Codex session
+persistence is disabled; Kiro can retain provider/session history outside the
+scratch directory according to its own settings. Cleanup is best-effort after a
+host crash. On POSIX hosts cancellation kills the process group; Windows cancels
+the direct child only. CLI flags and isolated cwd are **not an OS security sandbox
+for the provider process**: it inherits the server user's authentication and
+permissions. Use only trusted CLI executables and inspect the proposed source.
+
+References: [Codex non-interactive mode](https://developers.openai.com/codex/noninteractive/),
+[Kiro headless mode](https://kiro.dev/docs/cli/headless/), and
+[Kiro agent configuration](https://kiro.dev/docs/custom-agents/configuration-reference/).
+The adapters also use the locally installed CLI's help contract; provider upgrades
+can change options and authentication behavior.
+
+#### Manual fallback
+
+**Copy AI request** still copies selected source/context without calling a provider.
+Run the request in an AI session, paste replacement slide source into **Selected
+slide source / AI response**, then choose **Preview candidate & diff** and **Apply
+proposal** or **Reject**. Alternatively, **Add /slide-fix issue** writes
+`<!-- issue: text -->`; run the skill separately in your AI host. Studio does not
+bypass content review or deployment gates, and Apply is not a content-quality approval.
 
 ## Commands and existing authoring tools
 
@@ -76,6 +187,12 @@ host. Studio does not bypass presentation validation, content review or deployme
 The Explorer outline tracks slide titles/types. IntelliSense and TextMate grammar
 cover directives, colon blocks, fragments, YAML and Canvas DSL. Approximate preview
 supports cursor synchronization (`remarp.scrollSync`); Studio is a separate panel.
+
+Approximate Text Preview keeps the slide's aspect ratio while fitting the available
+pane, without cropping it behind the notes sidebar. It defaults to 16:9, honors
+`ratio: "4:3"`, and gives an explicit `size: 960x720` precedence over `ratio`.
+This sizing does not make the approximate renderer identical to compiled output;
+use Studio or Compiled HTML Preview to verify final layouts.
 
 ## Example
 

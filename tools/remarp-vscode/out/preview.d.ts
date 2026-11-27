@@ -16,6 +16,7 @@ export declare class RemarpPreviewPanel {
     private constructor();
     private _debouncedUpdate;
     private _parseFrontmatter;
+    private _slideDimensions;
     private _parseSlides;
     private _extractTitle;
     private _extractType;

@@ -130,7 +130,9 @@ function stageSnapshot(root, directory, sources) {
 function assetReferences(text) {
     const refs = [];
     const patterns = [/!\[[^\]]*\]\(([^\s)]+)(?:\s+[^)]*)?\)/g, /(?:src|href)\s*=\s*["']([^"']+)["']/g,
-        /url\(\s*["']?([^"')\s]+)["']?\s*\)/g, /^\s*(?:source|logo|logoSrc|logoDark|logoDarkSrc|background|image|@background|@img):\s*["']?([^\s"']+)/gm,
+        /url\(\s*["']?([^"')\s]+)["']?\s*\)/g,
+        // A quoted CSS import rule: the bundler treats every import as required, so it must be staged.
+        /@import\s+["']([^"']+)["']/g, /^\s*(?:source|logo|logoSrc|logoDark|logoDarkSrc|background|image|@background|@img):\s*["']?([^\s"']+)/gm,
         /"(?:spec|src|image|logo)"\s*:\s*"([^"]+)"/g,
         // A Canvas icon whose quoted name holds a slash or a dot is an author path the compiler loads at
         // runtime (drawIcon); a short name is an AWS service icon, not a project path.

@@ -4,6 +4,7 @@ export declare class StudioSession implements vscode.Disposable {
     private extension;
     private entry;
     private compiler;
+    private output?;
     readonly panel: vscode.WebviewPanel;
     private readonly root;
     private readonly temporary;
@@ -20,7 +21,14 @@ export declare class StudioSession implements vscode.Disposable {
     private stages;
     private diffKeys;
     private messages;
-    constructor(extension: vscode.Uri, entry: vscode.TextDocument, compiler: string);
+    private ai?;
+    private aiState?;
+    private readonly rendererNonce;
+    private readonly hostChannel;
+    private viewState?;
+    private statusState?;
+    private errorState?;
+    constructor(extension: vscode.Uri, entry: vscode.TextDocument, compiler: string, output?: vscode.OutputChannel | undefined);
     private isSource;
     private snapshot;
     private unchanged;
@@ -34,5 +42,11 @@ export declare class StudioSession implements vscode.Disposable {
     private apply;
     private showDiff;
     private receive;
+    private previewCandidate;
+    private aiConfig;
+    private postAISettings;
+    private aiStatus;
+    private cancelAI;
+    private beginAI;
     dispose(): void;
 }
