@@ -1,7 +1,7 @@
 # Remarp Slides: VS Code extension
 
 Source-first presentation authoring with syntax highlighting, outline/completions,
-approximate text preview, compiled HTML preview and **Design Studio** (0.2.0).
+approximate text preview, compiled HTML preview and **Design Studio** (0.2.1).
 Remarp remains the source; generated HTML is never an independent editing target.
 
 ## Install and open Studio
@@ -10,11 +10,17 @@ Build/package commands are maintained in [CLAUDE.md](CLAUDE.md). Install the new
 VSIX, not the repository's older `remarp-vscode-0.1.0.vsix`:
 
 ```bash
-code --install-extension /tmp/remarp-vscode-0.2.0.vsix --force
+code --install-extension /tmp/remarp-vscode-0.2.1.vsix --force
 ```
 
-Run **Developer: Reload Window**, open a local `.remarp.md` or presentation marker,
-and choose **Remarp: Open Design Studio** from the Command Palette. Studio requires
+For code-server, use `code-server --install-extension /tmp/remarp-vscode-0.2.1.vsix --force`
+in the server terminal, or **Extensions: Install from VSIX...** in the browser UI.
+
+Run **Developer: Reload Window** after installation and choose **Remarp: Open Design
+Studio** from the Command Palette. Open a local `.remarp.md`, `_presentation.md`, or
+ordinary `.md` with `remarp: true` frontmatter. Studio recognizes the current buffer,
+including unsaved frontmatter. With no suitable active source, it uses the sole open
+Remarp source or asks you to select a file. Studio requires
 VS Code 1.85+, Python 3, workspace trust and a compiler supporting `studio`.
 If automatic discovery selects an older installed plugin, configure:
 
@@ -24,7 +30,7 @@ If automatic discovery selects an older installed plugin, configure:
 }
 ```
 
-This repository does not establish that version 0.2.0 is published on Marketplace.
+This repository does not establish that version 0.2.1 is published on Marketplace.
 Installing the VS Code extension is separate from installing Claude/Codex skills.
 
 ## Design Studio workflow
@@ -46,6 +52,32 @@ Installing the VS Code extension is separate from installing Claude/Codex skills
 - **Resources**: referenced project-local assets are staged with size/count limits.
   Absolute/traversing paths and asset symlinks are rejected. Refresh after changing
   assets; automatic watching is limited to project source/config files.
+  In code-server, the renderer receives a self-contained sandbox document rather
+  than navigating to an internal VS Code resource URL. Local scripts, styles,
+  CSS imports, fonts and images are bundled; runtime Canvas icons and logos use a
+  finite image map. Remote HTTPS assets still require network access. Missing
+  optional local media are reported without preventing the rest of the deck from
+  rendering. Keep referenced assets inside the presentation project.
+
+### Blank Studio or build errors
+
+**Preview** and **Open Design Studio** are separate commands. Preview does not open
+the editable Studio. Version 0.2.1 fixes two code-server startup failures: host
+messages rejected after VS Code masks `window.parent`, and nested renderer URLs
+that bypass the webview resource service worker. The renderer remains opaque
+(`sandbox="allow-scripts"`); it never receives the VS Code API or host-channel token.
+
+Build failures appear in Studio's status/diagnostics and the **Remarp Studio** Output
+channel, including errors raised before the UI finishes loading. **Reveal in source**
+works even without a successful build. A renderer that does not start within 15
+seconds displays a diagnostic; use **Refresh** to retry. If the compiler reports an
+unknown `studio` command, update the configured compiler path above.
+
+Studio is not a general browser for arbitrary authored applications. Common inline
+interaction handlers are converted to nonce-authorized listeners; nested documents
+(including embedded Archify diagrams),
+dynamic local script/module imports, and arbitrary local fetch requests are not
+bundled. Use the standalone compiled presentation for those browser-only features.
 
 ### AI improvement: manual, reviewable handoff
 
@@ -76,6 +108,12 @@ host. Studio does not bypass presentation validation, content review or deployme
 The Explorer outline tracks slide titles/types. IntelliSense and TextMate grammar
 cover directives, colon blocks, fragments, YAML and Canvas DSL. Approximate preview
 supports cursor synchronization (`remarp.scrollSync`); Studio is a separate panel.
+
+Approximate Text Preview keeps the slide's aspect ratio while fitting the available
+pane, without cropping it behind the notes sidebar. It defaults to 16:9, honors
+`ratio: "4:3"`, and gives an explicit `size: 960x720` precedence over `ratio`.
+This sizing does not make the approximate renderer identical to compiled output;
+use Studio or Compiled HTML Preview to verify final layouts.
 
 ## Example
 

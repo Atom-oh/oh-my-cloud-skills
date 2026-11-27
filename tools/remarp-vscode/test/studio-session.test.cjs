@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const Module = require('node:module');
-let root, docs, changes, received, messages, applies, diffs, clipboard, sessions;
+let root, docs, changes, received, messages, applies, diffs, clipboard, sessions, listening, attempts, revealed, panels;
 const disposable = () => ({dispose(){}});
 const uri = file => ({fsPath:file,scheme:'file',toString:()=>`file://${file}`});
 class Range { constructor(start,end){this.start=start;this.end=end;} }
@@ -25,10 +25,13 @@ const vscode = {
             for(const [file,patches]of grouped){const d=docs.get(file);for(const p of patches.sort((a,b)=>b.range.start-a.range.start))d.text=d.text.slice(0,p.range.start)+p.text+d.text.slice(p.range.end);d.version++;d.isDirty=true;changes.forEach(fn=>fn({document:d}));}
             return true;
         }},
-    window:{createWebviewPanel:()=>({dispose(){},onDidDispose:disposable,webview:{html:'',cspSource:'https://resources.example',
+    window:{createWebviewPanel:()=>{const webview={html:'',cspSource:'https://resources.example',
         asWebviewUri:f=>({toString:()=>`https://resources.example${encodeURI(f.fsPath)}`}),
-        onDidReceiveMessage:fn=>{received=fn;return disposable();},postMessage:async m=>{messages.push(m);return true;}}}),
-        showTextDocument:async d=>({document:d,selection:undefined,revealRange(){}})}
+        onDidReceiveMessage:fn=>{received=fn;return disposable();},postMessage:async m=>{attempts.push(m);if(listening)messages.push(m);return listening;}};
+        // Like VS Code, a disposed panel's webview getter throws; tests fire the captured onDidDispose.
+        const panel={disposed:false,lateAccess:0,dispose(){},onDidDispose:fn=>{panel.fireDispose=fn;return disposable();},get webview(){if(panel.disposed){panel.lateAccess++;throw new Error('Webview is disposed');}return webview;}};
+        panels.push(panel);return panel;},
+        showTextDocument:async d=>{revealed.push(d);return {document:d,selection:undefined,revealRange(){}};}}
 };
 const load=Module._load;Module._load=function(name,...args){return name==='vscode'?vscode:load.call(this,name,...args);};
 const {StudioSession}=require('../out/studio');
@@ -36,15 +39,15 @@ Module._load=load;
 const compiler=path.resolve(__dirname,'../../../plugins/aws-content-plugin/skills/reactive-presentation/scripts/remarp_to_slides.py');
 const source='---\nremarp: true\nratio: "16:9"\n---\n@type: cards\n## Compare options\n### Card one\nFirst body\n### Card two\nSecond body\n';
 function makeDoc(file,text){const d={fileName:file,uri:uri(file),text,version:1,isDirty:true,languageId:'remarp',getText(){return this.text;},positionAt:o=>o};docs.set(file,d);return d;}
-async function waitFor(type,after=0){for(let n=0;n<200;n++){const m=messages.slice(after).find(m=>m.type===type);if(m)return m;await new Promise(r=>setTimeout(r,10));}throw new Error(`No ${type}: ${JSON.stringify(messages)}`);}
+async function waitFor(type,after=0){for(let n=0;n<200;n++){const m=messages.slice(after).find(m=>m.type===type);if(m)return m;await new Promise(r=>setTimeout(r,10));}throw new Error(`No ${type}: ${JSON.stringify(messages.map(({frameHtml,...m})=>m))}`);}
 async function open(){const d=makeDoc(path.join(root,'deck.remarp.md'),source);fs.writeFileSync(d.fileName,'OLD DISK SOURCE');const session=new StudioSession(uri(path.resolve(__dirname,'..')),d,compiler);sessions.push(session);return {session,d,built:await waitFor('compiled')};}
 async function send(session,message){received(message);await session.messages;}
-beforeEach(()=>{root=fs.mkdtempSync(path.join(os.tmpdir(),'studio-session-'));docs=new Map();changes=[];messages=[];applies=[];diffs=[];sessions=[];clipboard='';vscode.workspace.isTrusted=true;});
+beforeEach(()=>{root=fs.mkdtempSync(path.join(os.tmpdir(),'studio-session-'));docs=new Map();changes=[];messages=[];applies=[];diffs=[];sessions=[];clipboard='';listening=true;attempts=[];revealed=[];panels=[];vscode.workspace.isTrusted=true;});
 afterEach(async()=>{sessions.forEach(s=>s.dispose());await new Promise(r=>setTimeout(r,20));fs.rmSync(root,{recursive:true,force:true});});
 test('Studio compiles unsaved snapshots without saving or touching published output',async()=>{
     const {d,built}=await open();assert.equal(fs.readFileSync(d.fileName,'utf8'),'OLD DISK SOURCE');
     assert.ok(!fs.existsSync(path.join(root,'slides')));assert.equal(built.manifest.slides[0].title,'Compare options');
-    const frame=fs.readFileSync(decodeURI(built.frameUrl.replace('https://resources.example','')),'utf8');
+    const frame=built.frameHtml;
     assert.match(frame,/Compare options/);assert.doesNotMatch(frame,/acquireVsCodeApi/);
 });
 test('Studio builds when the system temporary directory sits behind a symlink (the macOS default)',async()=>{
@@ -66,11 +69,11 @@ test('stale generation after source typing cannot overwrite the changed document
 });
 test('candidate preview and readonly diff do not mutate source; Apply is one revision-checked edit',async()=>{
     const {session,d,built}=await open(), initial=d.text;
-    await send(session,{type:'propose',generation:built.generation,slide:'s0',value:built.manifest.slides[0].source.replace('First body','AI candidate body')});
+    await send(session,{type:'propose',generation:built.generation,slide:'s0',value:built.manifest.slides[0].source.replace('First body','Candidate body')});
     const candidate=await waitFor('candidate');assert.equal(d.text,initial);assert.equal(applies.length,0);assert.equal(diffs[0][0],'vscode.diff');
-    await send(session,{type:'applyProposal',proposalId:candidate.proposalId});assert.equal(applies.length,1);assert.match(d.text,/AI candidate body/);
+    await send(session,{type:'applyProposal',proposalId:candidate.proposalId});assert.equal(applies.length,1);assert.match(d.text,/Candidate body/);
 });
-test('Reject and an expired AI proposal never modify source',async()=>{
+test('Reject and an expired proposal never modify source',async()=>{
     const {session,d,built}=await open(), initial=d.text;
     await send(session,{type:'propose',generation:built.generation,slide:'s0',value:built.manifest.slides[0].source.replace('First body','Candidate')});
     const candidate=await waitFor('candidate');await send(session,{type:'reject'});assert.equal(d.text,initial);
@@ -87,7 +90,7 @@ test('revoking trust blocks writes even with a current map',async()=>{
 test('failed build retains last good frame and disables writeback',async()=>{
     const {session,d,built}=await open();d.text='---\nremarp: true\n---\n@type: canvas\n## Invalid complex diagram\n:::canvas\n'+Array.from({length:8},(_,i)=>`box n${i} "Node ${i}" at ${i*100},100 size 90,40 color accent`).join('\n')+'\n:::\n';d.version++;
     const from=messages.length;changes.forEach(fn=>fn({document:d}));await waitFor('error',from);
-    assert.equal(messages.filter(m=>m.type==='compiled').length,1);assert.equal(session.current.frameUrl,built.frameUrl);assert.equal(session.ready,false);
+    assert.equal(messages.filter(m=>m.type==='compiled').length,1);assert.equal(session.current.frameHtml,built.frameHtml);assert.equal(session.ready,false);
 });
 test('closing the panel removes isolated output and late writes are ignored',async()=>{
     const {session,built}=await open(), temporary=session.temporary;assert.ok(fs.existsSync(temporary));session.dispose();assert.ok(!fs.existsSync(temporary));
@@ -113,4 +116,60 @@ test('Canvas drag and resize applies two source spans in exactly one WorkspaceEd
     const built=await waitFor('compiled',from);
     await send(session,{type:'edit',generation:built.generation,slide:'s0',node:'s0-canvas-a',operation:'geometry',value:{x:100,y:200,width:160,height:60}});
     assert.equal(applies.length,1);assert.equal(applies[0].edits.length,2);assert.match(d.text,/at 100,200 size 160,60/);
+});
+
+async function waitUntil(predicate) {
+    for(let n=0;n<200;n++){if(predicate())return;await new Promise(resolve=>setTimeout(resolve,10));}
+    throw new Error('Timed out waiting for session state');
+}
+test('a startup failure lost before shell readiness is replayed with diagnostics',async()=>{
+    listening=false;
+    const doc=makeDoc(path.join(root,'deck.md'),source);fs.writeFileSync(doc.fileName,'OLD DISK SOURCE');
+    const log=[],session=new StudioSession(uri(path.resolve(__dirname,'..')),doc,path.join(root,'missing-compiler.py'),{appendLine:line=>log.push(line)});sessions.push(session);
+    await waitUntil(()=>attempts.some(m=>m.type==='error'));
+    assert.deepEqual(messages,[]);assert.match(log.join('\n'),/Studio compile failed/);
+    listening=true;await send(session,{type:'ready'});
+    assert.equal(messages.at(-1).type,'error');assert.equal(messages.at(-1).ready,false);
+    assert.equal(messages.at(-1).status,'Studio could not build this source');
+    assert.match(messages.at(-1).message,/Studio compile failed/);
+    assert.equal(messages.filter(m=>m.type==='compiled').length,0);
+});
+test('a successful build lost before shell readiness is replayed',async()=>{
+    listening=false;
+    const doc=makeDoc(path.join(root,'deck.md'),source);fs.writeFileSync(doc.fileName,'OLD DISK SOURCE');
+    const session=new StudioSession(uri(path.resolve(__dirname,'..')),doc,compiler);sessions.push(session);
+    await waitUntil(()=>attempts.some(m=>m.type==='compiled'));
+    assert.deepEqual(messages,[]);listening=true;await send(session,{type:'ready'});
+    assert.equal(messages.at(-1).type,'compiled');assert.equal(messages.at(-1).ready,true);
+    assert.equal(messages.at(-1).manifest.slides[0].title,'Compare options');
+});
+test('ready replays building status and entry source is revealable before a successful map',async()=>{
+    const doc=makeDoc(path.join(root,'deck.md'),source);fs.writeFileSync(doc.fileName,'OLD DISK SOURCE');
+    const session=new StudioSession(uri(path.resolve(__dirname,'..')),doc,compiler);sessions.push(session);
+    messages=[];await send(session,{type:'ready'});
+    assert.equal(messages.at(-1).type,'status');assert.equal(messages.at(-1).ready,false);
+    await send(session,{type:'reveal',file:'/etc/passwd',slide:'not-a-slide'});
+    assert.deepEqual(revealed,[doc]);assert.equal(applies.length,0);
+});
+test('a failed rebuild replays both the last good frame and stale error without enabling edits',async()=>{
+    const {session,built}=await open();
+    session.ready=false;session.post({type:'status',ready:false,message:'Building — previous preview is stale'});
+    session.error(new Error('Broken source'));
+    messages=[];await send(session,{type:'ready'});
+    assert.deepEqual(messages.map(m=>m.type),['compiled','status','error']);
+    assert.ok(messages.every(m=>m.ready===false));assert.equal(messages.find(m=>m.type==='compiled').frameHtml,built.frameHtml);
+    assert.match(messages.at(-1).status,/previous preview is stale/);
+});
+test('candidate preview state survives a repeat ready handshake',async()=>{
+    const {session,built}=await open();
+    await send(session,{type:'propose',generation:built.generation,slide:'s0',value:built.manifest.slides[0].source.replace('First body','Candidate')});
+    const candidate=await waitFor('candidate');messages=[];await send(session,{type:'ready'});
+    assert.equal(messages.at(-1).type,'candidate');assert.equal(messages.at(-1).proposalId,candidate.proposalId);assert.equal(messages.at(-1).ready,false);
+});
+test('VS Code closing the tab cleans up without touching the disposed webview',async()=>{
+    const {session}=await open(),temporary=session.temporary,panel=panels.at(-1);
+    assert.ok(fs.existsSync(temporary));
+    const sent=attempts.length;panel.disposed=true;assert.doesNotThrow(()=>panel.fireDispose());
+    await waitUntil(()=>!fs.existsSync(temporary));
+    assert.equal(panel.lateAccess,0);assert.equal(attempts.length,sent);
 });

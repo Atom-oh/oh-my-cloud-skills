@@ -24,7 +24,7 @@ output (normally `slides/default.html`);
 rerun after changes. Studio uses isolated temporary output and never saves source
 or replaces those exports. Execution requires workspace trust.
 
-## Studio contract (0.2.0)
+## Studio contract (0.2.1)
 
 `remarp_to_slides.py studio PATH --output DIR` runs canonical validation/build and
 emits `studio.json` version 1 beside canonical `index.html` (project) or combined
@@ -41,7 +41,7 @@ retained; failure paths prune old stages and disposal removes temporary output.
 Source/config changes rebuild automatically; asset changes require Refresh.
 
 A nonce-controlled shell owns the VS Code API. Canonical authored code executes
-in a separate URL iframe with `sandbox="allow-scripts"`, never `allow-same-origin`.
+in a self-contained `srcdoc` renderer document (local scripts, styles and assets bundled; no internal resource URL navigation) with `sandbox="allow-scripts"`, never `allow-same-origin`.
 Renderer observations may update geometry/navigation only; even edit-looking
 messages cannot be forwarded as source writes. The host resolves capabilities,
 serializes received intents and checks generation, source hashes/document versions

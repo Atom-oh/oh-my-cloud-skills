@@ -33,9 +33,9 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.isRemarpDocument = void 0;
 exports.isRemarpHtml = isRemarpHtml;
 exports.findRemarpSource = findRemarpSource;
-exports.isRemarpDocument = isRemarpDocument;
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
@@ -48,6 +48,9 @@ const child_process_1 = require("child_process");
 const compiledPreview_1 = require("./compiledPreview");
 const source_1 = require("./source");
 const studio_1 = require("./studio");
+const studioSource_1 = require("./studioSource");
+var studioSource_2 = require("./studioSource");
+Object.defineProperty(exports, "isRemarpDocument", { enumerable: true, get: function () { return studioSource_2.isRemarpDocument; } });
 const presentationFiles = ['_presentation.md', '_presentation.remarp.md', 'remarp.yaml', 'remarp.yml'];
 let savingForBuild = false;
 let buildQueue = Promise.resolve();
@@ -87,31 +90,10 @@ function findRemarpSource(document) {
     return null;
 }
 /**
- * Check if a document is a remarp file by looking for `remarp: true` in frontmatter
- * or checking if it has .remarp.md extension
- */
-function isRemarpDocument(document) {
-    // Check file extension first
-    if (document.fileName.endsWith('.remarp.md') || path.basename(document.fileName) === '_presentation.md') {
-        return true;
-    }
-    // Check for remarp: true in frontmatter
-    const text = document.getText();
-    const frontmatterMatch = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-    if (frontmatterMatch) {
-        const frontmatter = frontmatterMatch[1];
-        // Check for remarp: true (with optional quotes)
-        if (/^remarp:\s*(?:true|"true"|'true')\s*(?:#.*)?$/m.test(frontmatter)) {
-            return true;
-        }
-    }
-    return false;
-}
-/**
  * Set the language mode to remarp for markdown files with remarp: true
  */
 async function setRemarpLanguageIfNeeded(document) {
-    if (document.languageId === 'markdown' && isRemarpDocument(document)) {
+    if (document.languageId === 'markdown' && (0, studioSource_1.isRemarpDocument)(document)) {
         await vscode.languages.setTextDocumentLanguage(document, 'remarp');
     }
 }
@@ -133,7 +115,7 @@ function activate(context) {
     // Register the preview panel command
     context.subscriptions.push(vscode.commands.registerCommand('remarp.preview', () => {
         const editor = vscode.window.activeTextEditor;
-        if (editor && (editor.document.languageId === 'remarp' || isRemarpDocument(editor.document))) {
+        if (editor && (editor.document.languageId === 'remarp' || (0, studioSource_1.isRemarpDocument)(editor.document))) {
             preview_1.RemarpPreviewPanel.createOrShow(context.extensionUri, editor.document);
         }
         else {
@@ -159,7 +141,7 @@ function activate(context) {
     // Register build command
     context.subscriptions.push(vscode.commands.registerCommand('remarp.build', async () => {
         const editor = vscode.window.activeTextEditor;
-        if (editor && (editor.document.languageId === 'remarp' || isRemarpDocument(editor.document))) {
+        if (editor && (editor.document.languageId === 'remarp' || (0, studioSource_1.isRemarpDocument)(editor.document))) {
             buildOutput.show(true);
             await buildRemarpFile(editor.document, buildOutput);
         }
@@ -169,7 +151,7 @@ function activate(context) {
     }));
     context.subscriptions.push(vscode.commands.registerCommand('remarp.previewCompiled', async () => {
         const document = vscode.window.activeTextEditor?.document;
-        if (!document || !(document.languageId === 'remarp' || isRemarpDocument(document))) {
+        if (!document || !(document.languageId === 'remarp' || (0, studioSource_1.isRemarpDocument)(document))) {
             vscode.window.showWarningMessage('Open Remarp source to build and preview.');
             return;
         }
@@ -201,7 +183,7 @@ function activate(context) {
     context.subscriptions.push(vscode.commands.registerCommand('remarp.submitIssues', () => {
         const previewDoc = preview_1.RemarpPreviewPanel.currentPanel?.document;
         const editor = vscode.window.activeTextEditor;
-        const editorDoc = editor && (editor.document.languageId === 'remarp' || isRemarpDocument(editor.document)) ? editor.document : undefined;
+        const editorDoc = editor && (editor.document.languageId === 'remarp' || (0, studioSource_1.isRemarpDocument)(editor.document)) ? editor.document : undefined;
         const targetDoc = previewDoc || editorDoc;
         if (targetDoc) {
             submitIssuesToClaude(targetDoc, buildOutput);
@@ -212,7 +194,7 @@ function activate(context) {
     }));
     // Auto-build on save
     context.subscriptions.push(vscode.workspace.onDidSaveTextDocument((document) => {
-        if (!savingForBuild && vscode.workspace.isTrusted && (document.languageId === 'remarp' || isRemarpDocument(document))) {
+        if (!savingForBuild && vscode.workspace.isTrusted && (document.languageId === 'remarp' || (0, studioSource_1.isRemarpDocument)(document))) {
             buildRemarpFile(document, buildOutput);
         }
     }));
@@ -377,7 +359,7 @@ function buildRemarpFile(document, outputChannel) {
                 presentationFiles.includes(path.basename(document.fileName));
             savingForBuild = true;
             try {
-                const sources = new Set([document, ...vscode.workspace.textDocuments.filter(doc => isProject && path.dirname(doc.fileName) === fileDir && isRemarpDocument(doc))]);
+                const sources = new Set([document, ...vscode.workspace.textDocuments.filter(doc => isProject && path.dirname(doc.fileName) === fileDir && (0, studioSource_1.isRemarpDocument)(doc))]);
                 for (const source of sources) {
                     if (source.isDirty && !await source.save()) {
                         throw new Error(`Could not save ${source.fileName}`);

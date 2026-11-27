@@ -33,11 +33,16 @@ First body
 ### Second option
 Second body
 :::html
+<button id="inline-action" onclick="this.dataset.clicked='yes'; return false">Inline interaction</button>
+<link rel="stylesheet" href="assets/probe.css">
+<span class="asset-probe" hidden></span>
 <div hidden><script>
 parent.postMessage({type:'edit',operation:'source',value:'FORGED'},'*');
 parent.postMessage({type:'compiled',manifest:{version:1,slides:[]}},'*');
 window.escapeSucceeded=false;
 try { parent.document.getElementById('proposal').value='FORGED'; window.escapeSucceeded=true; } catch(e) {}
+window.dynamicTestImage = new Image();
+window.dynamicTestImage.src = './assets/nested/check.svg';
 </script></div>
 :::
 ---
@@ -80,6 +85,10 @@ class StudioBrowserTests(unittest.TestCase):
             directory = cls.root / name
             snapshot, output = directory / 'source', directory / 'output'
             snapshot.mkdir(parents=True)
+            (snapshot / 'assets/nested').mkdir(parents=True)
+            (snapshot / 'assets/nested/check.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="red"/></svg>')
+            (snapshot / 'assets/probe.css').write_text('@import "nested/probe.css";')
+            (snapshot / 'assets/nested/probe.css').write_text('.asset-probe { background-image: url(check.svg); color: rgb(12, 34, 56); }')
             (snapshot / 'deck.remarp.md').write_text(source)
             subprocess.run(['python3', str(COMPILER), 'studio', str(snapshot / 'deck.remarp.md'), '--output', str(output)], check=True, capture_output=True)
             shutil.copytree(output / 'common', snapshot / 'common', dirs_exist_ok=True)
@@ -92,14 +101,15 @@ const vscode={Uri:{file:uri,joinPath:(base,...parts)=>uri(path.join(base.fsPath,
 const load=Module._load;Module._load=function(name,...args){return name==='vscode'?vscode:load.call(this,name,...args);};
 const renderer=require(path.join(p.extension,'out/studioRenderer.js'));
 const webview={cspSource:p.base,asWebviewUri:file=>uri(file.fsPath)};
+const nonce='studio-browser-fixture-nonce';
+const hostChannel='studio-browser-host-channel';
 const data=[];
 for(const b of p.builds){
  const html=fs.readFileSync(path.join(b.output,'studio.html'),'utf8');
- const framed=renderer.studioFrame(webview,uri(p.extension),html,b.output,b.snapshot,b.snapshot,b.manifest,1);
- const file=path.join(b.output,'frame.html');fs.writeFileSync(file,framed);data.push({manifest:b.manifest,frameUrl:uri(file).toString(),generation:1,ready:true});
+ const frameHtml=renderer.studioFrame(webview,uri(p.extension),html,b.output,b.snapshot,b.snapshot,b.manifest,1,nonce);
+ data.push({manifest:b.manifest,frameHtml,generation:1,ready:true,studioChannel:hostChannel});
 }
-let shell=renderer.studioShell(webview,uri(p.extension));
-const nonce=shell.match(/<script nonce="([^"]+)"/)[1];
+let shell=renderer.studioShell(webview,uri(p.extension),nonce,hostChannel);
 shell=shell.replace('<body>',`<body><script nonce="${nonce}">window.requests=[];window.acquireVsCodeApi=()=>({getState:()=>null,setState(){},postMessage(m){window.requests.push(m)}});</script>`);
 const file=path.join(p.root,'shell.html');fs.writeFileSync(file,shell);process.stdout.write(JSON.stringify({data,url:uri(file).toString()}));
 '''
@@ -128,13 +138,62 @@ const file=path.join(p.root,'shell.html');fs.writeFileSync(file,shell);process.s
         self.page.wait_for_function("() => document.querySelectorAll('#overlay .hit').length >= 3")
 
     def publish(self, kind, data):
-        self.page.evaluate('(data)=>window.postMessage(data,"*")', dict(data, type=kind))
+        self.page.evaluate('(data)=>window.postMessage(data,"*")', dict(data, type=kind, studioChannel='studio-browser-host-channel'))
 
     def renderer(self):
-        return next(frame for frame in self.page.frames if frame.url.startswith(self.fixture['data'][0]['frameUrl']) and 'studioThumbnail' not in frame.url)
+        return self.page.locator('#preview').element_handle().content_frame()
 
     def requests(self, kind):
         return self.page.evaluate('(kind)=>window.requests.filter(m=>m.type===kind)', kind)
+
+    def test_candidate_controls_apply_only_on_explicit_request(self):
+        self.publish('candidate', dict(self.fixture['data'][1], proposalId='candidate-fixture', ready=False))
+        self.page.wait_for_function("() => document.querySelector('#status').textContent === 'Candidate — Apply or Reject'")
+        self.assertTrue(self.page.locator('#candidate').is_visible())
+        self.assertFalse(self.requests('applyProposal'))
+        self.page.locator('#apply').click()
+        self.assertEqual(self.requests('applyProposal')[-1]['proposalId'], 'candidate-fixture')
+        self.assertEqual(self.errors, [])
+
+    def test_authored_renderer_cannot_forge_host_commands(self):
+        self.renderer().evaluate("""() => {
+            parent.postMessage({type:'propose',value:'FORGED'}, '*');
+            parent.postMessage({type:'applyProposal',proposalId:'FORGED'}, '*');
+            parent.postMessage({type:'status',ready:true,message:'FORGED'}, '*');
+        }""")
+        self.page.wait_for_timeout(150)
+        self.assertFalse(self.requests('propose'))
+        self.assertFalse(self.requests('applyProposal'))
+        self.assertNotEqual(self.page.locator('#status').inner_text(), 'FORGED')
+        self.assertEqual(self.errors, [])
+
+    def test_initial_compile_error_is_visible_without_a_map_and_source_remains_available(self):
+        self.page.goto(self.fixture['url'])  # Fresh shell: no compiled map was delivered.
+        self.publish('status', {'ready': False, 'message': 'Building — previous preview is stale'})
+        self.publish('error', {'ready': False, 'status': 'Studio could not build this source', 'message': 'Studio compile failed. Test compiler unavailable.'})
+        self.page.wait_for_function("() => document.querySelector('#status').textContent === 'Studio could not build this source'")
+        self.assertTrue(self.page.locator('#diagnostics').is_visible())
+        self.assertIn('Test compiler unavailable', self.page.locator('#diagnostics').inner_text())
+        self.assertEqual(self.page.locator('#slides .slide-item').count(), 0)
+        self.assertTrue(self.page.locator('#propose').is_disabled())
+        self.assertTrue(self.page.locator('#undo').is_disabled())
+        self.assertTrue(self.page.locator('#source').is_enabled())
+        self.page.locator('#source').click()
+        self.assertEqual(len(self.requests('reveal')), 1)
+        self.assertEqual(self.errors, [])
+
+    def test_failed_rebuild_keeps_existing_renderer_visible_and_editing_disabled(self):
+        before = self.page.locator('#preview').get_attribute('srcdoc')
+        self.publish('status', {'ready': False, 'message': 'Building — previous preview is stale'})
+        self.publish('error', {'ready': False, 'status': 'Build failed — previous preview is stale', 'message': 'Invalid source: test failure'})
+        self.page.wait_for_function("() => document.querySelector('#status').textContent === 'Build failed — previous preview is stale'")
+        self.assertEqual(self.page.locator('#preview').get_attribute('srcdoc'), before)
+        self.assertEqual(self.page.locator('#slides .slide-item').count(), 2)
+        self.assertTrue(self.page.locator('#diagnostics').is_visible())
+        self.assertTrue(self.page.locator('#undo').is_disabled())
+        self.assertTrue(self.page.locator('#propose').is_disabled())
+        self.assertTrue(self.page.locator('#source').is_enabled())
+        self.assertEqual(self.errors, [])
 
     def test_real_render_thumbnails_and_isolation(self):
         self.assertEqual(self.page.locator('#slides .slide-item').count(), 2)
@@ -194,6 +253,32 @@ const file=path.join(p.root,'shell.html');fs.writeFileSync(file,shell);process.s
         self.renderer().wait_for_function("() => document.querySelectorAll('.slide-deck > .slide')[1].__canvasStep('next') === 1", timeout=3000)
         self.assertEqual(self.errors, [])
 
+    def test_fit_keeps_full_sixteen_by_nine_canvas_after_pane_resize(self):
+        self.page.locator('#zoom').select_option('fit')
+        for width, height in [(1440, 1000), (900, 700), (500, 900), (1600, 550)]:
+            with self.subTest(width=width, height=height):
+                self.page.set_viewport_size({'width': width, 'height': height})
+                self.page.wait_for_function("""() => {
+                    const stage = document.querySelector('#stage').getBoundingClientRect();
+                    const element = document.querySelector('#viewport');
+                    const viewport = element.getBoundingClientRect();
+                    const frame = document.querySelector('#preview');
+                    const fit = Math.min((element.clientWidth - 44) / frame.offsetWidth,
+                        (element.clientHeight - 44) / frame.offsetHeight);
+                    return stage.width > 0 && stage.left >= viewport.left && stage.right <= viewport.right
+                        && stage.top >= viewport.top && stage.bottom <= viewport.bottom
+                        && Math.abs(stage.width - frame.offsetWidth * fit) < 1
+                        && Math.abs(stage.height - frame.offsetHeight * fit) < 1;
+                }""")
+                stage, frame = self.page.evaluate("""() => ['#stage', '#preview'].map(selector => {
+                    const rect = document.querySelector(selector).getBoundingClientRect();
+                    return {width: rect.width, height: rect.height};
+                })""")
+                self.assertAlmostEqual(stage['width'] / stage['height'], 16 / 9, delta=0.002)
+                self.assertAlmostEqual(frame['width'], stage['width'], delta=1)
+                self.assertAlmostEqual(frame['height'], stage['height'], delta=1)
+        self.assertEqual(self.errors, [])
+
     def test_candidate_diff_apply_reject_and_stale_draft(self):
         self.page.locator('summary').click()
         text = self.fixture['data'][0]['manifest']['slides'][0]['source'].replace('First body', 'Revised body')
@@ -250,6 +335,9 @@ const file=path.join(p.root,'shell.html');fs.writeFileSync(file,shell);process.s
         page.set_default_timeout(8000)
         page.goto(f"{self.base}/files{quote(str(outer))}")
         page.wait_for_function("() => { const f = document.getElementById('shell'); return f.contentDocument && f.contentDocument.readyState === 'complete' && !!f.contentDocument.getElementById('slides'); }")
+        # acquireVsCodeApi's real injected shim masks parent/top. The old
+        # event.source===window.parent guard therefore rejected actual delivery.
+        page.evaluate("() => { const w=document.getElementById('shell').contentWindow; w.parent=w; w.top=w; }")
         return page
 
     def test_host_messages_delivered_through_the_parent_frame_reach_the_shell(self):
@@ -262,7 +350,7 @@ const file=path.join(p.root,'shell.html');fs.writeFileSync(file,shell);process.s
     def test_a_message_from_a_nested_preview_frame_is_not_a_host_message(self):
         # An authored island can open a nested frame in the sandboxed preview and post to the shell. That
         # frame is neither the shell's own window nor its parent, so the message must be ignored.
-        forged = {'type': 'compiled', 'generation': 99, 'frameUrl': 'about:blank',
+        forged = {'type': 'compiled', 'generation': 99, 'frameHtml': '<p>Forged</p>',
                   'manifest': {'version': 1, 'slides': [{'file': 'x', 'title': 'Forged', 'source': 'forged', 'nodes': []}]}}
         self.renderer().evaluate("""(data) => { const f = document.createElement('iframe');
             f.srcdoc = '<script>parent.parent.postMessage(' + JSON.stringify(data) + ',"*")<\\/script>'; document.body.append(f); }""", forged)
@@ -270,6 +358,51 @@ const file=path.join(p.root,'shell.html');fs.writeFileSync(file,shell);process.s
         self.assertEqual(self.page.locator('#slides .slide-item').count(), 2)
         self.assertEqual(self.requests('edit'), [])
         self.assertEqual(self.errors, [])
+
+    def test_renderer_is_self_contained_without_resource_navigation(self):
+        # Unlike an ordinary localhost iframe, srcdoc works when nested document
+        # navigation cannot reach VS Code's service worker. No deck asset may
+        # depend on the fixture's substitute asWebviewUri endpoint.
+        self.assertEqual(self.renderer().url.split('#')[0], 'about:srcdoc')
+        self.assertEqual(self.page.locator('#preview').get_attribute('sandbox'), 'allow-scripts')
+        self.assertEqual(self.renderer().evaluate('typeof acquireVsCodeApi'), 'undefined')
+        self.assertFalse(self.renderer().evaluate('window.escapeSucceeded'))
+        self.assertNotIn('/files', self.page.locator('#preview').get_attribute('srcdoc'))
+        for frame in self.page.frames:
+            if frame.name.startswith('remarp-studio-thumbnail:'):
+                frame.wait_for_function("() => document.querySelector('.slide.active')")
+                self.assertEqual(frame.evaluate("Array.from(document.querySelectorAll('.slide')).findIndex(s=>s.classList.contains('active'))"), int(frame.name.split(':')[1]))
+
+    def test_renderer_failure_is_visible_and_cannot_call_host_api(self):
+        self.renderer().evaluate("() => parent.postMessage({type:'studio-render-error',generation:1,message:'Fixture renderer failed'},'*')")
+        self.page.wait_for_function("() => document.querySelector('#status').textContent.includes('Renderer failed')")
+        self.assertIn('Fixture renderer failed', self.page.locator('#diagnostics').inner_text())
+        self.assertTrue(self.page.locator('#issue').is_disabled())
+        self.assertFalse(self.page.locator('#source').is_disabled())
+        self.assertEqual(self.requests('edit'), [])
+
+    def test_bundled_runtime_images_css_imports_and_authored_interaction(self):
+        frame = self.renderer()
+        frame.wait_for_function('() => window.dynamicTestImage.complete && window.dynamicTestImage.naturalWidth === 8')
+        self.assertTrue(frame.evaluate('window.dynamicTestImage.src.startsWith("data:image/svg+xml;")'))
+        frame.wait_for_function("() => getComputedStyle(document.querySelector('.asset-probe')).color === 'rgb(12, 34, 56)'")
+        self.assertIn('data:image/svg+xml;', frame.locator('.asset-probe').first.evaluate('(e)=>getComputedStyle(e).backgroundImage'))
+        self.page.locator('#play').click()
+        action = frame.locator('.slide.active #inline-action')
+        action.click()
+        self.assertEqual(action.get_attribute('data-clicked'), 'yes')
+        self.assertIsNone(action.get_attribute('onclick'))
+        self.assertEqual(self.errors, [])
+
+    def test_host_channel_required_even_with_parent_masked(self):
+        page = self.host_page()
+        shell = page.frame_locator('#shell')
+        forged = dict(self.fixture['data'][0], type='compiled', studioChannel='wrong-channel')
+        page.evaluate('(data)=>document.getElementById("shell").contentWindow.postMessage(data,"*")', forged)
+        page.wait_for_timeout(150)
+        self.assertEqual(shell.locator('#slides .slide-item').count(), 0)
+        self.assertNotIn('studio-browser-host-channel', self.page.locator('#preview').get_attribute('srcdoc'))
+        self.assertEqual(self.page.locator('script[data-studio-channel]').count(), 0)
 
 
 if __name__ == '__main__':
