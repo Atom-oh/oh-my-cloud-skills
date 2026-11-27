@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const Module = require('node:module');
 let configValues = {};
-let root, docs, changes, received, messages, applies, diffs, clipboard, sessions, listening, attempts, revealed;
+let root, docs, changes, received, messages, applies, diffs, clipboard, sessions, listening, attempts, revealed, panels;
 const disposable = () => ({dispose(){}});
 const uri = file => ({fsPath:file,scheme:'file',toString:()=>`file://${file}`});
 class Range { constructor(start,end){this.start=start;this.end=end;} }
@@ -26,9 +26,12 @@ const vscode = {
             for(const [file,patches]of grouped){const d=docs.get(file);for(const p of patches.sort((a,b)=>b.range.start-a.range.start))d.text=d.text.slice(0,p.range.start)+p.text+d.text.slice(p.range.end);d.version++;d.isDirty=true;changes.forEach(fn=>fn({document:d}));}
             return true;
         }},
-    window:{createWebviewPanel:()=>({dispose(){},onDidDispose:disposable,webview:{html:'',cspSource:'https://resources.example',
+    window:{createWebviewPanel:()=>{const webview={html:'',cspSource:'https://resources.example',
         asWebviewUri:f=>({toString:()=>`https://resources.example${encodeURI(f.fsPath)}`}),
-        onDidReceiveMessage:fn=>{received=fn;return disposable();},postMessage:async m=>{attempts.push(m);if(listening)messages.push(m);return listening;}}}),
+        onDidReceiveMessage:fn=>{received=fn;return disposable();},postMessage:async m=>{attempts.push(m);if(listening)messages.push(m);return listening;}};
+        // Like VS Code, a disposed panel's webview getter throws; tests fire the captured onDidDispose.
+        const panel={disposed:false,lateAccess:0,dispose(){},onDidDispose:fn=>{panel.fireDispose=fn;return disposable();},get webview(){if(panel.disposed){panel.lateAccess++;throw new Error('Webview is disposed');}return webview;}};
+        panels.push(panel);return panel;},
         showTextDocument:async d=>{revealed.push(d);return {document:d,selection:undefined,revealRange(){}};}}
 };
 const load=Module._load;Module._load=function(name,...args){return name==='vscode'?vscode:load.call(this,name,...args);};
@@ -40,7 +43,7 @@ function makeDoc(file,text){const d={fileName:file,uri:uri(file),text,version:1,
 async function waitFor(type,after=0){for(let n=0;n<200;n++){const m=messages.slice(after).find(m=>m.type===type);if(m)return m;await new Promise(r=>setTimeout(r,10));}throw new Error(`No ${type}: ${JSON.stringify(messages.map(({frameHtml,...m})=>m))}`);}
 async function open(){const d=makeDoc(path.join(root,'deck.remarp.md'),source);fs.writeFileSync(d.fileName,'OLD DISK SOURCE');const session=new StudioSession(uri(path.resolve(__dirname,'..')),d,compiler);sessions.push(session);return {session,d,built:await waitFor('compiled')};}
 async function send(session,message){received(message);await session.messages;}
-beforeEach(()=>{configValues={};root=fs.mkdtempSync(path.join(os.tmpdir(),'studio-session-'));docs=new Map();changes=[];messages=[];applies=[];diffs=[];sessions=[];clipboard='';listening=true;attempts=[];revealed=[];vscode.workspace.isTrusted=true;});
+beforeEach(()=>{configValues={};root=fs.mkdtempSync(path.join(os.tmpdir(),'studio-session-'));docs=new Map();changes=[];messages=[];applies=[];diffs=[];sessions=[];clipboard='';listening=true;attempts=[];revealed=[];panels=[];vscode.workspace.isTrusted=true;});
 afterEach(async()=>{sessions.forEach(s=>s.dispose());await new Promise(r=>setTimeout(r,20));fs.rmSync(root,{recursive:true,force:true});});
 test('Studio compiles unsaved snapshots without saving or touching published output',async()=>{
     const {d,built}=await open();assert.equal(fs.readFileSync(d.fileName,'utf8'),'OLD DISK SOURCE');
@@ -203,6 +206,13 @@ test('closing a Studio panel cancels headless work and ignores late completion',
     const {session,d,built}=await open(),initial=d.text;fakeAI(300);
     await send(session,{type:'generateAI',generation:built.generation,slide:'s0',provider:'claude',prompt:'Edit'});session.dispose();await new Promise(r=>setTimeout(r,450));
     assert.equal(session.ai,undefined);assert.equal(d.text,initial);assert.ok(!messages.some(m=>m.type==='candidate'));
+});
+test('VS Code closing the tab during headless work cleans up without touching the disposed webview',async()=>{
+    const {session,built}=await open(),temporary=session.temporary,panel=panels.at(-1);fakeAI(300);
+    await send(session,{type:'generateAI',generation:built.generation,slide:'s0',provider:'claude',prompt:'Edit'});assert.ok(session.ai);
+    const sent=attempts.length;panel.disposed=true;assert.doesNotThrow(()=>panel.fireDispose());
+    await waitUntil(()=>!fs.existsSync(temporary));await new Promise(r=>setTimeout(r,450));
+    assert.equal(session.ai,undefined);assert.equal(panel.lateAccess,0);assert.equal(attempts.length,sent);
 });
 test('headless settings expose model and effort, default to Claude, and are accessible before rendering',async()=>{
     const {session}=await open();configValues['claude.model']='sonnet';configValues['claude.effort']='high';

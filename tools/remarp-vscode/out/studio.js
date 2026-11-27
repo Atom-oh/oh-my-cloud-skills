@@ -531,8 +531,12 @@ class StudioSession {
         if (this.disposed) {
             return;
         }
-        this.cancelAI();
+        // Mark disposed first and cancel without posting: when VS Code fires
+        // onDidDispose the webview is already gone and touching it throws.
         this.disposed = true;
+        const job = this.ai;
+        this.ai = undefined;
+        job?.cancel();
         if (this.timer) {
             clearTimeout(this.timer);
         }
@@ -542,7 +546,10 @@ class StudioSession {
         if (!this.building) {
             fs.rmSync(this.temporary, { recursive: true, force: true });
         }
-        this.panel.dispose();
+        try {
+            this.panel.dispose();
+        }
+        catch { /* panel already disposed by VS Code */ }
     }
 }
 exports.StudioSession = StudioSession;

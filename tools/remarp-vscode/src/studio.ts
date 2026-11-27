@@ -362,13 +362,15 @@ export class StudioSession implements vscode.Disposable {
     }
     dispose(): void {
         if (this.disposed) { return; }
-        this.cancelAI();
+        // Mark disposed first and cancel without posting: when VS Code fires
+        // onDidDispose the webview is already gone and touching it throws.
         this.disposed = true;
+        const job = this.ai; this.ai = undefined; job?.cancel();
         if (this.timer) { clearTimeout(this.timer); }
         this.process?.kill();
         this.disposables.forEach(d => d.dispose());
         this.diffKeys.forEach(key => diffDocuments.delete(key));
         if (!this.building) { fs.rmSync(this.temporary, { recursive: true, force: true }); }
-        this.panel.dispose();
+        try { this.panel.dispose(); } catch { /* panel already disposed by VS Code */ }
     }
 }
