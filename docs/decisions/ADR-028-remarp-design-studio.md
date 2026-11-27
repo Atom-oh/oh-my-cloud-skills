@@ -23,9 +23,11 @@ renderer reports geometry, never source-write authority. The extension resolves
 owners and allowlisted capabilities and rejects stale maps or proposals. Validation
 failures retain the last good preview but disable visual writes.
 
-Offer selected-slide AI requests as an explicit clipboard handoff. Compile returned
-source as a candidate and show a read-only source diff before Apply/Reject. Do not
-claim automatic provider execution. Unknown blocks remain source-editable.
+Offer selected-slide AI requests only as an explicit user-triggered action: either a
+clipboard handoff or headless generation. Always compile returned source as a
+candidate and show a read-only source diff before Apply/Reject. The extension never
+calls a provider automatically, neither on opening Studio nor on edits. Unknown
+blocks remain source-editable.
 
 ## Consequences
 
@@ -33,7 +35,15 @@ Mapped headings/cards, selected styles/directives and simple Canvas geometry gai
 visual editing without a general layout domain-specific language (DSL). Existing source blocks, notes and
 comments remain authoritative. Published builds and ordinary exports receive no
 Studio metadata. Stable identity reconciliation, arbitrary DOM editing, standalone
-browser hosting and automatic AI adapters remain outside this MVP.
+browser hosting and automatic AI adapters (unattended provider calls) remain outside
+this MVP.
+
+## Amendment (2026-11-27)
+
+Remarp extension 0.3.0 amends the original clipboard-only AI scope to allow explicit,
+user-initiated headless generation through the same candidate, diff and Apply/Reject
+path. "Automatic AI adapters" in the consequences means unattended or automatic
+provider calls; those remain out of scope.
 
 ## References
 

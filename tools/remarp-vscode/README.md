@@ -62,7 +62,7 @@ Installing the VS Code extension is separate from installing Claude/Codex skills
 ### Blank Studio or build errors
 
 **Preview** and **Open Design Studio** are separate commands. Preview does not open
-the editable Studio. Since version 0.2.1, two code-server startup failures are fixed: host
+the editable Studio. Version 0.3.0 fixes two code-server startup failures: host
 messages rejected after VS Code masks `window.parent`, and nested renderer URLs
 that bypass the webview resource service worker. The renderer remains opaque
 (`sandbox="allow-scripts"`); it never receives the VS Code API or host-channel token.
@@ -144,7 +144,7 @@ instead of downgrading permission controls:
 | Provider | Headless adapter |
 |----------|------------------|
 | Claude | `--print`, JSON final result, `--safe-mode`, empty `--tools`, strict empty MCP configuration, no session persistence; request on stdin |
-| Kiro | `chat --no-interactive --output-format stream-json --trust-tools=`; generated tool-free agent with one private request resource, no configured MCP/hooks; no private source in argv |
+| Kiro | `chat --agent <generated> --no-interactive --output-format stream-json`; generated zero-tool agent with the request as one private resource, no configured MCP/hooks; no private source in argv |
 | Codex | `exec --sandbox read-only --ephemeral --ignore-user-config --ignore-rules`; shell/unified-exec/hooks disabled, web search disabled, final-message file; request on stdin |
 
 Each run uses a private temporary directory, not the presentation project, with
