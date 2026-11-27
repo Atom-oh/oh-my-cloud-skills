@@ -8,6 +8,8 @@ import { execFile } from 'child_process';
 import { CompiledPreviewRenderer } from './compiledPreview';
 import { slideStarts } from './source';
 import { registerStudio } from './studio';
+import { isRemarpDocument } from './studioSource';
+export { isRemarpDocument } from './studioSource';
 
 const presentationFiles = ['_presentation.md', '_presentation.remarp.md', 'remarp.yaml', 'remarp.yml'];
 let savingForBuild = false;
@@ -47,30 +49,6 @@ export function findRemarpSource(document: vscode.TextDocument): string | null {
         }
     }
     return null;
-}
-
-/**
- * Check if a document is a remarp file by looking for `remarp: true` in frontmatter
- * or checking if it has .remarp.md extension
- */
-export function isRemarpDocument(document: vscode.TextDocument): boolean {
-    // Check file extension first
-    if (document.fileName.endsWith('.remarp.md') || path.basename(document.fileName) === '_presentation.md') {
-        return true;
-    }
-
-    // Check for remarp: true in frontmatter
-    const text = document.getText();
-    const frontmatterMatch = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-    if (frontmatterMatch) {
-        const frontmatter = frontmatterMatch[1];
-        // Check for remarp: true (with optional quotes)
-        if (/^remarp:\s*(?:true|"true"|'true')\s*(?:#.*)?$/m.test(frontmatter)) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 /**

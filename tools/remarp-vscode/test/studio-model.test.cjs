@@ -56,6 +56,14 @@ test('staging preserves unsaved text and copies only referenced assets', t => {
     assert.equal(fs.readFileSync(path.join(out,'a.md'),'utf8'),'Unsaved\r\n![Logo](assets/icon.svg)');
     assert.ok(fs.existsSync(path.join(out,'assets','icon.svg'))); assert.ok(!fs.existsSync(path.join(out,'unrelated.secret')));
 });
+test('staging copies stylesheets reached by quoted, unquoted-url and quoted-url imports', t => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(),'studio-import-')); t.after(() => fs.rmSync(root,{recursive:true,force:true}));
+    fs.mkdirSync(path.join(root,'parts'));
+    fs.writeFileSync(path.join(root,'main.css'),'@import "parts/a.css";\n@import url(parts/b.css);\n@import url("parts/c.css");');
+    for (const n of ['a','b','c']) fs.writeFileSync(path.join(root,'parts',`${n}.css`),'x{}');
+    const out = path.join(root,'snapshot'); stageSnapshot(root,out,new Map([['deck.md',{text:'<link rel="stylesheet" href="main.css">'}]]));
+    for (const n of ['a','b','c']) assert.ok(fs.existsSync(path.join(out,'parts',`${n}.css`)),`${n}.css staged`);
+});
 test('staging also copies runtime-loaded assets: Canvas icon paths and logo front matter', t => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(),'studio-assets-')); t.after(() => fs.rmSync(root,{recursive:true,force:true}));
     for (const file of ['img/service.png','brand/logo.svg','brand/logo-dark.svg','brand/theme-logo.svg']) {

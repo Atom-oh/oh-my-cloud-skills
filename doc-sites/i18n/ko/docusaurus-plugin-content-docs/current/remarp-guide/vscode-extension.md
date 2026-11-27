@@ -47,12 +47,12 @@ title: "VS Code와 code-server"
 | 패키지 | 리뷰에서 확인한 내용 |
 | --- | --- |
 | 저장소에 들어 있는 0.1.0 VSIX | Design Studio 명령이 없는 이전 패키지 |
-| 현재 저장소 소스 0.2.0 | Studio와 두 미리보기 명령, 수동 AI 전달 지원. code-server의 실제 호스트에서는 Studio 메시지/리소스 전달 문제가 있음 |
-| 별도로 검토한 로컬 0.3.0 개발 빌드 | 새로운 code-server 렌더러와 명시적 AI 생성 지원. main의 0.2.0 소스와 다르며 이 문서는 공개 출시를 보증하지 않음 |
+| 이전 0.2.0 소스 | Studio와 두 미리보기 명령, 수동 AI 전달만 지원. code-server의 실제 호스트에서는 Studio 메시지/리소스 전달 문제가 있었음 |
+| 현재 저장소 소스 0.2.1 | Studio와 두 미리보기 명령, 수동 AI 전달에 더해 code-server Studio 시작 문제 수정과 미리보기 화면 비율 수정 포함. 이 문서는 공개 출시를 보증하지 않음 |
 
 code-server에서 Studio를 쓰려면 유지보수자가 실제 code-server Extension Host에서 확인한 빌드를 받으세요. 예전 VSIX를 설치하고 Studio가 있을 것이라고 생각하거나, 예제 파일명에 맞추려고 더 최신 설치본을 낮추지 마세요. 설치본의 명령이 다르면 아래 모든 기능이 있다고 가정하기보다 설치된 매니페스트와 비교합니다.
 
-0.3.0 개발 빌드에는 [리뷰에서 확인한 문제](#reviewed-limitations)가 남아 있습니다. 기본 동작 테스트를 통과했다고 완성된 릴리스가 되는 것은 아닙니다.
+날짜별 리뷰가 로컬 개발 빌드에서 [확인한 문제](#reviewed-limitations)를 기록했습니다. 기본 동작 테스트를 통과했다고 완성된 릴리스가 되는 것은 아닙니다.
 
 ## 실제 사용하는 편집기에 설치하기 {#install-in-your-editor}
 
@@ -141,7 +141,7 @@ code-server --list-extensions --show-versions
 
 ### 검토한 0.3.0 개발 빌드의 명시적 생성 {#development-ai-generation}
 
-이 절은 설치본에 **Generate with AI**가 있을 때만 적용합니다. 현재 저장소의 0.2.0에는 이 버튼이 구현되어 있지 않습니다.
+이 절은 설치본에 **Generate with AI**가 있을 때만 적용합니다. 현재 저장소의 0.2.1에는 이 버튼이 구현되어 있지 않습니다.
 
 장과 제공자를 고르고 요청을 입력한 뒤 **Generate with AI**를 누릅니다. 개발 빌드는 선택한 Claude, Kiro, Codex CLI를 확장 호스트에서 실행합니다. Studio를 여는 것만으로 생성이 시작되지는 않습니다. 생성을 실행하면 선택한 원본이 해당 제공자에게 전달되며 사용량이 소모되거나 요금이 발생할 수 있습니다.
 
@@ -183,7 +183,7 @@ npx @vscode/vsce package --no-dependencies --out /tmp/remarp-vscode.vsix
 | `remarp.buildScriptPath` | 비어 있음 | 자동 탐색보다 우선하는 변환기의 명시적 절대 경로 |
 | `remarp.scrollSync` | true | 소스 커서와 미리 보기 슬라이드 동기화 |
 
-현재 소스 0.2.0에는 `remarp.autoPreview`와 `remarp.buildOnSave`가 등록되어 있지 않습니다. 개발 빌드에 AI 설정이 더 있다고 이전 설치본에도 같은 설정이 있는 것은 아닙니다.
+현재 소스 0.2.1에는 `remarp.autoPreview`와 `remarp.buildOnSave`가 등록되어 있지 않습니다.
 
 ## 편집과 이슈 {#editing-and-issues}
 
@@ -199,20 +199,20 @@ npx @vscode/vsce package --no-dependencies --out /tmp/remarp-vscode.vsix
 | Markdown 파일을 인식하지 못함 | Remarp 파일명/프런트매터, 최초 저장 여부, 언어 모드 확인 |
 | 컴파일러를 찾지 못함 | 서버의 명시적 컴파일러 경로와 Extension Host에서 실행 가능한 Python 3 확인 |
 | studio 명령을 모른다는 오류 | 설정된 컴파일러가 Studio 인터페이스보다 오래됨. 맞는 컴파일러 선택 |
-| code-server에서 Studio가 계속 빈 화면 | 설치 버전과 진단 확인. main 0.2.0에는 실제 호스트의 시작 문제가 있으므로 검증된 새 빌드 또는 독립된 컴파일 덱 사용 |
+| code-server에서 Studio가 계속 빈 화면 | 설치 버전과 진단 확인. 0.2.0에는 실제 호스트의 시작 문제가 있었고 0.2.1에서 수정되었습니다. 0.2.1을 설치해 실제 code-server 확장 호스트에서 확인하거나 독립된 컴파일 덱 사용 |
 | 원본을 고쳤는데 컴파일 미리보기가 그대로임 | Build and Preview Compiled HTML을 다시 실행. 이 패널은 계속 자동 빌드하지 않음 |
 | 이미지를 고쳤는데 Studio가 예전 그림을 보여 줌 | Refresh 사용. 참조 자산은 프로젝트 안에 유지 |
 | 필드나 다이어그램을 수정할 수 없음 | Reveal in source 사용. 모든 원본 구조에 안전한 시각 편집 기능이 있는 것은 아님 |
-| AI 버튼이나 설정이 없음 | 버전 확인. 현재 소스 0.2.0은 클립보드 수동 전달 사용 |
+| AI 버튼이나 설정이 없음 | 버전 확인. 현재 소스 0.2.1은 클립보드 수동 전달 사용 |
 | 개발 빌드에서 AI가 실패 | 서버의 CLI, 인증, 지원 옵션/모델, 시간 제한 확인. 노트북의 인증이 공유된다고 가정하지 않기 |
 
 ## 리뷰에서 확인한 제한 {#reviewed-limitations}
 
-[날짜별 유지보수 리뷰 기록](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/docs/reference/2026-11-14-remarp-code-server-review.md)에서 현재 main 소스와 별도로 설치된 개발 빌드를 구분해 검토했습니다.
+[날짜별 유지보수 리뷰 기록](https://github.com/Atom-oh/oh-my-cloud-skills/blob/main/docs/reference/2026-11-14-remarp-code-server-review.md)에서 당시 main 소스(0.2.0)와 별도로 설치된 개발 빌드를 구분해 검토했습니다.
 
-- **code-server의 main 0.2.0:** 브라우저 API를 모사한 테스트가 통과해도 Studio의 호스트 메시지와 중첩 리소스 전달이 실패할 수 있습니다. Studio에는 실제 호스트에서 확인한 패키지를 사용하고 최종 확인은 독립된 컴파일 덱에서 하세요.
+- **code-server의 0.2.0:** 브라우저 API를 모사한 테스트가 통과해도 Studio의 호스트 메시지와 중첩 리소스 전달이 실패할 수 있었고, 0.2.1에서 이 시작 경로를 수정했습니다. 그래도 실제 code-server 확장 호스트에서 Studio를 확인하고 최종 확인은 독립된 컴파일 덱에서 하세요.
 - **로컬 0.3.0 카드 본문 편집:** 코드 펜스 같은 구조 문법이 뒤 슬라이드 구조를 바꿀 수 있습니다. 범위를 제한한 시각 편집에는 일반 텍스트를 쓰고 구조 변경은 원본에서 한 뒤 전체 덱을 검증하세요.
-- **로컬 0.3.0 CSS import:** 따옴표를 쓴 로컬 import가 스테이징에서 빠져 Studio 렌더링을 막을 수 있습니다. 그 경로가 수정되기 전에는 직접 사용할 수 있는 스타일시트나 독립된 출력물을 사용하세요.
+- **0.2.0의 CSS import:** 따옴표를 쓴 로컬 import가 스테이징에서 빠져 Studio 렌더링을 막을 수 있었으며, 0.2.1에서 스테이징합니다.
 - **제출 전 제안 초안:** Play에서 이동하면 초안이 사라질 수 있습니다. 다른 장으로 가기 전에 따로 복사하거나 후보 확인/적용 결정을 마치세요.
 
 이는 검토한 구현의 결과이며 모든 설치본이 같다는 뜻은 아닙니다. 개발 빌드의 Studio 렌더러도 임의의 중첩 문서와 동적인 로컬 리소스 로딩을 번들에 포함하지 않습니다. 삽입된 다이어그램과 최종 발표 동작은 독립된 덱에서 확인하세요.

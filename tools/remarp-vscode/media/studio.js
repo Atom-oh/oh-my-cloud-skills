@@ -1,11 +1,17 @@
 /* Controlled editor shell. Authored iframe messages can report geometry, never edits. */
 (() => {
     'use strict';
+    // VS Code's API shim replaces window.parent with window. Authenticate host
+    // deliveries using a session token kept only in this trusted shell, not the
+    // renderer's CSP nonce (authored scripts legitimately know that nonce).
+    const hostChannel = document.currentScript.dataset.studioChannel;
+    document.currentScript.removeAttribute('data-studio-channel');
     const api = acquireVsCodeApi(), $ = id => document.getElementById(id), frame = $('preview');
     const saved = api.getState() || {};
     let manifest, generation, ready = false, slideIndex = saved.slide || 0, selected, mode = saved.mode || 'design';
     let scale = .4, dimensions = { width:1920, height:1080 }, bounds = [], proposalId;
     let draftDirty = false, draftGeneration, dragging;
+    let renderTimer, renderPending = false, pendingReady = false;
     $('zoom').value = saved.zoom || 'fit';
     const slide = () => manifest?.slides[slideIndex];
     const node = () => slide()?.nodes.find(n => n.id === selected);
@@ -18,7 +24,7 @@
         $('fields').querySelectorAll('input,textarea,select,button').forEach(e => e.disabled = !ready);
         $('settings').querySelectorAll('select').forEach(e => e.disabled = !ready);
         for (const id of ['copy','issue','undo','redo']) $(id).disabled = !ready;
-        $('source').disabled = !ready;
+        $('source').disabled = false; // The host can reveal the entry even when compilation fails.
         $('propose').disabled = !ready || (draftDirty && draftGeneration !== generation);
         overlay();
     }
@@ -94,14 +100,14 @@
                 if (draftDirty && !confirm('Discard the current source draft and select another slide?')) return;
                 slideIndex = index; selected = undefined; draftDirty = false; bounds = [];
                 $('proposal').value = s.source; draftGeneration = generation;
-                navigation(); inspector(); view();
+                navigation(); inspector(); view(); status(ready,$('status').textContent);
             }, $('slides'), 'slide-item');
             b.classList.toggle('selected', index === slideIndex); b.setAttribute('aria-label', `${index + 1}. ${s.title}`);
             // A bounded window of real renderer thumbnails, not a second renderer.
             if (Math.abs(index - slideIndex) <= 2) {
                 const t = document.createElement('span'); t.className = 'thumbnail';
                 const f = document.createElement('iframe'); f.title = `Thumbnail: ${s.title}`; f.sandbox = 'allow-scripts'; f.tabIndex = -1; f.loading = 'lazy';
-                f.src = frame.src + (frame.src.includes('?') ? '&' : '?') + `studioThumbnail=1&studioSlide=${index}`; t.append(f); b.append(t);
+                f.name = `remarp-studio-thumbnail:${index}`; f.srcdoc = frame.srcdoc; t.append(f); b.append(t);
             }
             const title = document.createElement('span'); title.className = 'slide-label'; title.textContent = `${index + 1}. ${s.title}`; b.append(title);
         }
@@ -149,7 +155,20 @@
         const data = event.data; if (!data || typeof data !== 'object') return;
         if (event.source === frame.contentWindow) {
             // No type from this frame can call api.postMessage or alter source state.
+            if (data.generation !== generation || !manifest) return;
+            if ((data.type === 'studio-render-error' || data.type === 'studio-render-warning') && typeof data.message === 'string') {
+                notice(data.message.slice(0, 2000));
+                if (data.type === 'studio-render-error') {
+                    clearTimeout(renderTimer); renderPending = false;
+                    status(false, 'Renderer failed — see diagnostics below; use Refresh to retry');
+                }
+                return;
+            }
             if (data.type !== 'studio-observation' || data.generation !== generation || !manifest) return;
+            if (renderPending) {
+                clearTimeout(renderTimer); renderPending = false;
+                status(pendingReady, proposalId ? 'Candidate — Apply or Reject' : 'Compiled snapshot');
+            }
             if (mode === 'play' && Number.isInteger(data.slide) && manifest.slides[data.slide] && data.slide !== slideIndex) {
                 slideIndex = data.slide; selected = undefined; draftDirty = false; $('proposal').value = slide().source; navigation(); inspector(); persist();
             }
@@ -158,10 +177,9 @@
             if (data.dimensions && ['width','height'].every(k => Number.isFinite(data.dimensions[k]) && data.dimensions[k] >= 100 && data.dimensions[k] <= 10000)) dimensions = data.dimensions;
             zoom(); return;
         }
-        // Host messages come from this window (tests) or from the parent frame: VS Code forwards a webview
-        // message through its outer page, so the sender is window.parent. Any other frame, such as one an
-        // authored island opens inside the sandboxed preview, is not the host.
-        if (event.source && event.source !== window && event.source !== window.parent) return;
+        // A descendant can post to this window too, but never receives the host
+        // token. Renderer observations above cannot enter this command branch.
+        if (!hostChannel || data.studioChannel !== hostChannel) return;
         if (data.type === 'compiled' || data.type === 'candidate') {
             const old = slide(); manifest = data.manifest; generation = data.generation;
             if (!manifest || manifest.version !== 1 || !manifest.slides.length) return;
@@ -170,20 +188,31 @@
             selected = undefined; bounds = []; proposalId = data.proposalId; $('candidate').hidden = !proposalId;
             if (!draftDirty) { $('proposal').value = slide().source; draftGeneration = generation; }
             else if (draftGeneration !== generation) notice('Source changed while a draft was open. Reset the draft from current source before proposing again.');
-            frame.src = data.frameUrl;
-            navigation(); inspector(); status(!!data.ready, proposalId ? 'Candidate — Apply or Reject' : 'Compiled snapshot');
+            frame.name = 'remarp-studio-preview'; frame.srcdoc = data.frameHtml;
+            clearTimeout(renderTimer); renderPending = true; pendingReady = !!data.ready;
+            navigation(); inspector(); status(false, 'Loading renderer…');
+            renderTimer = setTimeout(() => {
+                renderPending = false;
+                status(false, 'Renderer did not start — see diagnostics below');
+                notice('The compiled slide did not start within 15 seconds. Use Refresh to retry, or Reveal in source to inspect the deck.');
+            }, 15000);
             if (!proposalId && !draftDirty) $('diagnostics').hidden = true;
         } else if (data.type === 'status') {
+            clearTimeout(renderTimer); renderPending = false;
             if (data.clearProposal) { proposalId = undefined; $('candidate').hidden = true; }
             status(!!data.ready,data.message);
-        } else if (data.type === 'error' || data.type === 'notice') notice(data.message);
+        } else if (data.type === 'error') {
+            clearTimeout(renderTimer); renderPending = false;
+            status(typeof data.ready === 'boolean' ? data.ready : ready, data.status || 'Studio failed — see diagnostics');
+            notice(data.message);
+        } else if (data.type === 'notice') notice(data.message);
     });
     frame.addEventListener('load', view);
     $('design').onclick = () => { mode = 'design'; view(); }; $('play').onclick = () => { mode = 'play'; view(); };
     $('zoom').onchange = zoom; $('refresh').onclick = () => send('refresh'); $('source').onclick = () => send('reveal');
     $('undo').onclick = () => send('undo'); $('redo').onclick = () => send('redo');
     $('copy').onclick = () => send('copyRequest', { prompt:$('prompt').value }); $('issue').onclick = () => edit('issue',$('prompt').value);
-    $('proposal').oninput = () => { draftDirty = true; if (draftGeneration === undefined) draftGeneration = generation; };
+    $('proposal').oninput = () => { draftDirty = true; if (draftGeneration === undefined) draftGeneration = generation; status(ready,$('status').textContent); };
     const reset = button('Reset draft from source', () => { if (!draftDirty || confirm('Discard this source draft?')) { $('proposal').value = slide()?.source || ''; draftDirty = false; draftGeneration = generation; status(ready,$('status').textContent); } }, $('proposal').parentElement);
     reset.id = 'resetDraft';
     $('propose').onclick = () => send('propose',{value:$('proposal').value});

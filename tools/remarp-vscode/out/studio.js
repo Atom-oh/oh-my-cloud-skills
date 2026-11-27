@@ -44,41 +44,45 @@ const crypto_1 = require("crypto");
 const studioModel_1 = require("./studioModel");
 const studioSnapshot_1 = require("./studioSnapshot");
 const studioRenderer_1 = require("./studioRenderer");
+const studioSource_1 = require("./studioSource");
 const diffDocuments = new Map();
 const markers = ['_presentation.md', '_presentation.remarp.md', 'remarp.yaml', 'remarp.yml'];
 function registerStudio(context, compilerFor) {
     context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider('remarp-studio', {
         provideTextDocumentContent: uri => diffDocuments.get(uri.toString()) || ''
     }));
-    context.subscriptions.push(vscode.commands.registerCommand('remarp.studio', () => {
-        const document = vscode.window.activeTextEditor?.document;
-        if (!document || document.uri.scheme !== 'file' || !(document.languageId === 'remarp' || document.fileName.endsWith('.remarp.md') || path.basename(document.fileName) === '_presentation.md')) {
-            vscode.window.showWarningMessage('Open local Remarp source to start Studio.');
-            return;
-        }
+    const output = vscode.window.createOutputChannel('Remarp Studio');
+    context.subscriptions.push(output);
+    context.subscriptions.push(vscode.commands.registerCommand('remarp.studio', async (uri) => {
         if (!vscode.workspace.isTrusted) {
             vscode.window.showWarningMessage('Remarp Studio requires a trusted workspace. Use Approximate Text Preview instead.');
             return;
         }
-        const compiler = compilerFor(document);
-        if (!compiler) {
-            vscode.window.showErrorMessage('Configure remarp.buildScriptPath with a Studio-capable remarp_to_slides.py.');
-            return;
-        }
         try {
-            const session = new StudioSession(context.extensionUri, document, compiler);
+            const document = await (0, studioSource_1.selectStudioSource)(uri);
+            if (!document) {
+                return;
+            } // Dismissing the file picker is not a failure.
+            const compiler = compilerFor(document);
+            if (!compiler) {
+                vscode.window.showErrorMessage('Configure remarp.buildScriptPath with a Studio-capable remarp_to_slides.py.');
+                return;
+            }
+            const session = new StudioSession(context.extensionUri, document, compiler, output);
             context.subscriptions.push(session);
         }
         catch (error) {
+            output.appendLine(`Remarp Studio: ${error}`);
             vscode.window.showErrorMessage(`Remarp Studio: ${error}`);
         }
     }));
 }
 class StudioSession {
-    constructor(extension, entry, compiler) {
+    constructor(extension, entry, compiler, output) {
         this.extension = extension;
         this.entry = entry;
         this.compiler = compiler;
+        this.output = output;
         this.disposables = [];
         this.requested = 0;
         this.building = false;
@@ -87,6 +91,8 @@ class StudioSession {
         this.stages = [];
         this.diffKeys = [];
         this.messages = Promise.resolve();
+        this.rendererNonce = (0, crypto_1.randomBytes)(24).toString('hex');
+        this.hostChannel = (0, crypto_1.randomBytes)(24).toString('hex');
         this.root = fs.realpathSync(path.dirname(entry.fileName));
         if (path.resolve(path.dirname(entry.fileName)) !== this.root) {
             throw new Error('Open the project through its real path, not a directory symlink.');
@@ -96,9 +102,9 @@ class StudioSession {
         this.temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'remarp-studio-')));
         this.panel = vscode.window.createWebviewPanel('remarpStudio', 'Remarp Design Studio', vscode.ViewColumn.Beside, {
             enableScripts: true, retainContextWhenHidden: true,
-            localResourceRoots: [extension, vscode.Uri.file(this.root), vscode.Uri.file(this.temporary)]
+            localResourceRoots: [vscode.Uri.joinPath(extension, 'media')]
         });
-        this.panel.webview.html = (0, studioRenderer_1.studioShell)(this.panel.webview, extension);
+        this.panel.webview.html = (0, studioRenderer_1.studioShell)(this.panel.webview, extension, this.rendererNonce, this.hostChannel);
         this.disposables.push(this.panel.onDidDispose(() => this.dispose()));
         this.disposables.push(this.panel.webview.onDidReceiveMessage(message => {
             this.messages = this.messages.then(() => this.receive(message)).catch(error => this.error(error));
@@ -144,10 +150,35 @@ class StudioSession {
             return false;
         }
     }
-    post(message) { if (!this.disposed) {
-        void this.panel.webview.postMessage(message);
-    } }
-    error(error) { this.post({ type: 'error', message: String(error) }); }
+    post(message) {
+        if (this.disposed) {
+            return;
+        }
+        // postMessage may run before the shell script is listening. Keep the latest
+        // UI state so its ready handshake can recover both success and failure.
+        if (message.type === 'compiled' || message.type === 'candidate') {
+            this.viewState = message;
+            this.statusState = undefined;
+            this.errorState = undefined;
+        }
+        else if (message.type === 'status') {
+            this.statusState = message;
+            this.errorState = undefined;
+        }
+        else if (message.type === 'error') {
+            this.errorState = message;
+        }
+        void this.panel.webview.postMessage({ ...message, studioChannel: this.hostChannel });
+    }
+    error(error) {
+        if (this.disposed) {
+            return;
+        }
+        const message = String(error);
+        this.output?.appendLine(`[${path.basename(this.entry.fileName)}] ${message}`);
+        this.post({ type: 'error', message, ready: this.ready,
+            status: this.ready ? 'Action failed — see diagnostics' : this.current ? 'Build failed — previous preview is stale' : 'Studio could not build this source' });
+    }
     pruneStages() {
         // Keep live renderer resources and two recent stages for in-flight requests.
         // Run even after failures: invalid source must not grow temporary storage.
@@ -211,10 +242,8 @@ class StudioSession {
             }
         }
         const htmlPath = (0, studioSnapshot_1.sourcePath)(output, manifest.html);
-        const html = (0, studioRenderer_1.studioFrame)(this.panel.webview, this.extension, fs.readFileSync(htmlPath, 'utf8'), output, snapshot, this.root, manifest, generation);
-        const frame = path.join(output, 'studio-frame.html');
-        fs.writeFileSync(frame, html, 'utf8');
-        return { manifest, frameUrl: this.panel.webview.asWebviewUri(vscode.Uri.file(frame)).toString(), generation, sources, stage: directory };
+        const frameHtml = (0, studioRenderer_1.studioFrame)(this.panel.webview, this.extension, fs.readFileSync(htmlPath, 'utf8'), output, snapshot, this.root, manifest, generation, this.rendererNonce);
+        return { manifest, frameHtml, generation, sources, stage: directory };
     }
     async rebuild() {
         if (this.building || this.disposed) {
@@ -297,9 +326,18 @@ class StudioSession {
             return;
         }
         if (message.type === 'ready') {
-            if (this.current) {
-                this.post({ type: 'compiled', ...this.current, sources: undefined, stage: undefined, ready: this.ready });
+            for (const state of [this.viewState, this.statusState, this.errorState]) {
+                if (state) {
+                    void this.panel.webview.postMessage({ ...state, ready: this.ready, studioChannel: this.hostChannel });
+                }
             }
+            return;
+        }
+        // Source access must remain available when compilation fails or no map exists.
+        // Without a current map, reveal only the known entry, never a caller-supplied path.
+        if (message.type === 'reveal' && (!this.current || !this.ready)) {
+            const document = await vscode.workspace.openTextDocument(this.entry.uri);
+            await vscode.window.showTextDocument(document, { preserveFocus: false });
             return;
         }
         if (message.type === 'refresh') {
@@ -369,7 +407,7 @@ class StudioSession {
                 }
                 const proposal = { id: (0, crypto_1.randomBytes)(16).toString('hex'), file, patches, before, after, base, candidate };
                 this.proposal = proposal;
-                this.post({ type: 'candidate', manifest: candidate.manifest, frameUrl: candidate.frameUrl, generation: base.generation, proposalId: proposal.id, ready: false });
+                this.post({ type: 'candidate', manifest: candidate.manifest, frameHtml: candidate.frameHtml, generation: base.generation, proposalId: proposal.id, ready: false });
                 await this.showDiff(proposal);
             }
             finally {
@@ -399,6 +437,8 @@ class StudioSession {
         if (this.disposed) {
             return;
         }
+        // Mark disposed first: when VS Code fires
+        // onDidDispose the webview is already gone and touching it throws.
         this.disposed = true;
         if (this.timer) {
             clearTimeout(this.timer);
@@ -409,7 +449,10 @@ class StudioSession {
         if (!this.building) {
             fs.rmSync(this.temporary, { recursive: true, force: true });
         }
-        this.panel.dispose();
+        try {
+            this.panel.dispose();
+        }
+        catch { /* panel already disposed by VS Code */ }
     }
 }
 exports.StudioSession = StudioSession;
