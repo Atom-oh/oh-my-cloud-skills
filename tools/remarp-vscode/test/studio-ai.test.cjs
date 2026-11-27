@@ -29,7 +29,7 @@ test('Codex is ephemeral read-only with isolated config, tools disabled and prov
 });
 test('Kiro supplies private source as a resource, not argv, and grants no tools or MCP',()=>{
  const root=temp();try{const p=prepareAI(config('kiro','kiro-cli',{effort:'low'}),'PRIVATE_SOURCE',root);
- assert.ok(p.args.includes('--trust-tools='));assert.ok(!p.args.some(x=>x.includes('PRIVATE_SOURCE')));assert.equal(p.stdin,'');
+ assert.ok(!p.args.includes('--trust-tools='));assert.ok(!p.args.some(x=>x.includes('PRIVATE_SOURCE')));assert.equal(p.stdin,'');
  const agent=JSON.parse(fs.readFileSync(path.join(root,'.kiro/agents',fs.readdirSync(path.join(root,'.kiro/agents'))[0])));
  assert.deepEqual(agent.tools,[]);assert.equal(agent.includeMcpJson,false);assert.deepEqual(agent.mcpServers,{});assert.deepEqual(agent.hooks,[]);assert.match(agent.resources[0],/request.txt$/);
  assert.equal(fs.readFileSync(path.join(root,'request.txt'),'utf8'),'PRIVATE_SOURCE');assert.equal(fs.statSync(path.join(root,'request.txt')).mode&0o777,0o600);
@@ -87,6 +87,15 @@ test('Kiro requires a successful completion event and ignores reasoning and trun
  const end={type:'runFinished',data:{status:'success',stopReason:'end_turn',finalText:'## Truncated',finalTextTruncated:true}};
  assert.equal(aiResponse('kiro',[chunk,end].map(JSON.stringify).join('\n'),root),'## Good\n');
  end.data.status='interrupted';assert.throws(()=>aiResponse('kiro',[chunk,end].map(JSON.stringify).join('\n'),root));
+ }finally{fs.rmSync(root,{recursive:true,force:true});}
+});
+test('Kiro skips non-JSON and non-object lines but rejects agent fallback and streams without runFinished',()=>{
+ const root=temp();try{
+ const ok=[{type:'sessionUpdate',data:{update:{sessionUpdate:'agent_message_chunk',content:{type:'text',text:'## Good'}}}},{type:'runFinished',data:{status:'success',stopReason:'end_turn'}}].map(JSON.stringify).join('\n');
+ assert.equal(aiResponse('kiro','WARNING: update available\n'+ok,root),'## Good\n');
+ assert.equal(aiResponse('kiro','null\n42\n"text"\n'+ok,root),'## Good\n');
+ assert.throws(()=>aiResponse('kiro','Falling back to user specified default\n'+ok,root),/fell back/);
+ assert.throws(()=>aiResponse('kiro','WARNING: update available\nbanner text',root),/without a successful/);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 });
 test('Codex response rejects symlinks and non-regular files without reading them',()=>{

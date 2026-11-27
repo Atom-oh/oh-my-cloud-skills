@@ -72,7 +72,7 @@ export function prepareAI(config: AIConfig, prompt: string, directory: string): 
         fs.writeFileSync(path.join(directory, '.kiro', 'settings', 'cli.json'), JSON.stringify({
             'chat.disableInheritingDefaultResources': true, 'chat.enableKnowledge': false, 'chat.enableCodeIntelligence': false
         }), { mode: 0o600 });
-        args = ['chat', '--agent', name, '--no-interactive', '--trust-tools=', '--output-format', 'stream-json', '--wrap', 'never'];
+        args = ['chat', '--agent', name, '--no-interactive', '--output-format', 'stream-json', '--wrap', 'never'];
         stdin = '';
     }
     if (config.model) { args.push('--model', config.model); }
@@ -103,9 +103,14 @@ export function aiResponse(provider: AIProvider, stdout: string, directory: stri
     } else {
         value = '';
         let finished = false;
+        if (/no agent with name|Falling back to user specified default|Json supplied at .* is invalid/i.test(stdout)) {
+            throw new Error('Kiro ignored the restricted agent and fell back to its default agent. Update the CLI and retry.');
+        }
         for (const line of stdout.split(/\r?\n/).filter(s => s.trim())) {
             let event: any;
-            try { event = JSON.parse(line); } catch { throw new Error('Kiro returned invalid stream-json. Update the CLI and retry.'); }
+            // Warnings and banners are skipped; success still requires runFinished.
+            try { event = JSON.parse(line); } catch { continue; }
+            if (!event || typeof event !== 'object') { continue; }
             // ACP session updates are the only accepted text: reasoning, tool
             // results, banners and diagnostics must never become slide source.
             const update = event.data?.update || event.params?.update || event.update || event;
